@@ -20,6 +20,26 @@ describe("ホーム統合後のセッション移行", () => {
     storage.json = "";
   });
 
+  it("セッション復元でライブ表示を保持し、自動更新は開始しない", () => {
+    storage.json = JSON.stringify({
+      panes: [
+        {
+          id: "pane",
+          activeTabId: "tab",
+          tabs: [
+            { ...createHomeTab("tab"), threadDisplayMode: "live-chat", autoRefreshEnabled: true },
+          ],
+        },
+      ],
+      activePaneId: "pane",
+      closedTabs: [],
+    });
+    expect(loadTabStoreSession()!.panes[0].tabs[0]).toMatchObject({
+      threadDisplayMode: "live-chat",
+      autoRefreshEnabled: false,
+    });
+  });
+
   it.each([0, 1, 2, 3])(
     "旧階層の選択位置%sを保ち、板一覧への二重の戻る操作をなくす",
     (currentIndex) => {

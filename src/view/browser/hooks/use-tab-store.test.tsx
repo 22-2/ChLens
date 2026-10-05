@@ -113,6 +113,51 @@ describe("TabProvider auto refresh state", () => {
     vi.unstubAllGlobals();
   });
 
+  it("ライブチャット表示はタブ単位で保持し、自動更新とは独立して次スレへ引き継ぐ", async () => {
+    vi.resetModules();
+    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    function Harness() {
+      const { viewTab, state, dispatch } = useTabStore();
+      return (
+        <>
+          <button onClick={() => dispatch({ type: "SET_THREAD_DISPLAY_MODE", mode: "live-chat" })}>
+            ライブ表示
+          </button>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "FOLLOW_NEXT_THREAD",
+                page: {
+                  type: "thread",
+                  title: "次スレ",
+                  threadUrl: "https://example.com/test/read.cgi/sample/2/",
+                },
+              })
+            }
+          >
+            次スレ
+          </button>
+          <button onClick={() => dispatch({ type: "ADD_TAB" })}>別タブ</button>
+          <output data-testid="display-mode">{viewTab.threadDisplayMode ?? "normal"}</output>
+          <output data-testid="auto-refresh">{String(viewTab.autoRefreshEnabled)}</output>
+          <output data-testid="previous-mode">{state.tabs[0].threadDisplayMode ?? "normal"}</output>
+        </>
+      );
+    }
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+    fireEvent.click(screen.getByText("ライブ表示"));
+    fireEvent.click(screen.getByText("次スレ"));
+    expect(screen.getByTestId("display-mode")).toHaveTextContent("live-chat");
+    expect(screen.getByTestId("auto-refresh")).toHaveTextContent("false");
+    fireEvent.click(screen.getByText("別タブ"));
+    expect(screen.getByTestId("display-mode")).toHaveTextContent("normal");
+    expect(screen.getByTestId("previous-mode")).toHaveTextContent("live-chat");
+  });
+
   it("別ページへ移動した時点で自動更新状態を解除する", async () => {
     vi.resetModules();
     const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");

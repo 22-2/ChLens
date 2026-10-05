@@ -1098,6 +1098,15 @@ function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreStat
       });
     }
 
+    case TAB_ACTION_TYPES.SET_THREAD_DISPLAY_MODE: {
+      // 別ペインや別窓の設定を巻き込まず、操作元のタブだけの表示を切り替える。
+      const paneId = resolvePaneId(state, action.paneId);
+      return updateTargetTab(state, paneId, action.tabId, (tab) => ({
+        ...tab,
+        threadDisplayMode: action.mode,
+      }));
+    }
+
     case TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED: {
       const paneId = resolvePaneId(state, action.paneId);
       return updateTargetTab(state, paneId, action.tabId, (tab) => {
@@ -1572,6 +1581,7 @@ function actionUsesImplicitExistingTab(action: ScopedTabAction): boolean {
     case TAB_ACTION_TYPES.RELOAD:
     case TAB_ACTION_TYPES.FOLLOW_NEXT_THREAD:
     case TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED:
+    case TAB_ACTION_TYPES.SET_THREAD_DISPLAY_MODE:
     case TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY:
       return true;
     default:

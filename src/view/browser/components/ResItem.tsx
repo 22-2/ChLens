@@ -69,6 +69,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     threadUrl,
     searchQuery = "",
     searchTarget = "all",
+    animateEntry = false,
   }) => {
     const { window: viewWindow } = useViewSurface();
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
@@ -120,6 +121,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     const nameStateClassName = responseState ? `res__name--state-${responseState}` : "";
     const articleClassName = [
       "res",
+      animateEntry ? "res--live-chat-enter" : "",
       miniAa ? "res--aa" : "",
       isOwn ? "res--own" : "",
       isReplyToOwn ? "res--reply-to-own" : "",
@@ -246,6 +248,8 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
 ResItem.displayName = "ResItem"; // --- 個別レス表示 ---
 
 export interface ResItemProps {
+  /** ライブチャットの新着だけに入場動作を付け、既存の本文・NG処理を共用する。 */
+  animateEntry?: boolean;
   res: IRes;
   idPos: number;
   idCount: number;

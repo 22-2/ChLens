@@ -34,6 +34,7 @@ export const TAB_ACTION_TYPES = {
   RELOAD: "RELOAD",
   FOLLOW_NEXT_THREAD: "FOLLOW_NEXT_THREAD",
   SET_AUTO_REFRESH_ENABLED: "SET_AUTO_REFRESH_ENABLED",
+  SET_THREAD_DISPLAY_MODE: "SET_THREAD_DISPLAY_MODE",
   SET_AUTO_REFRESH_STOPPED_PAGE_KEY: "SET_AUTO_REFRESH_STOPPED_PAGE_KEY",
   SPLIT_PANE: "SPLIT_PANE",
   OPEN_IN_RIGHT_PANE: "OPEN_IN_RIGHT_PANE",
@@ -45,6 +46,7 @@ export const TAB_ACTION_TYPES = {
 } as const;
 
 export type TabAction =
+  | { type: typeof TAB_ACTION_TYPES.SET_THREAD_DISPLAY_MODE; mode: "normal" | "live-chat" }
   | { type: typeof TAB_ACTION_TYPES.ADD_TAB; preserveActivePane?: boolean }
   | { type: typeof TAB_ACTION_TYPES.OPEN_IN_NEW_TAB; page: Page; background?: boolean }
   | {

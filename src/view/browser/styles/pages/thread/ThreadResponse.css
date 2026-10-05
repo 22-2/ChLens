@@ -137,6 +137,22 @@
   word-break: break-all;
 }
 
+/* 元のレスレイアウトを保ち、新着が流れ込む動きだけを追加する。 */
+.res--live-chat-enter {
+  animation: live-chat-enter var(--sys-duration-normal) ease-out;
+}
+
+@keyframes live-chat-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--sys-space-3));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .res__search-match {
   /* Use the table highlight tokens so matches remain legible in both themes. */
   border-radius: var(--sys-radius-sm);

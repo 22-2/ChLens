@@ -5,6 +5,7 @@ import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-prio
 import { StatusBarItem, StatusBarMode } from "src/view/browser/components/StatusBar";
 import type { IdleStopTimeoutOption } from "src/view/browser/hooks/auto-refresh-config";
 import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/view/browser/hooks/auto-refresh-config";
+import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import {
   MAX_BOARD_INTERVAL_SEC,
@@ -15,12 +16,17 @@ import {
 } from "src/view/browser/hooks/use-auto-refresh-panel";
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
+import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+import type { Tab } from "src/view/browser/types";
 import type { AutoNextThreadMode } from "src/view/browser/utils/next-thread-search";
 
 // -----------------------------------------------------------------------
 // ミニウィンドウの中身（UI のみ、ロジックは props 経由）
 // -----------------------------------------------------------------------
 interface ThreadAutoRefreshPanelContentProps {
+  displayModeId: string;
+  displayMode: NonNullable<Tab["threadDisplayMode"]>;
+  onDisplayModeChange: (mode: NonNullable<Tab["threadDisplayMode"]>) => void;
   isEnabled: boolean;
   isOnThread: boolean;
   isAutoNextThreadEnabled: boolean;
@@ -37,6 +43,9 @@ interface ThreadAutoRefreshPanelContentProps {
 }
 
 const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps> = ({
+  displayModeId,
+  displayMode,
+  onDisplayModeChange,
   isEnabled,
   isOnThread,
   isAutoNextThreadEnabled,
@@ -94,19 +103,28 @@ const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps
 
     <div className="mini-window__separator" />
 
-    {/* 2. 自動スクロールスタイル */}
-    {/* <div className="mini-window__section">
-      <div className="mini-window__section-header">自動スクロールスタイル</div>
+    {/* 表示形式と取得周期を一つのパネルで扱い、ライブ専用の通信設定を増やさない。 */}
+    <div className="mini-window__section">
+      <label className="mini-window__section-header" htmlFor={displayModeId}>
+        表示形式
+      </label>
       <div className="mini-window__select-row">
         <select
+          id={displayModeId}
           className="mini-window__select"
-          aria-label="自動スクロールスタイル"
-          defaultValue="default"
+          value={displayMode}
+          onChange={(event) =>
+            onDisplayModeChange(event.target.value === "live-chat" ? "live-chat" : "normal")
+          }
         >
-          <option value="default">デフォルト</option>
+          <option value="normal">通常</option>
+          <option value="live-chat">ライブチャット風</option>
         </select>
       </div>
-    </div> */}
+      <p className="mini-window__note">
+        ライブチャット風では新着レスを時間差で表示します。取得には下の自動更新設定を使います
+      </p>
+    </div>
 
     <div className="mini-window__separator" />
 
@@ -242,6 +260,7 @@ const ThreadListAutoRefreshPanelContent: React.FC<ThreadListAutoRefreshPanelCont
 // ステータスバーアイテム本体
 // -----------------------------------------------------------------------
 export const AutoRefreshStatusItem: React.FC = () => {
+  const { viewTab, dispatch } = useTabStore();
   const {
     panelKind,
     isOnThread,
@@ -372,6 +391,10 @@ export const AutoRefreshStatusItem: React.FC = () => {
         >
           {panelKind === "thread" ? (
             <ThreadAutoRefreshPanelContent
+              // 2ペインで同時にパネルを開いても、ラベルが別タブの選択欄へ結び付かないようにする。
+              displayModeId={`thread-display-mode-${viewTab?.id ?? "current"}`}
+              displayMode={viewTab?.threadDisplayMode ?? "normal"}
+              onDisplayModeChange={(mode) => dispatch(tabActions.setThreadDisplayMode(mode))}
               isEnabled={isEnabled}
               isOnThread={isOnThread}
               isAutoNextThreadEnabled={isAutoNextThreadEnabled}

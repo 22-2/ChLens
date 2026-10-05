@@ -109,6 +109,8 @@ export type TabViewStates = Record<string, TabViewState>;
 
 export interface Tab {
   id: string;
+  // 表示形式は通信のON/OFFと独立させ、同じタブの次スレ移動にも引き継ぐ。
+  threadDisplayMode?: "normal" | "live-chat";
   history: Page[];
   currentIndex: number;
   pinned: boolean;

@@ -18,6 +18,7 @@ import { ResItem } from "src/view/browser/components/ResItem";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { ThreadScrollFloatingActions } from "src/view/browser/components/ThreadScrollFloatingActions";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
+import { readThreadAutoRefreshIntervalSec } from "src/view/browser/hooks/auto-refresh-config";
 import type { ContextMenuPopupItem } from "src/view/browser/hooks/popup-manager/types";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import {
@@ -25,6 +26,7 @@ import {
   useAutoNextThread,
 } from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
+import { useLiveChatResponses } from "src/view/browser/hooks/use-live-chat-responses";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import {
@@ -168,6 +170,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const { viewTab } = useTabStore();
   // 既存の直接利用者との互換性のため渡されたtabを残し、通常の描画経路ではそれを優先する。
   const navigationTab = tab ?? viewTab;
+  const isLiveChat = navigationTab.threadDisplayMode === "live-chat";
+  const isFilterEnabled = filter !== "all" || searchQuery.trim() !== "";
+  const liveChat = useLiveChatResponses({
+    responses: filteredResponses,
+    scopeKey: `${tabId}\u0000${page.threadUrl}`,
+    // 検索・絞り込み中は結果をすぐ見せ、保留中の新着が検索結果から欠落するのを防ぐ。
+    enabled: isLiveChat && !isFilterEnabled,
+    isActive,
+    intervalMs: readThreadAutoRefreshIntervalSec(page.threadUrl) * 1000,
+  });
+  const displayedResponses = liveChat.responses;
   const isCommentOverlayTarget =
     commentOverlaySnapshot.state.status === "running" &&
     commentOverlaySnapshot.state.targetThreadUrl === page.threadUrl;
@@ -442,7 +455,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         dispatch(tabActions.setAutoRefreshStoppedPageKey(autoRefreshPageKey));
       }
     },
-    deferExpiredStop: shouldDeferNextThreadStop,
+    // 満了時も最後の新着が流れ終わるまで追従を維持する。
+    deferExpiredStop: shouldDeferNextThreadStop || (isActive && liveChat.isDraining),
   });
 
   const handleFollowNextThread = useCallback(
@@ -485,7 +499,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     toast,
     // 変更理由: Overlay実況中は本文タブが非表示でも次スレ探索を継続し、
     // 次スレへ移った後に実況対象を途切れず引き継げるようにする。
-    canAutoScroll: isCommentOverlayFlowing || canAutoScroll,
+    // 表示待ちの末尾レスを次スレ移動で捨てない。非表示時のOverlay実況は従来どおり続ける。
+    canAutoScroll:
+      (!isActive || !liveChat.isDraining) && (isCommentOverlayFlowing || canAutoScroll),
     // コメント流し中は画面を確認・操作できないため、次スレ候補の表示待ちを省略する。
     skipMoveDelay: isCommentOverlayFlowing,
     followThread: handleFollowNextThread,
@@ -659,18 +675,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     [requestManualRefresh, viewWindow],
   );
 
-  const isFilterEnabled = useMemo(
-    () => filter !== "all" || searchQuery.trim() !== "",
-    [filter, searchQuery],
-  );
-
   const replayPosition = useArchiveReplayPositionStore((state) => state.position);
   const replayBoundary =
     replayPosition?.tabId === tabId &&
     normalizeArchiveReplayThreadUrl(replayPosition.threadUrl) ===
       normalizeArchiveReplayThreadUrl(page.threadUrl)
       ? getReplayBoundaryIndex(
-          filteredResponses,
+          displayedResponses,
           replayPosition.playbackAt,
           replayPosition.responseNumber,
         )
@@ -747,7 +758,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           </div>
 
           <div className="thread-page__responses">
-            {filteredResponses.map((res, index) => {
+            {displayedResponses.map((res, index) => {
               const idCount = res.id ? (indexes.idIndex.get(res.id)?.size ?? 0) : 0;
               const idPos = res.id ? (idPositions.get(res.num) ?? 0) : 0;
               const repCount = indexes.repIndex.get(res.num)?.size ?? 0;
@@ -756,6 +767,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                   {index === replayBoundary ? replayLine : null}
                   <ResItem
                     key={res.num}
+                    // 新着だけに入場動作を付け、切り替え時の既存レスを一斉に動かさない。
+                    animateEntry={isLiveChat && !isFilterEnabled && res.num > liveChat.baseline}
                     res={res}
                     idPos={idPos}
                     idCount={idCount}
@@ -783,7 +796,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                 </React.Fragment>
               );
             })}
-            {replayBoundary === filteredResponses.length ? replayLine : null}
+            {replayBoundary === displayedResponses.length ? replayLine : null}
           </div>
 
           {isActiveAutoRefreshEnabled &&
@@ -850,7 +863,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           <ThreadMinimap
             rootRef={rootRef}
             repIndex={indexes.repIndex}
-            responseCount={filteredResponses.length}
+            responseCount={displayedResponses.length}
             activeTopBar={activeTopBar}
             onMarkerClick={handleMinimapMarkerClick}
           />

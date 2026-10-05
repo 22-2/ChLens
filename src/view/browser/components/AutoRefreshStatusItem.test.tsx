@@ -8,6 +8,8 @@ import type { Page } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
+  viewTab: { id: "tab-a", threadDisplayMode: "normal" as "normal" | "live-chat" },
+  dispatch: vi.fn(),
   viewPage: {
     type: "thread",
     title: "スレッド",
@@ -36,7 +38,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-tab-store", () => ({
-  useTabStore: () => ({ viewPage: mocks.viewPage }),
+  useTabStore: () => ({
+    viewPage: mocks.viewPage,
+    viewTab: mocks.viewTab,
+    dispatch: mocks.dispatch,
+  }),
 }));
 
 vi.mock("src/view/browser/hooks/use-auto-refresh-panel", () => ({
@@ -88,6 +94,7 @@ function renderItem() {
 
 describe("AutoRefreshStatusItem", () => {
   beforeEach(() => {
+    mocks.viewTab.threadDisplayMode = "normal";
     mocks.viewPage = {
       type: "thread",
       title: "スレッド",
@@ -135,6 +142,22 @@ describe("AutoRefreshStatusItem", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+  });
+
+  it("表示形式だけを切り替え、自動更新の開始や間隔変更を発火しない", () => {
+    renderItem();
+    const button = screen.getByRole("button", { name: /自動更新/ });
+    Object.defineProperty(button, "getBoundingClientRect", { value: () => createRect() });
+    fireEvent.click(button);
+    const select = screen.getByLabelText("表示形式");
+    expect(select).toHaveValue("normal");
+    fireEvent.change(select, { target: { value: "live-chat" } });
+    expect(mocks.dispatch).toHaveBeenCalledWith({
+      type: "SET_THREAD_DISPLAY_MODE",
+      mode: "live-chat",
+    });
+    expect(mocks.autoRefreshPanel.toggle).not.toHaveBeenCalled();
+    expect(mocks.autoRefreshPanel.setIntervalSec).not.toHaveBeenCalled();
   });
 
   it("スレッド用ミニウィンドウを開き、同じボタンの再クリックで閉じる", () => {
