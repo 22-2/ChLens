@@ -75,6 +75,52 @@ function updateRulesCache(rules: readonly Rule[]): void {
   clearRuleRegexCache();
 }
 
+function isSimpleIdContainsRule(rule: Rule): boolean {
+  return (
+    rule.action === "hide" &&
+    rule.target === "id" &&
+    rule.enabled &&
+    rule.matchers.length > 0 &&
+    rule.matchers.every((matcher) => matcher.kind === "contains") &&
+    rule.conditions == null &&
+    rule.scope == null &&
+    rule.presentation == null &&
+    rule.expiresAt == null &&
+    rule.name == null
+  );
+}
+
+function mergeSimpleIdContainsRules(
+  currentRules: readonly Rule[],
+  addedRules: readonly Rule[],
+): readonly Rule[] | null {
+  if (addedRules.length === 0 || !addedRules.every(isSimpleIdContainsRule)) return null;
+
+  const existingRules = currentRules.filter(isSimpleIdContainsRule);
+  if (existingRules.length === 0) return null;
+
+  // 右クリックから追加したIDは単独ルールを増やさず、同じ条件ブロックにまとめて管理する。
+  // nameやscopeなどを持つ手動ルールは意図が異なる可能性があるため対象にしない。
+  const matchers = [...existingRules, ...addedRules].flatMap((rule) => rule.matchers);
+  const uniqueMatchers = matchers.filter(
+    (matcher, index) =>
+      matchers.findIndex(
+        (candidate) =>
+          candidate.kind === "contains" &&
+          matcher.kind === "contains" &&
+          candidate.value === matcher.value,
+      ) === index,
+  );
+  const firstExistingIndex = currentRules.findIndex(isSimpleIdContainsRule);
+  const mergedRule: Rule = { ...existingRules[0], matchers: uniqueMatchers };
+
+  return currentRules.reduce<Rule[]>((result, rule, index) => {
+    if (index === firstExistingIndex) result.push(mergedRule);
+    if (!isSimpleIdContainsRule(rule)) result.push(rule);
+    return result;
+  }, []);
+}
+
 /** 同一targetのOR候補は一致したmatcherに絞り、複数targetのAND条件は全体を理由として表示する。 */
 function formatMatchedRule(matched: RuleMatchResult): string {
   return formatRuleDsl([{ ...matched.rule, matchers: [matched.matcher] }]);
@@ -140,6 +186,11 @@ export function invalidateCache(): void {
 export async function add(source: string): Promise<void> {
   const addedRules = parseConfiguredRules(source);
   const currentRules = get();
+  const mergedIdRules = mergeSimpleIdContainsRules(currentRules, addedRules);
+  if (mergedIdRules) {
+    await commitRules(mergedIdRules);
+    return;
+  }
   // メニューや選択範囲からの半自動登録は、既存の設定順を維持して末尾へ追加する。
   // 先頭へ挿入すると、設定画面で手動管理しているルールの並びが毎回ずれてしまう。
   await commitRules([...currentRules, ...addedRules]);

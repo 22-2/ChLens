@@ -139,7 +139,7 @@ export function useThreadResContextMenu({
             : res,
         ),
       );
-      toast.info(`NGに追加しました: ${ngWord}`);
+      toast.info(`ID/IPをNGに追加しました: ${normalizedId}`);
     },
     [setResponses, toast],
   );
