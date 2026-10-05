@@ -562,6 +562,8 @@ function buildHierarchyForNewTab(sourcePage: Page, targetPage: Page): Page[] {
 
 // 閉じたタブを記録するヘルパー
 function pushClosed(closedTabs: Tab[], tab: Tab): Tab[] {
+  // 「閉じたタブを開く」は閉じる操作の取り消しなので、設定画面の表示状態も記録する。
+  // 新しく開く設定タブは別のタブとして作られるため、この記録を引き継がない。
   return [tab, ...closedTabs].slice(0, MAX_CLOSED_TABS);
 }
 

@@ -1,6 +1,5 @@
 import { AlertTriangle, ChevronDown, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { container } from "src/service-container/index";
 import {
   NG_DSL_EXAMPLE,
@@ -9,13 +8,13 @@ import {
   NGEditor,
 } from "src/view/browser/components/NGEditor";
 import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
+import { useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import {
   AUTO_SAVE_DELAY_MS,
   isSettingsSectionId,
   NG_PRIMARY_FIELD_KEYS,
   readAllSettings,
   saveSectionFormData,
-  SETTINGS_PAGE_STATE_KEY,
   SETTINGS_SECTION_MAP,
   SETTINGS_SECTIONS,
 } from "src/view/browser/pages/settings/settings-sections";
@@ -67,24 +66,50 @@ function toBooleanValue(value: SettingsFormValue): boolean {
   return value === true;
 }
 
-export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => {
+function resolveSectionId(sectionId?: string): SettingsSectionId {
+  // サムネイル設定を表示へ統合したため、古い保存値とページリンクも同じ項目へ案内する。
+  if (sectionId === "thumbnail") return "display";
+  return sectionId && isSettingsSectionId(sectionId) ? sectionId : "general";
+}
+
+export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> = ({
+  tabId,
+  page,
+}) => {
+  const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
+  // 全タブ共通の保存値を使うと、閉じて開き直した設定タブにも前回の表示状態が残る。
+  // タブセッションから初期値を読み、Chrome側の再読み込みでは同じタブの状態を復元する。
+  const [initialUiState] = useState(() => persistedViewState.settingsPage ?? {});
   const isCompact = useMediaQuery("(max-width: 980px)") ?? false;
-  const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>("general");
+  const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>(() =>
+    resolveSectionId(
+      initialUiState.linkedSectionId === page.sectionId
+        ? (initialUiState.activeSectionId ?? page.sectionId)
+        : page.sectionId,
+    ),
+  );
   const [formState, setFormState] = useState<SettingsFormState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingSectionId, setSavingSectionId] = useState<SettingsSectionId | null>(null);
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
-  const [isNgExamplesOpen, setIsNgExamplesOpen] = useState(false);
-  const [isNgAdvancedOpen, setIsNgAdvancedOpen] = useState(false);
+  const [isNgExamplesOpen, setIsNgExamplesOpen] = useState(initialUiState.ngExamplesOpen === true);
+  const [isNgAdvancedOpen, setIsNgAdvancedOpen] = useState(initialUiState.ngAdvancedOpen === true);
   const [isCompactMenuOpen, setIsCompactMenuOpen] = useState(false);
   const autoSaveTimerRef = useRef<number | null>(null);
   const saveAttemptRef = useRef(0);
   const formStateRef = useRef<SettingsFormState | null>(null);
   const compactMenuCloseTimerRef = useRef<number | null>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
-  const restoredScrollTopRef = useRef(0);
-  const shouldRestoreScrollRef = useRef(false);
+  const restoredScrollTopRef = useRef(
+    typeof initialUiState.mainScrollTop === "number" &&
+      Number.isFinite(initialUiState.mainScrollTop) &&
+      initialUiState.mainScrollTop >= 0
+      ? initialUiState.mainScrollTop
+      : 0,
+  );
+  const shouldRestoreScrollRef = useRef(true);
+  const previousSectionIdRef = useRef(page.sectionId);
 
   const activeSection = useMemo(
     () => SETTINGS_SECTION_MAP.get(activeSectionId) ?? SETTINGS_SECTIONS[0],
@@ -106,70 +131,34 @@ export const SettingsPage: React.FC<{ page: SettingsPageType }> = ({ page }) => 
   }, [formState]);
 
   useEffect(() => {
-    // 変更理由: サムネイル設定を表示へ統合したため、古いページリンクも新しいセクションへ案内する。
-    if (page.sectionId === "thumbnail") {
-      setActiveSectionId("display");
-      return;
-    }
+    // 再読み込み時は保存済みの選択を優先し、表示中にリンク先が変わった場合だけ切り替える。
+    if (previousSectionIdRef.current === page.sectionId) return;
+    previousSectionIdRef.current = page.sectionId;
     if (page.sectionId && isSettingsSectionId(page.sectionId)) {
       setActiveSectionId(page.sectionId);
-    }
-  }, [page.sectionId]);
-
-  useEffect(() => {
-    if (page.sectionId) {
-      return;
-    }
-
-    try {
-      const rawState = getStore2String(SETTINGS_PAGE_STATE_KEY);
-      if (!rawState) {
-        return;
-      }
-
-      const parsed = JSON.parse(rawState) as SettingsPageUiState;
-      if (parsed.activeSectionId === "thumbnail") {
-        setActiveSectionId("display");
-      } else if (parsed.activeSectionId && isSettingsSectionId(parsed.activeSectionId)) {
-        setActiveSectionId(parsed.activeSectionId);
-      }
-      if (typeof parsed.ngAdvancedOpen === "boolean") {
-        setIsNgAdvancedOpen(parsed.ngAdvancedOpen);
-      }
-      if (typeof parsed.ngExamplesOpen === "boolean") {
-        setIsNgExamplesOpen(parsed.ngExamplesOpen);
-      }
-      if (
-        typeof parsed.mainScrollTop === "number" &&
-        Number.isFinite(parsed.mainScrollTop) &&
-        parsed.mainScrollTop >= 0
-      ) {
-        restoredScrollTopRef.current = parsed.mainScrollTop;
-        shouldRestoreScrollRef.current = true;
-      }
-    } catch {
-      // 破損した localStorage を読んで画面全体が壊れるのを避ける。
+    } else if (page.sectionId === "thumbnail") {
+      setActiveSectionId("display");
     }
   }, [page.sectionId]);
 
   const persistPageUiState = useCallback(
     (nextScrollTop?: number) => {
-      const scrollTop = nextScrollTop ?? scrollViewportRef.current?.scrollTop ?? 0;
+      // 設定読込中はスクロール領域がまだないため、復元待ちの位置を0で上書きしない。
+      const scrollTop =
+        nextScrollTop ?? scrollViewportRef.current?.scrollTop ?? restoredScrollTopRef.current;
 
       const nextState: SettingsPageUiState = {
         activeSectionId,
+        linkedSectionId: page.sectionId,
         mainScrollTop: scrollTop,
         ngExamplesOpen: isNgExamplesOpen,
         ngAdvancedOpen: isNgAdvancedOpen,
       };
 
-      try {
-        void setStore2String(SETTINGS_PAGE_STATE_KEY, JSON.stringify(nextState));
-      } catch {
-        // 一部環境では localStorage が使えないため、永続化失敗は黙殺する。
-      }
+      restoredScrollTopRef.current = scrollTop;
+      updateViewState({ settingsPage: nextState });
     },
-    [activeSectionId, isNgAdvancedOpen, isNgExamplesOpen],
+    [activeSectionId, isNgAdvancedOpen, isNgExamplesOpen, page.sectionId, updateViewState],
   );
 
   const loadSettings = useCallback(() => {

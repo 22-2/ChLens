@@ -88,6 +88,8 @@ export interface SettingsSectionDefinition {
 
 export interface SettingsPageUiState {
   activeSectionId?: SettingsSectionId | "thumbnail";
+  // 再読み込みと別カテゴリへの明示的なリンク遷移を区別するため、直前のリンク先を残す。
+  linkedSectionId?: string;
   mainScrollTop?: number;
   ngExamplesOpen?: boolean;
   ngAdvancedOpen?: boolean;

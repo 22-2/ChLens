@@ -77,7 +77,7 @@ const TabPageContent = memo(function TabPageContent({
     case "boardList":
       return <BoardListPage tabId={tab.id} isActive={isActive} refreshKey={tab.reloadKey} />;
     case "settings":
-      return <SettingsPage page={page} />;
+      return <SettingsPage tabId={tab.id} page={page} />;
     case "bookmarkList":
       // isActive をpropsで渡すことで、ページ内部のuseTabStoreフル購読を避けて不要な再レンダリングを防ぐ。
       return <BookmarkListPage tabId={tab.id} isActive={isActive} />;
