@@ -55,7 +55,7 @@
     "@tauri-apps/api": "2.11.1",
     "@tauri-apps/cli": "2.11.4",
     "@tauri-apps/plugin-http": "2.5.9",
-    "@tauri-apps/plugin-sql": "~2",
+    "@tauri-apps/plugin-sql": "2.4.0",
     "@toon-format/toon": "4.1.0",
     "@types/webextension-polyfill": "^0.12.5",
     "@url-sanitize/core": "2.0.2",
