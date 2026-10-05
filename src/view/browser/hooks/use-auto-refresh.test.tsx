@@ -6,7 +6,9 @@ import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { THREAD_AUTO_REFRESH_IDLE_STOP_COUNT } from "src/view/browser/hooks/auto-refresh-config";
 import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
+import { useLiveChatResponses } from "src/view/browser/hooks/use-live-chat-responses";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
+import { shouldDeferExpiredAutoRefreshStop } from "src/view/browser/pages/thread/auto-refresh-stop";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 interface TestRectOptions {
@@ -69,6 +71,8 @@ function AutoRefreshHarness({
   onThreadExpired,
   onThreadExpiredDetected,
   deferExpiredStop = false,
+  liveChatMode = false,
+  hasReachedThreadLimit = false,
 }: {
   enabled?: boolean;
   startAtBottom?: boolean;
@@ -87,6 +91,8 @@ function AutoRefreshHarness({
   onThreadExpired?: () => void;
   onThreadExpiredDetected?: () => void;
   deferExpiredStop?: boolean;
+  liveChatMode?: boolean;
+  hasReachedThreadLimit?: boolean;
 }) {
   const [responses, setResponses] = useState([1, 2]);
   const [isLoading, setLoading] = useState(loading);
@@ -95,6 +101,13 @@ function AutoRefreshHarness({
   }, [loading]);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const refreshController = useThreadRefreshController(refreshKey);
+  const liveChat = useLiveChatResponses({
+    responses: responses.map((num) => ({ num })),
+    scopeKey: scopeUrl,
+    enabled: liveChatMode,
+    isActive: active,
+    intervalMs: 3000,
+  });
   const scrollContainerRef = React.useCallback(
     (element: HTMLDivElement | null) => {
       if (element) {
@@ -107,7 +120,7 @@ function AutoRefreshHarness({
     enabled,
     scopeUrl,
     startAtBottom,
-    expired: expired || stopped,
+    expired: expired || stopped || hasReachedThreadLimit,
     loading: isLoading,
     refreshController,
     pauseAutoScroll,
@@ -123,7 +136,15 @@ function AutoRefreshHarness({
     deferAutoStop,
     onThreadExpired,
     onThreadExpiredDetected,
-    deferExpiredStop,
+    deferExpiredStop: liveChatMode
+      ? shouldDeferExpiredAutoRefreshStop({
+          shouldDeferNextThreadStop: deferExpiredStop,
+          expired: expired || stopped,
+          hasReachedThreadLimit,
+          isActive: active,
+          isDraining: liveChat.isDraining,
+        })
+      : deferExpiredStop,
   });
 
   return (
@@ -165,6 +186,7 @@ function AutoRefreshHarness({
           </button>
           <output data-testid="can-auto-scroll">{canAutoScroll ? "enabled" : "disabled"}</output>
           <output data-testid="is-auto-scrolling">{isAutoScrolling ? "running" : "idle"}</output>
+          <output data-testid="live-chat-pending">{liveChat.pendingCount}</output>
         </div>
       </div>
     </div>
@@ -1009,6 +1031,58 @@ describe("useAutoRefresh", () => {
       );
     });
 
+    expect(onThreadExpired).toHaveBeenCalledOnce();
+  });
+
+  it.each(["expired", "stopped"] as const)(
+    "ライブチャットの非表示中に新着が溜まっても復帰時の%sで停止する",
+    (expirySource) => {
+      const onRequestRefresh = vi.fn();
+      const onThreadExpired = vi.fn();
+      const onThreadExpiredDetected = vi.fn();
+      const props = {
+        liveChatMode: true,
+        onRequestRefresh,
+        onThreadExpired,
+        onThreadExpiredDetected,
+      };
+      const view = render(<AutoRefreshHarness {...props} />);
+      view.rerender(<AutoRefreshHarness {...props} enabled={false} active={false} />);
+      fireEvent.click(screen.getByText("新着ありで完了"));
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(screen.getByTestId("live-chat-pending")).toHaveTextContent("1");
+
+      view.rerender(<AutoRefreshHarness {...props} {...{ [expirySource]: true }} />);
+
+      // 新着の再生タイマーを進めなくても停止と停止理由の保存を完了する。
+      expect(screen.getByTestId("live-chat-pending")).toHaveTextContent("1");
+      expect(onThreadExpired).toHaveBeenCalledOnce();
+      expect(onThreadExpiredDetected).toHaveBeenCalledOnce();
+      expect(onRequestRefresh).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(onThreadExpired).toHaveBeenCalledOnce();
+      expect(onRequestRefresh).not.toHaveBeenCalled();
+    },
+  );
+
+  it("ライブチャットの1000レス到達は末尾を表示してから停止する", () => {
+    const onThreadExpired = vi.fn();
+    const props = { liveChatMode: true, onRequestRefresh: vi.fn(), onThreadExpired };
+    const view = render(<AutoRefreshHarness {...props} />);
+    fireEvent.click(screen.getByText("新着ありで完了"));
+    view.rerender(<AutoRefreshHarness {...props} hasReachedThreadLimit />);
+    expect(onThreadExpired).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(600);
+    });
+    expect(screen.getByTestId("live-chat-pending")).toHaveTextContent("0");
+    act(() => {
+      vi.advanceTimersByTime(50);
+    });
     expect(onThreadExpired).toHaveBeenCalledOnce();
   });
 

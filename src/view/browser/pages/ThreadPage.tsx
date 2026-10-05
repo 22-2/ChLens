@@ -42,6 +42,7 @@ import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-ref
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
+import { shouldDeferExpiredAutoRefreshStop } from "src/view/browser/pages/thread/auto-refresh-stop";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
 import { useCommentOverlaySync } from "src/view/browser/pages/thread/use-comment-overlay-sync";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
@@ -455,8 +456,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         dispatch(tabActions.setAutoRefreshStoppedPageKey(autoRefreshPageKey));
       }
     },
-    // 満了時も最後の新着が流れ終わるまで追従を維持する。
-    deferExpiredStop: shouldDeferNextThreadStop || (isActive && liveChat.isDraining),
+    deferExpiredStop: shouldDeferExpiredAutoRefreshStop({
+      shouldDeferNextThreadStop,
+      expired: autoRefreshExpired,
+      hasReachedThreadLimit,
+      isActive,
+      isDraining: liveChat.isDraining,
+    }),
   });
 
   const handleFollowNextThread = useCallback(
