@@ -232,6 +232,8 @@ export function useThreadResContextMenu({
         id: "add-ng-id",
         label: "ID/IPをNG指定",
         icon: <Ban size={14} />,
+        // 変更理由: NG登録操作をメニュー内で赤く示し、他の注意項目も同じdanger指定で共有する。
+        danger: true,
         disabled: !rawId,
         onSelect: () => {
           void addIdToNg(rawId);
