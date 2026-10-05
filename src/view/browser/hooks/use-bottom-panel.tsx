@@ -7,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
 export interface PanelTab {
   id: string;
@@ -83,7 +84,7 @@ interface BottomPanelContextValue {
   consumeWritePanelFocusRequest: (requestId: number) => void;
   openWritePanelWithText: (text: string, threadUrl?: string) => void;
   closePanel: () => void;
-  togglePanel: (tabId?: string, openHeight?: number) => void;
+  togglePanel: (tabId?: string) => void;
   setHeight: (h: number) => void;
   setActivePanelTab: (id: string) => void;
   setThreadListAutoRefreshEnabled: (enabled: boolean) => void;
@@ -95,6 +96,7 @@ const BottomPanelContext = createContext<BottomPanelContextValue | null>(null);
 
 export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const saved = loadSaved();
+  const { window: viewWindow } = useViewSurface();
   const nextWritePanelInsertIdRef = useRef(0);
   const nextWritePanelFocusIdRef = useRef(0);
   const [isOpen, setIsOpen] = useState(saved.isOpen ?? false);
@@ -136,22 +138,39 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
     persist({ height: clamped });
   }, []);
 
-  const setActivePanelTab = useCallback((id: string) => {
-    if (!BOTTOM_PANEL_TABS.some((tab) => tab.id === id)) {
-      return;
-    }
-    setActivePanelTabIdState(id);
-    persist({ activeTabId: id });
-  }, []);
+  const setActivePanelTab = useCallback(
+    (id: string) => {
+      if (!BOTTOM_PANEL_TABS.some((tab) => tab.id === id)) {
+        return;
+      }
+      // 返信・ナビゲーション・ステータスバー・パネル内タブで高さが食い違わないよう、
+      // 開く時と別タブへの切り替え時のサイズをここで決める。
+      // 表示中の書き込み欄への返信追記では、手動調整した高さを維持する。
+      if (!isOpen || activePanelTabId !== id) {
+        setHeight(
+          id === BOTTOM_PANEL_THREAD_LIST_TAB_ID
+            ? viewWindow.innerHeight / 2
+            : DEFAULT_BOTTOM_PANEL_HEIGHT,
+        );
+      }
+      setActivePanelTabIdState(id);
+      persist({ activeTabId: id });
+    },
+    [activePanelTabId, isOpen, setHeight, viewWindow],
+  );
 
-  const openPanel = useCallback((tabId?: string) => {
-    setIsOpen(true);
-    persist({ isOpen: true });
-    if (tabId && BOTTOM_PANEL_TABS.some((tab) => tab.id === tabId)) {
-      setActivePanelTabIdState(tabId);
-      persist({ activeTabId: tabId });
-    }
-  }, []);
+  const openPanel = useCallback(
+    (tabId?: string) => {
+      const targetTabId = tabId ?? activePanelTabId;
+      if (!BOTTOM_PANEL_TABS.some((tab) => tab.id === targetTabId)) {
+        return;
+      }
+      setActivePanelTab(targetTabId);
+      setIsOpen(true);
+      persist({ isOpen: true });
+    },
+    [activePanelTabId, setActivePanelTab],
+  );
 
   const openWritePanelWithText = useCallback(
     (text: string, threadUrl?: string) => {
@@ -174,39 +193,19 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   const togglePanel = useCallback(
-    (tabId?: string, openHeight?: number) => {
-      if (tabId) {
-        if (!BOTTOM_PANEL_TABS.some((tab) => tab.id === tabId)) {
-          return;
-        }
-
-        // 別タブのボタンはパネルを閉じずに内容だけ切り替え、同じボタンだけを開閉に使う。
-        // 書き込みとスレ一覧をどちらも1クリックで開けるようにするための挙動。
-        if (activePanelTabId !== tabId) {
-          setActivePanelTabIdState(tabId);
-          const patch: SavedState = { activeTabId: tabId, isOpen: true };
-          if (openHeight !== undefined) {
-            const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, openHeight));
-            setHeightState(clamped);
-            patch.height = clamped;
-          }
-          persist(patch);
-          setIsOpen(true);
-          return;
-        }
+    (tabId?: string) => {
+      if (tabId && !BOTTOM_PANEL_TABS.some((tab) => tab.id === tabId)) {
+        return;
       }
-
-      // サイズ指定はパネルを開く操作にだけ適用し、閉じるクリックで高さ設定を変えない。
-      const next = !isOpen;
-      if (next && openHeight !== undefined) {
-        const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, openHeight));
-        setHeightState(clamped);
-        persist({ height: clamped });
+      // 開く経路をopenPanelへ集約し、閉じる操作では高さを変更しない。
+      // 別タブのボタンは内容を切り替え、同じタブのボタンだけで開閉する。
+      if (isOpen && (!tabId || activePanelTabId === tabId)) {
+        closePanel();
+      } else {
+        openPanel(tabId);
       }
-      setIsOpen(next);
-      persist({ isOpen: next });
     },
-    [activePanelTabId, isOpen],
+    [activePanelTabId, closePanel, isOpen, openPanel],
   );
 
   const setThreadListAutoRefreshEnabled = useCallback((enabled: boolean) => {
