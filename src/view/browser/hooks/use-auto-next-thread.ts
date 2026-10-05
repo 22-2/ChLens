@@ -4,6 +4,7 @@ import { log } from "src/app/Log";
 import { container } from "src/service-container/index";
 import type { IThread, IToastService } from "src/service-container/interfaces";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { isNextThreadSearchTriggered } from "src/view/browser/utils/auto-next-thread-trigger";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import {
   type AutoNextThreadMode,
@@ -19,7 +20,6 @@ const AUTO_NEXT_THREAD_CONFIRMATION_MS = 5_000;
 const MAINSTREAM_WATCH_GRACE_PERIOD_MS = 15_000;
 const MAINSTREAM_WATCH_DURATION_MS = 60_000;
 const MAINSTREAM_WATCH_RETRY_MS = 5_000;
-export const NEXT_THREAD_TRIGGER_RES_COUNT = 1000;
 const REQUIRED_CANDIDATE_CONFIRMATIONS: Record<AutoNextThreadMode, number> = {
   balanced: 2,
   aggressive: 1,
@@ -85,7 +85,7 @@ interface NextThreadSearchSession {
 }
 
 export function useAutoNextThread({
-  autoRefreshEnabled: requestedAutoRefreshEnabled,
+  autoRefreshEnabled,
   featureEnabled,
   threadUrl,
   threadTitle,
@@ -105,9 +105,6 @@ export function useAutoNextThread({
   cancelPendingMove: () => void;
   selectPendingCandidate: (candidate: ThreadSearchCandidate) => void;
 } {
-  // dat落ちだけでは探索を開始しない。1000到達後は元スレが落ちても期限内だけ次スレを待つ。
-  const autoRefreshEnabled =
-    requestedAutoRefreshEnabled && (!expired || responseCount >= NEXT_THREAD_TRIGGER_RES_COUNT);
   const { window: viewWindow, document: viewDocument } = useViewSurface();
   const [status, setStatus] = useState<AutoNextThreadStatus>("idle");
   const [pendingMove, setPendingMove] = useState<PendingAutoNextThreadMove | null>(null);
@@ -322,7 +319,7 @@ export function useAutoNextThread({
     if (!autoRefreshEnabled || !featureEnabled || !isDocumentVisible || !canAutoScroll) {
       return;
     }
-    if (responseCount < NEXT_THREAD_TRIGGER_RES_COUNT) {
+    if (!isNextThreadSearchTriggered(responseCount, expired)) {
       return;
     }
 
@@ -537,6 +534,7 @@ export function useAutoNextThread({
     autoRefreshEnabled,
     canAutoScroll,
     featureEnabled,
+    expired,
     isDocumentVisible,
     mode,
     moveToCandidate,

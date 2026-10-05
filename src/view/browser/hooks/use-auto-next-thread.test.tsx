@@ -295,7 +295,7 @@ describe("useAutoNextThread", () => {
     expect(screen.getByTestId("status")).toHaveTextContent("watching");
   });
 
-  it("dat落ち後に開始を繰り返してもsubjectを取得しない", async () => {
+  it("600レスでdat落ちしても明示された次スレへ移動する", async () => {
     const onFollowThread = vi.fn();
     const nextThreadUrl = "https://example.com/test/read.cgi/live/1700000201/";
     const boardGetThreads = vi.fn().mockResolvedValue({
@@ -321,11 +321,11 @@ describe("useAutoNextThread", () => {
       getCachedResCount: vi.fn(),
     };
 
-    const view = render(
+    render(
       <AutoNextThreadHarness
         expired
         mode="balanced"
-        responseCount={2}
+        responseCount={600}
         responseMessages={[`次スレはこちら <a href="${nextThreadUrl}">${nextThreadUrl}</a>`]}
         onFollowThread={onFollowThread}
       />,
@@ -333,23 +333,14 @@ describe("useAutoNextThread", () => {
 
     await flushPromises();
 
-    for (let attempt = 0; attempt < 20; attempt++) {
-      view.rerender(
-        <AutoNextThreadHarness
-          expired
-          autoRefreshEnabled={attempt % 2 === 0}
-          responseCount={2}
-          onFollowThread={onFollowThread}
-        />,
-      );
-      await act(async () => vi.advanceTimersByTimeAsync(3000));
-    }
-    expect(screen.getByTestId("status")).toHaveTextContent("idle");
-    expect(boardGetThreads).not.toHaveBeenCalled();
-    expect(onFollowThread).not.toHaveBeenCalled();
+    expect(screen.getByTestId("status")).toHaveTextContent("watching");
+    expect(boardGetThreads).toHaveBeenCalledOnce();
+    expect(onFollowThread).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ url: nextThreadUrl }),
+    );
   });
 
-  it.each(["機能解除", "dat落ち"])(
+  it.each(["機能解除", "自動更新解除"])(
     "%s後に遅れて返った板一覧では探索を再開しない",
     async (stopReason) => {
       const onFollowThread = vi.fn();
@@ -379,8 +370,9 @@ describe("useAutoNextThread", () => {
       view.rerender(
         <AutoNextThreadHarness
           featureEnabled={stopReason !== "機能解除"}
-          expired={stopReason === "dat落ち"}
-          responseCount={stopReason === "dat落ち" ? 999 : 1000}
+          autoRefreshEnabled={stopReason !== "自動更新解除"}
+          expired
+          responseCount={600}
           onFollowThread={onFollowThread}
           onSearchExhausted={onSearchExhausted}
         />,
@@ -407,9 +399,13 @@ describe("useAutoNextThread", () => {
     },
   );
 
-  it.each([60, 180])(
-    "1000到達後はdat落ちしていても3秒ごとに探索し、%s秒で終了する",
-    async (duration) => {
+  it.each([
+    { duration: 60, responseCount: 600 },
+    { duration: 180, responseCount: 600 },
+    { duration: 180, responseCount: 1000 },
+  ])(
+    "$responseCountレスのdat落ち後も3秒ごとに探索し、$duration秒で終了する",
+    async ({ duration, responseCount }) => {
       const onFollowThread = vi.fn();
       const onSearchExhausted = vi.fn();
       const boardGetThreads = vi.fn().mockResolvedValue({ threads: [], message: null });
@@ -417,6 +413,7 @@ describe("useAutoNextThread", () => {
       const view = render(
         <AutoNextThreadHarness
           expired
+          responseCount={responseCount}
           searchDurationSeconds={duration === 180 ? undefined : duration}
           onFollowThread={onFollowThread}
           onSearchExhausted={onSearchExhausted}
@@ -436,6 +433,7 @@ describe("useAutoNextThread", () => {
         view.rerender(
           <AutoNextThreadHarness
             expired
+            responseCount={responseCount}
             autoRefreshEnabled={attempt % 2 === 1}
             onFollowThread={onFollowThread}
             onSearchExhausted={onSearchExhausted}
@@ -448,6 +446,22 @@ describe("useAutoNextThread", () => {
       expect(onFollowThread).not.toHaveBeenCalled();
     },
   );
+
+  it("600レスの取得中にdat落ちへ変わったときから探索期限を数える", async () => {
+    const onFollowThread = vi.fn();
+    const onSearchExhausted = vi.fn();
+    const props = { responseCount: 600, onFollowThread, onSearchExhausted };
+    const view = render(<AutoNextThreadHarness {...props} />);
+    await act(async () => vi.advanceTimersByTimeAsync(30_000));
+    expect(container.board.getThreads).not.toHaveBeenCalled();
+    view.rerender(<AutoNextThreadHarness {...props} expired />);
+    await flushPromises();
+    expect(container.board.getThreads).toHaveBeenCalledOnce();
+    await act(async () => vi.advanceTimersByTimeAsync(179_999));
+    expect(onSearchExhausted).not.toHaveBeenCalled();
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(onSearchExhausted).toHaveBeenCalledOnce();
+  });
 
   it("満了前は探索せず、1000到達後のdat落ちやON連打でも間隔と期限を維持する", async () => {
     const onFollowThread = vi.fn();

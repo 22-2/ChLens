@@ -22,10 +22,7 @@ import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollInd
 import { readThreadAutoRefreshIntervalSec } from "src/view/browser/hooks/auto-refresh-config";
 import type { ContextMenuPopupItem } from "src/view/browser/hooks/popup-manager/types";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import {
-  NEXT_THREAD_TRIGGER_RES_COUNT,
-  useAutoNextThread,
-} from "src/view/browser/hooks/use-auto-next-thread";
+import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import { useLiveChatResponses } from "src/view/browser/hooks/use-live-chat-responses";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
@@ -43,7 +40,10 @@ import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-ref
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
-import { shouldDeferExpiredAutoRefreshStop } from "src/view/browser/pages/thread/auto-refresh-stop";
+import {
+  resolveThreadAutoRefreshStop,
+  shouldDeferExpiredAutoRefreshStop,
+} from "src/view/browser/pages/thread/auto-refresh-stop";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
 import { useCommentOverlaySync } from "src/view/browser/pages/thread/use-comment-overlay-sync";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
@@ -342,11 +342,19 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const isAutoRefreshStopped = tab ? isAutoRefreshStoppedForPage(tab, page) : false;
   // dat落ちや探索終了の停止記録は、不確定subject応答や別窓再マウントでも保持する。
   // 本文タイマーと次スレ探索を同時に止めるため、ThreadDataの取得結果とは別に扱う。
-  const autoRefreshExpired = expired || missingFromSubject || isAutoRefreshStopped;
-  const hasReachedThreadLimit = responses.length >= NEXT_THREAD_TRIGGER_RES_COUNT;
-  // 満了スレの本文は取得せず、次スレが現れるまでの待機だけを期限付きで継続する。
-  const shouldDeferNextThreadStop =
-    isAutoNextThreadEnabled && hasReachedThreadLimit && !isAutoRefreshStopped;
+  const {
+    autoRefreshExpired,
+    hasReachedThreadLimit,
+    shouldStopFetching,
+    shouldDeferNextThreadStop,
+    stopMessage,
+  } = resolveThreadAutoRefreshStop({
+    autoNextThreadEnabled: isAutoNextThreadEnabled,
+    responseCount: responses.length,
+    expired,
+    missingFromSubject,
+    stopped: isAutoRefreshStopped,
+  });
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
 
   // 変更理由: 停止理由が増えても、タブ状態の解除と利用者への通知を同じ経路で行い、
@@ -422,7 +430,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     startAtBottom: startAutoRefreshAtBottom,
     threadUrl: page.threadUrl,
     refreshController,
-    expired: autoRefreshExpired || hasReachedThreadLimit,
+    expired: shouldStopFetching,
     loading,
     // 変更理由: ポップアップを読みながら新着へ流されない従来動作を、
     // ユーザーが用途に合わせて無効化できるようにする。
@@ -438,20 +446,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     onAutoStop: isCommentOverlayFlowing
       ? undefined
       : () => handleAutoRefreshStop("新着が止まったため自動更新を停止しました"),
-    // 1000レス到達後は候補が板一覧へ現れるまで探索を続け、自動更新の停止を保留する。
+    // dat落ち・満了後は候補が板一覧へ現れるまで探索を続け、自動更新の停止を保留する。
     deferAutoStop: shouldDeferNextThreadStop,
     // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
-    // 1000未満のdat落ちは実況中も停止し、満了後は次スレ探索の期限終了まで待つ。
+    // 次スレ移動がONならレス数にかかわらず探索期限まで待ち、OFFなら即座に停止する。
     onThreadExpired: () => {
       // 別窓再マウント時の同じ失効通知は繰り返さない。
       if (tab?.autoRefreshStoppedPageKey === autoRefreshPageKey && !tab.autoRefreshEnabled) {
         return;
       }
-      handleAutoRefreshStop(
-        autoRefreshExpired
-          ? "dat落ちを検知したため自動更新を停止しました"
-          : "1000レスに到達したため自動更新を停止しました",
-      );
+      handleAutoRefreshStop(stopMessage);
     },
     onThreadExpiredDetected: () => {
       if (autoRefreshPageKey != null && tab?.autoRefreshStoppedPageKey !== autoRefreshPageKey) {
