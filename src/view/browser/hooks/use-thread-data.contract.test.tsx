@@ -1,5 +1,5 @@
-import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import type { RefObject } from "react";
+import { act, cleanup, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { type RefObject, useRef } from "react";
 import { container } from "src/service-container/index";
 import type {
   IMessage,
@@ -8,6 +8,8 @@ import type {
   IThreadDetail,
   IThreadService,
 } from "src/service-container/interfaces";
+import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
+import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
@@ -201,6 +203,62 @@ describe("useThreadData Phase 0 contracts", () => {
     await act(async () =>
       request.resolve({ url: page.threadUrl, title: page.title, res: RESPONSES }),
     );
+  });
+
+  it("本文を残した再取得でも毎回ステータスを表示し、古い通信の完了では消さない", async () => {
+    const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/132/" };
+    const detail = { url: page.threadUrl, title: page.title, res: RESPONSES };
+    const firstRefresh = createDeferred<IThreadDetail>();
+    const previousRefresh = createDeferred<IThreadDetail>();
+    const latestRefresh = createDeferred<IThreadDetail>();
+    container.thread = {
+      getThread: vi
+        .fn()
+        .mockResolvedValueOnce(detail)
+        .mockReturnValueOnce(firstRefresh.promise)
+        .mockReturnValueOnce(previousRefresh.promise)
+        .mockReturnValueOnce(latestRefresh.promise),
+    } as IThreadService;
+
+    function FetchHarness({ refreshKey }: { refreshKey: number }) {
+      const rootRef = useRef<HTMLDivElement>(null);
+      const controller = useThreadRefreshController(refreshKey);
+      const data = useThreadData("fetch-status", page, rootRef, controller);
+      return (
+        <>
+          <OperationStatusItem
+            id="thread-fetch-status-fetch-status"
+
+            message={data.loading ? "スレッドを読み込み中..." : null}
+            busy={data.loading}
+          />
+          <output>{data.responses.length}件の本文</output>
+          <StatusBar />
+        </>
+      );
+    }
+    const content = (refreshKey: number) => (
+      <StatusBarProvider>
+        <FetchHarness refreshKey={refreshKey} />
+      </StatusBarProvider>
+    );
+    const { rerender } = render(content(0));
+    await waitFor(() => expect(screen.queryByText("スレッドを読み込み中...")).toBeNull());
+    expect(screen.getByText(`${RESPONSES.length}件の本文`)).toBeTruthy();
+
+    rerender(content(1));
+    expect(screen.getByText("スレッドを読み込み中...")).toBeTruthy();
+    expect(screen.getByText(`${RESPONSES.length}件の本文`)).toBeTruthy();
+    await act(async () => firstRefresh.resolve(detail));
+    expect(screen.queryByText("スレッドを読み込み中...")).toBeNull();
+
+    // 取得中に次の更新が重なっても、表示するのは最新の通信状態だけにする。
+    rerender(content(2));
+    rerender(content(3));
+    await act(async () => previousRefresh.resolve(detail));
+    expect(screen.getByText("スレッドを読み込み中...")).toBeTruthy();
+    await act(async () => latestRefresh.resolve(detail));
+    expect(screen.queryByText("スレッドを読み込み中...")).toBeNull();
   });
 
   it.each([0, 1])("自動取得中の手動更新は新規レス%d件でも完了を一度通知する", async (added) => {

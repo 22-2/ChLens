@@ -19,6 +19,8 @@ interface StatusBarEntry {
   className?: string;
   interactive: boolean;
   content: ReactNode;
+  operationRank?: number;
+  sequence: number;
 }
 
 interface StatusBarContextValue {
@@ -27,7 +29,7 @@ interface StatusBarContextValue {
 }
 
 interface StatusBarRegistryContextValue {
-  setItem: (item: StatusBarEntry) => void;
+  setItem: (item: Omit<StatusBarEntry, "sequence">) => void;
   removeItem: (id: string) => void;
   setAppearance: (id: string, appearance: StatusBarAppearance | null) => void;
 }
@@ -43,6 +45,7 @@ interface StatusBarItemProps {
   title?: string;
   className?: string;
   interactive?: boolean;
+  operationRank?: number;
   children: ReactNode;
 }
 
@@ -74,7 +77,7 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({ children }
   const [itemsById, setItemsById] = useState<Record<string, StatusBarEntry>>({});
   const [appearanceById, setAppearanceById] = useState<Record<string, StatusBarAppearance>>({});
 
-  const setItem = useCallback((item: StatusBarEntry) => {
+  const setItem = useCallback((item: Omit<StatusBarEntry, "sequence">) => {
     setItemsById((prev) => {
       const current = prev[item.id];
       if (
@@ -84,11 +87,13 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({ children }
         current.title === item.title &&
         current.className === item.className &&
         current.interactive === item.interactive &&
+        current.operationRank === item.operationRank &&
         current.content === item.content
       ) {
         return prev;
       }
-      return { ...prev, [item.id]: item };
+      const sequence = Math.max(0, ...Object.values(prev).map((entry) => entry.sequence)) + 1;
+      return { ...prev, [item.id]: { ...item, sequence } };
     });
   }, []);
 
@@ -120,18 +125,27 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({ children }
     });
   }, []);
 
-  const items = useMemo(
-    () =>
-      Object.values(itemsById).sort((left, right) => {
+  const items = useMemo(() => {
+    const entries = Object.values(itemsById);
+    // 通信元は別々に保持し、表示だけを一枠に集約する。完了した操作が他の通信を消さず、
+    // エラー・処理中・完了結果の順、同順位では最後に更新された文言を優先する。
+    const operation = entries
+      .filter((entry) => entry.operationRank != null)
+      .sort(
+        (left, right) =>
+          (right.operationRank ?? 0) - (left.operationRank ?? 0) || right.sequence - left.sequence,
+      )[0];
+    return entries
+      .filter((entry) => entry.operationRank == null || entry === operation)
+      .sort((left, right) => {
         if (left.alignment !== right.alignment) {
           return left.alignment === "left" ? -1 : 1;
         }
         return left.alignment === "left"
           ? left.priority - right.priority
           : right.priority - left.priority;
-      }),
-    [itemsById],
-  );
+      });
+  }, [itemsById]);
 
   const appearance = useMemo<StatusBarAppearance>(() => {
     if (Object.values(appearanceById).includes("active")) {
@@ -160,6 +174,7 @@ export const StatusBarItem: React.FC<StatusBarItemProps> = ({
   title,
   className,
   interactive = false,
+  operationRank,
   children,
 }) => {
   const { removeItem, setItem } = useStatusBarRegistryContext();
@@ -172,13 +187,25 @@ export const StatusBarItem: React.FC<StatusBarItemProps> = ({
       title,
       className,
       interactive,
+      operationRank,
       content: children,
     });
 
     return () => {
       removeItem(id);
     };
-  }, [alignment, children, className, id, interactive, priority, removeItem, setItem, title]);
+  }, [
+    alignment,
+    children,
+    className,
+    id,
+    interactive,
+    operationRank,
+    priority,
+    removeItem,
+    setItem,
+    title,
+  ]);
 
   return null;
 };

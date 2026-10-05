@@ -151,6 +151,9 @@
   --ref-board-start-title-font-size: 24px;
   /* 変更理由: 短い更新通知で本文を広く隠さないよう、通知専用の幅を定義する。 */
   --ref-toast-width: 250px;
+  /* 通信ステータスの表示を共通化しても、書き込み表示の幅とアイコン寸法を維持する。 */
+  --ref-status-operation-max-width: min(40vw, 360px);
+  --ref-status-operation-icon-size: 13px;
   --ref-space-1: 2px;
   --ref-space-2: 4px;
   --ref-space-3: 6px;

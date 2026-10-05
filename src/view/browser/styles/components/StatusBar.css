@@ -56,15 +56,15 @@
   text-overflow: ellipsis;
 }
 
-.status-bar__item.write-operation-status,
-.status-bar__item.write-operation-status--error {
+/* 書き込み・画像投稿・スレ取得で同じ表示幅を使い、他のステータス項目を押し出さない。 */
+.status-bar__item.operation-status {
   flex: 0 1 auto;
-  max-width: min(40vw, 360px);
+  max-width: var(--sys-status-operation-max-width);
   box-sizing: border-box;
   padding: 0 var(--sys-space-3);
 }
 
-.write-operation-status__content {
+.operation-status__content {
   display: inline-flex;
   align-items: center;
   gap: var(--sys-space-2);
@@ -72,7 +72,7 @@
   width: 100%;
 }
 
-.write-operation-status__message {
+.operation-status__message {
   display: block;
   min-width: 0;
   overflow: hidden;
@@ -80,13 +80,13 @@
   white-space: nowrap;
 }
 
-.write-operation-status--error {
+.operation-status--error {
   color: var(--sys-color-error);
 }
 
-.write-operation-status__content .icon--spinning {
-  width: 13px;
-  height: 13px;
+.operation-status__content .icon--spinning {
+  width: var(--sys-status-operation-icon-size);
+  height: var(--sys-status-operation-icon-size);
   flex: 0 0 auto;
 }
 

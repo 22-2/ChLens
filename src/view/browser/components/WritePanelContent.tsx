@@ -1,11 +1,4 @@
-import {
-  Clipboard,
-  ExternalLink,
-  ImagePlus,
-  LoaderCircle,
-  MoreVertical,
-  Settings,
-} from "lucide-react";
+import { Clipboard, ExternalLink, ImagePlus, MoreVertical, Settings } from "lucide-react";
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { uploadImageToImgur } from "src/features/media/application/imgur-upload";
@@ -13,8 +6,7 @@ import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer
 import { extractUrlsFromMessage, toViewerImageUrl } from "src/features/media/domain/url-media";
 import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
-import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
-import { StatusBarItem } from "src/view/browser/components/StatusBar";
+import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
@@ -529,24 +521,14 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
 
   return (
     <div className="write-panel">
-      {statusBarMessage && (
-        <StatusBarItem
-          id="write-operation-status"
-          alignment="right"
-          priority={STATUS_BAR_PRIORITY.right.writeOperation}
-          title={statusBarMessage}
-          className={statusBarIsError ? "write-operation-status--error" : "write-operation-status"}
-        >
-          <span
-            className="write-operation-status__content"
-            role={statusBarIsError ? "alert" : "status"}
-            aria-live={statusBarIsError ? "assertive" : "polite"}
-          >
-            {statusBarIsBusy && <LoaderCircle className="icon--spinning" aria-hidden="true" />}
-            <span className="write-operation-status__message">{statusBarMessage}</span>
-          </span>
-        </StatusBarItem>
-      )}
+      {/* 書き込みと画像投稿も取得中の表示と同じ部品を使い、エラー表示の仕様を揃える。 */}
+      <OperationStatusItem
+        id="write-operation-status"
+
+        message={statusBarMessage}
+        busy={statusBarIsBusy}
+        isError={statusBarIsError}
+      />
       <form
         className={`write-panel__form${isConfirm ? " write-panel__form--confirm" : ""}`}
         onSubmit={(event) => {
@@ -569,27 +551,26 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
         )}
         {!isConfirm && (
           <>
-            {standalone &&
-              targets.length > 0 && (
-                // 投稿先の切り替えは共有書き込み窓の役割に限定し、各ペインの下部パネルは
-                // 表示中スレッドへそのまま投稿する簡潔な入力欄として保つ。
-                <label className="write-panel__target-group">
-                  <span className="write-panel__field-label">投稿先</span>
-                  <select
-                    className="write-panel__target-select"
-                    value={selectedThreadUrl ?? ""}
-                    onChange={(event) => selectThread(event.currentTarget.value)}
-                    disabled={isSubmitting || isImgurUploading}
-                    aria-label="投稿先スレッド"
-                  >
-                    {targets.map((target) => (
-                      <option key={target.threadUrl} value={target.threadUrl}>
-                        {target.title}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
+            {standalone && targets.length > 0 && (
+              // 投稿先の切り替えは共有書き込み窓の役割に限定し、各ペインの下部パネルは
+              // 表示中スレッドへそのまま投稿する簡潔な入力欄として保つ。
+              <label className="write-panel__target-group">
+                <span className="write-panel__field-label">投稿先</span>
+                <select
+                  className="write-panel__target-select"
+                  value={selectedThreadUrl ?? ""}
+                  onChange={(event) => selectThread(event.currentTarget.value)}
+                  disabled={isSubmitting || isImgurUploading}
+                  aria-label="投稿先スレッド"
+                >
+                  {targets.map((target) => (
+                    <option key={target.threadUrl} value={target.threadUrl}>
+                      {target.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="write-panel__header-row">
               <label className="write-panel__field-group">
                 <span className="write-panel__field-label">名前</span>

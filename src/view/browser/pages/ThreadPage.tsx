@@ -13,6 +13,7 @@ import type { IThread } from "src/service-container/interfaces";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSearchDialog";
+import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
 import { ResItem } from "src/view/browser/components/ResItem";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
@@ -706,6 +707,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div ref={setThreadRoot} className="thread-page" onDoubleClick={handleDoubleClick}>
+      {/* 本文を残す再取得でも進捗を示し、非表示タブの通信状況は表示中のステータスへ混ぜない。 */}
+      <OperationStatusItem
+        id={`thread-fetch-status-${tabId}`}
+
+        message={loading ? "スレッドを読み込み中..." : null}
+        busy={loading}
+        visible={isActive}
+      />
       {pendingAutoNextThreadMove ? (
         <NextThreadSearchDialog
           state={{
