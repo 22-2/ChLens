@@ -60,7 +60,7 @@ export function useThreadRefreshController(refreshKey: number): ThreadRefreshCon
   }, []);
 
   const markInternalRefreshRequest = useCallback(() => {
-    // 自動更新側は先に高さを保存してからRELOADを発行するため、
+    // 自動更新側は先にレス件数を保存してからRELOADを発行するため、
     // refreshKeyの変化を外部更新として同じスナップショットへ重ねない。
     expectedInternalRefreshKeyRef.current = refreshKey + 1;
   }, [refreshKey]);

@@ -156,8 +156,10 @@ function AutoRefreshHarness({
         data-testid="scroll-container"
       >
         <div ref={rootRef}>
-          {responses.map((num) => (
-            <div key={num}>{num}</div>
+          {liveChat.responses.map(({ num }) => (
+            <div key={num} data-testid="response">
+              {num}
+            </div>
           ))}
           <div ref={autoScrollBoundaryRef} data-testid="boundary" />
           <button
@@ -167,6 +169,14 @@ function AutoRefreshHarness({
             }}
           >
             新着ありで完了
+          </button>
+          <button
+            onClick={() => {
+              setResponses((prev) => [...prev, prev.length + 1, prev.length + 2, prev.length + 3]);
+              setLoading(false);
+            }}
+          >
+            新着3件で完了
           </button>
           <button
             onClick={() => {
@@ -237,7 +247,202 @@ describe("useAutoRefresh", () => {
     vi.useRealTimers();
   });
 
-  it("新着レスが来た時だけ高さ差分を scrollBy する", () => {
+  // jsdomは行の高さとスクロール上限を持たないため、表示済みの行数から実際の配置を再現する。
+  function renderScrollableHarness(
+    options: { liveChatMode?: boolean; pauseAutoScroll?: boolean } = {},
+  ) {
+    let scrollTop = 200;
+    let extraHeight = 0;
+    let boundaryOffset = 0;
+    const onRequestRefresh = vi.fn();
+    const scrollBy = vi.fn((offset: ScrollToOptions) => {
+      scrollTop = Math.max(0, Math.min(scrollHeight() - 100, scrollTop + (offset.top ?? 0)));
+    });
+    const scrollHeight = () => 180 + screen.queryAllByTestId("response").length * 60 + extraHeight;
+    render(
+      <AutoRefreshHarness
+        {...options}
+        onRequestRefresh={onRequestRefresh}
+        configureScrollContainer={(element) => {
+          Object.defineProperties(element, {
+            clientHeight: { configurable: true, get: () => 100 },
+            scrollHeight: { configurable: true, get: scrollHeight },
+            scrollTop: {
+              configurable: true,
+              get: () => scrollTop,
+              set: (value: number) => {
+                scrollTop = Math.max(0, Math.min(scrollHeight() - 100, value));
+              },
+            },
+          });
+          element.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+          // @ts-expect-error: jsdomのscrollByはScrollToOptions単一引数オーバーロードを持たない
+          element.scrollBy = scrollBy;
+        }}
+      />,
+    );
+    const panel = screen.getByTestId("scroll-container");
+    screen.getByTestId("boundary").getBoundingClientRect = () =>
+      createRect({
+        top: scrollHeight() - scrollTop - 20,
+        bottom: scrollHeight() - scrollTop + boundaryOffset,
+      });
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    return {
+      panel,
+      scrollBy,
+      scrollHeight,
+      getScrollTop: () => scrollTop,
+      setScrollTop: (value: number) => {
+        scrollTop = value;
+      },
+      setExtraHeight: (value: number) => {
+        extraHeight = value;
+      },
+      setBoundaryOffset: (value: number) => {
+        boundaryOffset = value;
+      },
+    };
+  }
+
+  it.each([false, true])(
+    "通常・ライブチャットの新着描画で追従を外さず二重補正しない（ライブ=%s）",
+    (liveChatMode) => {
+      const { scrollBy, scrollHeight, getScrollTop } = renderScrollableHarness({ liveChatMode });
+      expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      fireEvent.click(screen.getByText("新着3件で完了"));
+
+      // 通信完了と異なるタイミングで各行が描画されても、描画直後に追従を維持する。
+      for (let release = 0; release < 3; release++) {
+        act(() => {
+          vi.advanceTimersByTime(600);
+        });
+        expect(getScrollTop()).toBe(scrollHeight() - 100);
+        expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+        const count = scrollBy.mock.calls.length;
+        act(() => {
+          resizeObservers[0].trigger();
+          vi.advanceTimersByTime(0);
+        });
+        expect(scrollBy).toHaveBeenCalledTimes(count);
+      }
+      expect(screen.getAllByTestId("response")).toHaveLength(5);
+      expect(scrollBy).toHaveBeenCalledTimes(liveChatMode ? 3 : 1);
+    },
+  );
+
+  it("スクロール通知がサイズ監視より先に届いても追従を解除しない", () => {
+    const { panel, setExtraHeight, getScrollTop, scrollBy } = renderScrollableHarness();
+    setExtraHeight(60);
+    fireEvent.scroll(panel);
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    expect(getScrollTop()).toBe(260);
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+    act(() => {
+      resizeObservers[0].trigger();
+      vi.advanceTimersByTime(0);
+    });
+    expect(scrollBy).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([230, 260])(
+    "通常更新前にブラウザが位置を補正していれば残りの距離だけ追従する（補正後=%s）",
+    (correctedScrollTop) => {
+      const { setScrollTop, getScrollTop, scrollBy } = renderScrollableHarness();
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      setScrollTop(correctedScrollTop);
+      fireEvent.click(screen.getByText("新着ありで完了"));
+      if (correctedScrollTop === 260) {
+        expect(scrollBy).not.toHaveBeenCalled();
+      } else {
+        expect(scrollBy).toHaveBeenCalledExactlyOnceWith({ top: 30, behavior: "auto" });
+      }
+      expect(getScrollTop()).toBe(260);
+    },
+  );
+
+  it("スクロールバーで上へ移動したときも新着へ引き戻さない", () => {
+    const { panel, setScrollTop, getScrollTop, scrollBy } = renderScrollableHarness();
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    setScrollTop(100);
+    fireEvent.scroll(panel);
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    fireEvent.click(screen.getByText("新着ありで完了"));
+    expect(getScrollTop()).toBe(100);
+    expect(scrollBy).not.toHaveBeenCalled();
+  });
+
+  it("境界の小数座標による丸め誤差では追従を解除しない", () => {
+    const { panel, setBoundaryOffset } = renderScrollableHarness();
+    setBoundaryOffset(0.5);
+    fireEvent.scroll(panel);
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+    setBoundaryOffset(2);
+    fireEvent.scroll(panel);
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("disabled");
+  });
+
+  it.each([false, true])(
+    "通常・ライブチャットとも手動で上へ移動したら新着へ追従しない（ライブ=%s）",
+    (liveChatMode) => {
+      const { panel, setScrollTop, getScrollTop, scrollBy } = renderScrollableHarness({
+        liveChatMode,
+      });
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      fireEvent.wheel(panel, { deltaY: -100 });
+      setScrollTop(100);
+      fireEvent.scroll(panel);
+      act(() => {
+        vi.advanceTimersByTime(0);
+      });
+      fireEvent.click(screen.getByText("新着3件で完了"));
+      act(() => {
+        vi.advanceTimersByTime(1800);
+      });
+      expect(getScrollTop()).toBe(100);
+      expect(scrollBy).not.toHaveBeenCalled();
+      expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("disabled");
+    },
+  );
+
+  it("ライブチャットでもポップアップ表示中は追従を停止する", () => {
+    const { getScrollTop, scrollBy } = renderScrollableHarness({
+      liveChatMode: true,
+      pauseAutoScroll: true,
+    });
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
+    fireEvent.click(screen.getByText("新着3件で完了"));
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+    expect(getScrollTop()).toBe(200);
+    expect(scrollBy).not.toHaveBeenCalled();
+  });
+
+  it("新着レスの描画に合わせて底面まで scrollBy する", () => {
     const onRequestRefresh = vi.fn();
     const onNewResponses = vi.fn();
     render(
@@ -885,6 +1090,11 @@ describe("useAutoRefresh", () => {
     let scrollTopValue = 0;
     let scrollHeightValue = 80;
     const configureScrollContainer = (scrollContainer: HTMLDivElement) => {
+      // 初回取得の描画も共通の底面補正を通るため、jsdomにないスクロール操作を再現する。
+      // @ts-expect-error: jsdomのscrollByはScrollToOptions単一引数オーバーロードを持たない
+      scrollContainer.scrollBy = ({ top }: ScrollToOptions) => {
+        scrollTopValue += top ?? 0;
+      };
       Object.defineProperty(scrollContainer, "clientHeight", {
         configurable: true,
         get: () => 100,
@@ -928,6 +1138,8 @@ describe("useAutoRefresh", () => {
     expect(getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
 
     scrollTopValue = 12;
+    // 実際の手動移動では操作イベントも届くため、次の描画より先に追従への割り込みを伝える。
+    fireEvent.wheel(getByTestId("scroll-container"));
     scrollHeightValue = 400;
     rerender(
       <AutoRefreshHarness
