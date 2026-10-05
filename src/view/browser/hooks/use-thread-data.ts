@@ -44,6 +44,7 @@ interface ThreadData {
   responses: IRes[];
   visibleResponses: IRes[];
   loading: boolean;
+  isInitialLoading: boolean;
   isCacheResolved: boolean;
   error: string | null;
   expired: boolean;
@@ -168,6 +169,10 @@ export function useThreadData(
   const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const isCacheResolved =
     cacheResolvedThreadUrl === page.threadUrl || isSikiLogThreadUrl(page.threadUrl);
+
+  // 外部からの「ChLensで開く」も通常の遷移も、キャッシュ確認中から読み込みを示す。
+  // 通信が先に完了してもキャッシュ確認が残っていれば待機中とし、本文があれば表示を優先する。
+  const isInitialLoading = responses.length === 0 && (loading || !isCacheResolved);
 
   const fetchThread = useCallback(
     async (forceUpdate = false) => {
@@ -424,6 +429,7 @@ export function useThreadData(
     responses,
     visibleResponses,
     loading,
+    isInitialLoading,
     isCacheResolved,
     error,
     expired,

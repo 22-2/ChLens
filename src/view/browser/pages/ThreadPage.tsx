@@ -115,6 +115,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     responses,
     visibleResponses,
     loading,
+    isInitialLoading,
     isCacheResolved,
     error,
     expired,
@@ -725,7 +726,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         threshold={WHEEL_THRESHOLD}
         portalContainerRef={effectiveScrollContainerRef}
       />
-      {loading && isCacheResolved && responses.length === 0 ? (
+      {isInitialLoading ? (
         <div className="page-status">
           <Spinner size="sm" aria-label="スレッドを読み込み中" />
           <span>スレッドを読み込み中...</span>

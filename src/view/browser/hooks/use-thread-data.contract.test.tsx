@@ -148,6 +148,61 @@ describe("useThreadData Phase 0 contracts", () => {
     cleanup();
   });
 
+  it.each([false, true])(
+    "キャッシュ確認が遅れても初回読み込みを示す（通信完了: %s）",
+    async (completeRequest) => {
+      const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/130/" };
+      const cache = createDeferred<undefined>();
+      const request = createDeferred<IThreadDetail>();
+      cacheGetMock.mockReturnValue(cache.promise);
+      container.thread = { getThread: vi.fn(() => request.promise) } as IThreadService;
+      const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+      const { result } = renderHook(() => {
+        const controller = useThreadRefreshController(0);
+        return useThreadData("initial-loading", page, rootRef, controller);
+      });
+
+      expect(result.current.isCacheResolved).toBe(false);
+      expect(result.current.isInitialLoading).toBe(true);
+      if (completeRequest) {
+        await act(async () => request.resolve({ url: page.threadUrl, title: page.title, res: [] }));
+        expect(result.current.loading).toBe(false);
+        expect(result.current.isInitialLoading).toBe(true);
+      }
+      await act(async () => cache.resolve(undefined));
+      expect(result.current.isCacheResolved).toBe(true);
+      expect(result.current.isInitialLoading).toBe(!completeRequest);
+      if (!completeRequest) {
+        await act(async () =>
+          request.resolve({ url: page.threadUrl, title: page.title, res: RESPONSES }),
+        );
+        expect(result.current.isInitialLoading).toBe(false);
+      }
+    },
+  );
+
+  it("キャッシュ本文の復元後は通信中でも初回読み込みを表示しない", async () => {
+    const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/131/" };
+    const cache = createDeferred<{ data: IRes[] }>();
+    const request = createDeferred<IThreadDetail>();
+    cacheGetMock.mockReturnValue(cache.promise);
+    container.thread = { getThread: vi.fn(() => request.promise) } as IThreadService;
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+    const { result } = renderHook(() => {
+      const controller = useThreadRefreshController(0);
+      return useThreadData("cached-loading", page, rootRef, controller);
+    });
+
+    expect(result.current.isInitialLoading).toBe(true);
+    await act(async () => cache.resolve({ data: RESPONSES }));
+    expect(result.current.loading).toBe(true);
+    expect(result.current.responses).toEqual(RESPONSES);
+    expect(result.current.isInitialLoading).toBe(false);
+    await act(async () =>
+      request.resolve({ url: page.threadUrl, title: page.title, res: RESPONSES }),
+    );
+  });
+
   it.each([0, 1])("自動取得中の手動更新は新規レス%d件でも完了を一度通知する", async (added) => {
     const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/123/" };
     const detail = { url: page.threadUrl, title: page.title, res: RESPONSES };
