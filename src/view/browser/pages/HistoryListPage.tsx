@@ -284,11 +284,15 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
   const nextOffsetRef = React.useRef(0);
   const hasMoreRef = React.useRef(true);
   const isLoadingPageRef = React.useRef(false);
+  const pendingReloadRef = React.useRef(false);
+  const hasLoadedEntriesRef = React.useRef(false);
   const unreadCountIndexRef = React.useRef<Map<string, number>>(new Map());
   const wasActiveRef = React.useRef(isActive);
 
-  const loadNextPage = useCallback(async (reset = false) => {
+  const loadNextPage = useCallback(async function loadPage(reset = false): Promise<void> {
     if (isLoadingPageRef.current) {
+      // 仮タイトルの読込中に確定タイトルが保存されても、更新通知を捨てず完了後に再取得する。
+      pendingReloadRef.current ||= reset;
       return;
     }
     if (!reset && !hasMoreRef.current) {
@@ -343,12 +347,14 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
       }
 
       nextOffsetRef.current = currentOffset;
+      hasLoadedEntriesRef.current = true;
       setEntries((prev) => {
         const next = reset ? uniqueRows : [...prev, ...uniqueRows];
         void setHistoryCache(next);
         return next;
       });
     } catch (e) {
+      console.error("[HistoryListPage] 閲覧履歴の読み込みに失敗しました", e);
       const message = e instanceof Error ? e.message : "閲覧履歴の読み込みに失敗しました";
       setError(message);
       if (reset) {
@@ -362,6 +368,11 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
         setLoadingMore(false);
       }
     }
+    if (pendingReloadRef.current) {
+      // 削除・再保存などの連続通知を一度の再読込へまとめ、最終的なDB内容を表示する。
+      pendingReloadRef.current = false;
+      await loadPage(true);
+    }
   }, []);
 
   const loadEntries = useCallback(async () => {
@@ -370,12 +381,17 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
 
   // 変更理由: IDBキャッシュから前回の閲覧履歴を復元し、新しいデータの取得中は古い結果を表示し続ける。
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
       const cached = await getHistoryCache();
-      if (cached && cached.length > 0) {
+      // キャッシュ復元がDB取得より遅れても、確定タイトルを古いURL表示へ戻さない。
+      if (!cancelled && !hasLoadedEntriesRef.current && cached && cached.length > 0) {
         setEntries(cached);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

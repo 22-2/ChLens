@@ -76,6 +76,7 @@ async function renderViewer() {
 
 describe("タブセッションの操作時保存と再読み込み", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     const values = new Map<string, string>();
     const storage: Storage = {
       get length() {
@@ -138,6 +139,40 @@ describe("タブセッションの操作時保存と再読み込み", () => {
     expect(screen.getByTestId("active-title")).toHaveTextContent("サンプル板");
     const state = JSON.parse(localStorage.getItem(SESSION_KEY)!) as TabStoreState;
     expect(state.panes[0].tabs).toHaveLength(saved.panes[0].tabs.length);
+  });
+
+  it("ChLensで開く起動先のスレを履歴に記録し、取得後のタイトルを同じ日時へ反映する", async () => {
+    const threadUrl = "https://example.com/test/read.cgi/sample/123/";
+    const url = new URL(window.location.href);
+    url.searchParams.set("q", threadUrl);
+    window.history.replaceState(null, "", url.href);
+    const { add, remove } = await import("src/core/History");
+    const dispatch = await renderViewer();
+    await vi.waitFor(() =>
+      expect(add).toHaveBeenCalledWith(threadUrl, threadUrl, expect.any(Number), "sample"),
+    );
+    const date = vi.mocked(add).mock.calls[0][2];
+    const state = JSON.parse(screen.getByTestId("state").textContent!) as TabStoreState;
+    const pane = state.panes.find((item) => item.id === state.activePaneId)!;
+
+    // 起動先を初期stateへ入れる経路でも、通常のタイトル解決と同じ履歴補正が必要。
+    await act(async () =>
+      dispatch({
+        type: "UPDATE_TITLE_FOR_TAB",
+        tabId: pane.activeTabId,
+        title: "過去ログのタイトル",
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(add).toHaveBeenCalledWith(threadUrl, "過去ログのタイトル", date, "sample"),
+    );
+    expect(remove).toHaveBeenCalledWith(threadUrl, date);
+
+    cleanup();
+    vi.mocked(add).mockClear();
+    vi.resetModules();
+    await renderViewer();
+    expect(add).not.toHaveBeenCalled();
   });
 
   it("Reactの描画完了を待たず、タブを開いた操作の直後に保存する", async () => {

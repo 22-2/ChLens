@@ -1370,6 +1370,22 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     [],
   );
 
+  const hasRecordedLaunchVisitRef = useRef(false);
+  useEffect(() => {
+    if (hasRecordedLaunchVisitRef.current || initialPageFromLocation?.type !== "thread") return;
+    hasRecordedLaunchVisitRef.current = true;
+    // 「ChLensで開く」の起動先は初期stateへ直接入るため、開くactionを経由しない。
+    // この経路でも閲覧記録を作り、取得後のタイトル更新を同じ履歴へ反映できるようにする。
+    const launchTab = getActivePaneActiveTab(stateRef.current);
+    const page = getCurrentPage(launchTab);
+    if (
+      page.type === "thread" &&
+      getPageIdentity(page) === getPageIdentity(initialPageFromLocation)
+    ) {
+      persistThreadVisit(launchTab.id, page);
+    }
+  }, [persistThreadVisit]);
+
   const syncThreadVisitTitle = useCallback(
     (tabId: string, page: Extract<Page, { type: "thread" }>, title: string) => {
       const visitKey = getThreadVisitKey(tabId, page.threadUrl);

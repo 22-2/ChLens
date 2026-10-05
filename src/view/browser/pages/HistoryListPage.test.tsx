@@ -318,6 +318,48 @@ describe("HistoryListPage", () => {
     expect(screen.queryByText("スレ1")).not.toBeInTheDocument();
   });
 
+  it("履歴の読込中に届いたタイトル更新をまとめて再読込する", async () => {
+    const url = "https://example.com/test/read.cgi/sample/123/";
+    let resolveInitial!: (rows: unknown[]) => void;
+    historyGet
+      .mockReturnValueOnce(new Promise((resolve) => (resolveInitial = resolve)))
+      .mockResolvedValueOnce([createHistoryItem(url, "過去ログのタイトル", "サンプル板", 100)]);
+    render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+    await waitFor(() => expect(historyGet).toHaveBeenCalledTimes(1));
+
+    // 仮タイトルの読込が終わる前に削除・再保存の通知が届く順序を再現する。
+    await act(async () => {
+      emitMessage("history_updated", { type: "removed" });
+      emitMessage("history_updated", { type: "added" });
+      resolveInitial([createHistoryItem(url, url, "サンプル板", 100)]);
+    });
+
+    await screen.findByText("過去ログのタイトル");
+    expect(historyGet).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(url)).not.toBeInTheDocument();
+  });
+
+  it("遅れて復元されたURLのキャッシュで取得済みタイトルを上書きしない", async () => {
+    const url = "https://example.com/test/read.cgi/sample/123/";
+    let resolveCache!: (entry: unknown) => void;
+    cacheGetMock.mockReturnValueOnce(new Promise((resolve) => (resolveCache = resolve)));
+    historyGet.mockResolvedValueOnce([
+      createHistoryItem(url, "過去ログのタイトル", "サンプル板", 100),
+    ]);
+    render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+    await screen.findByText("過去ログのタイトル");
+
+    // 保存済みキャッシュと履歴DBは独立して読むため、キャッシュが後着する場合もある。
+    await act(async () => {
+      resolveCache({
+        data: [{ url, title: url, boardTitle: "サンプル板", unreadCount: 0, viewedDate: 100 }],
+      });
+    });
+
+    expect(screen.getByText("過去ログのタイトル")).toBeInTheDocument();
+    expect(screen.queryByText(url)).not.toBeInTheDocument();
+  });
+
   it("非アクティブから再表示された時に一覧を再読込する", async () => {
     historyGet
       .mockResolvedValueOnce([
