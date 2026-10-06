@@ -15,7 +15,6 @@ import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
 import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
-import type { ResolvedTheme } from "src/view/browser/hooks/use-theme";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -25,13 +24,12 @@ import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import { canCopyImageToClipboard, copyImageWithNotice } from "src/view/browser/utils/clipboard";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
-import type { ReplyTreeEntry } from "src/view/browser/utils/reply-tree-collect";
 import {
   buildReplyTreeCopyText,
   collectReplyTreeEntries,
   resolveReplyTreeAncestorPath,
 } from "src/view/browser/utils/reply-tree-collect";
-import { formatIdForCopy, stripHtml } from "src/view/browser/utils/response-format";
+import { renderReplyTreeImageBlob } from "src/view/browser/utils/reply-tree-image";
 
 interface SubTreeMenuState {
   resNum: number;
@@ -39,360 +37,6 @@ interface SubTreeMenuState {
   hasChildTree: boolean;
   x: number;
   y: number;
-}
-
-interface ReplyTreeImageCardLayout {
-  res: IRes;
-  depth: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  headerLine: string;
-  dateLine: string;
-  bodyLines: string[];
-  isSource: boolean;
-}
-
-interface ReplyTreeImagePresentation {
-  title: string;
-  sourceSectionTitle: string;
-  responsesSectionTitle: string;
-}
-
-const TREE_IMAGE_LAYOUT = {
-  width: 960,
-  paddingX: 24,
-  paddingY: 22,
-  titleHeight: 36,
-  sectionTitleHeight: 28,
-  sectionGap: 18,
-  cardGap: 12,
-  cardPaddingX: 16,
-  cardPaddingY: 12,
-  indentWidth: 22,
-  maxIndent: 9,
-  cardHeaderGap: 6,
-  lineHeight: 20,
-  cardMinWidth: 320,
-};
-
-function wrapCanvasText(
-  context: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string[] {
-  const normalized = text.replace(/\r\n?/g, "\n");
-  const paragraphs = normalized.split("\n");
-  const lines: string[] = [];
-
-  for (const paragraph of paragraphs) {
-    if (paragraph.length === 0) {
-      lines.push("");
-      continue;
-    }
-
-    let currentLine = "";
-    for (const char of Array.from(paragraph)) {
-      const nextLine = `${currentLine}${char}`;
-      if (currentLine.length > 0 && context.measureText(nextLine).width > maxWidth) {
-        lines.push(currentLine);
-        currentLine = char;
-        continue;
-      }
-      currentLine = nextLine;
-    }
-
-    lines.push(currentLine);
-  }
-
-  return lines.length > 0 ? lines : [""];
-}
-
-function buildReplyTreeImageCardLayouts(
-  context: CanvasRenderingContext2D,
-  sourceRes: IRes,
-  replyEntries: ReplyTreeEntry[],
-): { cards: ReplyTreeImageCardLayout[]; height: number } {
-  const cards: ReplyTreeImageCardLayout[] = [];
-  const sourceId = formatIdForCopy(sourceRes.id);
-  const sourceHeader = `${sourceRes.num} ${stripHtml(sourceRes.name)}${
-    sourceId ? ` ${sourceId}` : ""
-  }`;
-  const sourceDate = sourceRes.date ?? sourceRes.other ?? "";
-  const sourceBody = wrapCanvasText(
-    context,
-    stripHtml(sourceRes.message),
-    TREE_IMAGE_LAYOUT.width - TREE_IMAGE_LAYOUT.paddingX * 2 - TREE_IMAGE_LAYOUT.cardPaddingX * 2,
-  );
-
-  let currentY =
-    TREE_IMAGE_LAYOUT.paddingY +
-    TREE_IMAGE_LAYOUT.titleHeight +
-    TREE_IMAGE_LAYOUT.sectionGap +
-    TREE_IMAGE_LAYOUT.sectionTitleHeight +
-    8;
-
-  const sourceHeight =
-    TREE_IMAGE_LAYOUT.cardPaddingY * 2 +
-    TREE_IMAGE_LAYOUT.lineHeight * (2 + sourceBody.length) +
-    TREE_IMAGE_LAYOUT.cardHeaderGap;
-
-  cards.push({
-    res: sourceRes,
-    depth: 0,
-    x: TREE_IMAGE_LAYOUT.paddingX,
-    y: currentY,
-    width: TREE_IMAGE_LAYOUT.width - TREE_IMAGE_LAYOUT.paddingX * 2,
-    height: sourceHeight,
-    headerLine: sourceHeader,
-    dateLine: sourceDate,
-    bodyLines: sourceBody,
-    isSource: true,
-  });
-
-  currentY += sourceHeight + TREE_IMAGE_LAYOUT.sectionGap;
-  currentY += TREE_IMAGE_LAYOUT.sectionTitleHeight + 8;
-
-  for (const entry of replyEntries) {
-    const depth = Math.min(entry.depth, TREE_IMAGE_LAYOUT.maxIndent);
-    const indent = depth * TREE_IMAGE_LAYOUT.indentWidth;
-    const cardX = TREE_IMAGE_LAYOUT.paddingX + indent;
-    const cardWidth = Math.max(
-      TREE_IMAGE_LAYOUT.cardMinWidth,
-      TREE_IMAGE_LAYOUT.width - TREE_IMAGE_LAYOUT.paddingX * 2 - indent,
-    );
-    const entryId = formatIdForCopy(entry.res.id);
-    const headerLine = `${entry.res.num} ${stripHtml(entry.res.name)}${
-      entryId ? ` ${entryId}` : ""
-    }`;
-    const dateLine = entry.res.date ?? entry.res.other ?? "";
-    const bodyLines = wrapCanvasText(
-      context,
-      stripHtml(entry.res.message),
-      cardWidth - TREE_IMAGE_LAYOUT.cardPaddingX * 2,
-    );
-    const cardHeight =
-      TREE_IMAGE_LAYOUT.cardPaddingY * 2 +
-      TREE_IMAGE_LAYOUT.lineHeight * (2 + bodyLines.length) +
-      TREE_IMAGE_LAYOUT.cardHeaderGap;
-
-    cards.push({
-      res: entry.res,
-      depth,
-      x: cardX,
-      y: currentY,
-      width: cardWidth,
-      height: cardHeight,
-      headerLine,
-      dateLine,
-      bodyLines,
-      isSource: false,
-    });
-    currentY += cardHeight + TREE_IMAGE_LAYOUT.cardGap;
-  }
-
-  return {
-    cards,
-    height: currentY + TREE_IMAGE_LAYOUT.paddingY,
-  };
-}
-
-// res-popup の配色 token に合わせ、画像コピーでもダークモードを再現する。
-const TREE_IMAGE_PALETTE: Record<
-  ResolvedTheme,
-  {
-    background: string;
-    title: string;
-    sectionTitle: string;
-    guideLine: string;
-    cardSourceFill: string;
-    cardSourceStroke: string;
-    cardFill: string;
-    cardStroke: string;
-    cardHeader: string;
-    cardDate: string;
-    cardBody: string;
-    footer: string;
-  }
-> = {
-  light: {
-    background: "#f7f9fc",
-    title: "#111827",
-    sectionTitle: "#334155",
-    guideLine: "rgba(148, 163, 184, 0.85)",
-    cardSourceFill: "#eef4ff",
-    cardSourceStroke: "#7aa2ff",
-    cardFill: "#ffffff",
-    cardStroke: "#d7deea",
-    cardHeader: "#162033",
-    cardDate: "#5b6475",
-    cardBody: "#1f2937",
-    footer: "#6b7280",
-  },
-  dark: {
-    background: "#292a2d",
-    title: "#e8eaed",
-    sectionTitle: "#9aa0a6",
-    guideLine: "rgba(154, 160, 166, 0.6)",
-    cardSourceFill: "#2a3a52",
-    cardSourceStroke: "#5b8def",
-    cardFill: "#333438",
-    cardStroke: "#3c4043",
-    cardHeader: "#e8eaed",
-    cardDate: "#9aa0a6",
-    cardBody: "#cdd0d5",
-    footer: "#9aa0a6",
-  },
-};
-
-function drawReplyTreeImageCard(
-  context: CanvasRenderingContext2D,
-  card: ReplyTreeImageCardLayout,
-  palette: (typeof TREE_IMAGE_PALETTE)[ResolvedTheme],
-): void {
-  const cardRight = card.x + card.width;
-  const cardBottom = card.y + card.height;
-
-  if (card.depth > 0) {
-    const guideX = card.x - 11;
-    context.strokeStyle = palette.guideLine;
-    context.lineWidth = 2;
-    context.beginPath();
-    context.moveTo(guideX, card.y + 4);
-    context.lineTo(guideX, cardBottom - 4);
-    context.moveTo(guideX, card.y + 16);
-    context.lineTo(card.x - 3, card.y + 16);
-    context.stroke();
-  }
-
-  context.fillStyle = card.isSource ? palette.cardSourceFill : palette.cardFill;
-  context.strokeStyle = card.isSource ? palette.cardSourceStroke : palette.cardStroke;
-  context.lineWidth = 1;
-  context.fillRect(card.x, card.y, card.width, card.height);
-  context.strokeRect(card.x, card.y, card.width, card.height);
-
-  let textY = card.y + TREE_IMAGE_LAYOUT.cardPaddingY + 14;
-
-  context.font = "600 15px sans-serif";
-  context.fillStyle = palette.cardHeader;
-  context.fillText(card.headerLine, card.x + TREE_IMAGE_LAYOUT.cardPaddingX, textY);
-
-  textY += TREE_IMAGE_LAYOUT.lineHeight;
-  context.font = "12px sans-serif";
-  context.fillStyle = palette.cardDate;
-  context.fillText(card.dateLine, card.x + TREE_IMAGE_LAYOUT.cardPaddingX, textY);
-
-  textY += TREE_IMAGE_LAYOUT.cardHeaderGap + 6;
-  context.font = "14px sans-serif";
-  context.fillStyle = palette.cardBody;
-
-  for (const line of card.bodyLines) {
-    textY += TREE_IMAGE_LAYOUT.lineHeight;
-    context.fillText(line, card.x + TREE_IMAGE_LAYOUT.cardPaddingX, textY);
-  }
-
-  context.clearRect(cardRight, card.y, 0, 0);
-}
-
-type ImageQuality = "low" | "medium" | "high";
-
-const QUALITY_MAP: Record<ImageQuality, number> = {
-  low: 1, // 標準（等倍）
-  medium: 1.2, // 高解像度（Retina相当）
-  high: 4, // 超高解像度（印刷や拡大用）
-};
-
-function renderReplyTreeImageCanvas(
-  sourceRes: IRes,
-  replyEntries: ReplyTreeEntry[],
-  threadTitle?: string,
-  threadUrl?: string,
-  quality: ImageQuality = "medium",
-  theme: ResolvedTheme = "light",
-  presentation: ReplyTreeImagePresentation = {
-    title: `>>${sourceRes.num} への返信ツリー`,
-    sourceSectionTitle: "参照元レス",
-    responsesSectionTitle: "返信レス",
-  },
-  targetDocument: Document = globalThis.document,
-): HTMLCanvasElement {
-  // 変更理由: 別窓のポップアップから画像を作る時も、描画環境と同じDocumentへ
-  // canvasを所属させ、別窓側のDOM境界を越えないようにする。
-  const canvas = targetDocument.createElement("canvas");
-  const dpr = QUALITY_MAP[quality];
-  const context = canvas.getContext("2d");
-  if (!context) {
-    throw new Error("Canvas 2D context is not available");
-  }
-  const palette = TREE_IMAGE_PALETTE[theme];
-
-  const measured = buildReplyTreeImageCardLayouts(context, sourceRes, replyEntries);
-
-  // コピー先でスレッドを特定できるよう画像下部にスレタイとURLを付加する。
-  const hasFooter = threadTitle != null || threadUrl != null;
-  const footerLineCount = (threadTitle != null ? 1 : 0) + (threadUrl != null ? 1 : 0);
-  const footerHeight = hasFooter
-    ? TREE_IMAGE_LAYOUT.paddingY + TREE_IMAGE_LAYOUT.lineHeight * footerLineCount
-    : 0;
-  const totalHeight = measured.height + footerHeight;
-
-  canvas.width = Math.round(TREE_IMAGE_LAYOUT.width * dpr);
-  canvas.height = Math.round(totalHeight * dpr);
-  canvas.style.width = `${TREE_IMAGE_LAYOUT.width}px`;
-  canvas.style.height = `${totalHeight}px`;
-
-  context.scale(dpr, dpr);
-  context.fillStyle = palette.background;
-  context.fillRect(0, 0, TREE_IMAGE_LAYOUT.width, totalHeight);
-
-  context.font = "600 22px sans-serif";
-  context.fillStyle = palette.title;
-  context.fillText(presentation.title, TREE_IMAGE_LAYOUT.paddingX, TREE_IMAGE_LAYOUT.paddingY + 22);
-
-  context.font = "600 15px sans-serif";
-  context.fillStyle = palette.sectionTitle;
-  context.fillText(
-    presentation.sourceSectionTitle,
-    TREE_IMAGE_LAYOUT.paddingX,
-    TREE_IMAGE_LAYOUT.paddingY + TREE_IMAGE_LAYOUT.titleHeight + 18,
-  );
-
-  const repliesSectionY =
-    measured.cards[0].y + measured.cards[0].height + TREE_IMAGE_LAYOUT.sectionGap + 18;
-  context.fillText(presentation.responsesSectionTitle, TREE_IMAGE_LAYOUT.paddingX, repliesSectionY);
-
-  // DOM の見た目依存を避けるため、コピー画像は返信データから専用レイアウトを描画する。
-  for (const card of measured.cards) {
-    drawReplyTreeImageCard(context, card, palette);
-  }
-
-  if (hasFooter) {
-    let footerY = measured.height + TREE_IMAGE_LAYOUT.lineHeight;
-    context.font = "13px sans-serif";
-    context.fillStyle = palette.footer;
-    if (threadTitle != null) {
-      context.fillText(threadTitle, TREE_IMAGE_LAYOUT.paddingX, footerY);
-      footerY += TREE_IMAGE_LAYOUT.lineHeight;
-    }
-    if (threadUrl != null) {
-      context.fillText(threadUrl, TREE_IMAGE_LAYOUT.paddingX, footerY);
-    }
-  }
-
-  return canvas;
-}
-
-function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        reject(new Error("Failed to create image blob"));
-        return;
-      }
-      resolve(blob);
-    }, "image/png");
-  });
 }
 
 // --- 返信ツリーポップアップ ---
@@ -523,19 +167,13 @@ export const ReplyTreePopup: React.FC<{
           disabled: !canCopyImageToClipboard(viewSurface),
           onSelect: () => {
             void copyImageWithNotice(
-              async () => {
-                const canvas = renderReplyTreeImageCanvas(
-                  sourceRes,
-                  replyEntries,
+              () =>
+                renderReplyTreeImageBlob(sourceRes, replyEntries, {
                   threadTitle,
                   threadUrl,
-                  undefined,
                   theme,
-                  undefined,
-                  viewDocument,
-                );
-                return canvasToBlob(canvas);
-              },
+                  targetDocument: viewDocument,
+                }),
               viewSurface,
               toast,
               "返信ツリー画像",
@@ -651,19 +289,13 @@ export const ReplyTreePopup: React.FC<{
             disabled: !canCopyImageToClipboard(viewSurface),
             onSelect: () => {
               void copyImageWithNotice(
-                async () => {
-                  const canvas = renderReplyTreeImageCanvas(
-                    targetRes,
-                    subReplyEntries,
+                () =>
+                  renderReplyTreeImageBlob(targetRes, subReplyEntries, {
                     threadTitle,
                     threadUrl,
-                    undefined,
                     theme,
-                    undefined,
-                    viewDocument,
-                  );
-                  return canvasToBlob(canvas);
-                },
+                    targetDocument: viewDocument,
+                  }),
                 viewSurface,
                 toast,
                 "サブツリー画像",
@@ -697,23 +329,18 @@ export const ReplyTreePopup: React.FC<{
         disabled: !canCopyImageToClipboard(viewSurface),
         onSelect: () => {
           void copyImageWithNotice(
-            async () => {
-              const canvas = renderReplyTreeImageCanvas(
-                ancestorPath.sourceRes,
-                ancestorImageEntries,
+            () =>
+              renderReplyTreeImageBlob(ancestorPath.sourceRes, ancestorImageEntries, {
                 threadTitle,
                 threadUrl,
-                undefined,
                 theme,
-                {
+                presentation: {
                   title: `>>${targetRes.num} までの返信経路`,
                   sourceSectionTitle: "参照元レス",
                   responsesSectionTitle: "返信レス（上から下）",
                 },
-                viewDocument,
-              );
-              return canvasToBlob(canvas);
-            },
+                targetDocument: viewDocument,
+              }),
             viewSurface,
             toast,
             "返信経路画像",
