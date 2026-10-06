@@ -76,6 +76,13 @@
   margin-top: var(--sys-space-1);
 }
 
+/* Nested branches are indented with a guide line so the reply depth stays readable. */
+.reply-tree--nested {
+  margin-left: var(--sys-space-6);
+  border-left: var(--sys-border-width-strong) solid var(--sys-color-reply-tree-guide);
+  padding-left: var(--sys-space-4);
+}
+
 .reply-tree-node {
   position: relative;
 }
