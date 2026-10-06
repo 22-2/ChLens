@@ -118,12 +118,16 @@ describe("ChFetcher transport boundary", () => {
 
   it("fetches Shitaraba archive HTML through the same thread source contract", async () => {
     const archiveUrl = "https://jbbs.shitaraba.net/bbs/read_archive.cgi/computer/12345/100/";
-    const archive = ascii(
-      "<h1>Archive title</h1><dl>" +
-        "<dt>1 :<b>Anonymous</b> :2026/08/23 12:00:00 ID:first</dt>" +
-        "<dd>Archive message<br></dd><br><br>",
+    // したらばの過去ログは名前・日付の区切りに全角コロンを使う。ASCIIのコロンでは
+    // parseJbbsArchiveThreadが投稿を認識しないため、EUC-JPの「：」(0xA1 0xA7)を明示する。
+    const colon = Uint8Array.from([0xa1, 0xa7]);
+    const archiveBody = concatBytes(
+      ascii("<h1>Archive title</h1><dl><dt>1 "),
+      colon,
+      ascii("<b>Anonymous</b> "),
+      colon,
+      ascii("2026/08/23 12:00:00 ID:first</dt><dd>Archive message<br></dd><br><br>"),
     );
-    const archiveBody = concatBytes(archive);
     const client = new FixtureHttpClient(
       new Map([[archiveUrl, fixtureResponse(200, { ETag: '"archive-v1"' }, archiveBody)]]),
     );
