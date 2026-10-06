@@ -66,3 +66,24 @@ describe("通信しない板一覧キャッシュの読み取り", () => {
     expect(putMock).toHaveBeenCalledWith(html, expect.any(Object));
   });
 });
+
+describe("板一覧の強制更新とキャッシュの書き戻し", () => {
+  it("304では保存済みHTMLを解析し、本文を変えずに確認日時だけ更新する", async () => {
+    requestMock.mockClear();
+    sendMock.mockReset().mockResolvedValue({ status: 304, body: "", headers: {} });
+    const putMock = vi.fn(async () => undefined);
+    const cache: ICacheItem = {
+      data: html,
+      lastUpdated: 0,
+      get: vi.fn(async () => undefined),
+      put: putMock,
+    };
+    const fetcher = new BBSMenuFetcher({ getCache: () => cache, getExcludeTslds: () => new Set() });
+
+    const menu = await fetcher.fetch("https://example.com/bbsmenu.html", true);
+
+    expect(menu.name).toBe("保存済み板一覧");
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(putMock).toHaveBeenCalledWith(html);
+  });
+});

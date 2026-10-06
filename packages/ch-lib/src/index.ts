@@ -1,5 +1,7 @@
+export * from "./board/BBSMenuNormalizer";
 export * from "./board/BoardTitleResolver";
 export * from "./fetcher/BBSMenuFetchPolicy";
+export * from "./fetcher/BBSMenuResponseResolver";
 export * from "./fetcher/BoardFetchPolicy";
 export * from "./fetcher/ChFetcher";
 export * from "./fetcher/HttpClient";
@@ -10,7 +12,6 @@ export * from "./fetcher/ThreadFetchPolicy";
 export * from "./fetcher/ThreadResponseResolver";
 export * from "./parser/AnchorParser";
 export * from "./parser/BBSMenuHtmlParser";
-export * from "./parser/BBSMenuParser";
 export * from "./parser/BoardParser";
 export * from "./parser/MessageParser";
 export * from "./parser/MetadataParser";

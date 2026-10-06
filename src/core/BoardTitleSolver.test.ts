@@ -10,11 +10,6 @@ const { cachedMenuMock, menuMock, requestMock, sendMock, titlesConfig, bookmarks
     bookmarks: { boards: [] as { url: string; title: string }[] },
   }),
 );
-vi.mock("src/core/BBSMenu.js", () => ({
-  getCached: cachedMenuMock,
-  get: menuMock,
-  onChange: { add: vi.fn() },
-}));
 vi.mock("src/core/HTTP", () => ({
   Request: class {
     constructor(...args: unknown[]) {
@@ -39,7 +34,14 @@ vi.mock("src/core/URL", () => ({
   },
 }));
 vi.mock("src/service-container/index", () => ({
-  container: { config: { get: () => titlesConfig.raw } },
+  container: {
+    config: { get: () => titlesConfig.raw },
+    bbsMenu: {
+      getCached: cachedMenuMock,
+      get: menuMock,
+      onChange: { add: vi.fn(), remove: vi.fn() },
+    },
+  },
 }));
 
 describe("保存済み板名の参照と選択した板の取得", () => {

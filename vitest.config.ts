@@ -13,7 +13,12 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: ["src/**/*.{test,spec}.{ts,tsx,js,jsx}"],
+    // 変更理由: ch-libのテストがincludeに入っておらず、CIで一度も実行されていなかった。
+    // bbsmenuの解析テストをch-libへ移したため、共有パッケージのテストも同じ実行に含める。
+    include: [
+      "src/**/*.{test,spec}.{ts,tsx,js,jsx}",
+      "packages/*/src/**/*.{test,spec}.{ts,tsx,js,jsx}",
+    ],
     exclude: ["node_modules/**", "e2e/**"],
   },
 });

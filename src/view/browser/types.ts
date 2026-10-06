@@ -140,22 +140,6 @@ export interface Pane {
 // --- Core API の型定義 ---
 // app_core.js から提供されるモジュールの型
 
-export interface BBSBoard {
-  title: string;
-  url: string;
-}
-
-export interface BBSCategory {
-  title: string;
-  board: BBSBoard[];
-}
-
-export interface BBSMenuResult {
-  status: string;
-  menu?: BBSCategory[];
-  message?: string;
-}
-
 export interface ThreadListItem {
   title: string;
   url: string;

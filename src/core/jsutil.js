@@ -5,10 +5,10 @@ import {
   getThreadReferenceKeys,
   resolveBoardMoveUrl,
 } from "packages/ch-lib/src/index";
-import { get as getBBSMenu } from "src/core/BBSMenu.js";
 import Board from "src/core/Board.js";
 import { Request } from "src/core/HTTP.ts";
 import { levenshteinDistance } from "src/core/Util.ts";
+import { container } from "src/service-container/index";
 
 /**
 @class Anchor
@@ -126,7 +126,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
   //bbsmenuから検索
   if (newBoardUrl == null) {
     newBoardUrl = await (async function () {
-      const { menu: data } = await getBBSMenu();
+      const { menu: data } = await container.bbsMenu.get();
       if (data == null) {
         throw new Error("BBSMenuの取得に失敗しました");
       }

@@ -1,8 +1,8 @@
 import { MoreVertical } from "lucide-react";
+import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { platformCookieManager } from "src/app/platform/CookieManager";
-import type { BBSMenu } from "src/core/BBSMenuParser";
 import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import { container } from "src/service-container/index";
 import {
@@ -148,7 +148,7 @@ function readOpenedBoards(): RawBoardOption[] {
   }
 }
 
-function readBBSMenuBoards(menu: readonly BBSMenu[]): RawBoardOption[] {
+function readBBSMenuBoards(menu: readonly ParsedBBSMenu[]): RawBoardOption[] {
   return menu.flatMap((source) =>
     source.categories.flatMap((category) =>
       category.boards.map((board) => ({ url: board.url, title: board.name })),
@@ -275,7 +275,7 @@ export function SiteBoardSettingsPanel() {
       try {
         const result = await container.bbsMenu.get(false);
         if (!cancelled && result.status === "success") {
-          setMenuBoards(readBBSMenuBoards(result.menu));
+          setMenuBoards(readBBSMenuBoards(result.menu ?? []));
         }
       } catch (error) {
         console.error("[SiteBoardSettings] BBSMENUから板一覧を取得できませんでした", error);

@@ -1,4 +1,4 @@
-import { BBSMenu } from "src/core/BBSMenuParser";
+import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 export interface IConfig {
   // 設定ストアは文字列ベース (app.config.get は string | null を返す)。
   // unknown だと利用側で JSON.parse 等に渡せず型エラーになるため実態に合わせる。
@@ -172,24 +172,25 @@ export interface IBoardService {
   getCachedResCount(url: string, options?: { forceUpdate?: boolean }): Promise<unknown>;
 }
 
-export interface IBBSMenuBoard {
-  url: string;
-  title: string;
-}
-
-export interface IBBSMenuCategory {
-  title: string;
-  board: IBBSMenuBoard[];
-}
-
 export interface IBBSMenuResult {
-  menu: BBSMenu[];
   status: "success" | "error";
+  // 取得失敗時は板一覧を持たないため optional にする（実装の BBSMenuModel と同じ形）。
+  menu?: ParsedBBSMenu[];
   message?: string;
 }
 
+export interface IBBSMenuChangeNotifier {
+  add(callback: (result: IBBSMenuResult) => void): void;
+  remove(callback: (result: IBBSMenuResult) => void): void;
+}
+
 export interface IBBSMenuService {
+  /** 板一覧を取得する。forceReload 時は通信して onChange へ通知する。 */
   get(forceReload?: boolean): Promise<IBBSMenuResult>;
+  /** 通信せず、保存済みの板一覧だけを返す。 */
+  getCached(): Promise<IBBSMenuResult>;
+  /** 強制更新で板一覧が変わったときの通知。 */
+  readonly onChange: IBBSMenuChangeNotifier;
 }
 
 export interface IToastService {

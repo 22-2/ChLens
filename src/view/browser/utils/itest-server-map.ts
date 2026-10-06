@@ -1,5 +1,5 @@
+import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { createItestServerMap } from "packages/ch-lib/src/index";
-import type { BBSMenu } from "src/core/BBSMenuParser";
 
 const STORAGE_KEY = "itestServerMap";
 
@@ -39,7 +39,7 @@ if (typeof window !== "undefined" && "localStorage" in window) {
 }
 
 /** bbsmenuの板URLから作った対応表を保存する。 */
-export function applyBBSMenuToItestServerMap(menus: readonly BBSMenu[]): void {
+export function applyBBSMenuToItestServerMap(menus: readonly ParsedBBSMenu[]): void {
   const boardUrls = menus.flatMap((menu) =>
     menu.categories.flatMap((category) => category.boards.map((board) => board.url)),
   );

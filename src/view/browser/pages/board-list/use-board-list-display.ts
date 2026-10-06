@@ -1,5 +1,5 @@
+import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { BBSMenu } from "src/core/BBSMenuParser";
 import { useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import {
   buildCategoryId,
@@ -31,7 +31,7 @@ interface DisplayMenu {
  */
 export function useBoardListDisplay(params: {
   tabId: string;
-  categories: BBSMenu[];
+  categories: ParsedBBSMenu[];
   openStates: Record<string, boolean>;
   removedBoardUrls: Set<string>;
   removedMenuNames: Set<string>;

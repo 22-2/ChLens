@@ -1,8 +1,9 @@
 import { createBoardTitleRequest, resolveBoardTitle } from "../board/BoardTitleResolver";
-import { BBSCategory, BBSMenuParser } from "../parser/BBSMenuParser";
+import { BBSMenuHtmlParser, ParsedBBSMenu } from "../parser/BBSMenuHtmlParser";
 import { BoardParser, BoardThread } from "../parser/BoardParser";
 import { ThreadData, ThreadParser } from "../parser/ThreadParser";
 import { ChURL } from "../url/ChURL";
+import { buildBBSMenuFetchPolicy } from "./BBSMenuFetchPolicy";
 import {
   FetchHttpClient,
   HttpClient,
@@ -98,8 +99,11 @@ export class ChFetcher {
     };
   }
 
-  async fetchBBSMenu(url: string): Promise<BBSCategory[]> {
-    const result = await this.fetchText(url, "shift_jis");
-    return BBSMenuParser.parse(result.text);
+  async fetchBBSMenu(url: string, excludeTslds: Set<string> = new Set()): Promise<ParsedBBSMenu> {
+    // 変更理由: 旧BBSMenuParserはアプリと異なる形式・規則（_op/_sc付与など）で解析しており、
+    // 同じbbsmenuから2通りの結果が出ていた。アプリが使うBBSMenuHtmlParserへ一本化する。
+    const policy = buildBBSMenuFetchPolicy({ hasCache: false });
+    const result = await this.fetchText(url, policy.charset);
+    return BBSMenuHtmlParser.parse(result.text, url, excludeTslds);
   }
 }
