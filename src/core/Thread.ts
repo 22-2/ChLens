@@ -22,7 +22,7 @@ import {
 import { platform } from "src/app";
 import type Cache from "src/core/Cache.js";
 import { chServerMoveDetect } from "src/core/jsutil.js";
-import { isMissingFromSubject } from "src/core/SubjectPresence";
+import { isMissingFromSubject, shouldForceSubjectCheck } from "src/core/SubjectPresence";
 import { container } from "src/service-container/index";
 
 // ---------------------------------------------------------------------------
@@ -148,6 +148,9 @@ export default class Thread {
     let noChangeFlg: boolean;
     let failed = false;
     let cachedInfoResult: CachedInfoResult | undefined;
+    const cacheParsed = this._getCachedParsedThread(cache);
+    // 新着判定の基準。キャッシュがない初回取得は比較対象がないため0件として扱う。
+    const previousResCount = hasCache ? (cacheParsed?.res.length ?? cache.resLength ?? 0) : 0;
     // Bookmark.expiredも既存データとして残っているため、古いキャッシュからも復元する。
     this.expired = this.expired || container.bookmark.get(this.url.url.href)?.expired === true;
 
@@ -169,7 +172,7 @@ export default class Thread {
           etag: cache.etag,
           bbsType: this.url.bbsType,
           cacheData: cache.data,
-          cacheParsed: this._getCachedParsedThread(cache),
+          cacheParsed,
           url: this.url,
           format2chnet,
           parseThreadFn: parseThread,
@@ -215,7 +218,13 @@ export default class Thread {
       cachedInfoResult =
         this.expired || response?.status === 203 || thread.expired === true
           ? { status: "none" }
-          : await this._fetchCachedResCount(forceUpdate === true);
+          : await this._fetchCachedResCount(
+              shouldForceSubjectCheck({
+                threadUrl: this.url.url.href,
+                forceUpdate: forceUpdate === true,
+                hasNewResponses: !noChangeFlg && thread.res.length > previousResCount,
+              }),
+            );
       const displayThread = this._padAbobunIfNeeded(thread, cachedInfoResult);
       const hadCachedExpiration = this.expired;
       this._applyThreadToSelf(displayThread);
@@ -255,7 +264,13 @@ export default class Thread {
       // 変更理由: 明示的な失効応答を優先し、subject.txtは未確定時だけ追加確認する。
       cachedInfoResult ??= hasExplicitExpiration
         ? { status: "none" }
-        : await this._fetchCachedResCount(forceUpdate === true);
+        : await this._fetchCachedResCount(
+            shouldForceSubjectCheck({
+              threadUrl: this.url.url.href,
+              forceUpdate: forceUpdate === true,
+              hasNewResponses: false,
+            }),
+          );
       this.missingFromSubject = isMissingFromSubject(cachedInfoResult.status);
 
       if (thread) {
