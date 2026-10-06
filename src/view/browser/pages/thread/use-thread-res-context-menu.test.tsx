@@ -306,7 +306,8 @@ describe("useThreadResContextMenu", () => {
     });
 
     expect(screen.getByTestId("response-class")).toHaveTextContent("ng");
-    expect(mocks.toastInfo).toHaveBeenCalledWith("NGに追加しました: hide id contains:\n  abc123", {
+    // 通知には追加したIDだけを表示する仕様（765bf5c）に合わせる。
+    expect(mocks.toastInfo).toHaveBeenCalledWith("ID/IPをNGに追加しました: abc123", {
       targetWindow: window,
     });
   });

@@ -20,10 +20,11 @@ describe("短縮URLの入力経路", () => {
     "既知の互換ホストでは %s をクリックと入力の両方で解決する",
     (path) => {
       const input = `https://bbs.example.com${path}?q=1#45`;
+      // 元のURLの通信方式を維持する仕様（1ed9a91）に合わせ、HTTPSのまま解決する。
       const expected = {
         type: "thread",
-        title: "http://bbs.example.com/test/read.cgi/board-key/123/?q=1#45",
-        threadUrl: "http://bbs.example.com/test/read.cgi/board-key/123/?q=1#45",
+        title: "https://bbs.example.com/test/read.cgi/board-key/123/?q=1#45",
+        threadUrl: "https://bbs.example.com/test/read.cgi/board-key/123/?q=1#45",
       };
       expect(parseInternalBrowserPageStrict(input)).toEqual(expected);
       expect(parseOmnibarBrowserPage(input)).toEqual(expected);
