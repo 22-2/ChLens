@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { THREAD_AUTO_REFRESH_IDLE_STOP_COUNT } from "src/view/browser/hooks/auto-refresh-config";
 import {
   evaluateIdleStop,

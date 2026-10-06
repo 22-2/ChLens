@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { matchRules } from "src/core/rules/engine";
 import type { Rule } from "src/core/rules/model";
 import { describe, expect, it, vi } from "vite-plus/test";

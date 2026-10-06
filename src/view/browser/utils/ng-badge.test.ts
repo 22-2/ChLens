@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { getNgBadgeLabel } from "src/view/browser/utils/ng-badge";
 import { describe, expect, it } from "vite-plus/test";
 

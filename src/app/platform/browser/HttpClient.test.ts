@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const cookieApi = vi.hoisted(() => ({ set: vi.fn() }));

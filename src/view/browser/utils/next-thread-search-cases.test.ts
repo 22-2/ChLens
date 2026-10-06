@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { IThread } from "src/service-container/interfaces";
 import {
   type AutoNextThreadMode,

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { IRes } from "src/service-container/interfaces";
 import { deriveThreadData } from "src/view/browser/utils/thread-data-derived";
 import { describe, expect, it } from "vite-plus/test";

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { IRes } from "src/service-container/interfaces";
 import type { ThreadSearchTarget } from "src/view/browser/types";
 import { filterThreadResponses } from "src/view/browser/utils/thread-search";

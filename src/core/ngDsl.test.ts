@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {
   NG_DSL_LANGUAGE_ID,
   NG_HIGHLIGHT_COLOR_PRESET_ITEMS,

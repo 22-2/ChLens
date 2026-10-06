@@ -1773,61 +1773,8 @@ describe("useAutoRefresh", () => {
     expect(onAutoStop).not.toHaveBeenCalled();
   });
 
-  it("新着が来たらアイドル累積がリセットされ自動停止しない", () => {
-    const onRequestRefresh = vi.fn();
-    const onAutoStop = vi.fn();
-    render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} onAutoStop={onAutoStop} />);
-
-    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
-    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
-
-    Object.defineProperty(scrollContainer, "clientHeight", {
-      configurable: true,
-      get: () => 100,
-    });
-    Object.defineProperty(scrollContainer, "scrollTop", {
-      configurable: true,
-      get: () => 200,
-      set: () => {},
-    });
-    Object.defineProperty(scrollContainer, "scrollHeight", {
-      configurable: true,
-      get: () => 300,
-    });
-    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
-    boundary.getBoundingClientRect = () => createRect({ top: 80, bottom: 100 });
-    scrollContainer.scrollBy = vi.fn();
-
-    act(() => {
-      vi.runOnlyPendingTimers();
-    });
-
-    const runRefreshCycle = (completeButtonLabel: string) => {
-      act(() => {
-        vi.advanceTimersByTime(3000);
-      });
-      fireEvent.click(screen.getByText(completeButtonLabel));
-      act(() => {
-        vi.runOnlyPendingTimers();
-      });
-    };
-
-    // あと 1 回で閾値に届く所まで idle を積む。
-    for (let i = 0; i < THREAD_AUTO_REFRESH_IDLE_STOP_COUNT - 1; i += 1) {
-      runRefreshCycle("新着なしで完了");
-    }
-
-    // 新着が来たら累積がリセットされるので、ここでは止まらない。
-    runRefreshCycle("新着ありで完了");
-    expect(onAutoStop).not.toHaveBeenCalled();
-
-    // リセット後はまた閾値ぶん idle が必要。手前までは止まらない。
-    for (let i = 0; i < THREAD_AUTO_REFRESH_IDLE_STOP_COUNT - 1; i += 1) {
-      runRefreshCycle("新着なしで完了");
-    }
-    expect(onAutoStop).not.toHaveBeenCalled();
-  });
-
+  // 累積や経過時間の判定そのものは auto-refresh-idle-stop.test.ts で純関数として検証する。
+  // ここではフックへの配線（ON/OFFでの基準時刻の扱い、次スレ探索中の保留）だけを確認する。
   describe("時間ベースの自動停止", () => {
     const IDLE_STOP_TIMEOUT_MS = 9000;
 
@@ -1848,21 +1795,6 @@ describe("useAutoRefresh", () => {
         vi.advanceTimersByTime(0);
       });
     };
-
-    it("最後の新着から指定時間が経つと自動停止する", () => {
-      const onAutoStop = vi.fn();
-      render(<AutoRefreshHarness onRequestRefresh={vi.fn()} onAutoStop={onAutoStop} />);
-
-      runTimerRefreshCycle("新着ありで完了");
-      // 新着から 6 秒（< 9 秒）の時点ではまだ止めない。
-      runTimerRefreshCycle("新着なしで完了");
-      runTimerRefreshCycle("新着なしで完了");
-      expect(onAutoStop).not.toHaveBeenCalled();
-
-      // 新着から 9 秒経った更新で止める。
-      runTimerRefreshCycle("新着なしで完了");
-      expect(onAutoStop).toHaveBeenCalledOnce();
-    });
 
     it("ON後に一度も新着がなくても、指定時間が経てば自動停止する", () => {
       const onAutoStop = vi.fn();

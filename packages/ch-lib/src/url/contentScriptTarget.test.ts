@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it, vi } from "vite-plus/test";
 
 // 短縮URLの通信方式を実在する掲示板へ依存せずに検証する。

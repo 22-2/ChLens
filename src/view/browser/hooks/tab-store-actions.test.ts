@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { describe, expect, it } from "vite-plus/test";
 

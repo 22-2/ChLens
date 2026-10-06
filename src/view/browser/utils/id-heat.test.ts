@@ -1,3 +1,4 @@
+// @vitest-environment node
 import {
   getIdHeatColor,
   ID_HEAT_COOL_PEAK_COUNT,

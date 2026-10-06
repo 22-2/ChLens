@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { encodeWriteFields, encodeWriteForm } from "src/app/platform/tauri/WriteForm";
 import { describe, expect, it } from "vite-plus/test";
 

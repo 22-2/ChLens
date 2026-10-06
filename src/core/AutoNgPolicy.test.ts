@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { evaluateAutoNg } from "src/core/AutoNgPolicy";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 

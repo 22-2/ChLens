@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from "vite-plus/test";
 
 import { getRuleTargetDefinition, normalizeRuleTarget, RULE_TARGET_CATALOG } from "./catalog";

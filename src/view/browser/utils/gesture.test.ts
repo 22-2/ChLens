@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { summarizeVerticalGesture } from "src/view/browser/utils/gesture";
 import { describe, expect, it } from "vite-plus/test";
 

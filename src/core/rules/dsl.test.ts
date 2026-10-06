@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { formatRuleDsl, parseRuleDsl } from "src/core/rules/dsl";
 import { describe, expect, it } from "vite-plus/test";
 

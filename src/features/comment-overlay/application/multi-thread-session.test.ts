@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { IThread, IThreadDetail } from "src/service-container/interfaces";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
