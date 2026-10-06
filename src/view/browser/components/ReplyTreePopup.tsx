@@ -25,11 +25,13 @@ import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import { canCopyImageToClipboard, copyImageWithNotice } from "src/view/browser/utils/clipboard";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
+import type { ReplyTreeEntry } from "src/view/browser/utils/reply-tree-collect";
 import {
-  formatIdForCopy,
-  formatResForCopy,
-  stripHtml,
-} from "src/view/browser/utils/response-format";
+  buildReplyTreeCopyText,
+  collectReplyTreeEntries,
+  resolveReplyTreeAncestorPath,
+} from "src/view/browser/utils/reply-tree-collect";
+import { formatIdForCopy, stripHtml } from "src/view/browser/utils/response-format";
 
 interface SubTreeMenuState {
   resNum: number;
@@ -37,11 +39,6 @@ interface SubTreeMenuState {
   hasChildTree: boolean;
   x: number;
   y: number;
-}
-
-interface ReplyTreeImageEntry {
-  res: IRes;
-  depth: number;
 }
 
 interface ReplyTreeImageCardLayout {
@@ -80,41 +77,6 @@ const TREE_IMAGE_LAYOUT = {
   cardMinWidth: 320,
 };
 
-function collectReplyTreeImageEntries(
-  sourceResNum: number,
-  repIndex: Map<number, Set<number>>,
-  resMap: Map<number, IRes>,
-): ReplyTreeImageEntry[] {
-  const visited = new Set<number>([sourceResNum]);
-  const collected: ReplyTreeImageEntry[] = [];
-
-  const visit = (resNum: number, depth: number) => {
-    const replies = repIndex.get(resNum);
-    if (!replies) {
-      return;
-    }
-
-    const orderedReplyNums = Array.from(replies).sort((left, right) => left - right);
-    for (const replyNum of orderedReplyNums) {
-      if (visited.has(replyNum)) {
-        continue;
-      }
-
-      const reply = resMap.get(replyNum);
-      if (!reply) {
-        continue;
-      }
-
-      visited.add(replyNum);
-      collected.push({ res: reply, depth });
-      visit(replyNum, depth + 1);
-    }
-  };
-
-  visit(sourceResNum, 0);
-  return collected;
-}
-
 function wrapCanvasText(
   context: CanvasRenderingContext2D,
   text: string,
@@ -150,7 +112,7 @@ function wrapCanvasText(
 function buildReplyTreeImageCardLayouts(
   context: CanvasRenderingContext2D,
   sourceRes: IRes,
-  replyEntries: ReplyTreeImageEntry[],
+  replyEntries: ReplyTreeEntry[],
 ): { cards: ReplyTreeImageCardLayout[]; height: number } {
   const cards: ReplyTreeImageCardLayout[] = [];
   const sourceId = formatIdForCopy(sourceRes.id);
@@ -343,7 +305,7 @@ const QUALITY_MAP: Record<ImageQuality, number> = {
 
 function renderReplyTreeImageCanvas(
   sourceRes: IRes,
-  replyEntries: ReplyTreeImageEntry[],
+  replyEntries: ReplyTreeEntry[],
   threadTitle?: string,
   threadUrl?: string,
   quality: ImageQuality = "medium",
@@ -431,87 +393,6 @@ function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
       resolve(blob);
     }, "image/png");
   });
-}
-
-function collectReplyTreeResponses(
-  sourceResNum: number,
-  repIndex: Map<number, Set<number>>,
-  resMap: Map<number, IRes>,
-): IRes[] {
-  // 一括コピーでは「今見えている返信ツリー」をそのまま再現したいので、
-  // 元レスから深さ優先で辿った順序をそのまま保持する。
-  const visited = new Set<number>([sourceResNum]);
-  const collected: IRes[] = [];
-
-  const visit = (resNum: number) => {
-    const replies = repIndex.get(resNum);
-    if (!replies) {
-      return;
-    }
-
-    const orderedReplyNums = Array.from(replies).sort((left, right) => left - right);
-    for (const replyNum of orderedReplyNums) {
-      if (visited.has(replyNum)) {
-        continue;
-      }
-
-      const reply = resMap.get(replyNum);
-      if (!reply) {
-        continue;
-      }
-
-      visited.add(replyNum);
-      collected.push(reply);
-      visit(replyNum);
-    }
-  };
-
-  visit(sourceResNum);
-  return collected;
-}
-
-function buildReplyTreeCopyText(
-  sourceRes: IRes,
-  replyResponses: IRes[],
-  threadTitle?: string,
-  threadUrl?: string,
-): string {
-  // 変更理由: 参照元レスの内容は残しつつ、内部向けの見出しを除いて
-  // コピー先へそのまま貼り付けやすいレス列にする。
-  const sections = [formatResForCopy(sourceRes)];
-  if (replyResponses.length > 0) {
-    sections.push("", "[返信レス]", replyResponses.map(formatResForCopy).join("\n\n"));
-  }
-  // コピー先でスレッドを特定できるよう末尾にスレタイとURLを付加する。
-  if (threadTitle != null || threadUrl != null) {
-    sections.push("");
-    if (threadTitle != null) {
-      sections.push(threadTitle);
-    }
-    if (threadUrl != null) {
-      sections.push(threadUrl);
-    }
-  }
-  return sections.join("\n");
-}
-
-function buildReplyTreeAncestorCopyText(
-  selectedRes: IRes,
-  ancestorResponses: IRes[],
-  threadTitle?: string,
-  threadUrl?: string,
-): string {
-  if (ancestorResponses.length === 0) {
-    return buildReplyTreeCopyText(selectedRes, [], threadTitle, threadUrl);
-  }
-
-  // 枝の特定は選択レスから親へ遡って行うが、出力は既存コピーと同じ上から下に揃える。
-  return buildReplyTreeCopyText(
-    ancestorResponses[0],
-    [...ancestorResponses.slice(1), selectedRes],
-    threadTitle,
-    threadUrl,
-  );
 }
 
 // --- 返信ツリーポップアップ ---
@@ -608,10 +489,8 @@ export const ReplyTreePopup: React.FC<{
   const [subTreeMenu, setSubTreeMenu] = useState<SubTreeMenuState | null>(null);
   const theme = useTheme();
   const sourceRes = resMap.get(resNum) ?? null;
-  const replyResponses = sourceRes ? collectReplyTreeResponses(resNum, treeRepIndex, resMap) : [];
-  const replyImageEntries = sourceRes
-    ? collectReplyTreeImageEntries(resNum, treeRepIndex, resMap)
-    : [];
+  const replyEntries = sourceRes ? collectReplyTreeEntries(resNum, treeRepIndex, resMap) : [];
+  const replyResponses = replyEntries.map((entry) => entry.res);
   // 変更理由: 返信ツリーの文字列生成とClipboardの表示先・失敗通知を分離し、
   // ツリー側で別窓対応の経路を重複実装しないようにする。
   const runClipboardCommand = useCallback(
@@ -647,7 +526,7 @@ export const ReplyTreePopup: React.FC<{
               async () => {
                 const canvas = renderReplyTreeImageCanvas(
                   sourceRes,
-                  replyImageEntries,
+                  replyEntries,
                   threadTitle,
                   threadUrl,
                   undefined,
@@ -744,15 +623,11 @@ export const ReplyTreePopup: React.FC<{
       return [];
     }
 
-    const subReplyResponses = collectReplyTreeResponses(targetResNum, treeRepIndex, resMap);
-    const subReplyImageEntries = collectReplyTreeImageEntries(targetResNum, treeRepIndex, resMap);
-    const ancestorResponses = ancestorResNums
-      .map((ancestorResNum) => resMap.get(ancestorResNum))
-      .filter((res): res is IRes => res != null);
-    const ancestorPathSourceRes = ancestorResponses[0] ?? targetRes;
-    const ancestorPathReplyResponses =
-      ancestorResponses.length > 0 ? [...ancestorResponses.slice(1), targetRes] : [];
-    const ancestorImageEntries = ancestorPathReplyResponses.map((res, depth) => ({
+    const subReplyEntries = collectReplyTreeEntries(targetResNum, treeRepIndex, resMap);
+    const subReplyResponses = subReplyEntries.map((entry) => entry.res);
+    const ancestorPath = resolveReplyTreeAncestorPath(targetRes, ancestorResNums, resMap);
+    // 一本筋は枝分かれしないので、上から順に1段ずつ字下げして経路を示す。
+    const ancestorImageEntries = ancestorPath.replyResponses.map((res, depth) => ({
       res,
       depth,
     }));
@@ -779,7 +654,7 @@ export const ReplyTreePopup: React.FC<{
                 async () => {
                   const canvas = renderReplyTreeImageCanvas(
                     targetRes,
-                    subReplyImageEntries,
+                    subReplyEntries,
                     threadTitle,
                     threadUrl,
                     undefined,
@@ -806,7 +681,12 @@ export const ReplyTreePopup: React.FC<{
         icon: <CornerRightUp size={14} />,
         onSelect: () => {
           runClipboardCommand(
-            buildReplyTreeAncestorCopyText(targetRes, ancestorResponses, threadTitle, threadUrl),
+            buildReplyTreeCopyText(
+              ancestorPath.sourceRes,
+              ancestorPath.replyResponses,
+              threadTitle,
+              threadUrl,
+            ),
           );
         },
       },
@@ -819,7 +699,7 @@ export const ReplyTreePopup: React.FC<{
           void copyImageWithNotice(
             async () => {
               const canvas = renderReplyTreeImageCanvas(
-                ancestorPathSourceRes,
+                ancestorPath.sourceRes,
                 ancestorImageEntries,
                 threadTitle,
                 threadUrl,
@@ -966,5 +846,3 @@ export const ReplyTreePopup: React.FC<{
     </FloatingPopup>
   );
 };
-
-export { buildReplyTreeAncestorCopyText, buildReplyTreeCopyText, collectReplyTreeResponses };
