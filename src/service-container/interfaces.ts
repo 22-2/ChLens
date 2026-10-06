@@ -1,4 +1,4 @@
-import { BBSMenu } from "src/core/BBSMenuParser";
+import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 export interface IConfig {
   // 設定ストアは文字列ベース (app.config.get は string | null を返す)。
   // unknown だと利用側で JSON.parse 等に渡せず型エラーになるため実態に合わせる。
@@ -172,18 +172,8 @@ export interface IBoardService {
   getCachedResCount(url: string, options?: { forceUpdate?: boolean }): Promise<unknown>;
 }
 
-export interface IBBSMenuBoard {
-  url: string;
-  title: string;
-}
-
-export interface IBBSMenuCategory {
-  title: string;
-  board: IBBSMenuBoard[];
-}
-
 export interface IBBSMenuResult {
-  menu: BBSMenu[];
+  menu: ParsedBBSMenu[];
   status: "success" | "error";
   message?: string;
 }

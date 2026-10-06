@@ -1,5 +1,4 @@
-import { ChURL } from "packages/ch-lib/src/index";
-import { BBSMenu } from "src/core/BBSMenuParser";
+import { ChURL, type ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 
 export interface ReadStateEntry {
@@ -49,7 +48,7 @@ export class OtherBoardsCollector {
    * menusに登録されていない板を収集し、「その他」メニューとして追加する。
    * 未解決の板名は、その板を実際に開くときに取得する。
    */
-  async collect(menus: BBSMenu[]): Promise<void> {
+  async collect(menus: ParsedBBSMenu[]): Promise<void> {
     const registeredUrls = this._buildRegisteredUrlSet(menus);
     const otherBoards = await this._collectUnregisteredBoards(registeredUrls);
 
@@ -63,7 +62,7 @@ export class OtherBoardsCollector {
   /**
    * 既存メニューに登録済みのURL一覧をSetで返す。
    */
-  private _buildRegisteredUrlSet(menus: BBSMenu[]): Set<string> {
+  private _buildRegisteredUrlSet(menus: ParsedBBSMenu[]): Set<string> {
     const registered = new Set<string>();
     for (const menu of menus) {
       for (const cat of menu.categories) {
@@ -189,7 +188,7 @@ export class OtherBoardsCollector {
   /**
    * 収集した板を「その他」メニューとしてmenusに追加する。
    */
-  private _appendToMenus(menus: BBSMenu[], boards: { name: string; url: string }[]): void {
+  private _appendToMenus(menus: ParsedBBSMenu[], boards: { name: string; url: string }[]): void {
     let otherMenu = menus.find((m) => m.name === "その他" || m.name === "Other");
     if (!otherMenu) {
       otherMenu = { name: "その他", categories: [] };

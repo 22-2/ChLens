@@ -1,5 +1,5 @@
+import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { useCallback, useEffect, useState } from "react";
-import type { BBSMenu } from "src/core/BBSMenuParser";
 import { createLogger } from "src/core/logger";
 import { container } from "src/service-container/index";
 import {
@@ -112,7 +112,7 @@ function usePersistedSet(
  * - 一度開いた板のトラッキング
  */
 export function useBoardListLogic(refreshKey = 0) {
-  const [categories, setCategories] = useState<BBSMenu[]>([]);
+  const [categories, setCategories] = useState<ParsedBBSMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // 検索中のセッション復元でも、検索フックが保存前の初期値を退避しないよう先に読み込む。
