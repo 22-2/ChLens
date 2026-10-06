@@ -14,6 +14,8 @@ export interface ThreadRefreshController {
   markInternalRefreshRequest: () => void;
   consumeRefreshKeyChange: () => RefreshKeyChangeSource | null;
   consumeRefreshCompletionGate: () => boolean;
+  /** 現在のrefreshKeyが自動更新由来か。consumeせずに参照できる。 */
+  isInternalRefreshKey: () => boolean;
 }
 
 /**
@@ -29,6 +31,9 @@ export function useThreadRefreshController(refreshKey: number): ThreadRefreshCon
   const expectedInternalRefreshKeyRef = useRef<number | null>(null);
   const refreshKeyChangeRef = useRef<RefreshKeyChange | null>(null);
   const refreshCompletionGateRef = useRef<number | null>(null);
+  // 変更理由: refreshKeyChangeRefは自動更新側の完了判定がconsumeするため、
+  // 取得側が更新の由来を参照する用途には別に保持する。
+  const latestInternalRefreshKeyRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
     const previousRefreshKey = previousRefreshKeyRef.current;
@@ -42,6 +47,7 @@ export function useThreadRefreshController(refreshKey: number): ThreadRefreshCon
     if (isInternalRefresh) {
       expectedInternalRefreshKeyRef.current = null;
     }
+    latestInternalRefreshKeyRef.current = isInternalRefresh ? refreshKey : null;
 
     refreshKeyChangeRef.current = {
       key: refreshKey,
@@ -84,6 +90,10 @@ export function useThreadRefreshController(refreshKey: number): ThreadRefreshCon
     return true;
   }, [refreshKey]);
 
+  const isInternalRefreshKey = useCallback(() => {
+    return latestInternalRefreshKeyRef.current === refreshKey;
+  }, [refreshKey]);
+
   return {
     refreshKey,
     beginRequest,
@@ -91,5 +101,6 @@ export function useThreadRefreshController(refreshKey: number): ThreadRefreshCon
     markInternalRefreshRequest,
     consumeRefreshKeyChange,
     consumeRefreshCompletionGate,
+    isInternalRefreshKey,
   };
 }

@@ -33,11 +33,12 @@ vi.mock("src/core/jsutil.js", () => ({
   chServerMoveDetect: vi.fn(),
 }));
 
+import { resetForcedSubjectCheckHistory } from "src/core/SubjectPresence";
 import Thread from "src/core/Thread.js";
 
 interface ThreadInternals {
   _buildDomainErrorMessage: (options: unknown) => Promise<string>;
-  _fetchCachedResCount: () => Promise<{ status: string }>;
+  _fetchCachedResCount: (forceUpdate: boolean) => Promise<{ status: string }>;
   _prepareCache: (
     cache: unknown,
     format2chnet: string | null | undefined,
@@ -53,6 +54,72 @@ interface ThreadInternals {
 describe("Thread", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetForcedSubjectCheckHistory();
+  });
+
+  it("自動更新で新着レスを取得できた回はsubject.txtを強制取得しない", async () => {
+    const cache = {
+      data: null,
+      parsed: null,
+      lastUpdated: null,
+      expired: false,
+      get: vi.fn().mockResolvedValue(undefined),
+      put: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.getCache.mockReturnValue(cache);
+    mocks.fetch.mockResolvedValue({
+      status: 200,
+      body: "名無し<>sage<>2026/09/30<>本文<>テストスレ\n",
+      headers: {},
+      url: "https://example.com/test/read.cgi/board/1000000000/",
+    });
+    const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+    const testableThread = thread as unknown as ThreadInternals;
+    vi.spyOn(testableThread, "_prepareCache").mockResolvedValue({
+      hasCache: false,
+      needFetch: true,
+    });
+    const subjectLookup = vi
+      .spyOn(testableThread, "_fetchCachedResCount")
+      .mockResolvedValue({ status: "none" });
+
+    await thread.get(true, undefined, { throttleSubjectCheck: true });
+
+    // 新着が届くスレは生存しているため、板一覧はキャッシュ照合だけで済ませる。
+    expect(subjectLookup).toHaveBeenCalledWith(false);
+  });
+
+  it("新着なしの自動更新ではsubject.txtを間隔をあけて強制取得する", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000);
+    mocks.getCache.mockReturnValue({ data: "本文キャッシュ", put: vi.fn() });
+    mocks.fetch.mockRejectedValue(new Error("通信に失敗しました"));
+    const lookups: boolean[] = [];
+    const refresh = async (throttleSubjectCheck = true) => {
+      const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
+      const testableThread = thread as unknown as ThreadInternals;
+      vi.spyOn(testableThread, "_prepareCache").mockResolvedValue({
+        hasCache: true,
+        needFetch: true,
+      });
+      vi.spyOn(testableThread, "_fetchCachedResCount").mockImplementation(async (force) => {
+        lookups.push(force);
+        return { status: "none" };
+      });
+      vi.spyOn(testableThread, "_buildDomainErrorMessage").mockResolvedValue("取得に失敗しました");
+      await expect(thread.get(true, undefined, { throttleSubjectCheck })).rejects.toBeUndefined();
+    };
+
+    await refresh();
+    now.mockReturnValue(1_000_000 + 30 * 1000);
+    await refresh();
+    // 手動更新は利用者の操作なので、自動更新の間隔内でも毎回確認する。
+    await refresh(false);
+    now.mockReturnValue(1_000_000 + 30 * 1000 + 60 * 1000);
+    await refresh();
+    now.mockRestore();
+
+    // 自動更新のたびに板一覧全体を取得しないよう、間隔内の確認はキャッシュ照合へ落とす。
+    expect(lookups).toEqual([true, false, true, true]);
   });
 
   it("本文取得が失敗しても板一覧から消えていればsubject不在を返す", async () => {
