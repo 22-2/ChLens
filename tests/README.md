@@ -20,5 +20,5 @@ SETTING.TXT、subject.txt、datをShift_JISで配信します。レス追加も�
 `ERR_SSL_PROTOCOL_ERROR` がログに出た後、HTTPへ再試行します。
 
 現在は拡張機能の起動、ホーム・設定、スレ一覧からの閲覧、レス更新と重複防止、
-セッション復元、閲覧履歴、NG設定の永続化を検証します。
+セッション復元、閲覧履歴、NG設定の永続化、スレッド自動更新のON・OFFを検証します。
 書き込み、read.cgi形式、差分206応答、Firefox・Tauriはまだ対象外です。
