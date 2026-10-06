@@ -1,88 +1,14 @@
-import {
-  getBoardUrlKey as getChBoardUrlKey,
-  normalizeBoardUrl as normalizeChBoardUrl,
+/**
+ * 板URLの正規化とBBSMENUの重複排除はch-libの共有実装を使う。
+ *
+ * 変更理由: 実装はch-libへ移したが、アプリのテストはこのモジュールを差し替えて
+ * 予約済みドメインを掲示板ホストとして扱っている。アプリ側の参照点として再公開だけ残す。
+ */
+export {
+  type BoardUrlNormalizationOptions,
+  getBoardUrlKey,
+  type NormalizableBBSMenu,
+  type NormalizableBoard,
+  normalizeBBSMenus,
+  normalizeBoardUrl,
 } from "packages/ch-lib/src/index";
-
-export interface BoardUrlNormalizationOptions {
-  /** 開いた板の記録など、既知の掲示板ホストだけに限定する場合に指定する。 */
-  requireCompatibleHost?: boolean;
-  /** スレ一覧の取得・解析に成功した保存レコードだけ、未登録ホストを許可する。 */
-  subjectVerified?: boolean;
-}
-
-/**
- * 板URLを、掲示板の種別と板パスを基準にした表示用URLへ正規化する。
- *
- * 変更理由: URL文字列をそのまま比較すると、http/httpsや末尾スラッシュ、
- * Eddibbの旧形式が別の板として扱われ、同じ板が一覧に複数表示されるため。
- */
-export function normalizeBoardUrl(
-  rawUrl: string,
-  options: BoardUrlNormalizationOptions = {},
-): string | null {
-  return normalizeChBoardUrl(rawUrl, options);
-}
-
-/**
- * 板URLをプロトコルに依存しない比較キーへ変換する。
- * 表示用URLはhttpsを優先するなどの別判断を残しつつ、重複判定だけを安定させる。
- */
-export function getBoardUrlKey(
-  rawUrl: string,
-  options: BoardUrlNormalizationOptions = {},
-): string | null {
-  return getChBoardUrlKey(rawUrl, options);
-}
-
-export interface NormalizableBoard {
-  name: string;
-  url: string;
-  subjectVerified?: true;
-}
-
-export interface NormalizableBBSMenu {
-  name: string;
-  categories: Array<{
-    name: string;
-    boards: NormalizableBoard[];
-  }>;
-}
-
-/**
- * 取得済みBBSMENUを、最初に現れたメニュー・カテゴリを優先して正規化する。
- *
- * 変更理由: 複数のBBSMENUを併用すると同じ板が別メニューへ重複登録されるため、
- * 取得元ごとのキャッシュではなく、表示直前の全体で一度だけ重複排除する。
- */
-export function normalizeBBSMenus<T extends NormalizableBBSMenu>(menus: T[]): T[] {
-  const seenBoardKeys = new Set<string>();
-
-  return menus
-    .map((menu) => {
-      const categories = menu.categories
-        .map((category) => {
-          const boards: NormalizableBoard[] = [];
-          // 旧履歴の外部サイトは除きつつ、取得確認済みの独自ホストは再起動後も残す。
-          const requireCompatibleHost = menu.name === "その他" || menu.name === "Other";
-          for (const board of category.boards) {
-            const options = {
-              requireCompatibleHost,
-              subjectVerified: board.subjectVerified === true,
-            };
-            const normalizedUrl = normalizeBoardUrl(board.url, options);
-            const boardKey = getBoardUrlKey(board.url, options);
-            if (normalizedUrl === null || boardKey === null || seenBoardKeys.has(boardKey)) {
-              continue;
-            }
-
-            seenBoardKeys.add(boardKey);
-            boards.push({ ...board, url: normalizedUrl });
-          }
-          return { ...category, boards };
-        })
-        .filter((category) => category.boards.length > 0);
-
-      return { ...menu, categories };
-    })
-    .filter((menu) => menu.categories.length > 0) as T[];
-}

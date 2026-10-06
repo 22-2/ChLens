@@ -2,6 +2,7 @@ import {
   BBSMenuHtmlParser,
   buildBBSMenuFetchPolicy,
   type ParsedBBSMenu,
+  resolveBBSMenuResponse,
 } from "packages/ch-lib/src/index";
 import { Request } from "src/core/HTTP";
 import { createLogger } from "src/core/logger";
@@ -12,20 +13,6 @@ const logger = createLogger("BBSMenuFetcher");
 export interface IFetcherDeps {
   getCache(url: string): ICacheItem;
   getExcludeTslds(): Set<string>;
-}
-
-// -------------------------------
-// 内部ユーティリティ
-// -------------------------------
-
-/**
- * Last-Modified ヘッダ文字列をタイムスタンプに変換する。
- * 不正な値の場合は undefined を返す。
- */
-function parseLastModified(value: string | undefined): number | undefined {
-  if (!value) return undefined;
-  const ts = new Date(value).getTime();
-  return Number.isFinite(ts) ? ts : undefined;
 }
 
 // レスポンス型（Request.send() の戻り値に合わせて調整すること）
@@ -123,36 +110,28 @@ export class BBSMenuFetcher {
 
   /**
    * レスポンス（または undefined）とキャッシュからメニューを解決する。
-   * - 200 → 新鮮なデータを保存して返す
-   * - 304 / 通信なし → キャッシュデータを返す（304 は lastUpdated を更新）
-   * - キャッシュなし・通信失敗 → エラーをスロー
+   * 200/304/キャッシュ利用の判定はch-libのresolveBBSMenuResponseに任せ、
+   * ここではキャッシュの書き戻しと解析だけを行う。
    */
   private async resolveMenu(
     url: string,
     cache: ICacheItem,
     response: HttpResponse | undefined,
   ): Promise<ParsedBBSMenu> {
-    const excludeTslds = this.deps.getExcludeTslds();
+    const resolution = resolveBBSMenuResponse({ response, cachedBody: cache.data ?? null });
+    // 従来どおり、解析してから保存する（解析で例外が出た本文はキャッシュへ残さない）。
+    const menu = BBSMenuHtmlParser.parse(resolution.body, url, this.deps.getExcludeTslds());
 
-    if (response?.status === 200) {
-      const menu = BBSMenuHtmlParser.parse(response.body, url, excludeTslds);
-
-      await cache.put(response.body, {
-        lastModified: parseLastModified(response.headers["Last-Modified"]),
-        etag: response.headers["ETag"],
+    if (resolution.kind === "fresh") {
+      await cache.put(resolution.body, {
+        lastModified: resolution.lastModified,
+        etag: resolution.etag,
       });
-
-      return menu;
+    } else if (resolution.kind === "not-modified") {
+      logger.debug("304 Not Modified: キャッシュを更新します");
+      await cache.put(resolution.body);
     }
 
-    if (cache.data != null) {
-      if (response?.status === 304) {
-        logger.debug("304 Not Modified: キャッシュを更新します");
-        await cache.put(cache.data);
-      }
-      return BBSMenuHtmlParser.parse(cache.data, url, excludeTslds);
-    }
-
-    throw new Error("板一覧の取得に失敗しました");
+    return menu;
   }
 }
