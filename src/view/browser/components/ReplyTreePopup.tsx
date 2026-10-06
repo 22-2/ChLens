@@ -1,43 +1,15 @@
-import {
-  CornerDownRight,
-  CornerRightUp,
-  Image as ImageIcon,
-  ImageDown,
-  ImageUp,
-  Pin,
-  PinOff,
-} from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type React from "react";
+import { useCallback, useMemo } from "react";
 import { buildReplyIndexes } from "src/core/reply-index";
 import type { IRes } from "src/service-container";
-import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
 import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
-import { useTheme } from "src/view/browser/hooks/use-theme";
-import { useToast } from "src/view/browser/hooks/use-toast";
-import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
+import { useReplyTreeMenus } from "src/view/browser/hooks/use-reply-tree-menus";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
-import { canCopyImageToClipboard, copyImageWithNotice } from "src/view/browser/utils/clipboard";
-import { getEventTargetElement } from "src/view/browser/utils/dom";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
-import {
-  buildReplyTreeCopyText,
-  collectReplyTreeEntries,
-  resolveReplyTreeAncestorPath,
-} from "src/view/browser/utils/reply-tree-collect";
-import { renderReplyTreeImageBlob } from "src/view/browser/utils/reply-tree-image";
-
-interface SubTreeMenuState {
-  resNum: number;
-  ancestorResNums: number[];
-  hasChildTree: boolean;
-  x: number;
-  y: number;
-}
 
 // --- 返信ツリーポップアップ ---
 export const ReplyTreePopup: React.FC<{
@@ -126,95 +98,18 @@ export const ReplyTreePopup: React.FC<{
     () => buildReplyIndexes(Array.from(resMap.values())).repIndex,
     [resMap],
   );
-  const viewSurface = useViewSurface();
-  const toast = useToast();
-  const { document: viewDocument } = viewSurface;
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
-  const [subTreeMenu, setSubTreeMenu] = useState<SubTreeMenuState | null>(null);
-  const theme = useTheme();
+  const { treeMenuItems, subTreeMenu, subTreeMenuItems, handleSubTreeMenuClick, closeSubTreeMenu } =
+    useReplyTreeMenus({
+      resNum,
+      resMap,
+      treeRepIndex,
+      threadTitle,
+      threadUrl,
+      pinned,
+      onTogglePinned,
+    });
   const sourceRes = resMap.get(resNum) ?? null;
-  const replyEntries = sourceRes ? collectReplyTreeEntries(resNum, treeRepIndex, resMap) : [];
-  const replyResponses = replyEntries.map((entry) => entry.res);
-  // 変更理由: 返信ツリーの文字列生成とClipboardの表示先・失敗通知を分離し、
-  // ツリー側で別窓対応の経路を重複実装しないようにする。
-  const runClipboardCommand = useCallback(
-    (text: string) => {
-      void runCommandRequest(
-        { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text } },
-        { surface: viewSurface, toast },
-      );
-    },
-    [toast, viewSurface],
-  );
-  const treeMenuItems: ContextMenuItem[] = sourceRes
-    ? [
-        {
-          id: "copy-tree-responses",
-          label: "返信ツリーを一括コピー",
-          // 返信ツリー全体も「起点から下へ辿る」操作なので、子ツリーのコピーと同じ向きで示す。
-          icon: <CornerDownRight size={14} />,
-          onSelect: () => {
-            // 参照元レスの内容も先頭に含め、見出しなしで自然なレス列として貼り付けられるようにする。
-            runClipboardCommand(
-              buildReplyTreeCopyText(sourceRes, replyResponses, threadTitle, threadUrl),
-            );
-          },
-        },
-        {
-          id: "copy-tree-image",
-          label: "返信ツリーを画像としてコピー",
-          icon: <ImageIcon size={14} />,
-          disabled: !canCopyImageToClipboard(viewSurface),
-          onSelect: () => {
-            void copyImageWithNotice(
-              () =>
-                renderReplyTreeImageBlob(sourceRes, replyEntries, {
-                  threadTitle,
-                  threadUrl,
-                  theme,
-                  targetDocument: viewDocument,
-                }),
-              viewSurface,
-              toast,
-              "返信ツリー画像",
-            );
-          },
-        },
-        {
-          id: "toggle-pin",
-          label: pinned ? "ピン留めを解除" : "ピン留め",
-          icon: pinned ? <PinOff size={14} /> : <Pin size={14} />,
-          onSelect: onTogglePinned,
-        },
-      ]
-    : [];
-
-  useEffect(() => {
-    if (!subTreeMenu) {
-      return;
-    }
-
-    const handleOutsideSubTreeMenuClick = (e: MouseEvent) => {
-      const target = getEventTargetElement(e.target, viewDocument.defaultView ?? globalThis.window);
-      if (!target) {
-        setSubTreeMenu(null);
-        return;
-      }
-
-      if (target.closest(".context-menu")) {
-        return;
-      }
-
-      if (target.closest(".reply-tree-node__menu-btn")) {
-        return;
-      }
-
-      setSubTreeMenu(null);
-    };
-
-    viewDocument.addEventListener("mousedown", handleOutsideSubTreeMenuClick);
-    return () => viewDocument.removeEventListener("mousedown", handleOutsideSubTreeMenuClick);
-  }, [subTreeMenu, viewDocument]);
 
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
@@ -228,127 +123,6 @@ export const ReplyTreePopup: React.FC<{
     },
     [onResContextMenu, onPopupMouseDown],
   );
-
-  const handleSubTreeMenuClick = (
-    targetResNum: number,
-    ancestorResNums: number[],
-    hasChildTree: boolean,
-    e: React.MouseEvent<HTMLButtonElement>,
-  ) => {
-    e.stopPropagation();
-    const buttonRect = e.currentTarget.getBoundingClientRect();
-    setSubTreeMenu((prev) =>
-      prev?.resNum === targetResNum
-        ? null
-        : {
-            resNum: targetResNum,
-            ancestorResNums,
-            hasChildTree,
-            // ContextMenu は viewport 座標を受け取るため、親 popup の座標を引かない。
-            x: buttonRect.right - 8,
-            y: buttonRect.bottom + 4,
-          },
-    );
-  };
-
-  const getSubTreeMenuItems = ({
-    resNum: targetResNum,
-    ancestorResNums,
-    hasChildTree,
-  }: SubTreeMenuState): ContextMenuItem[] => {
-    const targetRes = resMap.get(targetResNum);
-    if (!targetRes) {
-      return [];
-    }
-
-    const subReplyEntries = collectReplyTreeEntries(targetResNum, treeRepIndex, resMap);
-    const subReplyResponses = subReplyEntries.map((entry) => entry.res);
-    const ancestorPath = resolveReplyTreeAncestorPath(targetRes, ancestorResNums, resMap);
-    // 一本筋は枝分かれしないので、上から順に1段ずつ字下げして経路を示す。
-    const ancestorImageEntries = ancestorPath.replyResponses.map((res, depth) => ({
-      res,
-      depth,
-    }));
-
-    const subTreeMenuItems: ContextMenuItem[] = hasChildTree
-      ? [
-          {
-            id: "copy-subtree-responses",
-            label: "このレス以降のツリーをコピー",
-            icon: <CornerDownRight size={14} />,
-            onSelect: () => {
-              runClipboardCommand(
-                buildReplyTreeCopyText(targetRes, subReplyResponses, threadTitle, threadUrl),
-              );
-            },
-          },
-          {
-            id: "copy-subtree-image",
-            label: "このレス以降のツリーを画像としてコピー",
-            icon: <ImageDown size={14} />,
-            disabled: !canCopyImageToClipboard(viewSurface),
-            onSelect: () => {
-              void copyImageWithNotice(
-                () =>
-                  renderReplyTreeImageBlob(targetRes, subReplyEntries, {
-                    threadTitle,
-                    threadUrl,
-                    theme,
-                    targetDocument: viewDocument,
-                  }),
-                viewSurface,
-                toast,
-                "サブツリー画像",
-              );
-            },
-          },
-        ]
-      : [];
-
-    return [
-      ...subTreeMenuItems,
-      {
-        id: "copy-ancestor-path-responses",
-        label: "ツリー先頭からこのレスまでコピー",
-        icon: <CornerRightUp size={14} />,
-        onSelect: () => {
-          runClipboardCommand(
-            buildReplyTreeCopyText(
-              ancestorPath.sourceRes,
-              ancestorPath.replyResponses,
-              threadTitle,
-              threadUrl,
-            ),
-          );
-        },
-      },
-      {
-        id: "copy-ancestor-path-image",
-        label: "ツリー先頭からこのレスまで画像としてコピー",
-        icon: <ImageUp size={14} />,
-        disabled: !canCopyImageToClipboard(viewSurface),
-        onSelect: () => {
-          void copyImageWithNotice(
-            () =>
-              renderReplyTreeImageBlob(ancestorPath.sourceRes, ancestorImageEntries, {
-                threadTitle,
-                threadUrl,
-                theme,
-                presentation: {
-                  title: `>>${targetRes.num} までの返信経路`,
-                  sourceSectionTitle: "参照元レス",
-                  responsesSectionTitle: "返信レス（上から下）",
-                },
-                targetDocument: viewDocument,
-              }),
-            viewSurface,
-            toast,
-            "返信経路画像",
-          );
-        },
-      },
-    ];
-  };
 
   return (
     <FloatingPopup
@@ -462,10 +236,10 @@ export const ReplyTreePopup: React.FC<{
             <ContextMenu
               x={subTreeMenu.x}
               y={subTreeMenu.y}
-              items={getSubTreeMenuItems(subTreeMenu)}
+              items={subTreeMenuItems}
               // サブツリーメニューも同じ理由で、所属するツリーポップアップとして扱う。
               popupId={popupId}
-              onClose={() => setSubTreeMenu(null)}
+              onClose={closeSubTreeMenu}
             />
           )}
         </>
