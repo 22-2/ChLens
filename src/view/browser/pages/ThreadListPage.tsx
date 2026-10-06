@@ -36,7 +36,6 @@ import {
   writeThreadListSortPreference,
 } from "src/view/browser/components/thread-list-shared";
 import { ThreadTitleNgDialog } from "src/view/browser/components/ThreadTitleNgDialog";
-import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import {
   BOARD_AUTO_REFRESH_CONFIG_KEY,
   MIN_BOARD_AUTO_REFRESH_MS,
@@ -63,7 +62,6 @@ import {
 } from "src/view/browser/hooks/use-tab-store";
 import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
 import { useThreadTitleNgDialog } from "src/view/browser/hooks/use-thread-title-ng-dialog";
-import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import {
   isResolvedBoardTitle,
   type OpenedBoardEntry,
@@ -215,7 +213,6 @@ export const ThreadListPage: React.FC<Props> = ({
   refreshKey,
   isActive,
   isAutoRefreshEnabled = false,
-  scrollContainerRef,
 }) => {
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const { window: viewWindow, document: viewDocument } = viewSurface;
@@ -225,8 +222,6 @@ export const ThreadListPage: React.FC<Props> = ({
     },
     [toast, viewSurface],
   );
-  const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
-  const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const { viewTab } = useTabStore();
   const visitedBoardRef = useRef<{ url: string; lastVisited: number } | null>(null);
   const resolvedBoardTitlesRef = useRef(new Map<string, string>());
@@ -328,20 +323,8 @@ export const ThreadListPage: React.FC<Props> = ({
       pending.splice(0, pending.length - 500);
     }
   }, []);
-  // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
-  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
-  const wheelPagination = useWheelPagination({
-    isEnabled: isActive,
-    isLoading: loading,
-    cooldownScopeKey: manualRefreshScopeKey,
-    containerRef: effectiveScrollContainerRef,
-    edge: "top",
-    onRefresh: requestManualRefresh,
-  });
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "threadList",
-    // 一覧上端のホイールは更新に割り当て、フィルタ開閉との競合を防ぐ。
-    isWheelToggleEnabled: false,
     tabId,
     isActive,
     searchQuery,
@@ -1066,11 +1049,6 @@ export const ThreadListPage: React.FC<Props> = ({
       }
       onDoubleClick={handleDoubleClick}
     >
-      <WheelScrollIndicator
-        {...wheelPagination}
-        threshold={WHEEL_THRESHOLD}
-        portalContainerRef={effectiveScrollContainerRef}
-      />
       {showRefreshOverlay && (
         <div
           className={`thread-list-page__loading-overlay${loading ? " thread-list-page__loading-overlay--visible" : ""}`}
