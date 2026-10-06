@@ -174,6 +174,10 @@ export const ReplyTree: React.FC<{
               depth={depth + 1}
               blurredResNums={blurredResNums}
               ngResNums={ngResNums}
+              // 変更理由: 以前は再帰時に渡し忘れており、2階層目以降の返信で
+              // 「自分」「返信」の印が消えていた。
+              ownResNums={ownResNums}
+              replyToOwnResNums={replyToOwnResNums}
               allowHardNgReveal={allowHardNgReveal}
               threadKey={threadKey}
               onSubTreeMenu={onSubTreeMenu}

@@ -143,6 +143,17 @@ describe("ReplyTreePopup", () => {
     expect(sourceCard).toHaveClass("res--highlighted-persistent");
   });
 
+  it("入れ子の返信にも自分のレスと自分への返信の印を付ける", () => {
+    // 2階層目以降の再帰描画でも、1階層目と同じ判定集合を引き継ぐことを確かめる。
+    render(
+      <ReplyTreePopup {...BASE_PROPS} ownResNums={new Set([4])} replyToOwnResNums={new Set([3])} />,
+    );
+
+    const cardOf = (num: number) => screen.getByText(`name-${num}`).closest(".reply-tree-node");
+    expect(cardOf(4)?.querySelector(".res__badge--own")).not.toBeNull();
+    expect(cardOf(3)?.querySelector(".res__badge--reply-to-own")).not.toBeNull();
+  });
+
   it("子ツリーのないレスにはこのレス以降のメニューを表示しない", () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 
