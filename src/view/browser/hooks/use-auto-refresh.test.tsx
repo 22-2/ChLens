@@ -1558,6 +1558,29 @@ describe("useAutoRefresh", () => {
     expect(scrollBy).not.toHaveBeenCalled();
   });
 
+  it("自動スクロール表示の切り替わりで scroll/wheel リスナーを付け直さない", () => {
+    const { panel, setExtraHeight, scrollBy } = renderScrollableHarness();
+    const addEventListener = vi.spyOn(panel, "addEventListener");
+    const removeEventListener = vi.spyOn(panel, "removeEventListener");
+
+    // 高さが伸びて追従スクロールが走り、インジケータが点灯→消灯するまで進める。
+    setExtraHeight(60);
+    act(() => {
+      resizeObservers[0].trigger();
+      vi.advanceTimersByTime(0);
+    });
+    expect(scrollBy).toHaveBeenCalled();
+    expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent("running");
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent("idle");
+
+    // 以前は表示状態を依存配列に持っていたため、点灯・消灯のたびに解除と再登録をしていた。
+    expect(addEventListener).not.toHaveBeenCalled();
+    expect(removeEventListener).not.toHaveBeenCalled();
+  });
+
   it("自動スクロール状態を短時間維持してステータス表示に使える", () => {
     const onRequestRefresh = vi.fn();
     render(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
