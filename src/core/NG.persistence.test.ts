@@ -99,8 +99,7 @@ describe("NG Rule persistence", () => {
       { kind: "contains", value: "existing" },
       { kind: "contains", value: "added" },
     ]);
-    expect(mocks.configStore.get("ngwords")).toBe(
-      "hide id contains:\n  existing\n\nhide id contains:\n  added",
-    );
+    // 単純なID containsルールは既存ルールへ集約する仕様（765bf5c）のため、ブロックは1つのまま。
+    expect(mocks.configStore.get("ngwords")).toBe("hide id contains:\n  existing\n  added");
   });
 });
