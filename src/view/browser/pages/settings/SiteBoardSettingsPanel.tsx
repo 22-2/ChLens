@@ -3,7 +3,8 @@ import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { platformCookieManager } from "src/app/platform/CookieManager";
-import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
+import { getBoardUrlKey } from "src/core/BoardUrlNormalizer";
+import { OPENED_BOARDS_CONFIG_KEY, parseOpenedBoardEntries } from "src/core/OpenedBoards";
 import { container } from "src/service-container/index";
 import {
   MAX_BOARD_AUTO_REFRESH_MS,
@@ -113,39 +114,12 @@ function deriveBoardTitle(boardUrl: string): string {
 }
 
 function readOpenedBoards(): RawBoardOption[] {
-  const raw = container.config.get("opened_board_entries");
-  if (!raw) {
-    return [];
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return parsed.flatMap((entry: unknown) => {
-      if (typeof entry !== "object" || entry === null) {
-        return [];
-      }
-      const value = entry as { url?: unknown; title?: unknown };
-      if (typeof value.url !== "string") {
-        return [];
-      }
-      const normalizedUrl = normalizeBoardUrl(value.url, { requireCompatibleHost: true });
-      if (normalizedUrl === null) {
-        return [];
-      }
-      return [
-        {
-          url: normalizedUrl,
-          title: typeof value.title === "string" && value.title ? value.title : normalizedUrl,
-        },
-      ];
-    });
-  } catch (error) {
-    console.error("[SiteBoardSettings] 開いた板一覧の読み込みに失敗しました", error);
-    return [];
-  }
+  // 変更理由: 保存形式の解釈は core/OpenedBoards に集約し、取得確認済みの独自ホストの板も
+  // ホーム・板一覧と同じ判断で設定の選択肢へ含める。
+  return parseOpenedBoardEntries(container.config.get(OPENED_BOARDS_CONFIG_KEY)).map((entry) => ({
+    url: entry.url,
+    title: entry.title ? entry.title : entry.url,
+  }));
 }
 
 function readBBSMenuBoards(menu: readonly ParsedBBSMenu[]): RawBoardOption[] {

@@ -1,9 +1,10 @@
 import { BBSMenuHtmlParser, type ParsedBBSMenu } from "packages/ch-lib/src/index";
 import Callbacks from "src/app/Callbacks";
 import { BBSMenuFetcher } from "src/core/BBSMenuFetcher";
-import { getBoardUrlKey, normalizeBBSMenus, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
+import { normalizeBBSMenus } from "src/core/BoardUrlNormalizer";
 import * as History from "src/core/History";
 import { createLogger } from "src/core/logger";
+import { OPENED_BOARDS_CONFIG_KEY, parseOpenedBoardEntries } from "src/core/OpenedBoards";
 import { OtherBoardsCollector } from "src/core/OtherBoardsCollector";
 import * as ReadState from "src/core/ReadState.js";
 import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
@@ -12,7 +13,6 @@ import type { IBBSMenuResult } from "src/service-container/interfaces";
 
 const logger = createLogger("BBSMenuModel");
 const BBSMENU_CACHE_KEY = "bbsmenu";
-const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 
 // サービスコンテナ経由の利用側と同じ形を保つため、インターフェース側の型をそのまま使う。
 export type BBSMenuData = IBBSMenuResult;
@@ -46,61 +46,17 @@ export class BBSMenuModel {
       // 変更理由: ReadStateの*.5ch.ioや古い閲覧履歴は板一覧の正本ではなく、
       // 「一度開いた板」へ過去の板を再注入していたため、明示記録だけを採用する。
       includeLegacySources: false,
-      getOpenedBoards: () => {
-        const raw = container.config.get(OPENED_BOARDS_CONFIG_KEY);
-        if (!raw) {
-          return [];
-        }
-
-        try {
-          const parsed = JSON.parse(raw) as Array<{
-            url?: unknown;
-            title?: unknown;
-            subjectVerified?: unknown;
-          }>;
-          if (!Array.isArray(parsed)) {
-            return [];
-          }
-
-          // 外部サイトの旧記録は除き、スレ一覧の取得確認済みの板はホストを列挙せずに残す。
-          const seenBoardKeys = new Set<string>();
-          const normalizedEntries = parsed.reduce<
-            Array<{ url: string; title?: string; subjectVerified?: true }>
-          >((acc, entry) => {
-            if (!entry || typeof entry.url !== "string") {
-              return acc;
-            }
-
-            const normalizedUrl = normalizeBoardUrl(entry.url, {
-              requireCompatibleHost: true,
-              subjectVerified: entry.subjectVerified === true,
-            });
-            const boardKey = normalizedUrl === null ? null : getBoardUrlKey(normalizedUrl);
-            if (normalizedUrl === null || boardKey === null || seenBoardKeys.has(boardKey)) {
-              return acc;
-            }
-
-            seenBoardKeys.add(boardKey);
-            const confirmation =
-              entry.subjectVerified === true ? { subjectVerified: true as const } : {};
-            if (typeof entry.title === "string") {
-              acc.push({ url: normalizedUrl, title: entry.title, ...confirmation });
-              return acc;
-            }
-
-            acc.push({ url: normalizedUrl, ...confirmation });
-            return acc;
-          }, []);
-
-          // 板一覧はURLと板名だけを使うが、同じ保存レコードには閲覧日時なども含まれる。
-          // 読み取り用の射影を書き戻すとF5後に日時が消えるため、ここでは永続データを変更しない。
-          return normalizedEntries;
-        } catch (error) {
-          // 破損データは空扱いにして板一覧表示を継続する。
-          console.error("開いた板の記録を板一覧へ読み込めませんでした", error);
-          return [];
-        }
-      },
+      getOpenedBoards: () =>
+        // 外部サイトの旧記録は除き、スレ一覧の取得確認済みの板はホストを列挙せずに残す。
+        // 板一覧はURLと板名だけを使うが、同じ保存レコードには閲覧日時なども含まれる。
+        // 読み取り用の射影を書き戻すとF5後に日時が消えるため、ここでは永続データを変更しない。
+        parseOpenedBoardEntries(container.config.get(OPENED_BOARDS_CONFIG_KEY)).map(
+          ({ url, title, subjectVerified }) => ({
+            url,
+            ...(title !== undefined ? { title } : {}),
+            ...(subjectVerified ? { subjectVerified } : {}),
+          }),
+        ),
       getAllReadStates: () => ReadState.getAll(),
       getUniqueHistory: () => History.getUnique(),
       getCachedBoardTitles: () => {

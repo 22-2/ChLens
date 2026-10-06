@@ -18,8 +18,8 @@ const _parse = (protocol) =>
     let boardTitle;
     // textContent は型上 null になり得るため空文字へフォールバックする
     // (要素が欠けた不正なRSSでも従来同様パース続行させる)。
-    const url = item.T("guid")[0].textContent ?? "";
-    let title = decodeCharReference(item.T("title")[0].textContent ?? "");
+    const url = item.getElementsByTagName("guid")[0].textContent ?? "";
+    let title = decodeCharReference(item.getElementsByTagName("title")[0].textContent ?? "");
     const m = title.match(/\((\d+)\)$/);
     title = title.replace(/\(\d+\)$/, "");
     const boardUrl = new ChURL(url).toBoard();
@@ -30,7 +30,7 @@ const _parse = (protocol) =>
     }
     return {
       url: setProtocol(url, protocol),
-      createdAt: Date.parse(item.T("pubDate")[0].textContent ?? ""),
+      createdAt: Date.parse(item.getElementsByTagName("pubDate")[0].textContent ?? ""),
       title,
       resCount: m != null ? m[1] : 0,
       boardUrl: boardUrl.href,
@@ -105,7 +105,7 @@ export default class ThreadSearch {
     try {
       const parser = new DOMParser();
       const rss = parser.parseFromString(body, "application/xml");
-      result = Array.from(rss.T("item"));
+      result = Array.from(rss.getElementsByTagName("item"));
       //{result} = JSON.parse(body)
     } catch (error) {
       throw new Error("検索のJSONのパースに失敗しました", { cause: error });

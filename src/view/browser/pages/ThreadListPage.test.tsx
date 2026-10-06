@@ -10,6 +10,7 @@ import {
   THREAD_LIST_COLUMNS,
 } from "src/view/browser/components/thread-list-shared";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
+import { getAutoRefreshThreadPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -854,7 +855,9 @@ describe("ThreadListPage", () => {
             pinned: false,
             reloadKey: 0,
             autoRefreshEnabled: true,
-            autoRefreshPageKey: `thread:${threadUrl}`,
+            // 変更理由: キーはURL正規化（旧ホスト→現行ホスト）を通して生成されるため、
+            // 文字列を直接組み立てず本番と同じヘルパーで作る。
+            autoRefreshPageKey: getAutoRefreshThreadPageKey(threadUrl),
           },
         ],
       },

@@ -1,11 +1,11 @@
 import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { OpenedBoardEntry } from "src/core/OpenedBoards";
 import { useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import {
   buildCategoryId,
   deriveOpenedBoardTitle,
   normalizeBoardUrlForRemove,
-  type OpenedBoardEntry,
 } from "src/view/browser/pages/board-list/board-list-utils";
 
 interface DisplayBoard {

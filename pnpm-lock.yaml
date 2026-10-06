@@ -318,9 +318,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.4
         version: 6.1.1(@voidzero-dev/vite-plus-core@1.0.0(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2))
-      ShortQuery.js:
-        specifier: github:S--Minecraft/ShortQuery.js#1.1.0
-        version: https://codeload.github.com/S--Minecraft/ShortQuery.js/tar.gz/6e809f8007e6a9efb677c0e32c69d5c543a38edd
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -3684,10 +3681,6 @@ packages:
 
   '@yuku-toolchain/types@0.9.5':
     resolution: {integrity: sha512-KiuLNNgX9uNealaWAR+G3/cMXnRk9x4TY2EkYe/KIag+UPdwiA0RRf1hr1WAxzTP8KGzCTkqUdLPvqh32sEO3w==}
-
-  ShortQuery.js@https://codeload.github.com/S--Minecraft/ShortQuery.js/tar.gz/6e809f8007e6a9efb677c0e32c69d5c543a38edd:
-    resolution: {gitHosted: true, integrity: sha512-IbVzNrAwDJxxxNB0bo/A9HEntMvkgJdVq95hDnwJ9/UJHCTOJ1deN/zwQodf8HEH+DLrqtQHISVb7UuPvbvNbw==, tarball: https://codeload.github.com/S--Minecraft/ShortQuery.js/tar.gz/6e809f8007e6a9efb677c0e32c69d5c543a38edd}
-    version: 1.1.0
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -8953,8 +8946,6 @@ snapshots:
     optional: true
 
   '@yuku-toolchain/types@0.9.5': {}
-
-  ShortQuery.js@https://codeload.github.com/S--Minecraft/ShortQuery.js/tar.gz/6e809f8007e6a9efb677c0e32c69d5c543a38edd: {}
 
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:

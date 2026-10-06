@@ -1,5 +1,5 @@
 import { BBSMenuModel } from "src/core/BBSMenuModel";
-import { parseOpenedBoardEntries } from "src/view/browser/pages/board-list/board-list-utils";
+import { parseOpenedBoardEntries } from "src/core/OpenedBoards";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { config } = vi.hoisted(() => ({ config: new Map<string, string>() }));

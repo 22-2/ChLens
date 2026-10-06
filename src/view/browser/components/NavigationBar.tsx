@@ -25,21 +25,10 @@ import React, {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
-import { container } from "src/service-container/index";
 import {
   type BrowserCommandContext,
   resolveBrowserCommands,
-  type ResolvedBrowserCommand,
 } from "src/view/browser/commands/browser-commands";
-import { runBrowserCommand } from "src/view/browser/commands/command-executor";
-import {
-  addRecentCommandId,
-  normalizeRecentCommandIds,
-} from "src/view/browser/commands/command-history";
-import {
-  loadRecentCommandIds,
-  saveRecentCommandIds,
-} from "src/view/browser/commands/command-palette-history";
 import {
   commandPalette,
   commandPaletteStore,
@@ -52,8 +41,11 @@ import {
   BOTTOM_PANEL_WRITE_TAB_ID,
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
+import { useBrowserCommandRunner } from "src/view/browser/hooks/use-browser-command-runner";
+import { useNavHistoryMenuItems } from "src/view/browser/hooks/use-nav-history-menu-items";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { usePageBookmark } from "src/view/browser/hooks/use-page-bookmark";
+import { useResponseJumpDialog } from "src/view/browser/hooks/use-response-jump-dialog";
 import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
 import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
 import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
@@ -73,12 +65,6 @@ import {
   type QuickAccessFilterPageType,
 } from "src/view/browser/utils/filter-toolbar-events";
 import {
-  getLegacyBookmarkService,
-  getLegacyHistoryService,
-  waitForLegacyBookmarkReady,
-} from "src/view/browser/utils/legacy-app";
-import {
-  getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
   parseOmnibarBrowserPage,
 } from "src/view/browser/utils/link-routing";
@@ -87,189 +73,25 @@ import {
   runManualRefresh,
   useManualRefreshCooldown,
 } from "src/view/browser/utils/manual-refresh";
-import {
-  mergeOmnibarSources,
-  type OmnibarBoardSource,
-  type OmnibarBookmarkSource,
-  type OmnibarHistorySource,
-  type OmnibarSuggestion,
-} from "src/view/browser/utils/omnibar";
+import { type OmnibarSuggestion } from "src/view/browser/utils/omnibar";
+import { loadOmnibarSources } from "src/view/browser/utils/omnibar-sources";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
   createQuickAccessPage,
   createSettingsPage,
   type QuickAccessPage,
 } from "src/view/browser/utils/tab-pages";
-import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 interface MenuPosition {
   x: number;
   y: number;
 }
 
-interface LegacyReadStateLike {
-  read?: unknown;
-}
-
-interface LegacyBookmarkLike {
-  url?: unknown;
-  title?: unknown;
-  boardTitle?: unknown;
-  readState?: LegacyReadStateLike | undefined;
-}
-
-interface LegacyHistoryLike {
-  url?: unknown;
-  title?: unknown;
-  boardTitle?: unknown;
-  viewedDate?: unknown;
-  date?: unknown;
-}
-
-const OMNIBAR_HISTORY_FETCH_COUNT = 300;
 const OMNIBAR_MAX_SUGGESTIONS = 8;
 
 const NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
 const NOOP_OPEN_SIMILAR_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
 const NOOP_OPEN_ARCHIVE_REPLAY_WINDOW = (): void => undefined;
-
-function normalizeString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
-}
-
-function toFiniteNumber(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === "string") {
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
-}
-
-function normalizeLegacyTimestamp(value: unknown): number {
-  const normalized = Math.trunc(toFiniteNumber(value));
-  return normalized > 0 ? normalized : 0;
-}
-
-function deriveBoardTitle(threadUrl: string): string {
-  try {
-    const parsed = new window.URL(threadUrl);
-    // 変更理由: URLから板名を再抽出せず、共有処理の結果を表示名だけこの関数で整形する。
-    const boardUrl = getBoardUrlFromThreadUrl(threadUrl);
-    if (boardUrl !== threadUrl) {
-      const boardParsed = new window.URL(boardUrl);
-      if (/^\/[^/]+\/$/.test(boardParsed.pathname)) {
-        return `${parsed.hostname}/${boardParsed.pathname.replace(/^\//, "").replace(/\/$/, "")}`;
-      }
-    }
-
-    return parsed.hostname;
-  } catch {
-    return "";
-  }
-}
-
-function deriveBoardTitleFromBoardUrl(boardUrl: string): string {
-  try {
-    const parsed = new URL(boardUrl);
-    const pathPart = parsed.pathname.replace(/^\/|\/$/g, "");
-    return pathPart ? `${parsed.hostname}/${pathPart}` : parsed.hostname;
-  } catch {
-    return "";
-  }
-}
-
-async function readBookmarkSources(): Promise<OmnibarBookmarkSource[]> {
-  await waitForLegacyBookmarkReady();
-
-  const bookmarkService = getLegacyBookmarkService();
-  const rawThreads = bookmarkService?.getAllThreads?.();
-  const rawBoards = bookmarkService?.getAllBoards?.();
-
-  const rawItems = bookmarkService?.getAll?.() ?? [
-    ...(Array.isArray(rawThreads) ? (rawThreads as unknown[]) : []),
-    ...(Array.isArray(rawBoards) ? (rawBoards as unknown[]) : []),
-  ];
-  if (!Array.isArray(rawItems)) {
-    return [];
-  }
-
-  return rawItems
-    .map<OmnibarBookmarkSource | null>((rawItem) => {
-      const item = rawItem as LegacyBookmarkLike;
-      const url = normalizeString(item.url);
-      if (!url) {
-        return null;
-      }
-
-      const parsed = parseInternalBrowserPage(url);
-      const boardTitle = normalizeString(item.boardTitle);
-
-      return {
-        url,
-        title: normalizeString(item.title, url),
-        boardTitle:
-          parsed?.type === "threadList"
-            ? boardTitle || deriveBoardTitleFromBoardUrl(url)
-            : boardTitle || deriveBoardTitle(url),
-      };
-    })
-    .filter((item): item is OmnibarBookmarkSource => item !== null);
-}
-
-async function readHistorySources(): Promise<OmnibarHistorySource[]> {
-  const historyService = getLegacyHistoryService();
-
-  if (!historyService?.get) {
-    return [];
-  }
-
-  const raw = await historyService.get(0, OMNIBAR_HISTORY_FETCH_COUNT);
-  if (!Array.isArray(raw)) {
-    return [];
-  }
-
-  return raw
-    .map<OmnibarHistorySource | null>((value) => {
-      const item = value as LegacyHistoryLike;
-      const url = normalizeString(item.url);
-      if (!url) {
-        return null;
-      }
-
-      return {
-        url,
-        title: normalizeString(item.title, url),
-        boardTitle: normalizeString(item.boardTitle, deriveBoardTitle(url)),
-        viewedDate: normalizeLegacyTimestamp(item.viewedDate ?? item.date),
-      };
-    })
-    .filter((item): item is OmnibarHistorySource => item !== null);
-}
-
-async function readBBSMenuBoardSources(): Promise<OmnibarBoardSource[]> {
-  try {
-    const result = await container.bbsMenu.get(false);
-    if (result.status !== "success" || !result.menu) {
-      return [];
-    }
-    return result.menu.flatMap((menu) =>
-      menu.categories.flatMap((category) =>
-        category.boards.map((board) => ({
-          url: board.url,
-          name: board.name,
-          // 変更理由: bbsmenu の板候補は board.name が既に正式な板名なので、
-          // URL 派生ラベルを boardTitle に入れると遷移直後の再解決判定を誤らせる。
-          boardTitle: normalizeString(board.name),
-        })),
-      ),
-    );
-  } catch {
-    return [];
-  }
-}
 
 // URLバーからの入力でページ種別を推定してナビゲートする
 function navigateByUrl(url: string, dispatch: ReturnType<typeof useTabStore>["dispatch"]) {
@@ -335,13 +157,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     commandPaletteStore.getState,
     commandPaletteStore.getState,
   );
-  const [runningCommandIds, setRunningCommandIds] = useState<Set<string>>(() => new Set());
-  const [recentCommandIds, setRecentCommandIds] = useState<string[]>([]);
-  const recentCommandIdsRef = useRef(recentCommandIds);
-  recentCommandIdsRef.current = recentCommandIds;
-  const [isResponseJumpDialogOpen, setIsResponseJumpDialogOpen] = useState(false);
-  const [responseJumpValue, setResponseJumpValue] = useState("");
-  const [responseJumpError, setResponseJumpError] = useState<string | null>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const tabBarOrientation = useTabBarOrientation();
   // 変更理由: 垂直モードではペイン上部のボタン行をなくし、自ペインの TitleBar 受け口へ
@@ -365,21 +180,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const useTitleBarSlot = tabBarOrientation === "vertical" && titleBarSlot !== null;
 
   useEffect(() => {
-    let cancelled = false;
-    void loadRecentCommandIds().then((loaded) => {
-      if (cancelled) return;
-      // 保存済み履歴の読み込み前にコマンドを実行しても、その実行を古い履歴で
-      // 上書きしないよう、現在のメモリ上の履歴を優先して結合する。
-      const merged = normalizeRecentCommandIds([...recentCommandIdsRef.current, ...loaded]);
-      recentCommandIdsRef.current = merged;
-      setRecentCommandIds(merged);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     // 変更理由: グローバルなトーストはペイン内のURLバーと別階層にあるため、
     // 展開中のペインを共有してURLバーの有無に応じた位置へ表示する。
     setUrlBarExpanded(isUrlExpanded);
@@ -391,53 +191,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const currentAutoRefreshPageKey = getAutoRefreshPageKey(viewPage);
   const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(viewTab, viewPage);
 
-  const openResponseJumpDialog = useCallback(() => {
-    if (viewPage.type !== "thread") return;
-
-    // コマンド実行後にオムニバーを確実に閉じ、数値入力へ操作を引き継ぐ。
-    commandPalette.close();
-    setResponseJumpValue("");
-    setResponseJumpError(null);
-    setIsResponseJumpDialogOpen(true);
-  }, [viewPage.type]);
-
-  const closeResponseJumpDialog = useCallback(() => {
-    setIsResponseJumpDialogOpen(false);
-    setResponseJumpError(null);
-  }, []);
-
-  const submitResponseJump = useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      if (viewPage.type !== "thread") return;
-
-      if (!/^\d+$/.test(responseJumpValue.trim())) {
-        setResponseJumpError("1以上のレス番号を入力してください");
-        return;
-      }
-
-      const resNum = Number.parseInt(responseJumpValue.trim(), 10);
-      if (!Number.isSafeInteger(resNum) || resNum <= 0) {
-        setResponseJumpError("1以上のレス番号を入力してください");
-        return;
-      }
-
-      requestThreadResJump(viewPage.threadUrl, resNum);
-      closeResponseJumpDialog();
-    },
-    [closeResponseJumpDialog, responseJumpValue, viewPage],
-  );
-  const loadOmnibarEntries = useCallback(async () => {
-    const [historyItems, bookmarkItems, boardItems] = await Promise.all([
-      readHistorySources(),
-      readBookmarkSources(),
-      readBBSMenuBoardSources(),
-    ]);
-
-    // 変更理由: URLバー候補は履歴・お気に入り・bbsmenu板を統合し、
-    // 利用者の直近行動と明示的なお気に入りおよび板一覧を1ストロークで辿れるようにする。
-    return mergeOmnibarSources(bookmarkItems, historyItems, boardItems);
-  }, []);
+  const {
+    isResponseJumpDialogOpen,
+    responseJumpValue,
+    setResponseJumpValue,
+    responseJumpError,
+    openResponseJumpDialog,
+    closeResponseJumpDialog,
+    submitResponseJump,
+  } = useResponseJumpDialog(viewPage);
 
   const openSuggestion = useCallback(
     (suggestion: OmnibarSuggestion) => {
@@ -565,47 +327,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       viewTab,
     ],
   );
-  const contextRef = useRef(context);
-  contextRef.current = context;
+  const { runningCommandIds, recentCommandIds, executeCommand } = useBrowserCommandRunner({
+    context,
+    onBeforeExecute: () => {
+      commandPalette.close();
+      urlInputRef.current?.blur();
+    },
+  });
 
   const commands = useMemo(
     () => resolveBrowserCommands(context, runningCommandIds),
     [context, runningCommandIds],
-  );
-
-  const recordCommand = useCallback((commandId: string) => {
-    const next = addRecentCommandId(recentCommandIdsRef.current, commandId);
-    recentCommandIdsRef.current = next;
-    setRecentCommandIds(next);
-    void saveRecentCommandIds(next);
-  }, []);
-
-  const executeCommand = useCallback(
-    async (command: ResolvedBrowserCommand) => {
-      await runBrowserCommand({
-        commandId: command.id,
-        context: contextRef.current,
-        onBeforeExecute: () => {
-          commandPalette.close();
-          urlInputRef.current?.blur();
-        },
-        onCommandRecorded: recordCommand,
-        onRunningChange: (commandId, running) => {
-          setRunningCommandIds((current) => {
-            if (running) {
-              if (current.has(commandId)) return current;
-              return new Set(current).add(commandId);
-            }
-
-            if (!current.has(commandId)) return current;
-            const next = new Set(current);
-            next.delete(commandId);
-            return next;
-          });
-        },
-      });
-    },
-    [recordCommand],
   );
 
   const {
@@ -627,7 +359,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   } = useOmnibar({
     displayUrl,
     maxSuggestions: OMNIBAR_MAX_SUGGESTIONS,
-    loadEntries: loadOmnibarEntries,
+    loadEntries: loadOmnibarSources,
     onSelectSuggestion: openSuggestion,
     onSubmitInput: (url) => {
       navigateByUrl(url, dispatch);
@@ -893,46 +625,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     }
   }, [viewPage.type]);
 
-  // 履歴タイトルは板名とスレ名が連結されて長くなりやすいため、
-  // 戻る/進むメニューでは省略せず全文を折り返して見せる。
-
-  const backHistoryItems = useMemo(
-    () =>
-      viewTab.history
-        .map((page, index) => ({ page, index }))
-        .filter(({ index }) => index < viewTab.currentIndex)
-        .sort((a, b) => b.index - a.index)
-        .map(({ page, index }) => ({
-          id: `back-${index}`,
-          label: page.title,
-          allowMultilineLabel: true,
-          onSelect: () => dispatch(tabActions.goToHistoryIndex(index)),
-          onAuxSelect: (button: number) => {
-            if (button !== 1) return;
-            dispatch(tabActions.openInNewTab(page, { background: true }));
-          },
-        })),
-    [dispatch, viewTab.currentIndex, viewTab.history],
-  );
-
-  const forwardHistoryItems = useMemo(
-    () =>
-      viewTab.history
-        .map((page, index) => ({ page, index }))
-        .filter(({ index }) => index > viewTab.currentIndex)
-        .sort((a, b) => a.index - b.index)
-        .map(({ page, index }) => ({
-          id: `forward-${index}`,
-          label: page.title,
-          allowMultilineLabel: true,
-          onSelect: () => dispatch(tabActions.goToHistoryIndex(index)),
-          onAuxSelect: (button: number) => {
-            if (button !== 1) return;
-            dispatch(tabActions.openInNewTab(page, { background: true }));
-          },
-        })),
-    [dispatch, viewTab.currentIndex, viewTab.history],
-  );
+  const { backHistoryItems, forwardHistoryItems } = useNavHistoryMenuItems(viewTab, dispatch);
 
   const menuItems = useMemo(
     () => [

@@ -74,11 +74,6 @@ describe("chServerMoveDetect", () => {
       close() {}
     };
 
-    globalThis.$__ = () => ({
-      innerHTML: "",
-      textContent: "",
-    });
-
     globalThis.app = {
       message: { send: vi.fn() },
       replaceAll: (str, before, after) => str.split(before).join(after),

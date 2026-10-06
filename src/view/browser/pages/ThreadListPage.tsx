@@ -1,12 +1,9 @@
 import { ChURL } from "packages/ch-lib/src/index";
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
-import {
-  getBoardUrlKey,
-  normalizeBoardUrl as normalizeKnownBoardUrl,
-} from "src/core/BoardUrlNormalizer";
+import { upsertOpenedBoardEntry } from "src/core/OpenedBoards";
 import { container } from "src/service-container/index";
-import type { IReadState, IThread } from "src/service-container/interfaces";
+import type { IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
 import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
@@ -53,38 +50,21 @@ import {
 } from "src/view/browser/hooks/use-page-count-status";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
-import {
-  useActivePaneId,
-  usePaneId,
-  useTabPanes,
-  useTabStore,
-  useTabViewState,
-} from "src/view/browser/hooks/use-tab-store";
+import { useTabStore, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
 import { useThreadTitleNgDialog } from "src/view/browser/hooks/use-thread-title-ng-dialog";
-import {
-  isResolvedBoardTitle,
-  type OpenedBoardEntry,
-  parseOpenedBoardEntries,
-} from "src/view/browser/pages/board-list/board-list-utils";
+import { isResolvedBoardTitle } from "src/view/browser/pages/board-list/board-list-utils";
+import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
+import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";
 import {
   canGoBack,
   canGoForward,
-  getCurrentPage,
   type Tab,
   type ThreadListPage as ThreadListPageType,
 } from "src/view/browser/types";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
-import {
-  getAutoRefreshThreadPageKey,
-  isAutoRefreshEnabledForPage,
-} from "src/view/browser/utils/auto-refresh-pages";
-import {
-  consumeManualRefresh,
-  getManualRefreshScopeKey,
-  runManualRefresh,
-} from "src/view/browser/utils/manual-refresh";
+import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
 import { ThreadListView } from "src/view/shared/ThreadListView";
@@ -109,8 +89,6 @@ export type {
   ThreadListSortDirection,
   ThreadListSortPreference,
 } from "src/view/browser/components/thread-list-shared";
-const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
-const MAX_OPENED_BOARD_ENTRIES = 500;
 
 interface Props {
   tabId: string;
@@ -121,77 +99,6 @@ interface Props {
   isActive: boolean;
   isAutoRefreshEnabled?: boolean;
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
-}
-
-function readOpenedBoardEntries(): OpenedBoardEntry[] {
-  const raw = container.config.get(OPENED_BOARDS_CONFIG_KEY);
-  if (!raw) {
-    return [];
-  }
-
-  return parseOpenedBoardEntries(raw).map((entry) => ({
-    url: entry.url,
-    title: entry.title ?? "",
-    lastVisited: entry.lastVisited,
-    ...(entry.subjectVerified ? { subjectVerified: true as const } : {}),
-  }));
-}
-
-let openedBoardWrite = Promise.resolve();
-
-function upsertOpenedBoardEntry(
-  boardUrl: string,
-  boardTitle: string | null,
-  lastVisited?: number,
-  subjectVerified = false,
-): void {
-  const normalizedUrl = normalizeKnownBoardUrl(boardUrl);
-  if (normalizedUrl === null) {
-    // 板のパスとして解釈できないURLは、取得確認があっても保存対象から除外する。
-    return;
-  }
-  const nextTitle = boardTitle && boardTitle.trim() !== "" ? boardTitle : undefined;
-  // 板の初回記録と遅れて届く板名、複数タブの保存が互いを上書きしないよう順番に保存する。
-  openedBoardWrite = openedBoardWrite
-    .then(async () => {
-      const entries = readOpenedBoardEntries();
-      const key = getBoardUrlKey(normalizedUrl);
-      const existing = entries.find((entry) => getBoardUrlKey(entry.url) === key);
-      const verified = subjectVerified || existing?.subjectVerified === true;
-      if (
-        !normalizeKnownBoardUrl(normalizedUrl, {
-          requireCompatibleHost: true,
-          subjectVerified: verified,
-        })
-      )
-        return;
-      // 独自ホストの取得確認をレコードへ残し、ホーム・板一覧・再起動で同じ判断を使う。
-      const needsConfirmation = !normalizeKnownBoardUrl(normalizedUrl, {
-        requireCompatibleHost: true,
-      });
-      const updated: OpenedBoardEntry = {
-        url: normalizedUrl,
-        title: nextTitle ?? existing?.title ?? "",
-        lastVisited: lastVisited ?? existing?.lastVisited,
-        ...(verified && needsConfirmation ? { subjectVerified: true as const } : {}),
-      };
-      if (
-        existing &&
-        existing.title === updated.title &&
-        existing.lastVisited === updated.lastVisited &&
-        existing.subjectVerified === updated.subjectVerified
-      )
-        return;
-      const nextEntries = [
-        updated,
-        ...entries.filter((entry) => getBoardUrlKey(entry.url) !== key),
-      ];
-      await container.config.set(
-        OPENED_BOARDS_CONFIG_KEY,
-        JSON.stringify(nextEntries.slice(0, MAX_OPENED_BOARD_ENTRIES)),
-      );
-    })
-    .catch((error) => console.error("開いた板の保存に失敗しました", { boardUrl, error }));
 }
 
 function resolveInitialBoardTitle(page: ThreadListPageType): string | null {
@@ -246,10 +153,15 @@ export const ThreadListPage: React.FC<Props> = ({
   const { setPageCount } = usePageCountStatus();
   const pageCountKey = getThreadListPageCountKey(tabId, page.boardUrl);
   const bookmarkRevision = useBookmarkRevision();
-  const [threads, setThreads] = useState<IThread[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showRefreshOverlay, setShowRefreshOverlay] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { threads, setThreads, loading, showRefreshOverlay, error, fetchThreads } =
+    useThreadListData({
+      boardUrl: page.boardUrl,
+      refreshKey,
+      manualRefreshScopeKey,
+      visitedBoardRef,
+      resolvedBoardTitlesRef,
+    });
+  useThreadListReadStateSync({ boardUrl: page.boardUrl, isActive, setThreads });
   const [boardAutoRefreshIntervalMs, setBoardAutoRefreshIntervalMs] = useState(() =>
     readBoardAutoRefreshIntervalMs(page.boardUrl),
   );
@@ -274,55 +186,7 @@ export const ThreadListPage: React.FC<Props> = ({
   });
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const previousBoardUrlRef = useRef(page.boardUrl);
-  const previousRefreshKeyRef = useRef(refreshKey);
   const skipViewStateUpdateRef = useRef(false);
-  // 変更理由: 非表示中の read_state 系 message を保留し、表示復帰時に適用するため。
-  // 2ペイン時は自ペインの表タブでもフォーカス外なら裏側扱いにし、スレ側の
-  // 自動更新による既読書き換えで一覧がチラつかないようにする。
-  // タイマー実行自体は止めない（フォーカス外でも自動更新は継続する）。
-  const ownPaneId = usePaneId();
-  const focusedPaneId = useActivePaneId();
-  const { panes } = useTabPanes();
-  const isForeground = isActive && ownPaneId === focusedPaneId;
-  const isForegroundRef = useRef(isForeground);
-  isForegroundRef.current = isForeground;
-  const autoRefreshingThreadPageKeys = useMemo(() => {
-    const pageKeys = new Set<string>();
-
-    for (const pane of panes) {
-      const activeTab = pane.tabs.find((tab) => tab.id === pane.activeTabId);
-      if (!activeTab) {
-        continue;
-      }
-
-      const activePage = getCurrentPage(activeTab);
-      if (activePage.type === "thread" && isAutoRefreshEnabledForPage(activeTab, activePage)) {
-        pageKeys.add(getAutoRefreshThreadPageKey(activePage.threadUrl));
-      }
-    }
-
-    return pageKeys;
-  }, [panes]);
-  const autoRefreshingThreadPageKeysRef = useRef(autoRefreshingThreadPageKeys);
-  autoRefreshingThreadPageKeysRef.current = autoRefreshingThreadPageKeys;
-  const pendingReadStateRef = useRef<{ updated: IReadState[]; removed: string[] }>({
-    updated: [],
-    removed: [],
-  });
-  // 変更理由: 長時間フォーカスが戻らない場合も想定し、同一スレの古い既読は
-  // 最新だけ残して保留列の肥大化を防ぐ。ref のみ触るため useCallback で固定する。
-  const enqueuePendingReadState = useCallback((readState: IReadState) => {
-    const pending = pendingReadStateRef.current.updated;
-    const existingIndex = pending.findIndex((entry) => entry.url === readState.url);
-    if (existingIndex >= 0) {
-      pending[existingIndex] = readState;
-      return;
-    }
-    pending.push(readState);
-    if (pending.length > 500) {
-      pending.splice(0, pending.length - 500);
-    }
-  }, []);
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     pageType: "threadList",
     tabId,
@@ -341,248 +205,6 @@ export const ThreadListPage: React.FC<Props> = ({
   });
   const { open: openThreadTitleNgDialog } = threadTitleNgDialog;
   const { column: sortColumn, direction: sortDirection } = sortPreference;
-
-  const fetchThreads = useCallback(async () => {
-    const startedAt = Date.now();
-    const isRefresh = previousRefreshKeyRef.current !== refreshKey;
-    previousRefreshKeyRef.current = refreshKey;
-    if (isRefresh) consumeManualRefresh(manualRefreshScopeKey);
-    setLoading(true);
-    if (isRefresh) {
-      setShowRefreshOverlay(true);
-    }
-    setError(null);
-    try {
-      // container経由でBoardサービスにアクセス
-      const result = await container.board.getThreads(page.boardUrl);
-      setThreads(result.threads);
-      if (!result.message && result.threads.length > 0) {
-        // 実際にスレ一覧を取得・解析できた板だけを確認し、ホストの固定リストを不要にする。
-        // 名前が先に届く場合も拾い、取得完了の時刻で閲覧日時を進めない。
-        const visitedAt =
-          visitedBoardRef.current?.url === page.boardUrl
-            ? visitedBoardRef.current.lastVisited
-            : startedAt;
-        upsertOpenedBoardEntry(
-          page.boardUrl,
-          resolvedBoardTitlesRef.current.get(page.boardUrl) ?? null,
-          visitedAt,
-          true,
-        );
-      }
-      if (result.threads.length > 0 || !result.message) {
-        // 変更理由: 注意メッセージ付きの空結果で直前の正常キャッシュを上書きすると、
-        // 戻る操作時に復元できず誤警告だけが残るため、失敗相当の空結果は保存しない。
-        void setThreadListCache(page.boardUrl, result.threads);
-      }
-      // 戻る操作直後は「取得成功 + 注意メッセージ」が返る場合があるため、
-      // 一覧を描画できる件数がある間はエラー文言を出さずUIの連続性を優先する。
-      if (result.message && result.threads.length === 0) {
-        const cached = await getThreadListCache(page.boardUrl);
-        if (cached && cached.length > 0) {
-          // 変更理由: 初回起動後に履歴からスレ一覧へ戻る際、サービスの注意メッセージと
-          // IDBキャッシュ復元が競合しても、表示可能な一覧があるなら誤警告を出さない。
-          setThreads(cached);
-        } else {
-          setError(result.message);
-        }
-      }
-    } catch (e) {
-      console.error("[ChLens] スレッド一覧の取得に失敗しました:", {
-        boardUrl: page.boardUrl,
-        error: e,
-      });
-      const cached = await getThreadListCache(page.boardUrl);
-      if (cached && cached.length > 0) {
-        // 変更理由: 一時的な通信失敗でもキャッシュから一覧を復元できる場合は、画面上部を
-        // エラーで塞がず、利用可能な直前データを優先する。詳細な失敗はログに残す。
-        setThreads(cached);
-      } else {
-        setError(e instanceof Error ? e.message : "スレッド一覧の取得に失敗しました");
-      }
-    } finally {
-      setLoading(false);
-      // 変更理由: 完了後のフェード用にスピナーを残すとロード時間より長く見えるため、
-      // 成功・失敗のどちらでも取得完了と同時に更新表示を終了する。
-      setShowRefreshOverlay(false);
-    }
-    // refreshKeyが変わったとき（更新ボタン押下）に再取得を走らせる
-  }, [manualRefreshScopeKey, page.boardUrl, refreshKey]);
-
-  // 変更理由: IDBキャッシュから前回のスレ一覧を復元し、新しいデータの取得中は古い結果を表示し続ける。
-  useEffect(() => {
-    void (async () => {
-      const cached = await getThreadListCache(page.boardUrl);
-      if (cached && cached.length > 0) {
-        setThreads(cached);
-      }
-    })();
-  }, [page.boardUrl]);
-
-  useEffect(() => {
-    void fetchThreads();
-  }, [fetchThreads]);
-
-  useEffect(() => {
-    // NG設定が更新されたら、一覧のスレッドに対しても判定を再実行する。
-    const handleNgChanged = () => {
-      setThreads((prev) =>
-        prev.map((thread) => {
-          const ngResult = container.ng.isNGBoard(thread.title, page.boardUrl, thread.resCount);
-          // 変更理由: hideは一覧から除外し、demoteだけを折りたたみ領域へ送る。
-          const highlight =
-            ngResult?.action === "highlight" ||
-            ngResult?.type === "HighlightTitle" ||
-            ngResult?.type === "RegExpHighlightTitle";
-          const demoted = ngResult?.action === "demote";
-
-          return {
-            ...thread,
-            ng: highlight || demoted ? null : ngResult,
-            demoted: demoted ? ngResult : null,
-            highlight: highlight ? ngResult : null,
-          };
-        }),
-      );
-    };
-
-    container.message.on("ng_changed", handleNgChanged);
-    return () => {
-      container.message.off("ng_changed", handleNgChanged);
-    };
-  }, [page.boardUrl]);
-
-  useEffect(() => {
-    const pageBoardKey = getBoardUrlKey(page.boardUrl);
-    const applyReadStateUpdated = (readState: IReadState) => {
-      setThreads((prev) =>
-        prev.map((thread) => {
-          if (thread.url !== readState.url) {
-            return thread;
-          }
-
-          if (thread.readState && !container.util.isNewerReadState(thread.readState, readState)) {
-            return thread;
-          }
-
-          return {
-            ...thread,
-            readState,
-          };
-        }),
-      );
-    };
-
-    const applyReadStateRemoved = (url: string) => {
-      // 変更理由: スレ一覧タブは非アクティブ時も mounted のまま残るため、
-      // 読了後に戻った時点で未読列が古いままにならないよう message で追従する。
-      setThreads((prev) =>
-        prev.map((thread) =>
-          thread.url === url
-            ? {
-                ...thread,
-                readState: undefined,
-              }
-            : thread,
-        ),
-      );
-    };
-
-    // 変更理由: 2ペイン時、スレ側の自動更新で既読位置が進むたび global な
-    // read_state_updated が飛び、裏側の一覧まで毎回書き換わって「勝手に自動更新」
-    // に見えていた。フォアグラウンド（一覧タブ表示中かつ自ペインフォーカス中）
-    // 以外の間は保留し、復帰時にまとめて適用することで裏側のチラつきを抑えつつ
-    // 未読列の鮮度も保つ。タイマー実行自体は止めない。
-    const handleReadStateUpdated = ({
-      board_url: boardUrl,
-      read_state: readState,
-    }: {
-      board_url?: string;
-      read_state?: IReadState;
-    }) => {
-      // 変更理由: エッヂでは一覧の板URLと既読通知の板URLが http/https と
-      // 通常形式/旧形式で異なるため、同じ板を表すキーで通知を判定する。
-      const sameBoard =
-        boardUrl === page.boardUrl ||
-        (boardUrl != null && pageBoardKey != null && getBoardUrlKey(boardUrl) === pageBoardKey);
-      if (!readState || !sameBoard) {
-        return;
-      }
-
-      if (!isForegroundRef.current) {
-        enqueuePendingReadState(readState);
-        return;
-      }
-
-      // 変更理由: フォーカスが一覧側へ移っても、別ペインのスレ自動更新が
-      // 既読通知を送るたびに一覧の未読数を書き換えると、一覧自身が自動更新
-      // されたように見える。自動更新中のスレ由来の通知は、その処理が終わる
-      // まで保留し、一覧の表示をユーザー操作なしで動かさない。
-      if (autoRefreshingThreadPageKeysRef.current.has(getAutoRefreshThreadPageKey(readState.url))) {
-        enqueuePendingReadState(readState);
-        return;
-      }
-      applyReadStateUpdated(readState);
-    };
-
-    const handleReadStateRemoved = ({ url }: { url?: string }) => {
-      if (!url) {
-        return;
-      }
-
-      if (!isForegroundRef.current) {
-        pendingReadStateRef.current.removed.push(url);
-        return;
-      }
-      applyReadStateRemoved(url);
-    };
-
-    container.message.on("read_state_updated", handleReadStateUpdated);
-    container.message.on("read_state_removed", handleReadStateRemoved);
-
-    return () => {
-      container.message.off("read_state_updated", handleReadStateUpdated);
-      container.message.off("read_state_removed", handleReadStateRemoved);
-    };
-  }, [enqueuePendingReadState, page.boardUrl]);
-
-  useEffect(() => {
-    if (!isForeground) {
-      return;
-    }
-    // フォアグラウンド復帰時に保留分をまとめて反映する。ネットワーク再取得はしない。
-    const pending = pendingReadStateRef.current;
-    const deferredUpdated = pending.updated.filter((readState) =>
-      autoRefreshingThreadPageKeys.has(getAutoRefreshThreadPageKey(readState.url)),
-    );
-    const applicableUpdated = pending.updated.filter(
-      (readState) => !autoRefreshingThreadPageKeys.has(getAutoRefreshThreadPageKey(readState.url)),
-    );
-    if (applicableUpdated.length === 0 && pending.removed.length === 0) {
-      return;
-    }
-    // 自動更新中のスレ由来の通知は、フォーカスが一覧へ戻っても保留を続ける。
-    // タブ側の自動更新状態が解除されたレンダーで、deferredUpdated も反映される。
-    pendingReadStateRef.current = { updated: deferredUpdated, removed: [] };
-    for (const readState of applicableUpdated) {
-      setThreads((prev) =>
-        prev.map((thread) => {
-          if (thread.url !== readState.url) {
-            return thread;
-          }
-          if (thread.readState && !container.util.isNewerReadState(thread.readState, readState)) {
-            return thread;
-          }
-          return { ...thread, readState };
-        }),
-      );
-    }
-    for (const url of pending.removed) {
-      setThreads((prev) =>
-        prev.map((thread) => (thread.url === url ? { ...thread, readState: undefined } : thread)),
-      );
-    }
-  }, [autoRefreshingThreadPageKeys, isForeground]);
 
   useEffect(() => {
     if (previousBoardUrlRef.current === page.boardUrl) {
