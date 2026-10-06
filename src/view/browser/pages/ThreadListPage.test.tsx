@@ -9,7 +9,6 @@ import {
   type DisplayThread,
   THREAD_LIST_COLUMNS,
 } from "src/view/browser/components/thread-list-shared";
-import { WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -525,9 +524,9 @@ describe("ThreadListPage", () => {
     logger.mockRestore();
   });
 
-  it("一覧上端のホイールは読み込み中も更新待ちもフィルタを開かず更新だけを行う", async () => {
-    // 変更理由: フック単体ではイベントの競合を再現できないため、実際の一覧と
-    // スクロール要素を組み合わせて更新・ボタン開閉の両方を確認する。
+  it("一覧上端の上ホイールはフィルタを開くだけで、一覧の更新はしない", async () => {
+    // 変更理由: 一覧上端のホイール操作は更新からフィルタ開閉へ戻したため、
+    // 実際の一覧とスクロール要素を組み合わせて、更新が走らず開閉だけが行われることを確かめる。
     vi.useRealTimers();
     const scrollContainerRef = createRef<HTMLDivElement>();
     render(
@@ -547,20 +546,15 @@ describe("ThreadListPage", () => {
       </div>,
     );
     const panel = scrollContainerRef.current!;
-    fireEvent.wheel(panel, { deltaY: -48 });
-    expect(screen.queryByRole("textbox")).toBeNull();
-
     await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
     dispatchMock.mockClear();
-    for (let index = 0; index < WHEEL_THRESHOLD; index += 1) {
-      fireEvent.wheel(panel, { deltaY: -48 });
-      expect(screen.queryByRole("textbox")).toBeNull();
-    }
-    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
-    const refreshCount = dispatchMock.mock.calls.length;
+
     fireEvent.wheel(panel, { deltaY: -48 });
-    expect(dispatchMock).toHaveBeenCalledTimes(refreshCount);
+    expect(screen.getByRole("textbox")).toBeVisible();
+    // ホイールで開いた直後の下ホイールは、フィルタを閉じる操作として扱う。
+    fireEvent.wheel(panel, { deltaY: 48 });
     expect(screen.queryByRole("textbox")).toBeNull();
+    expect(dispatchMock).not.toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
 
     const toggleFilter = () =>
       fireEvent(
@@ -569,6 +563,7 @@ describe("ThreadListPage", () => {
           detail: { tabId: "tab-1" },
         }),
       );
+    // ボタンで開いたフィルタは、下ホイールでは閉じない。
     toggleFilter();
     expect(screen.getByRole("textbox")).toBeVisible();
     fireEvent.wheel(panel, { deltaY: 48 });
