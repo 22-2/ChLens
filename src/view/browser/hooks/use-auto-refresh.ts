@@ -11,6 +11,7 @@ import {
   INITIAL_IDLE_STOP_STATE,
   resolveIdleStopMode,
 } from "src/view/browser/hooks/auto-refresh-idle-stop";
+import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { subscribeConfigKeys } from "src/view/browser/utils/config-setting";
@@ -89,11 +90,13 @@ export function useAutoRefresh({
     refreshController;
   const autoScrollBoundaryRef = useRef<HTMLDivElement>(null);
   const pendingRefreshRef = useRef<PendingRefreshSnapshot | null>(null);
-  const requestRefreshRef = useRef(requestRefresh);
-  const onNewResponsesRef = useRef(onNewResponses);
-  const onAutoStopRef = useRef(onAutoStop);
-  const onThreadExpiredRef = useRef(onThreadExpired);
-  const onThreadExpiredDetectedRef = useRef(onThreadExpiredDetected);
+  // 完了判定は layout effect で行うため、同じ render の最新レス一覧を参照する通知処理を
+  // 完了処理より先に差し替える。passive effect では旧 render のレス一覧を捕まえてしまう。
+  const requestRefreshRef = useLatestRef(requestRefresh);
+  const onNewResponsesRef = useLatestRef(onNewResponses);
+  const onAutoStopRef = useLatestRef(onAutoStop);
+  const onThreadExpiredRef = useLatestRef(onThreadExpired);
+  const onThreadExpiredDetectedRef = useLatestRef(onThreadExpiredDetected);
   // 同じスレの再取得では expired が一度 false に戻ることがあるため、
   // 自動更新停止と通知は hook の生存中に一度だけ実行する。
   const threadExpiredHandledRef = useRef(false);
@@ -125,6 +128,9 @@ export function useAutoRefresh({
   // clientHeight だけが変わることがある。底面維持の判定に両方を使うため、高さも保持する。
   const lastObservedClientHeightRef = useRef<number | null>(null);
   const scrollingIndicatorTimerRef = useRef<number | null>(null);
+  // wheel リスナーから読むための写し。state を依存配列に入れると、インジケータが
+  // 切り替わるたびに scroll/wheel リスナーを付け直すことになるため ref で読む。
+  const isAutoScrollingRef = useRef(false);
   const [canAutoScroll, setCanAutoScroll] = useState(false);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(
@@ -147,6 +153,7 @@ export function useAutoRefresh({
       viewWindow.clearTimeout(scrollingIndicatorTimerRef.current);
       scrollingIndicatorTimerRef.current = null;
     }
+    isAutoScrollingRef.current = false;
     setIsAutoScrolling(false);
   }, [viewWindow]);
 
@@ -158,34 +165,14 @@ export function useAutoRefresh({
 
     // scrollBy 自体は即時でも、状態表示は少し残した方が
     // 「今まさに追従した」ことをユーザーが認識しやすい。
+    isAutoScrollingRef.current = true;
     setIsAutoScrolling(true);
     scrollingIndicatorTimerRef.current = viewWindow.setTimeout(() => {
       scrollingIndicatorTimerRef.current = null;
+      isAutoScrollingRef.current = false;
       setIsAutoScrolling(false);
     }, 900);
   }, [viewWindow]);
-
-  useEffect(() => {
-    requestRefreshRef.current = requestRefresh;
-  }, [requestRefresh]);
-
-  useLayoutEffect(() => {
-    // 新着判定もlayout effectで行うため、同じrenderの最新レス一覧を参照する通知処理を
-    // 完了処理より先に差し替える。passive effectでは旧renderのレス一覧を捕まえてしまう。
-    onNewResponsesRef.current = onNewResponses;
-  }, [onNewResponses]);
-
-  useEffect(() => {
-    onAutoStopRef.current = onAutoStop;
-  }, [onAutoStop]);
-
-  useLayoutEffect(() => {
-    onThreadExpiredRef.current = onThreadExpired;
-  }, [onThreadExpired]);
-
-  useLayoutEffect(() => {
-    onThreadExpiredDetectedRef.current = onThreadExpiredDetected;
-  }, [onThreadExpiredDetected]);
 
   useLayoutEffect(() => {
     if (!expired) {
@@ -399,25 +386,22 @@ export function useAutoRefresh({
   }, [scopeUrl]);
 
   useEffect(() => {
-    if (enabled) {
-      return;
-    }
-
-    // OFF にした瞬間に保留中スクロールまで実行すると「止めたのに動く」感触になるので破棄する。
-    pendingRefreshRef.current = null;
-    userInterruptedRef.current = false;
-    // 次に ON にしたとき前回のアイドル累積を引き継がないようリセットする。
-    // 変更理由: 以前は回数だけを戻して新着時刻を残していたため、OFF の間の経過時間まで
-    // 「新着なし」と数え、再 ON 直後の最初の空振りで時間ベース停止が発火していた。
-    idleStopStateRef.current = INITIAL_IDLE_STOP_STATE;
-    clearScrollingIndicator();
-  }, [clearScrollingIndicator, enabled]);
-
-  useEffect(() => {
     const wasEnabled = prevEnabledRef.current;
     prevEnabledRef.current = enabled;
 
-    if (wasEnabled || !enabled) {
+    if (!enabled) {
+      // OFF にした瞬間に保留中スクロールまで実行すると「止めたのに動く」感触になるので破棄する。
+      pendingRefreshRef.current = null;
+      userInterruptedRef.current = false;
+      // 次に ON にしたとき前回のアイドル累積を引き継がないようリセットする。
+      // 変更理由: 以前は回数だけを戻して新着時刻を残していたため、OFF の間の経過時間まで
+      // 「新着なし」と数え、再 ON 直後の最初の空振りで時間ベース停止が発火していた。
+      idleStopStateRef.current = INITIAL_IDLE_STOP_STATE;
+      clearScrollingIndicator();
+      return;
+    }
+
+    if (wasEnabled) {
       return;
     }
 
@@ -437,6 +421,7 @@ export function useAutoRefresh({
     requestRefreshFromHook();
   }, [
     capturePendingRefresh,
+    clearScrollingIndicator,
     enabled,
     expired,
     moveToThreadBottom,
@@ -494,7 +479,7 @@ export function useAutoRefresh({
     };
 
     const handleWheel = () => {
-      if (pendingRefreshRef.current || isAutoScrolling || canAutoScrollRef.current) {
+      if (pendingRefreshRef.current || isAutoScrollingRef.current || canAutoScrollRef.current) {
         // smooth scroll を使わない代わりに、ユーザー操作が入ったフレームでは
         // 予定していた自動追従を明示的に取り消して手動スクロールを優先する。
         // 高さ変更の監視中も同じ意図を維持し、ユーザーのホイール操作直後に
@@ -516,7 +501,7 @@ export function useAutoRefresh({
       scrollContainer.removeEventListener("scroll", scheduleSync);
       scrollContainer.removeEventListener("wheel", handleWheel);
     };
-  }, [getScrollContainer, isAutoScrolling, syncCanAutoScroll, viewWindow]);
+  }, [getScrollContainer, syncCanAutoScroll, viewWindow]);
 
   useEffect(() => {
     const root = rootRef.current;
