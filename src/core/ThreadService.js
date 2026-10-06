@@ -1,7 +1,8 @@
-import { extractPostDate, toCanonicalThread } from "packages/ch-lib/src/index";
+import { toCanonicalThread } from "packages/ch-lib/src/index";
 import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt.js";
-import { evaluateThreadNg } from "src/core/ThreadNgEvaluator";
 import Thread from "src/core/Thread.js";
+import { evaluateThreadNg } from "src/core/ThreadNgEvaluator";
+import { toViewRes } from "src/core/to-view-res";
 import { container } from "src/service-container/index";
 
 /**
@@ -161,7 +162,7 @@ class ThreadServiceImpl {
       title: thread.title || undefined,
       res: replacedRes,
     });
-    const parsedResponses = canonicalThread.posts.map((r) => this._parseRes(r));
+    const parsedResponses = canonicalThread.posts.map(toViewRes);
     // 自動NG（連鎖・ID無し等）を含むNG判定は、全レスを見渡せるこの時点で一括して行う。
     const ngResults = evaluateThreadNg(parsedResponses, { title, url });
 
@@ -176,66 +177,6 @@ class ThreadServiceImpl {
       expired: !!thread.expired,
       missingFromSubject: !!thread.missingFromSubject,
     };
-  }
-
-  /**
-   * Parses raw response data into structured IRes.
-   * @private
-   * @param {any} rawRes
-   * @returns {IRes}
-   */
-  _parseRes(rawRes) {
-    /** @type {IRes} */
-    const res = {
-      num: rawRes.number,
-      name: rawRes.name,
-      mail: rawRes.mail,
-      message: rawRes.message,
-      other: rawRes.other ?? rawRes.date,
-      date: "",
-    };
-
-    // MetadataParser has already extracted these fields at the canonical adapter boundary.
-    res.id = rawRes.id;
-    res.slip = rawRes.slip;
-    res.trip = rawRes.trip;
-    res.be = rawRes.be;
-
-    // Extract Date and ID from other
-    const other = res.other;
-    if (other) {
-      // 日時の形式差はch-libへ集約し、ここでは表示用フィールドへ変換結果を渡す。
-      res.date = extractPostDate(other) ?? "";
-
-      if (res.id == null) {
-        // ID extraction
-        const idMatch = /(?:^| |(\d))(ID:(?!\?\?\?)[^ <>"']+|発信元:\d+.\d+.\d+.\d+)/.exec(other);
-        if (idMatch) {
-          let fixedId = idMatch[2];
-          if (fixedId.endsWith("\u25cf")) {
-            fixedId = fixedId.slice(0, -1);
-          }
-          // Extract the ID value without the "ID:" or "発信元:" prefix
-          // Reason: The id field should store only the identifier value (e.g., "TestImage5"),
-          // not the prefix, so that UI/indexing can work without assuming prefix format
-          if (fixedId.startsWith("ID:")) {
-            fixedId = fixedId.slice(3);
-          } else if (fixedId.startsWith("発信元:")) {
-            fixedId = fixedId.slice(4);
-          }
-          // HTML形式ではdata-useridを優先して既にres.idへ渡しているため、
-          // 表示用メタデータのuidで上書きせず、dat形式だけをここで補完する。
-          res.id = fixedId;
-        }
-      }
-
-      // BE extraction
-      const beMatch = /BE:(\d+)-[A-Z\d]+\(\d+\)/.exec(other);
-      if (beMatch) {
-        res.be = beMatch[0];
-      }
-    }
-    return res;
   }
 }
 
