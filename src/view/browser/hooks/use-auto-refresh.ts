@@ -407,7 +407,9 @@ export function useAutoRefresh({
     pendingRefreshRef.current = null;
     userInterruptedRef.current = false;
     // 次に ON にしたとき前回のアイドル累積を引き継がないようリセットする。
-    idleStopStateRef.current = { ...idleStopStateRef.current, consecutiveIdleRefreshes: 0 };
+    // 変更理由: 以前は回数だけを戻して新着時刻を残していたため、OFF の間の経過時間まで
+    // 「新着なし」と数え、再 ON 直後の最初の空振りで時間ベース停止が発火していた。
+    idleStopStateRef.current = INITIAL_IDLE_STOP_STATE;
     clearScrollingIndicator();
   }, [clearScrollingIndicator, enabled]);
 
@@ -430,7 +432,7 @@ export function useAutoRefresh({
 
     // ON 直後の初回更新。アイドル累積は ON のタイミングでリセットし、
     // この回は「新着ゼロ」でも放置とは数えない。
-    idleStopStateRef.current = { ...idleStopStateRef.current, consecutiveIdleRefreshes: 0 };
+    idleStopStateRef.current = INITIAL_IDLE_STOP_STATE;
     capturePendingRefresh(false);
     requestRefreshFromHook();
   }, [

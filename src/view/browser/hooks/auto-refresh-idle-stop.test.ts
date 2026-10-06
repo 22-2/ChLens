@@ -148,6 +148,20 @@ describe("evaluateIdleStop", () => {
       expect(result).toEqual({ state: state({ lastNewResponseAt: 50_000 }), shouldStop: false });
     });
 
+    it("基準時刻が未設定なら最初の空振りを計測開始点にする", () => {
+      const started = evaluateIdleStop(
+        INITIAL_IDLE_STOP_STATE,
+        input({ mode: TIME_MODE, now: 3000 }),
+      );
+      expect(started).toEqual({ state: state({ lastNewResponseAt: 3000 }), shouldStop: false });
+      expect(
+        evaluateIdleStop(started.state, input({ mode: TIME_MODE, now: 12_999 })).shouldStop,
+      ).toBe(false);
+      expect(
+        evaluateIdleStop(started.state, input({ mode: TIME_MODE, now: 13_000 })).shouldStop,
+      ).toBe(true);
+    });
+
     it("回数の累積には影響されない", () => {
       const result = evaluateIdleStop(
         state({ consecutiveIdleRefreshes: 999, lastNewResponseAt: 0 }),

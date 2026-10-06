@@ -17,7 +17,10 @@ export type IdleStopMode =
 export interface IdleStopState {
   /** 新着が来なかった更新が何回連続したか。新着が来たら 0 に戻す。 */
   consecutiveIdleRefreshes: number;
-  /** 最後に新着が来た時刻（epoch ms）。時間ベースの判定に使う。 */
+  /**
+   * 最後に新着が来た時刻（epoch ms）。時間ベースの判定に使う。
+   * 未設定なら、次の判定対象の空振りを計測開始点にする。
+   */
   lastNewResponseAt: number | null;
 }
 
@@ -87,8 +90,14 @@ export function evaluateIdleStop(state: IdleStopState, input: IdleStopInput): Id
       return { state: { ...next, consecutiveIdleRefreshes: 0 }, shouldStop: true };
     }
     case "time": {
-      if (hasNewResponses || next.lastNewResponseAt == null) {
+      if (hasNewResponses) {
         return { state: next, shouldStop: false };
+      }
+      if (next.lastNewResponseAt == null) {
+        // 変更理由: 以前は基準時刻が未設定のまま判定を飛ばしていたため、ON 後に一度も
+        // 新着が来ないスレでは時間ベース停止が永遠に発火しなかった。最初の空振りを
+        // 計測開始点にして、新着がなくても指定時間で止まるようにする。
+        return { state: { ...next, lastNewResponseAt: now }, shouldStop: false };
       }
       if (now - next.lastNewResponseAt < mode.timeoutMs) {
         return { state: next, shouldStop: false };

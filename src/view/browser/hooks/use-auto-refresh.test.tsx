@@ -1804,4 +1804,91 @@ describe("useAutoRefresh", () => {
     }
     expect(onAutoStop).not.toHaveBeenCalled();
   });
+
+  describe("時間ベースの自動停止", () => {
+    const IDLE_STOP_TIMEOUT_MS = 9000;
+
+    beforeEach(() => {
+      vi.mocked(configMock.get).mockImplementation((key: string) => {
+        if (key === "auto_load_idle_stop_timeout") return String(IDLE_STOP_TIMEOUT_MS);
+        return "3000";
+      });
+    });
+
+    // タイマー起点の更新を1回発火させ、指定のボタンで完了させる。
+    const runTimerRefreshCycle = (completeButtonLabel: string) => {
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      fireEvent.click(screen.getByText(completeButtonLabel));
+      act(() => {
+        vi.advanceTimersByTime(0);
+      });
+    };
+
+    it("最後の新着から指定時間が経つと自動停止する", () => {
+      const onAutoStop = vi.fn();
+      render(<AutoRefreshHarness onRequestRefresh={vi.fn()} onAutoStop={onAutoStop} />);
+
+      runTimerRefreshCycle("新着ありで完了");
+      // 新着から 6 秒（< 9 秒）の時点ではまだ止めない。
+      runTimerRefreshCycle("新着なしで完了");
+      runTimerRefreshCycle("新着なしで完了");
+      expect(onAutoStop).not.toHaveBeenCalled();
+
+      // 新着から 9 秒経った更新で止める。
+      runTimerRefreshCycle("新着なしで完了");
+      expect(onAutoStop).toHaveBeenCalledOnce();
+    });
+
+    it("ON後に一度も新着がなくても、指定時間が経てば自動停止する", () => {
+      const onAutoStop = vi.fn();
+      render(<AutoRefreshHarness onRequestRefresh={vi.fn()} onAutoStop={onAutoStop} />);
+
+      // 以前は「最後の新着時刻」が未設定のままだと時間判定自体が行われず、
+      // 新着の来ないスレへ通信し続けていた。
+      for (let i = 0; i < 3; i += 1) {
+        runTimerRefreshCycle("新着なしで完了");
+      }
+      expect(onAutoStop).not.toHaveBeenCalled();
+
+      for (let i = 0; i < 3; i += 1) {
+        runTimerRefreshCycle("新着なしで完了");
+      }
+      expect(onAutoStop).toHaveBeenCalledOnce();
+    });
+
+    it("OFFの間に経過した時間を、再ON後の停止判定へ持ち越さない", () => {
+      const onAutoStop = vi.fn();
+      const onRequestRefresh = vi.fn();
+      const { rerender } = render(
+        <AutoRefreshHarness onRequestRefresh={onRequestRefresh} onAutoStop={onAutoStop} />,
+      );
+
+      runTimerRefreshCycle("新着ありで完了");
+
+      rerender(
+        <AutoRefreshHarness
+          enabled={false}
+          onRequestRefresh={onRequestRefresh}
+          onAutoStop={onAutoStop}
+        />,
+      );
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      rerender(
+        <AutoRefreshHarness enabled onRequestRefresh={onRequestRefresh} onAutoStop={onAutoStop} />,
+      );
+      // ON 直後の即時更新を完了させる（放置判定の対象外）。
+      fireEvent.click(screen.getByText("新着なしで完了"));
+      act(() => {
+        vi.advanceTimersByTime(0);
+      });
+
+      // 前回 ON 中の新着時刻から 60 秒以上経っていても、再 ON 直後の空振りでは止めない。
+      runTimerRefreshCycle("新着なしで完了");
+      expect(onAutoStop).not.toHaveBeenCalled();
+    });
+  });
 });
