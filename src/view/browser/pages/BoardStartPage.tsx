@@ -2,14 +2,12 @@ import React from "react";
 import { getCachedTitles } from "src/core/BoardTitleSolver.js";
 import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
 import { getAll as getAllHistory } from "src/core/History";
+import { OPENED_BOARDS_CONFIG_KEY, parseOpenedBoardEntries } from "src/core/OpenedBoards";
 import { container } from "src/service-container/index";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import {
-  isResolvedBoardTitle,
-  parseOpenedBoardEntries,
-} from "src/view/browser/pages/board-list/board-list-utils";
+import { isResolvedBoardTitle } from "src/view/browser/pages/board-list/board-list-utils";
 import { FavoriteBoardsSection } from "src/view/browser/pages/FavoriteBoardsSection";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
@@ -102,7 +100,9 @@ export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) 
           const date = typeof record.date === "number" ? record.date : 0;
           addBoard(boardUrl, normalizeString(record.boardTitle), date);
         }
-        for (const entry of parseOpenedBoardEntries(container.config.get("opened_board_entries"))) {
+        for (const entry of parseOpenedBoardEntries(
+          container.config.get(OPENED_BOARDS_CONFIG_KEY),
+        )) {
           addBoard(entry.url, entry.title ?? "", entry.lastVisited ?? 0);
         }
         const recentBoards = [...grouped.values()]
@@ -142,7 +142,7 @@ export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) 
       }
     };
     const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key === "opened_board_entries" || key === "other_board_titles" || key === "bbsmenu")
+      if (key === OPENED_BOARDS_CONFIG_KEY || key === "other_board_titles" || key === "bbsmenu")
         void loadBoards();
     };
     const handleHistoryUpdated = () => {

@@ -1,10 +1,8 @@
 import { ChURL } from "packages/ch-lib/src/index";
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
-import {
-  getBoardUrlKey,
-  normalizeBoardUrl as normalizeKnownBoardUrl,
-} from "src/core/BoardUrlNormalizer";
+import { getBoardUrlKey } from "src/core/BoardUrlNormalizer";
+import { upsertOpenedBoardEntry } from "src/core/OpenedBoards";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
@@ -62,11 +60,7 @@ import {
 } from "src/view/browser/hooks/use-tab-store";
 import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
 import { useThreadTitleNgDialog } from "src/view/browser/hooks/use-thread-title-ng-dialog";
-import {
-  isResolvedBoardTitle,
-  type OpenedBoardEntry,
-  parseOpenedBoardEntries,
-} from "src/view/browser/pages/board-list/board-list-utils";
+import { isResolvedBoardTitle } from "src/view/browser/pages/board-list/board-list-utils";
 import {
   canGoBack,
   canGoForward,
@@ -109,8 +103,6 @@ export type {
   ThreadListSortDirection,
   ThreadListSortPreference,
 } from "src/view/browser/components/thread-list-shared";
-const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
-const MAX_OPENED_BOARD_ENTRIES = 500;
 
 interface Props {
   tabId: string;
@@ -121,77 +113,6 @@ interface Props {
   isActive: boolean;
   isAutoRefreshEnabled?: boolean;
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
-}
-
-function readOpenedBoardEntries(): OpenedBoardEntry[] {
-  const raw = container.config.get(OPENED_BOARDS_CONFIG_KEY);
-  if (!raw) {
-    return [];
-  }
-
-  return parseOpenedBoardEntries(raw).map((entry) => ({
-    url: entry.url,
-    title: entry.title ?? "",
-    lastVisited: entry.lastVisited,
-    ...(entry.subjectVerified ? { subjectVerified: true as const } : {}),
-  }));
-}
-
-let openedBoardWrite = Promise.resolve();
-
-function upsertOpenedBoardEntry(
-  boardUrl: string,
-  boardTitle: string | null,
-  lastVisited?: number,
-  subjectVerified = false,
-): void {
-  const normalizedUrl = normalizeKnownBoardUrl(boardUrl);
-  if (normalizedUrl === null) {
-    // 板のパスとして解釈できないURLは、取得確認があっても保存対象から除外する。
-    return;
-  }
-  const nextTitle = boardTitle && boardTitle.trim() !== "" ? boardTitle : undefined;
-  // 板の初回記録と遅れて届く板名、複数タブの保存が互いを上書きしないよう順番に保存する。
-  openedBoardWrite = openedBoardWrite
-    .then(async () => {
-      const entries = readOpenedBoardEntries();
-      const key = getBoardUrlKey(normalizedUrl);
-      const existing = entries.find((entry) => getBoardUrlKey(entry.url) === key);
-      const verified = subjectVerified || existing?.subjectVerified === true;
-      if (
-        !normalizeKnownBoardUrl(normalizedUrl, {
-          requireCompatibleHost: true,
-          subjectVerified: verified,
-        })
-      )
-        return;
-      // 独自ホストの取得確認をレコードへ残し、ホーム・板一覧・再起動で同じ判断を使う。
-      const needsConfirmation = !normalizeKnownBoardUrl(normalizedUrl, {
-        requireCompatibleHost: true,
-      });
-      const updated: OpenedBoardEntry = {
-        url: normalizedUrl,
-        title: nextTitle ?? existing?.title ?? "",
-        lastVisited: lastVisited ?? existing?.lastVisited,
-        ...(verified && needsConfirmation ? { subjectVerified: true as const } : {}),
-      };
-      if (
-        existing &&
-        existing.title === updated.title &&
-        existing.lastVisited === updated.lastVisited &&
-        existing.subjectVerified === updated.subjectVerified
-      )
-        return;
-      const nextEntries = [
-        updated,
-        ...entries.filter((entry) => getBoardUrlKey(entry.url) !== key),
-      ];
-      await container.config.set(
-        OPENED_BOARDS_CONFIG_KEY,
-        JSON.stringify(nextEntries.slice(0, MAX_OPENED_BOARD_ENTRIES)),
-      );
-    })
-    .catch((error) => console.error("開いた板の保存に失敗しました", { boardUrl, error }));
 }
 
 function resolveInitialBoardTitle(page: ThreadListPageType): string | null {

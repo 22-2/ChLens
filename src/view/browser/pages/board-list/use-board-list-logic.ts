@@ -1,12 +1,13 @@
 import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { useCallback, useEffect, useState } from "react";
 import { createLogger } from "src/core/logger";
-import { container } from "src/service-container/index";
 import {
-  normalizeBoardUrlForRemove,
+  OPENED_BOARDS_CONFIG_KEY,
   type OpenedBoardEntry,
   parseOpenedBoardEntries,
-} from "src/view/browser/pages/board-list/board-list-utils";
+} from "src/core/OpenedBoards";
+import { container } from "src/service-container/index";
+import { normalizeBoardUrlForRemove } from "src/view/browser/pages/board-list/board-list-utils";
 
 // ─── 定数 ────────────────────────────────────────────────────────────────────
 
@@ -16,7 +17,6 @@ const CONFIG_KEYS = {
   REMOVED_BOARD_URLS: "board_list_removed_urls",
   REMOVED_MENU_NAMES: "board_list_removed_menus",
   REMOVED_CATEGORY_IDS: "board_list_removed_category_ids",
-  OPENED_BOARDS: "opened_board_entries",
 } as const;
 
 function loadOpenStates(): Record<string, boolean> {
@@ -152,21 +152,21 @@ export function useBoardListLogic(refreshKey = 0) {
 
   useEffect(() => {
     const syncOpenedBoards = () => {
-      const raw = container.config.get(CONFIG_KEYS.OPENED_BOARDS);
+      const raw = container.config.get(OPENED_BOARDS_CONFIG_KEY);
       const parsed = parseOpenedBoardEntries(raw);
       setOpenedBoardEntries(parsed);
 
       // 変更理由: URLの正規化・外部サイトの除外を一度だけ永続化し、
       // 次回起動時にも古い「一度開いた板」が一覧へ戻らないようにする。
       if (raw !== null && raw !== JSON.stringify(parsed)) {
-        void container.config.set(CONFIG_KEYS.OPENED_BOARDS, JSON.stringify(parsed));
+        void container.config.set(OPENED_BOARDS_CONFIG_KEY, JSON.stringify(parsed));
       }
     };
 
     syncOpenedBoards();
 
     const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key !== CONFIG_KEYS.OPENED_BOARDS) return;
+      if (key !== OPENED_BOARDS_CONFIG_KEY) return;
       syncOpenedBoards();
       // 「一度開いた板」は openedBoardEntries を通じて表示側が「その他」に統合するため、
       // ここでBBSMenuを再取得してローディング表示を挟まない。
