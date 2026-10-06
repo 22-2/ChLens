@@ -1,3 +1,4 @@
+// @vitest-environment node
 import JSZip from "jszip";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { decode } from "@toon-format/toon";
 import { encodeThreadForMcp, selectThreadResponses } from "src/mcp/thread-output";
 import type { IRes } from "src/service-container/interfaces";

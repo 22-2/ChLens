@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { decode } from "@toon-format/toon";
 import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/utils/thread-toon";
 import { describe, expect, it } from "vite-plus/test";

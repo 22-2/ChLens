@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { decode } from "@toon-format/toon";
 import { encodeBrowsingHistoryForMcp, encodeWriteHistoryForMcp } from "src/mcp/history-output";
 import { describe, expect, it } from "vite-plus/test";

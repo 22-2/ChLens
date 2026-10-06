@@ -17,3 +17,11 @@ test("ナビゲーションから設定画面を開ける", async ({ page, exten
   await expect(page.locator(".settings-page__shell")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "設定カテゴリ" })).toBeVisible();
 });
+
+// 旧 example.spec.mts から移した。起動確認は上のテストと重なるため、
+// 画面からは見えないバックグラウンドの起動だけをここで確認する。
+test("バックグラウンドのサービスワーカーが動作していること", async ({ context, extensionId }) => {
+  const serviceWorkers = context.serviceWorkers();
+  expect(serviceWorkers.length).toBeGreaterThan(0);
+  expect(serviceWorkers[0].url()).toContain(extensionId);
+});

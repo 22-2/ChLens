@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { resolveReplyTreeRootResNum } from "src/view/browser/utils/reply-tree-root";
 import { describe, expect, it } from "vite-plus/test";
 

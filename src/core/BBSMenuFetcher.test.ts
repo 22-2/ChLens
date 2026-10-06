@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { BBSMenuFetcher } from "src/core/BBSMenuFetcher";
 import type { ICacheItem } from "src/service-container/interfaces";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";

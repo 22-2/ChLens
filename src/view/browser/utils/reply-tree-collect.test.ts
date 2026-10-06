@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { IRes } from "src/service-container";
 import {
   buildReplyTreeCopyText,

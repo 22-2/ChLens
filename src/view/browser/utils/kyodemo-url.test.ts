@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { buildKyodemoUrl } from "src/view/browser/utils/kyodemo-url";
 import { describe, expect, it } from "vite-plus/test";
 

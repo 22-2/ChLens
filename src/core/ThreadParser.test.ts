@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { ChURL } from "packages/ch-lib/src/index";
 import {
   getThreadXhrInfo,

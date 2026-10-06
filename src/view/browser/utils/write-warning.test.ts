@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { sanitizeUrlsInText } from "src/view/browser/utils/url-tracking";
 import { findUrlTrackingWarning, findWriteWarnings } from "src/view/browser/utils/write-warning";
 import { describe, expect, it } from "vite-plus/test";

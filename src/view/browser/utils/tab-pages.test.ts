@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { createQuickAccessPage, createSettingsPage } from "src/view/browser/utils/tab-pages";
 import { describe, expect, it } from "vite-plus/test";
 

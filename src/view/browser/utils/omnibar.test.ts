@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { buildOmnibarSuggestions, mergeOmnibarSources } from "src/view/browser/utils/omnibar";
 import { describe, expect, it } from "vite-plus/test";
 

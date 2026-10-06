@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { PopupItem } from "src/view/browser/hooks/popup-manager/types";
 import { describe, expect, it } from "vite-plus/test";
 
