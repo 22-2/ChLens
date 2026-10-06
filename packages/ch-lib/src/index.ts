@@ -10,7 +10,6 @@ export * from "./fetcher/ThreadFetchPolicy";
 export * from "./fetcher/ThreadResponseResolver";
 export * from "./parser/AnchorParser";
 export * from "./parser/BBSMenuHtmlParser";
-export * from "./parser/BBSMenuParser";
 export * from "./parser/BoardParser";
 export * from "./parser/MessageParser";
 export * from "./parser/MetadataParser";

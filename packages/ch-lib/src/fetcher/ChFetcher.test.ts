@@ -137,4 +137,27 @@ describe("ChFetcher transport boundary", () => {
     });
     expect(result.metadata).toMatchObject({ etag: '"archive-v1"', parsedResCount: 1 });
   });
+
+  it("bbsmenuをアプリと同じBBSMenuHtmlParserの形式で解析し、除外TLDを適用する", async () => {
+    const menuUrl = "https://menu.example.com/bbsmenu.html";
+    const html = [
+      "<TITLE>Example Menu</TITLE>",
+      "<BR><BR><B>Category</B><BR>",
+      "<A HREF=https://board.example.com/one/>One</A><BR>",
+      "<A HREF=https://board.example.net/two/>Two</A><BR>",
+    ].join("\n");
+    const client = new FixtureHttpClient(
+      new Map([[menuUrl, fixtureResponse(200, {}, ascii(html).buffer as ArrayBuffer)]]),
+    );
+
+    const result = await new ChFetcher(client).fetchBBSMenu(menuUrl, new Set(["example.net"]));
+
+    expect(client.requests).toEqual([menuUrl]);
+    expect(result).toEqual({
+      name: "Example Menu",
+      categories: [
+        { name: "Category", boards: [{ name: "One", url: "https://board.example.com/one/" }] },
+      ],
+    });
+  });
 });
