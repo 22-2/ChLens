@@ -1,86 +1,34 @@
-import { type RefObject, useEffect } from "react";
-import { useAutoRefresh, type UseAutoRefreshResult } from "src/view/browser/hooks/use-auto-refresh";
+import { useEffect } from "react";
+import {
+  useAutoRefresh,
+  type UseAutoRefreshOptions,
+  type UseAutoRefreshResult,
+} from "src/view/browser/hooks/use-auto-refresh";
 import { useSetAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
-import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 
-interface UseThreadAutoRefreshOptions {
-  enabled: boolean;
-  /** 次スレ移動直後など、既に有効な状態で表示を切り替えたときの最下部同期。 */
-  startAtBottom?: boolean;
+type UseThreadAutoRefreshOptions = Omit<UseAutoRefreshOptions, "scopeUrl" | "pauseAutoScroll"> & {
+  /** 表示中のスレッドURL。自動更新間隔のサイト・板スコープにも使う。 */
   threadUrl: string;
-  refreshController: ThreadRefreshController;
-  expired: boolean;
-  loading: boolean;
-  responseCount: number;
-  lastResponseNum: number | null;
-  rootRef: RefObject<HTMLDivElement | null>;
-  requestRefresh: () => void;
-  /** 自動更新で新着レスを検知したときに、更新前の末尾レス番号とともに呼ぶ。 */
-  onNewResponses?: (count: number, previousLastResponseNum: number | null) => void;
   /** ポップアップ表示中など、自動スクロールを一時停止すべきとき。省略時は false */
   pauseAutoScroll?: boolean;
-  /** 新着が一定回数(=間隔×N)来ず放置と判断したとき、自動更新を止めるために呼ぶ。 */
-  onAutoStop?: () => void;
-  /** 次スレ探索中は、候補が見つかるまでタブ側の自動更新解除を保留する。 */
-  deferAutoStop?: boolean;
-  /** dat落ちを検知して自動更新を止めるとき、一度だけ呼ぶ。 */
-  onThreadExpired?: () => void;
-  /** dat落ち確定をページの再マウント後も保つ停止キーを記録するときに呼ぶ。 */
-  onThreadExpiredDetected?: () => void;
-  /** 次スレ探索中は、候補が見つかるまで dat 落ちによる解除通知を保留する。 */
-  deferExpiredStop?: boolean;
-}
+};
 
 /**
- * useAutoRefresh の薄いラッパー。
- * - `enabled` を tabStore から自動取得する（threadUrl で照合）
- * - `requestRefresh` を内部で dispatch(RELOAD) に固定する
+ * スレッド画面向けの useAutoRefresh のラッパー。
+ * - threadUrl を自動更新間隔のスコープとして渡す
  * - canAutoScroll / isAutoScrolling を AutoScrollStateContext へ書き込む
  *
- * 低レベルな useAutoRefresh はテスト可能なまま残す。
+ * 低レベルな useAutoRefresh は Context に依存させず、テスト可能なまま残す。
  */
-export function useThreadAutoRefresh(options: UseThreadAutoRefreshOptions): UseAutoRefreshResult {
-  const {
-    enabled,
-    startAtBottom = false,
-    threadUrl: _threadUrl,
-    refreshController,
-    expired,
-    loading,
-    responseCount,
-    lastResponseNum,
-    rootRef,
-    requestRefresh,
-    onNewResponses,
-    pauseAutoScroll = false,
-    onAutoStop,
-    deferAutoStop = false,
-    onThreadExpired,
-    onThreadExpiredDetected,
-    deferExpiredStop = false,
-  } = options;
-
+export function useThreadAutoRefresh({
+  threadUrl,
+  pauseAutoScroll = false,
+  ...options
+}: UseThreadAutoRefreshOptions): UseAutoRefreshResult {
+  const { enabled } = options;
   const setAutoScrollState = useSetAutoScrollState();
 
-  const result = useAutoRefresh({
-    enabled,
-    scopeUrl: _threadUrl,
-    startAtBottom,
-    expired,
-    loading,
-    refreshController,
-    pauseAutoScroll,
-    responseCount,
-    lastResponseNum,
-    rootRef,
-    requestRefresh,
-    onNewResponses,
-    onAutoStop,
-    deferAutoStop,
-    onThreadExpired,
-    onThreadExpiredDetected,
-    deferExpiredStop,
-  });
+  const result = useAutoRefresh({ ...options, scopeUrl: threadUrl, pauseAutoScroll });
 
   // canAutoScroll / isAutoScrolling をコンテキストへ同期して
   // ステータスバーアイコンなど外部コンポーネントが参照できるようにする
