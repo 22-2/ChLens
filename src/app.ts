@@ -1,4 +1,3 @@
-import "ShortQuery.js";
 import "webextension-polyfill";
 
 ///<reference path="global.d" />

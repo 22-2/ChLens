@@ -7,22 +7,6 @@ declare global {
     container: import("./service-container/interfaces").IServiceContainer;
   }
 
-  // ShortQuery.js (CoffeeScript製レガシーライブラリ) が定義するグローバルヘルパー。
-  // $__ は document.createElement のショートハンド。
-  function $__<K extends keyof HTMLElementTagNameMap>(tagName: K): HTMLElementTagNameMap[K];
-  function $__(tagName: string): HTMLElement;
-
-  // ShortQuery.js は Document/Element の prototype にもショートハンドを生やす。
-  // ここでは型チェック対象のコードで実際に使われているものだけを宣言する。
-  interface Document {
-    /** getElementsByTagName のショートハンド */
-    T(tagName: string): HTMLCollectionOf<Element>;
-  }
-  interface Element {
-    /** getElementsByTagName のショートハンド */
-    T(tagName: string): HTMLCollectionOf<Element>;
-  }
-
   namespace app {
     // src/app.ts で appObj に代入される app/Util 由来のヘルパー群
     const replaceAll: (str: string, before: string, after: string) => string;
