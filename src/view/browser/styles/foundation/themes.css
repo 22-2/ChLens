@@ -97,6 +97,7 @@
   --sys-color-popup-background: var(--ref-color-neutral-0);
   --sys-color-popup-title-bg: var(--ref-color-neutral-50);
   --sys-color-popup-hover-bg: var(--ref-color-neutral-1000);
+  --sys-color-reply-tree-guide: var(--ref-color-alpha-gray-30);
   --sys-color-table-row-border: var(--ref-color-neutral-75);
   --sys-color-table-muted: var(--ref-color-neutral-550);
   --sys-color-table-link: var(--ref-color-blue-link);
@@ -197,6 +198,7 @@
   --sys-color-popup-background: var(--ref-color-dark-neutral-50);
   --sys-color-popup-title-bg: var(--ref-color-dark-neutral-100);
   --sys-color-popup-hover-bg: var(--ref-color-dark-neutral-100);
+  --sys-color-reply-tree-guide: var(--ref-color-alpha-gray-30);
   --sys-color-table-row-border: var(--ref-color-dark-neutral-300);
   --sys-color-table-muted: var(--ref-color-dark-neutral-600);
   --sys-color-table-link: var(--ref-color-dark-blue-300);

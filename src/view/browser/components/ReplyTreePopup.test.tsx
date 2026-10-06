@@ -154,6 +154,15 @@ describe("ReplyTreePopup", () => {
     expect(cardOf(3)?.querySelector(".res__badge--reply-to-own")).not.toBeNull();
   });
 
+  it("2階層目以降の枝だけを字下げ用のクラスで描画する", () => {
+    render(<ReplyTreePopup {...BASE_PROPS} />);
+
+    const branchOf = (num: number) => screen.getByText(`name-${num}`).closest(".reply-tree");
+    expect(branchOf(2)).not.toHaveClass("reply-tree--nested");
+    expect(branchOf(3)).toHaveClass("reply-tree--nested");
+    expect(branchOf(4)).toBe(branchOf(3));
+  });
+
   it("子ツリーのないレスにはこのレス以降のメニューを表示しない", () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 

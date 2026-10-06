@@ -205,8 +205,6 @@ export const ReplyTreePopup: React.FC<{
                 onAnchorHover={onAnchorHover}
                 onAnchorLeave={onAnchorLeave}
                 onResContextMenu={handleResContextMenu}
-                visited={new Set()}
-                depth={0}
                 blurredResNums={blurredResNums}
                 ngResNums={ngResNums}
                 ownResNums={ownResNums}
