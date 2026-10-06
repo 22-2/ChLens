@@ -34,7 +34,9 @@
   gap: var(--sys-space-4);
   min-width: 0;
   padding: 0 var(--sys-space-5);
-  line-height: var(--sys-space-12);
+  /* 変更理由: バーと同じ行高だと通信メッセージの表示時に上端の罫線分だけ高さが増える。
+     縦位置はflexで中央に揃え、行高でバーの最小高さを押し広げない。 */
+  line-height: normal;
   white-space: nowrap;
 }
 
