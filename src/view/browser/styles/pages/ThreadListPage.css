@@ -12,7 +12,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--sys-space-3);
-  background: var(--sys-color-dialog-backdrop);
+  /* 変更理由: 自動更新中も既存の一覧を見続けられるよう、ダイアログ用の暗い背景で覆わない。 */
+  background: transparent;
   color: var(--sys-color-text);
   opacity: 0;
   pointer-events: none;
