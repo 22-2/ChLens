@@ -118,31 +118,6 @@ export interface IRes {
   class?: string[];
 }
 
-export interface IThreadModel {
-  url: string;
-  title: string;
-  resData: Map<number, IRes>;
-  idIndex: Map<string, Set<number>>;
-  slipIndex: Map<string, Set<number>>;
-  tripIndex: Map<string, Set<number>>;
-  repIndex: Map<number, Set<number>>;
-  repNgIndex: Map<number, Set<number>>;
-  ancIndex: Map<number, Set<number>>;
-  harmImgIndex: Set<number>;
-  oneId: string | null;
-  over1000ResNum: number | null;
-
-  addRes(res: IRes): void;
-  getRes(num: number): IRes | undefined;
-  refreshNG(): void;
-  getRead(
-    scrollTop: number,
-    clientHeight: number,
-    getOffsetTop: (num: number) => number,
-    getOffsetHeight: (num: number) => number,
-  ): number;
-}
-
 export interface IThreadDetail {
   url: string;
   title: string;

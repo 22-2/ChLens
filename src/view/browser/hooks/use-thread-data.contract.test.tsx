@@ -2,11 +2,13 @@ import { act, cleanup, render, renderHook, screen, waitFor } from "@testing-libr
 import { type RefObject, useRef } from "react";
 import { container } from "src/service-container/index";
 import type {
+  IConfig,
   IMessage,
   INGService,
   IRes,
   IThreadDetail,
   IThreadService,
+  IUtil,
 } from "src/service-container/interfaces";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
@@ -144,6 +146,9 @@ describe("useThreadData Phase 0 contracts", () => {
       execExpire: () => undefined,
     };
     container.ng = ngService;
+    // 自動NGの判定が掲示板種別と設定値を参照するため、未登録のままにせず最小限の実装を用意する。
+    container.util = { guessType: () => ({ bbsType: "2ch", protocol: "https:" }) } as IUtil;
+    container.config = { get: () => null } as unknown as IConfig;
   });
 
   afterEach(() => {

@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 const mocks = vi.hoisted(() => ({
   isNGThread: vi.fn(),
   threadGet: vi.fn(),
+  replaceStrTxt: vi.fn(),
+  config: new Map<string, string>(),
 }));
 
 vi.mock("src/service-container/index", () => ({
@@ -11,7 +13,15 @@ vi.mock("src/service-container/index", () => ({
     ng: {
       isNGThread: mocks.isNGThread,
     },
+    config: {
+      get: (key: string) => mocks.config.get(key) ?? null,
+    },
   },
+}));
+
+// 置換設定はグローバルのappを参照するため、テストでは入力をそのまま返す既定動作に差し替える。
+vi.mock("src/core/ReplaceStrTxt.js", () => ({
+  replace: mocks.replaceStrTxt,
 }));
 
 vi.mock("src/core/Thread.js", () => ({
@@ -58,6 +68,9 @@ describe("ThreadService", () => {
   beforeEach(() => {
     mocks.isNGThread.mockReset();
     mocks.threadGet.mockReset();
+    mocks.config.clear();
+    mocks.replaceStrTxt.mockReset();
+    mocks.replaceStrTxt.mockImplementation((_url: string, _title: string, res: unknown) => res);
   });
 
   it("同じタイミングの同一URL取得を強制更新1本へ集約する", async () => {
@@ -206,5 +219,43 @@ describe("ThreadService", () => {
     });
 
     expect(result.res[0]?.date).toBe(timestamp);
+  });
+
+  it("置換ルールをID・Slip抽出より前にレスへ適用する", async () => {
+    mocks.replaceStrTxt.mockImplementation(
+      (_url: string, _title: string, res: { other: string; message: string }) => ({
+        ...res,
+        other: res.other.replace("IDX:", "ID:"),
+        message: res.message.replace("置換前", "置換後"),
+      }),
+    );
+    const { default: threadService } = await import("src/core/ThreadService.js");
+    const service = threadService as unknown as ThreadServiceLike;
+    const result = service._formatResult({
+      title: "title",
+      url: { url: { href: "https://example.com/test/read.cgi/board/1/" } },
+      res: [{ name: "", mail: "", message: "置換前", other: "2026/08/27(木) 12:00:00.00 IDX:abc" }],
+    });
+
+    expect(result.res[0]?.id).toBe("abc");
+    expect((result.res[0] as { message?: string }).message).toBe("置換後");
+  });
+
+  it("設定で有効な自動NGを現行の取得結果へ反映する", async () => {
+    mocks.config.set("nothing_id_ng", "on");
+    mocks.config.set("how_to_judgment_id", "first_res");
+    const { default: threadService } = await import("src/core/ThreadService.js");
+    const service = threadService as unknown as ThreadServiceLike;
+    const result = service._formatResult({
+      title: "title",
+      url: { url: { href: "https://example.com/test/read.cgi/board/1/" } },
+      res: [
+        { name: "", mail: "", message: "1", other: "2026/08/27(木) 12:00:00.00 ID:abc" },
+        { name: "", mail: "", message: "2", other: "2026/08/27(木) 12:00:01.00" },
+      ],
+    });
+
+    expect(result.res[0]?.ng).toBeUndefined();
+    expect(result.res[1]?.ng).toEqual({ type: "NothingID" });
   });
 });
