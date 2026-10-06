@@ -9,11 +9,20 @@ import { container } from "src/service-container/index";
  * @typedef {import("../service-container/interfaces").IRes} IRes
  */
 
+/**
+ * 自動更新ではない強制取得か。
+ * @param {{ forceUpdate?: boolean, throttleSubjectCheck?: boolean }} options
+ * @returns {boolean}
+ */
+const isManualForceUpdate = (options) =>
+  options.forceUpdate === true && options.throttleSubjectCheck !== true;
+
 class ThreadServiceImpl {
   constructor() {
     /** @type {Map<string, {
      *   started: boolean,
      *   forceUpdate: boolean,
+     *   manualForceUpdate: boolean,
      *   callbacks: Set<(thread: IThreadDetail) => void>,
      *   lastCacheResult?: IThreadDetail,
      *   promise: Promise<IThreadDetail>
@@ -24,18 +33,24 @@ class ThreadServiceImpl {
   /**
    * Fetches a thread and its responses.
    * @param {string} url
-   * @param {{ forceUpdate?: boolean, onCache?: (thread: IThreadDetail) => void }} [options]
+   * @param {{ forceUpdate?: boolean, throttleSubjectCheck?: boolean, onCache?: (thread: IThreadDetail) => void }} [options]
    * @returns {Promise<IThreadDetail>}
    */
   async getThread(url, options = {}) {
     const existingRequest = this.pendingRequests.get(url);
     if (
       existingRequest &&
-      (!options.forceUpdate || existingRequest.forceUpdate || !existingRequest.started)
+      (!existingRequest.started ||
+        !options.forceUpdate ||
+        (existingRequest.forceUpdate &&
+          // 開始済みの自動更新へ手動更新を合流させると、subject.txtを確認できない。
+          (existingRequest.manualForceUpdate || !isManualForceUpdate(options))))
     ) {
       // 変更理由: スレ本文と勢い表示は同じ更新世代で同一URLを要求するため、
       // 通信開始前なら強いforceUpdateへまとめ、開始後も条件を弱めない要求だけを共有する。
       existingRequest.forceUpdate ||= options.forceUpdate === true;
+      // 自動更新と手動更新が合流した場合は、利用者の操作を優先してsubject.txtを確認する。
+      existingRequest.manualForceUpdate ||= isManualForceUpdate(options);
       if (options.onCache) {
         existingRequest.callbacks.add(options.onCache);
         if (existingRequest.lastCacheResult) {
@@ -53,6 +68,7 @@ class ThreadServiceImpl {
     /** @type {{
      *   started: boolean,
      *   forceUpdate: boolean,
+     *   manualForceUpdate: boolean,
      *   callbacks: Set<(thread: IThreadDetail) => void>,
      *   lastCacheResult?: IThreadDetail,
      *   promise: Promise<IThreadDetail>
@@ -60,6 +76,7 @@ class ThreadServiceImpl {
     const request = {
       started: false,
       forceUpdate: options.forceUpdate === true,
+      manualForceUpdate: isManualForceUpdate(options),
       callbacks: new Set(options.onCache ? [options.onCache] : []),
       // 同じReact effect処理内の要求をmicrotaskまで集め、後から来たforceUpdateも
       // 最初の通信へ反映して、呼び出し順により二重取得へ戻らないようにする。
@@ -86,6 +103,7 @@ class ThreadServiceImpl {
    * @param {string} url
    * @param {{
    *   forceUpdate: boolean,
+   *   manualForceUpdate: boolean,
    *   callbacks: Set<(thread: IThreadDetail) => void>,
    *   lastCacheResult?: IThreadDetail
    * }} request
@@ -108,7 +126,9 @@ class ThreadServiceImpl {
     };
 
     try {
-      await thread.get(request.forceUpdate, progress);
+      await thread.get(request.forceUpdate, progress, {
+        throttleSubjectCheck: !request.manualForceUpdate,
+      });
       return this._formatResult(thread);
     } catch (error) {
       // 変更理由: 取得失敗時もキャッシュ結果を返す従来動作を保ちつつ、原因を追跡可能にする。

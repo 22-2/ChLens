@@ -157,6 +157,8 @@ export interface IThreadService {
     url: string,
     options?: {
       forceUpdate?: boolean;
+      /** 自動更新由来の取得では、dat落ち確認のsubject.txt取得を間引く */
+      throttleSubjectCheck?: boolean;
       onCache?: (thread: IThreadDetail) => void;
     },
   ): Promise<IThreadDetail>;

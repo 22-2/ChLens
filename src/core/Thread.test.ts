@@ -57,7 +57,7 @@ describe("Thread", () => {
     resetForcedSubjectCheckHistory();
   });
 
-  it("強制更新で新着レスを取得できた回はsubject.txtを強制取得しない", async () => {
+  it("自動更新で新着レスを取得できた回はsubject.txtを強制取得しない", async () => {
     const cache = {
       data: null,
       parsed: null,
@@ -83,18 +83,18 @@ describe("Thread", () => {
       .spyOn(testableThread, "_fetchCachedResCount")
       .mockResolvedValue({ status: "none" });
 
-    await thread.get(true);
+    await thread.get(true, undefined, { throttleSubjectCheck: true });
 
     // 新着が届くスレは生存しているため、板一覧はキャッシュ照合だけで済ませる。
     expect(subjectLookup).toHaveBeenCalledWith(false);
   });
 
-  it("新着なしの強制更新ではsubject.txtを間隔をあけて強制取得する", async () => {
+  it("新着なしの自動更新ではsubject.txtを間隔をあけて強制取得する", async () => {
     const now = vi.spyOn(Date, "now").mockReturnValue(1_000_000);
     mocks.getCache.mockReturnValue({ data: "本文キャッシュ", put: vi.fn() });
     mocks.fetch.mockRejectedValue(new Error("通信に失敗しました"));
     const lookups: boolean[] = [];
-    const refresh = async () => {
+    const refresh = async (throttleSubjectCheck = true) => {
       const thread = new Thread("https://example.com/test/read.cgi/board/1000000000/");
       const testableThread = thread as unknown as ThreadInternals;
       vi.spyOn(testableThread, "_prepareCache").mockResolvedValue({
@@ -106,18 +106,20 @@ describe("Thread", () => {
         return { status: "none" };
       });
       vi.spyOn(testableThread, "_buildDomainErrorMessage").mockResolvedValue("取得に失敗しました");
-      await expect(thread.get(true)).rejects.toBeUndefined();
+      await expect(thread.get(true, undefined, { throttleSubjectCheck })).rejects.toBeUndefined();
     };
 
     await refresh();
     now.mockReturnValue(1_000_000 + 30 * 1000);
     await refresh();
-    now.mockReturnValue(1_000_000 + 60 * 1000);
+    // 手動更新は利用者の操作なので、自動更新の間隔内でも毎回確認する。
+    await refresh(false);
+    now.mockReturnValue(1_000_000 + 30 * 1000 + 60 * 1000);
     await refresh();
     now.mockRestore();
 
     // 自動更新のたびに板一覧全体を取得しないよう、間隔内の確認はキャッシュ照合へ落とす。
-    expect(lookups).toEqual([true, false, true]);
+    expect(lookups).toEqual([true, false, true, true]);
   });
 
   it("本文取得が失敗しても板一覧から消えていればsubject不在を返す", async () => {

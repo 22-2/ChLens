@@ -15,19 +15,30 @@ const lastForcedSubjectCheckAt = new Map<string, number>();
  * 板一覧全体を取得していた。新着レスを取得できたスレは生存が明らかなので確認せず、
  * 新着なし・本文取得失敗の回だけを dat 落ち候補として、一定間隔ごとに確認する。
  * dat 落ちしたスレには新着が来ないため、この絞り込みで検知漏れは起きない。
+ * 間引くのは自動更新（throttle=true）だけで、手動更新は利用者が最新状態を求めた操作なので毎回確認する。
  */
 export function shouldForceSubjectCheck({
   threadUrl,
   forceUpdate,
+  throttle,
   hasNewResponses,
   now = Date.now(),
 }: {
   threadUrl: string;
   forceUpdate: boolean;
+  throttle: boolean;
   hasNewResponses: boolean;
   now?: number;
 }): boolean {
-  if (!forceUpdate || hasNewResponses) {
+  if (!forceUpdate) {
+    return false;
+  }
+  if (!throttle) {
+    // 手動確認の直後は自動更新の確認を間引けるよう、時刻だけ記録する。
+    lastForcedSubjectCheckAt.set(threadUrl, now);
+    return true;
+  }
+  if (hasNewResponses) {
     return false;
   }
   const lastCheckedAt = lastForcedSubjectCheckAt.get(threadUrl);

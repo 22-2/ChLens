@@ -24,6 +24,26 @@ describe("useThreadRefreshController", () => {
     expect(result.current.consumeRefreshKeyChange()).toBe("external");
   });
 
+  it("完了判定がconsumeした後も、現在の更新が自動更新由来かを参照できる", () => {
+    const { result, rerender } = renderHook(
+      ({ refreshKey }: { refreshKey: number }) => useThreadRefreshController(refreshKey),
+      { initialProps: { refreshKey: 0 } },
+    );
+    expect(result.current.isInternalRefreshKey()).toBe(false);
+
+    act(() => {
+      result.current.markInternalRefreshRequest();
+    });
+    rerender({ refreshKey: 1 });
+    result.current.consumeRefreshKeyChange();
+
+    // 取得側はconsume後のeffectで由来を読むため、consumeの影響を受けないことを固定する。
+    expect(result.current.isInternalRefreshKey()).toBe(true);
+
+    rerender({ refreshKey: 2 });
+    expect(result.current.isInternalRefreshKey()).toBe(false);
+  });
+
   it("最新リクエストだけを有効と判定する", () => {
     const { result } = renderHook(() => useThreadRefreshController(0));
 

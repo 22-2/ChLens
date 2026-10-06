@@ -121,7 +121,11 @@ export default class Thread {
   // Public API
   // -------------------------------------------------------------------------
 
-  async get(forceUpdate?: boolean, progress: () => void = () => {}): Promise<void> {
+  async get(
+    forceUpdate?: boolean,
+    progress: () => void = () => {},
+    { throttleSubjectCheck = false }: { throttleSubjectCheck?: boolean } = {},
+  ): Promise<void> {
     const format2chnet = container.config.get("format_2chnet") as string | null | undefined;
     const xhrInfo = getThreadXhrInfo(this.url, format2chnet);
 
@@ -222,6 +226,7 @@ export default class Thread {
               shouldForceSubjectCheck({
                 threadUrl: this.url.url.href,
                 forceUpdate: forceUpdate === true,
+                throttle: throttleSubjectCheck,
                 hasNewResponses: !noChangeFlg && thread.res.length > previousResCount,
               }),
             );
@@ -268,6 +273,7 @@ export default class Thread {
             shouldForceSubjectCheck({
               threadUrl: this.url.url.href,
               forceUpdate: forceUpdate === true,
+              throttle: throttleSubjectCheck,
               hasNewResponses: false,
             }),
           );

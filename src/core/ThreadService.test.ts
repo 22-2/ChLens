@@ -25,8 +25,12 @@ vi.mock("src/core/Thread.js", () => ({
       this.url = { url: { href: url } };
     }
 
-    get(forceUpdate: boolean, progress: () => void): Promise<void> {
-      return mocks.threadGet(forceUpdate, progress);
+    get(
+      forceUpdate: boolean,
+      progress: () => void,
+      options?: { throttleSubjectCheck?: boolean },
+    ): Promise<void> {
+      return mocks.threadGet(forceUpdate, progress, options);
     }
   },
 }));
@@ -41,7 +45,11 @@ interface ThreadServiceLike {
   _formatResult(thread: unknown): { res: FormattedResponse[] };
   getThread(
     url: string,
-    options?: { forceUpdate?: boolean; onCache?: (thread: unknown) => void },
+    options?: {
+      forceUpdate?: boolean;
+      throttleSubjectCheck?: boolean;
+      onCache?: (thread: unknown) => void;
+    },
   ): Promise<unknown>;
 }
 
@@ -83,6 +91,52 @@ describe("ThreadService", () => {
     mocks.threadGet.mockResolvedValueOnce(undefined);
     await service.getThread(url);
     expect(mocks.threadGet).toHaveBeenCalledTimes(2);
+  });
+
+  it("自動更新の取得だけsubject.txt確認を間引き、手動更新が合流したら間引かない", async () => {
+    mocks.threadGet.mockResolvedValue(undefined);
+    const { default: threadService } = await import("src/core/ThreadService.js");
+    const service = threadService as unknown as ThreadServiceLike;
+    const url = "https://example.com/test/read.cgi/board/1000000000/";
+
+    await service.getThread(url, { forceUpdate: true, throttleSubjectCheck: true });
+    expect(mocks.threadGet).toHaveBeenLastCalledWith(true, expect.any(Function), {
+      throttleSubjectCheck: true,
+    });
+
+    await Promise.all([
+      service.getThread(url, { forceUpdate: true, throttleSubjectCheck: true }),
+      service.getThread(url, { forceUpdate: true }),
+    ]);
+    expect(mocks.threadGet).toHaveBeenCalledTimes(2);
+    expect(mocks.threadGet).toHaveBeenLastCalledWith(true, expect.any(Function), {
+      throttleSubjectCheck: false,
+    });
+  });
+
+  it("開始済みの自動更新へ手動更新を合流させず、subject.txtを確認する取得を別に行う", async () => {
+    let resolveAuto: (() => void) | undefined;
+    mocks.threadGet.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveAuto = resolve;
+        }),
+    );
+    mocks.threadGet.mockResolvedValueOnce(undefined);
+    const { default: threadService } = await import("src/core/ThreadService.js");
+    const service = threadService as unknown as ThreadServiceLike;
+    const url = "https://example.com/test/read.cgi/board/2000000000/";
+
+    const auto = service.getThread(url, { forceUpdate: true, throttleSubjectCheck: true });
+    await vi.waitFor(() => expect(mocks.threadGet).toHaveBeenCalledOnce());
+    await service.getThread(url, { forceUpdate: true });
+    resolveAuto?.();
+    await auto;
+
+    expect(mocks.threadGet).toHaveBeenCalledTimes(2);
+    expect(mocks.threadGet).toHaveBeenLastCalledWith(true, expect.any(Function), {
+      throttleSubjectCheck: false,
+    });
   });
 
   it("builds the full reply index before applying response NG", async () => {

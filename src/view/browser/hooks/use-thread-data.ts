@@ -40,6 +40,11 @@ import { deriveThreadData } from "src/view/browser/utils/thread-data-derived";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
 import { stripTrailingSyntheticAbobunResponses } from "src/view/browser/utils/thread-response-cache";
 
+interface FetchThreadOptions {
+  /** 自動更新由来の取得では、dat落ち確認のsubject.txt取得を間引く */
+  throttleSubjectCheck?: boolean;
+}
+
 interface ThreadData {
   responses: IRes[];
   visibleResponses: IRes[];
@@ -59,7 +64,7 @@ interface ThreadData {
   setSearchQuery: Dispatch<SetStateAction<string>>;
   showSearch: boolean;
   setShowSearch: Dispatch<SetStateAction<boolean>>;
-  fetchThread: (forceUpdate?: boolean) => Promise<void>;
+  fetchThread: (forceUpdate?: boolean, options?: FetchThreadOptions) => Promise<void>;
   idPositions: Map<number, number>;
   setResponses: Dispatch<SetStateAction<IRes[]>>;
   messageProtocol: string;
@@ -91,7 +96,7 @@ export function useThreadData(
     },
     [page.threadUrl],
   );
-  const { beginRequest, isLatestRequest, refreshKey } = refreshController;
+  const { beginRequest, isLatestRequest, refreshKey, isInternalRefreshKey } = refreshController;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
   const [responses, setResponsesState] = useState<IRes[]>([]);
   const [cacheResolvedThreadUrl, setCacheResolvedThreadUrl] = useState<string | null>(null);
@@ -175,7 +180,7 @@ export function useThreadData(
   const isInitialLoading = responses.length === 0 && (loading || !isCacheResolved);
 
   const fetchThread = useCallback(
-    async (forceUpdate = false) => {
+    async (forceUpdate = false, { throttleSubjectCheck = false }: FetchThreadOptions = {}) => {
       const requestId = beginRequest();
       const isCurrentRequest = () => isLatestRequest(requestId);
       const isDifferentThread = fetchedThreadUrlRef.current !== page.threadUrl;
@@ -252,6 +257,7 @@ export function useThreadData(
       try {
         const result = await container.thread.getThread(page.threadUrl, {
           forceUpdate,
+          throttleSubjectCheck,
           onCache: (cached: IThreadDetail) => {
             // 変更理由: 更新を短時間に連続実行すると、先に開始した取得が後から完了する
             // ことがある。古い取得結果でレス・タイトル・loading状態を巻き戻さないため、
@@ -368,8 +374,10 @@ export function useThreadData(
 
   useEffect(() => {
     // 初回表示は通常キャッシュを利用し、RELOAD経由の更新世代だけsubject.txtも再確認する。
-    void fetchThread(refreshKey > 0);
-  }, [fetchThread, refreshKey]);
+    // 変更理由: 自動更新は数秒おきに走るため、dat落ち確認のsubject.txt取得を間引く。
+    // 手動更新は利用者が最新状態を求めた操作なので、従来どおり毎回確認する。
+    void fetchThread(refreshKey > 0, { throttleSubjectCheck: isInternalRefreshKey() });
+  }, [fetchThread, isInternalRefreshKey, refreshKey]);
 
   useEffect(() => {
     // NG設定が更新された通知を受け取ったら、現在表示中のレスに対して判定を再実行する。
