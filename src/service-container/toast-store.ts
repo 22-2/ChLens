@@ -21,12 +21,44 @@ type ToastListener = () => void;
 type ToastTarget = Window | null;
 
 const MAX_TOASTS = 5;
+// 変更理由: Radix Toast単体のdurationだけではホバー/フォーカスで一時停止し、
+// 体感の表示時間がバラつくため、ストア側で一律の自動破棄時間に統一する。
+export const TOAST_DISPLAY_DURATION_MS = 1500;
 const EMPTY_RECORDS: readonly ToastRecord[] = [];
 let nextToastId = 0;
 // 変更理由: 別窓のページが発火したToastをメイン窓へ混ぜると、
 // 利用者が操作している表示場所と通知の位置がずれるため、Window単位で状態を分ける。
 const recordsByTarget = new Map<ToastTarget, readonly ToastRecord[]>();
 const listenersByTarget = new Map<ToastTarget, Set<ToastListener>>();
+// 変更理由: 手動dismiss後に自動破棄タイマーが発火して余計なemitを起こさないよう、id単位で管理する。
+const autoDismissTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+function removeRecord(id: number, target: ToastTarget): boolean {
+  const records = recordsByTarget.get(target) ?? [];
+  const nextRecords = records.filter((record) => record.id !== id);
+  if (nextRecords.length === records.length) {
+    return false;
+  }
+  if (nextRecords.length === 0) {
+    recordsByTarget.delete(target);
+  } else {
+    recordsByTarget.set(target, nextRecords);
+  }
+  emit(target);
+  return true;
+}
+
+function scheduleAutoDismiss(id: number, target: ToastTarget): void {
+  const existing = autoDismissTimers.get(id);
+  if (existing !== undefined) {
+    clearTimeout(existing);
+  }
+  const timer = setTimeout(() => {
+    autoDismissTimers.delete(id);
+    removeRecord(id, target);
+  }, TOAST_DISPLAY_DURATION_MS);
+  autoDismissTimers.set(id, timer);
+}
 
 function resolveTarget(targetWindow?: Window): ToastTarget {
   return targetWindow ?? (typeof window === "undefined" ? null : window);
@@ -52,6 +84,7 @@ function pushToast(
     backgroundColor,
   };
   recordsByTarget.set(target, [...(recordsByTarget.get(target) ?? []), record].slice(-MAX_TOASTS));
+  scheduleAutoDismiss(record.id, target);
   emit(target);
 }
 
@@ -71,18 +104,12 @@ export const toastStore = {
     };
   },
   dismiss(id: number, targetWindow?: Window): void {
-    const target = resolveTarget(targetWindow);
-    const records = recordsByTarget.get(target) ?? [];
-    const nextRecords = records.filter((record) => record.id !== id);
-    if (nextRecords.length === records.length) {
-      return;
+    const timer = autoDismissTimers.get(id);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      autoDismissTimers.delete(id);
     }
-    if (nextRecords.length === 0) {
-      recordsByTarget.delete(target);
-    } else {
-      recordsByTarget.set(target, nextRecords);
-    }
-    emit(target);
+    removeRecord(id, resolveTarget(targetWindow));
   },
   notify(message: string, options?: ToastNotifyOptions) {
     pushToast(message, "default", options?.backgroundColor, options?.targetWindow);

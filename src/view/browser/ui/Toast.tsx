@@ -1,7 +1,7 @@
 import { Toast as RadixToast } from "radix-ui";
 import type { CSSProperties } from "react";
 import { useCallback, useSyncExternalStore } from "react";
-import { toastStore } from "src/service-container/toast-store";
+import { TOAST_DISPLAY_DURATION_MS, toastStore } from "src/service-container/toast-store";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
 interface ToastProviderProps {
@@ -11,7 +11,11 @@ interface ToastProviderProps {
 }
 
 /** Radix Toastと外部発火用ストアを接続する、browser view共通の通知UI。 */
-export function ToastProvider({ topOffset, rightOffset, duration = 1500 }: ToastProviderProps) {
+export function ToastProvider({
+  topOffset,
+  rightOffset,
+  duration = TOAST_DISPLAY_DURATION_MS,
+}: ToastProviderProps) {
   const { window: targetWindow } = useViewSurface();
   const records = useSyncExternalStore(
     useCallback((listener) => toastStore.subscribe(listener, targetWindow), [targetWindow]),
