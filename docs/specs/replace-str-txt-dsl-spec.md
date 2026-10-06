@@ -19,9 +19,9 @@ Status: Draft
 
 - `src/core/ReplaceStrTxt.js`: 設定・キャッシュ・アプリケーションとの接続
 - `packages/ch-lib/src/parser/ReplaceStrParser.ts`: 旧形式のパースと置換実行
-- `src/core/ThreadModel.js`: レス追加時の適用
+- `src/core/ThreadService.js`: スレ取得結果の整形時にID・Slip抽出より前へ適用
 
-レスがモデルへ追加される直後に置換され、その後にAA判定・メタデータ解析・アンカー解析・NG判定が行われる。
+スレ取得結果の整形時にレスへ置換が適用され、その後にメタデータ解析・アンカー解析・NG判定が行われる。
 
 ### 2.1 旧形式
 

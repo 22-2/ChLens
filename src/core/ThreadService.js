@@ -1,5 +1,6 @@
 import { extractPostDate, toCanonicalThread } from "packages/ch-lib/src/index";
-import { buildReplyIndexes } from "src/core/reply-index";
+import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt.js";
+import { evaluateThreadNg } from "src/core/ThreadNgEvaluator";
 import Thread from "src/core/Thread.js";
 import { container } from "src/service-container/index";
 
@@ -148,33 +149,29 @@ class ThreadServiceImpl {
   _formatResult(thread) {
     // Thread keeps the legacy `res` cache shape because its HTML delta merge relies on it;
     // normalize once here so NG and every service consumer receive the shared ch-lib model.
-    const canonicalThread = toCanonicalThread({
-      title: thread.title || undefined,
-      res: thread.res || [],
-    });
-    const parsedResponses = canonicalThread.posts.map((r) => this._parseRes(r));
-    const replyIndexes = buildReplyIndexes(parsedResponses);
     const title = thread.title || "";
     const url = thread.url.url.href;
+    // 置換ルールは名前・日付からのID/Slip抽出より前に適用する（旧ThreadModelと同じ順序）。
+    // 変更理由: 旧経路の置換適用がThreadModelと共に使われなくなり、置換設定が無効化されていたため。
+    const replacedRes = (thread.res || []).map((/** @type {any} */ res) => ({
+      ...res,
+      ...replaceStrTxt(url, title, res),
+    }));
+    const canonicalThread = toCanonicalThread({
+      title: thread.title || undefined,
+      res: replacedRes,
+    });
+    const parsedResponses = canonicalThread.posts.map((r) => this._parseRes(r));
+    // 自動NG（連鎖・ID無し等）を含むNG判定は、全レスを見渡せるこの時点で一括して行う。
+    const ngResults = evaluateThreadNg(parsedResponses, { title, url });
 
     return {
       url,
       title: thread.title,
-      // 返信数を全レスから先に索引化してからNG判定する。
-      // レス単位のパース中に判定すると、後続レスの安価を数えられず、
-      // 自動更新で閾値を超えたレスだけNGにならないため。
+      // 返信数や連鎖NGは後続レスにも依存するため、全レスの索引を作ってから判定済みの結果を載せる。
       res: parsedResponses.map((/** @type {IRes} */ res) => ({
         ...res,
-        ng:
-          container.ng.isNGThread(
-            {
-              ...res,
-              replyCount: replyIndexes.repIndex.get(res.num)?.size ?? 0,
-              anchorCount: replyIndexes.ancIndex.get(res.num)?.size ?? 0,
-            },
-            title,
-            url,
-          ) || undefined,
+        ng: ngResults.get(res.num),
       })),
       expired: !!thread.expired,
       missingFromSubject: !!thread.missingFromSubject,

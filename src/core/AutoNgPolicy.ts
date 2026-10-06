@@ -36,7 +36,9 @@ export interface AutoNgEvaluationContext {
 
 /** 自動NGの設定キーを判定処理から隠し、設定名の追加・変更を一箇所へ閉じ込める。 */
 export function isAutoNgEnabled(policy: AutoNgToggle): boolean {
-  return Boolean(container.config.get(AUTO_NG_CONFIG_KEYS[policy]));
+  // 変更理由: 真偽設定は "on"/"off" の文字列で保存される。Boolean()で変換すると
+  // 既定値の "off" まで有効扱いになり、自動NGを全スレへ誤って適用してしまう。
+  return container.config.get(AUTO_NG_CONFIG_KEYS[policy]) === "on";
 }
 
 export function getIdentityJudgment(): IdentityJudgment {

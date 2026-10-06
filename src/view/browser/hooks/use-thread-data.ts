@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { evaluateThreadNg } from "src/core/ThreadNgEvaluator";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { tabActions } from "src/view/browser/hooks/tab-store-actions";
@@ -215,20 +216,15 @@ export function useThreadData(
       if (importedSikiThread) {
         // 変更理由: Sikiログには再取得先の通信がないため、登録済み本文を使い、
         // 通常スレと同じ検索・NG・アンカー処理へそのまま流す。
-        const importedIndexes = buildIndexes(importedSikiThread.responses);
+        // 通常スレと同じく、自動NG（連鎖・ID無し等）を含む判定を全レスへ一括適用する。
+        const importedNgResults = evaluateThreadNg(importedSikiThread.responses, {
+          title: importedSikiThread.title,
+          url: page.threadUrl,
+        });
         setResponses(
           importedSikiThread.responses.map((response) => ({
             ...response,
-            ng:
-              container.ng.isNGThread(
-                {
-                  ...response,
-                  replyCount: importedIndexes.repIndex.get(response.num)?.size ?? 0,
-                  anchorCount: importedIndexes.ancIndex.get(response.num)?.size ?? 0,
-                },
-                importedSikiThread.title,
-                page.threadUrl,
-              ) ?? undefined,
+            ng: importedNgResults.get(response.num),
           })),
         );
         if (importedSikiThread.title && importedSikiThread.title !== page.title) {
@@ -384,24 +380,11 @@ export function useThreadData(
     // これにより、設定画面での変更が即座にスレッド表示へ反映される。
     const handleNgChanged = () => {
       setResponses((prev) => {
-        // 返信数NGは表示対象だけで数えると、他のNGルールとの適用順に依存してしまう。
-        // NG判定前の全レスから索引を作り、同じスレの実レス数を基準に再判定する。
-        const allIndexes = buildIndexes(prev);
-        return prev.map((res) => ({
-          ...res,
-          // res.ng が undefined の場合は ResItem 側で非NGとして扱われるため、
-          // 判定結果をそのまま（null の場合は undefined へ変換して）上書きする。
-          ng:
-            container.ng.isNGThread(
-              {
-                ...res,
-                replyCount: allIndexes.repIndex.get(res.num)?.size ?? 0,
-                anchorCount: allIndexes.ancIndex.get(res.num)?.size ?? 0,
-              },
-              page.title,
-              page.threadUrl,
-            ) ?? undefined,
-        }));
+        // 返信数NGや連鎖NGは表示対象だけで数えると他のNGルールとの適用順に依存するため、
+        // NG判定前の全レスを対象に、自動NGを含めて再判定する。
+        const ngResults = evaluateThreadNg(prev, { title: page.title, url: page.threadUrl });
+        // 判定結果が無いレスは undefined にして、ResItem 側で非NGとして扱わせる。
+        return prev.map((res) => ({ ...res, ng: ngResults.get(res.num) }));
       });
     };
 
