@@ -1,5 +1,6 @@
 import type { SettingsPageUiState } from "src/view/browser/pages/settings/settings-types";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+import { normalizePageLocation } from "src/view/browser/utils/page-location";
 
 // ページ種別の定義
 // すべてのタブがホームを起点とし、同じタブでスレ一覧・スレッドへ移動する。
@@ -206,22 +207,12 @@ export function ensurePaneHasTab<T extends { tabs: Tab[]; activeTabId: string }>
   return { ...pane, tabs: [home], activeTabId: home.id };
 }
 
-function normalizeViewStateLocation(rawLocation: string): string {
-  try {
-    const parsed = new URL(rawLocation);
-    parsed.hash = "";
-    return parsed.toString().replace(/\/+$/, "/");
-  } catch {
-    return rawLocation.trim().replace(/\/+$/, "");
-  }
-}
-
 export function getPageViewStateKey(page: Page): string {
   switch (page.type) {
     case "threadList":
-      return `threadList:${normalizeViewStateLocation(page.boardUrl)}`;
+      return `threadList:${normalizePageLocation(page.boardUrl)}`;
     case "thread":
-      return `thread:${normalizeViewStateLocation(page.threadUrl)}`;
+      return `thread:${normalizePageLocation(page.threadUrl)}`;
     default:
       return page.type;
   }

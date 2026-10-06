@@ -1,14 +1,5 @@
 import type { Page, Tab } from "src/view/browser/types";
-
-function normalizePageLocation(rawLocation: string): string {
-  try {
-    const parsed = new window.URL(rawLocation);
-    parsed.hash = "";
-    return parsed.toString().replace(/\/+$/, "/");
-  } catch {
-    return rawLocation.trim().replace(/\/+$/, "");
-  }
-}
+import { normalizePageLocation } from "src/view/browser/utils/page-location";
 
 // 変更理由: スレ一覧が既読通知の発生元を判定するときも、画面側と同じURL正規化を使う。
 export function getAutoRefreshThreadPageKey(threadUrl: string): string {

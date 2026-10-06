@@ -50,6 +50,7 @@ import {
   getBoardUrlFromThreadUrl,
   resolveBoardUrlForBrowser,
 } from "src/view/browser/utils/link-routing";
+import { normalizePageLocation } from "src/view/browser/utils/page-location";
 
 interface ThreadListPanelProps {
   threadUrl: string;
@@ -69,33 +70,21 @@ function deriveFallbackBoardUrl(threadUrl: string): string {
   return getBoardUrlFromThreadUrl(threadUrl);
 }
 
-function normalizeLocation(rawLocation: string, targetWindow: Window): string {
-  try {
-    const targetWindowWithConstructors = targetWindow as Window & typeof globalThis;
-    // 変更理由: 旧ホストや別URL形式の同じ掲示板をパネル履歴と照合するため、
-    // 掲示板URLの正規化はch-libへ委譲してから一般的なフラグメント除去を行う。
-    const resolved = resolveBoardUrlForBrowser(rawLocation);
-    const parsed = new targetWindowWithConstructors.URL(resolved?.url ?? rawLocation);
-    parsed.hash = "";
-    return parsed.toString().replace(/\/+$/, "/");
-  } catch {
-    return rawLocation.trim().replace(/\/+$/, "");
-  }
-}
-
 function resolveBoardTitle(
   boardUrl: string,
   threadTitle: string,
   history: ReturnType<typeof useTabStore>["viewTab"]["history"],
   targetWindow: Window,
 ): string {
-  const normalizedBoardUrl = normalizeLocation(boardUrl, targetWindow);
+  // 変更理由: ポップアップ側windowのURLコンストラクタで解釈しないと別realm扱いになるため明示して渡す。
+  const targetUrl = (targetWindow as Window & typeof globalThis).URL;
+  const normalizedBoardUrl = normalizePageLocation(boardUrl, targetUrl);
   const boardPage = [...history]
     .reverse()
     .find(
       (page) =>
         page.type === "threadList" &&
-        normalizeLocation(page.boardUrl, targetWindow) === normalizedBoardUrl,
+        normalizePageLocation(page.boardUrl, targetUrl) === normalizedBoardUrl,
     );
   if (
     boardPage?.type === "threadList" &&

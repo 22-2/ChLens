@@ -62,6 +62,7 @@ import {
   parseInternalBrowserPage,
   resolveBoardUrlForBrowser,
 } from "src/view/browser/utils/link-routing";
+import { normalizePageLocation } from "src/view/browser/utils/page-location";
 import browser from "webextension-polyfill";
 
 export type {
@@ -101,19 +102,6 @@ function shouldFocusNewTabOnOpen(): boolean {
     return DEFAULT_CONFIG.focus_new_tab_on_open === "on";
   }
   return rawValue === "on";
-}
-
-function normalizePageLocation(rawLocation: string): string {
-  try {
-    // 変更理由: 板URLのホスト移転や別形式の同一性をタブ管理側で再実装せず、
-    // ch-libが返す正規URLを履歴・板ページの照合キーにも使う。
-    const resolved = resolveBoardUrlForBrowser(rawLocation);
-    const parsed = new window.URL(resolved?.url ?? rawLocation);
-    parsed.hash = "";
-    return parsed.toString().replace(/\/+$/, "/");
-  } catch {
-    return rawLocation.trim().replace(/\/+$/, "");
-  }
 }
 
 interface ThreadHistoryVisit {
