@@ -3,10 +3,14 @@ import {
   MIN_THREAD_AUTO_REFRESH_MS,
   readIdleStopTimeoutValue,
   readThreadAutoRefreshIntervalMs,
-  resolveIdleStopTimeoutMs,
   THREAD_AUTO_REFRESH_CONFIG_KEY,
-  THREAD_AUTO_REFRESH_IDLE_STOP_COUNT,
 } from "src/view/browser/hooks/auto-refresh-config";
+import {
+  evaluateIdleStop,
+  type IdleStopState,
+  INITIAL_IDLE_STOP_STATE,
+  resolveIdleStopMode,
+} from "src/view/browser/hooks/auto-refresh-idle-stop";
 import type { ThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { subscribeConfigKeys } from "src/view/browser/utils/config-setting";
@@ -105,10 +109,8 @@ export function useAutoRefresh({
     threadExpiredHandledRef.current = false;
     threadExpiredRecordedRef.current = false;
   }
-  // 新着が来なかった更新が何回連続したか。新着が来たら 0 に戻す。
-  const consecutiveIdleRefreshRef = useRef(0);
-  // 最後に新着が来た時刻（epoch ms）。時間ベースの自動停止判定に使う。
-  const lastNewResponseTimeRef = useRef<number | null>(null);
+  // 放置による自動停止の判定状態。遷移は evaluateIdleStop に集約している。
+  const idleStopStateRef = useRef<IdleStopState>(INITIAL_IDLE_STOP_STATE);
   const loadingRef = useRef(loading);
   const prevLoadingRef = useRef(loading);
   const prevEnabledRef = useRef(enabled);
@@ -405,7 +407,7 @@ export function useAutoRefresh({
     pendingRefreshRef.current = null;
     userInterruptedRef.current = false;
     // 次に ON にしたとき前回のアイドル累積を引き継がないようリセットする。
-    consecutiveIdleRefreshRef.current = 0;
+    idleStopStateRef.current = { ...idleStopStateRef.current, consecutiveIdleRefreshes: 0 };
     clearScrollingIndicator();
   }, [clearScrollingIndicator, enabled]);
 
@@ -428,7 +430,7 @@ export function useAutoRefresh({
 
     // ON 直後の初回更新。アイドル累積は ON のタイミングでリセットし、
     // この回は「新着ゼロ」でも放置とは数えない。
-    consecutiveIdleRefreshRef.current = 0;
+    idleStopStateRef.current = { ...idleStopStateRef.current, consecutiveIdleRefreshes: 0 };
     capturePendingRefresh(false);
     requestRefreshFromHook();
   }, [
@@ -651,56 +653,22 @@ export function useAutoRefresh({
       pendingRefresh.responseCount !== responseCount ||
       pendingRefresh.lastResponseNum !== lastResponseNum;
 
-    // 新着があった場合は最終新着時刻を更新（時間ベース停止の判定用）
-    if (hasNewResponses) {
-      lastNewResponseTimeRef.current = Date.now();
-
-      if (pendingRefresh.shouldNotify) {
-        // 通知は追従スクロールの可否に依存させず、ユーザーが途中位置でも知らせる。
-        const newResponseCount = Math.max(1, responseCount - pendingRefresh.responseCount);
-        onNewResponsesRef.current?.(newResponseCount, pendingRefresh.lastResponseNum);
-      }
+    if (hasNewResponses && pendingRefresh.shouldNotify) {
+      // 通知は追従スクロールの可否に依存させず、ユーザーが途中位置でも知らせる。
+      const newResponseCount = Math.max(1, responseCount - pendingRefresh.responseCount);
+      onNewResponsesRef.current?.(newResponseCount, pendingRefresh.lastResponseNum);
     }
 
-    // 自動停止（アイドル検知）。
-    // 設定に応じて tick ベース（従来動作）または時間ベースで判定する。
-    if (pendingRefresh.isIdleStopCandidate) {
-      const idleStopTimeoutValue = readIdleStopTimeoutValue();
-      const timeoutMs = resolveIdleStopTimeoutMs(idleStopTimeoutValue);
-
-      if (timeoutMs === null && idleStopTimeoutValue === "auto") {
-        // tick ベース（従来動作）: 連続アイドル回数で判定
-        if (hasNewResponses) {
-          consecutiveIdleRefreshRef.current = 0;
-        } else {
-          consecutiveIdleRefreshRef.current += 1;
-          if (consecutiveIdleRefreshRef.current >= THREAD_AUTO_REFRESH_IDLE_STOP_COUNT) {
-            if (deferAutoStop) {
-              // 次スレ探索が終わるまで累積を保持し、解除後の次回更新で通常停止へ戻す。
-              consecutiveIdleRefreshRef.current = THREAD_AUTO_REFRESH_IDLE_STOP_COUNT;
-            } else {
-              consecutiveIdleRefreshRef.current = 0;
-              onAutoStopRef.current?.();
-              return;
-            }
-          }
-        }
-      } else if (timeoutMs !== null) {
-        // 時間ベース: 最後の新着から timeoutMs 経過で停止
-        if (!hasNewResponses && lastNewResponseTimeRef.current != null) {
-          const elapsed = Date.now() - lastNewResponseTimeRef.current;
-          if (elapsed >= timeoutMs) {
-            if (deferAutoStop) {
-              // 保留中に基準時刻を消すと、探索終了後も時間ベース停止へ戻れない。
-              return;
-            }
-            lastNewResponseTimeRef.current = null;
-            onAutoStopRef.current?.();
-            return;
-          }
-        }
-      }
-      // idleStopTimeoutValue === "0"（無効）の場合は何もしない
+    const { state, shouldStop } = evaluateIdleStop(idleStopStateRef.current, {
+      hasNewResponses,
+      isIdleStopCandidate: pendingRefresh.isIdleStopCandidate,
+      deferStop: deferAutoStop,
+      mode: resolveIdleStopMode(readIdleStopTimeoutValue()),
+      now: Date.now(),
+    });
+    idleStopStateRef.current = state;
+    if (shouldStop) {
+      onAutoStopRef.current?.();
     }
   }, [
     enabled,
