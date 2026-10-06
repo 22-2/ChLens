@@ -8,16 +8,14 @@ import { OtherBoardsCollector } from "src/core/OtherBoardsCollector";
 import * as ReadState from "src/core/ReadState.js";
 import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
 import { container } from "src/service-container/index";
+import type { IBBSMenuResult } from "src/service-container/interfaces";
 
 const logger = createLogger("BBSMenuModel");
 const BBSMENU_CACHE_KEY = "bbsmenu";
 const OPENED_BOARDS_CONFIG_KEY = "opened_board_entries";
 
-export interface BBSMenuData {
-  status: "success" | "error";
-  menu?: ParsedBBSMenu[];
-  message?: string;
-}
+// サービスコンテナ経由の利用側と同じ形を保つため、インターフェース側の型をそのまま使う。
+export type BBSMenuData = IBBSMenuResult;
 
 /**
  * BBSMenu のデータモデル（オーケストレーター）

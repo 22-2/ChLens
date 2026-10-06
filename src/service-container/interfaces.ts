@@ -173,13 +173,24 @@ export interface IBoardService {
 }
 
 export interface IBBSMenuResult {
-  menu: ParsedBBSMenu[];
   status: "success" | "error";
+  // 取得失敗時は板一覧を持たないため optional にする（実装の BBSMenuModel と同じ形）。
+  menu?: ParsedBBSMenu[];
   message?: string;
 }
 
+export interface IBBSMenuChangeNotifier {
+  add(callback: (result: IBBSMenuResult) => void): void;
+  remove(callback: (result: IBBSMenuResult) => void): void;
+}
+
 export interface IBBSMenuService {
+  /** 板一覧を取得する。forceReload 時は通信して onChange へ通知する。 */
   get(forceReload?: boolean): Promise<IBBSMenuResult>;
+  /** 通信せず、保存済みの板一覧だけを返す。 */
+  getCached(): Promise<IBBSMenuResult>;
+  /** 強制更新で板一覧が変わったときの通知。 */
+  readonly onChange: IBBSMenuChangeNotifier;
 }
 
 export interface IToastService {

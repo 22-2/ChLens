@@ -4,15 +4,10 @@ import {
   formatBoardTitleForUrl,
   resolveBoardTitle,
 } from "packages/ch-lib/src/index";
-import {
-  get as getBBSMenu,
-  getCached as getCachedBBSMenu,
-  onChange as BBSMenuOnChange,
-} from "src/core/BBSMenu.js";
-import { BBSMenuData } from "src/core/BBSMenuModel";
 import { getBoardUrlKey } from "src/core/BoardUrlNormalizer";
 import { Request } from "src/core/HTTP";
 import { container } from "src/service-container/index";
+import type { IBBSMenuResult } from "src/service-container/interfaces";
 
 const isSavedTitleResolved = (title: string | null, boardUrl: string): title is string => {
   if (!title?.trim()) return false;
@@ -30,7 +25,7 @@ export const getCachedTitles = async (): Promise<Map<string, string>> => {
     const key = getBoardUrlKey(url);
     if (key && isSavedTitleResolved(title, url)) titles.set(key, title);
   };
-  const cached = await getCachedBBSMenu();
+  const cached = await container.bbsMenu.getCached();
   for (const menu of cached.menu ?? []) {
     for (const category of menu.categories) {
       for (const board of category.boards) addTitle(board.url, board.name);
@@ -64,12 +59,12 @@ export const getCachedTitles = async (): Promise<Map<string, string>> => {
 };
 
 // 旧形式 (menu?: {board: []}[]) を表すローカル interface 群は実際のデータ構造
-// (BBSMenuData: menu?: BBSMenu[] = categories/boards 形式) と食い違っていたため削除し、
-// 供給元である BBSMenuModel の型をそのまま使う。
+// (menu?: ParsedBBSMenu[] = categories/boards 形式) と食い違っていたため削除し、
+// サービスコンテナの板一覧サービスの型をそのまま使う。
 let _bbsmenu: Map<string, string> | null = null;
 let _bbsmenuPromise: Promise<void> | null = null;
 
-const _generateBBSMenu = ({ status, menu, message }: BBSMenuData): void => {
+const _generateBBSMenu = ({ status, menu, message }: IBBSMenuResult): void => {
   if (status === "error") {
     void (async () => {
       await app.defer();
@@ -96,10 +91,10 @@ const _generateBBSMenu = ({ status, menu, message }: BBSMenuData): void => {
 };
 
 const _setBBSMenu = async (): Promise<void> => {
-  const obj = await getBBSMenu();
+  const obj = await container.bbsMenu.get();
   _generateBBSMenu(obj);
   // 意図: 板一覧の更新通知を購読してキャッシュMapを常に最新に保つ。
-  BBSMenuOnChange.add((updatedObj) => {
+  container.bbsMenu.onChange.add((updatedObj) => {
     _generateBBSMenu(updatedObj);
   });
 };

@@ -275,7 +275,7 @@ export function SiteBoardSettingsPanel() {
       try {
         const result = await container.bbsMenu.get(false);
         if (!cancelled && result.status === "success") {
-          setMenuBoards(readBBSMenuBoards(result.menu));
+          setMenuBoards(readBBSMenuBoards(result.menu ?? []));
         }
       } catch (error) {
         console.error("[SiteBoardSettings] BBSMENUから板一覧を取得できませんでした", error);

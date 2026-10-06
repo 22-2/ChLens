@@ -1,5 +1,5 @@
 import { LogLevels } from "consola";
-import * as BBSMenu from "src/core/BBSMenu.js";
+import { BBSMenuModel } from "src/core/BBSMenuModel";
 import BoardService from "src/core/BoardService.js";
 import Cache from "src/core/Cache.js";
 import { setConsolaLevel } from "src/core/logger";
@@ -8,7 +8,6 @@ import Notification from "src/core/Notification";
 import ThreadService from "src/core/ThreadService.js";
 import { container } from "src/service-container/Container";
 import {
-  IBBSMenuResult,
   IBBSMenuService,
   IBoardResult,
   IBoardService,
@@ -157,8 +156,13 @@ export function setupContainer(app: LegacyAppForSetup) {
   };
 
   // BBSMenu Service Adapter
+  // 変更理由: 以前は src/core/BBSMenu.js のシングルトンを各所が直接 import しており、
+  // container.bbsMenu と入口が分かれていた。板一覧の状態はここで作る1つのモデルだけが持つ。
+  const bbsMenuModel = new BBSMenuModel();
   const bbsMenuServiceAdapter: IBBSMenuService = {
-    get: (forceReload?: boolean) => BBSMenu.get(forceReload) as Promise<IBBSMenuResult>,
+    get: (forceReload?: boolean) => bbsMenuModel.get(forceReload),
+    getCached: () => bbsMenuModel.getCached(),
+    onChange: bbsMenuModel.onChange,
   };
 
   // Thread Service Adapter
