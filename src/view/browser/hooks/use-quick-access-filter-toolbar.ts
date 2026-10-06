@@ -69,8 +69,8 @@ export function useQuickAccessFilterToolbar({
   }, [closeFilterToolbar, isActive, isFilterOpen, pageType, tabId, viewWindow]);
 
   useEffect(() => {
-    // 変更理由: ホイール更新のある一覧では開閉操作をボタンに限定し、
-    // 更新の進捗・読み込み・クールダウン中も同じ操作に二つの役割を持たせない。
+    // 変更理由: 一覧上端の上ホイールはフィルタを開く操作として使うため、
+    // 一覧ページ側でホイール更新を登録せず、この開閉処理だけを受け付ける。
     if (!isActive || !isWheelToggleEnabled) {
       return;
     }
