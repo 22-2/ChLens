@@ -66,6 +66,55 @@ describe("use-bottom-panel", () => {
     cleanup();
   });
 
+  it("isolatedなProviderは保存済みの開閉・高さ・タブを引き継がず、レイアウトも保存しない", () => {
+    storage.value = JSON.stringify({
+      isOpen: true,
+      height: 400,
+      activeTabId: BOTTOM_PANEL_THREAD_LIST_TAB_ID,
+    });
+
+    render(
+      <BottomPanelProvider isolated>
+        <PanelProbe />
+      </BottomPanelProvider>,
+    );
+
+    expect(screen.getByTestId("open")).toHaveTextContent("false");
+    expect(screen.getByTestId("height")).toHaveTextContent(String(DEFAULT_BOTTOM_PANEL_HEIGHT));
+    expect(screen.getByTestId("active")).toHaveTextContent(BOTTOM_PANEL_WRITE_TAB_ID);
+
+    fireEvent.click(screen.getByRole("button", { name: "書き込み" }));
+    fireEvent.click(screen.getByRole("button", { name: "高さを調整" }));
+
+    expect(screen.getByTestId("open")).toHaveTextContent("true");
+    // 別窓で開閉・高さを変えても、本窓が使う保存値は書き換えない。
+    expect(JSON.parse(storage.value ?? "{}")).toEqual({
+      isOpen: true,
+      height: 400,
+      activeTabId: BOTTOM_PANEL_THREAD_LIST_TAB_ID,
+    });
+  });
+
+  it("isolatedなProviderでもスレ一覧の自動更新設定は共有の保存領域へ保存する", () => {
+    storage.value = JSON.stringify({ isOpen: false, height: 400 });
+
+    render(
+      <BottomPanelProvider isolated>
+        <PanelProbe />
+      </BottomPanelProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "自動更新" }));
+    fireEvent.click(screen.getByRole("button", { name: "15秒" }));
+
+    expect(JSON.parse(storage.value ?? "{}")).toEqual({
+      isOpen: false,
+      height: 400,
+      threadListAutoRefreshEnabled: true,
+      threadListAutoRefreshIntervalSec: 15,
+    });
+  });
+
   it("タブごとのボタンを1クリックで開閉し、別タブへは開いたまま切り替える", () => {
     render(
       <BottomPanelProvider>

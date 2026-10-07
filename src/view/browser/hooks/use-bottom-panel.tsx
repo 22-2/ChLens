@@ -94,17 +94,55 @@ interface BottomPanelContextValue {
 
 const BottomPanelContext = createContext<BottomPanelContextValue | null>(null);
 
-export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+interface BottomPanelProviderProps {
+  children: ReactNode;
+  /**
+   * 開閉・高さ・選択タブを、他のProviderと共有する保存領域へ読み書きしない。
+   *
+   * 変更理由: 切り離したタブの別窓は本窓と別のレイアウトを持つため、別窓で調整した
+   * 高さや開閉が本窓の次回起動時の状態を上書きしないようにする。
+   * スレ一覧の自動更新設定は利用者の設定なので、従来どおり共有する。
+   */
+  isolated?: boolean;
+}
+
+export const BottomPanelProvider: React.FC<BottomPanelProviderProps> = ({
+  children,
+  isolated = false,
+}) => {
   const saved = loadSaved();
+  const persistState = useCallback(
+    (patch: SavedState) => {
+      if (!isolated) {
+        persist(patch);
+        return;
+      }
+      const { threadListAutoRefreshEnabled, threadListAutoRefreshIntervalSec } = patch;
+      const sharedPatch: SavedState = {};
+      if (threadListAutoRefreshEnabled !== undefined) {
+        sharedPatch.threadListAutoRefreshEnabled = threadListAutoRefreshEnabled;
+      }
+      if (threadListAutoRefreshIntervalSec !== undefined) {
+        sharedPatch.threadListAutoRefreshIntervalSec = threadListAutoRefreshIntervalSec;
+      }
+      if (Object.keys(sharedPatch).length > 0) {
+        persist(sharedPatch);
+      }
+    },
+    [isolated],
+  );
   const { window: viewWindow } = useViewSurface();
   const nextWritePanelInsertIdRef = useRef(0);
   const nextWritePanelFocusIdRef = useRef(0);
-  const [isOpen, setIsOpen] = useState(saved.isOpen ?? false);
+  const [isOpen, setIsOpen] = useState(!isolated && (saved.isOpen ?? false));
   const [height, setHeightState] = useState(() =>
-    Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, saved.height ?? DEFAULT_BOTTOM_PANEL_HEIGHT)),
+    Math.max(
+      MIN_HEIGHT,
+      Math.min(MAX_HEIGHT, (isolated ? undefined : saved.height) ?? DEFAULT_BOTTOM_PANEL_HEIGHT),
+    ),
   );
   const [activePanelTabId, setActivePanelTabIdState] = useState(() =>
-    BOTTOM_PANEL_TABS.some((tab) => tab.id === saved.activeTabId)
+    !isolated && BOTTOM_PANEL_TABS.some((tab) => tab.id === saved.activeTabId)
       ? (saved.activeTabId ?? DEFAULT_ACTIVE_PANEL_TAB_ID)
       : DEFAULT_ACTIVE_PANEL_TAB_ID,
   );
@@ -132,11 +170,14 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
     setWritePanelFocusRequestId((current) => (current === requestId ? null : current));
   }, []);
 
-  const setHeight = useCallback((h: number) => {
-    const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, h));
-    setHeightState(clamped);
-    persist({ height: clamped });
-  }, []);
+  const setHeight = useCallback(
+    (h: number) => {
+      const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, h));
+      setHeightState(clamped);
+      persistState({ height: clamped });
+    },
+    [persistState],
+  );
 
   const setActivePanelTab = useCallback(
     (id: string) => {
@@ -154,9 +195,9 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
         );
       }
       setActivePanelTabIdState(id);
-      persist({ activeTabId: id });
+      persistState({ activeTabId: id });
     },
-    [activePanelTabId, isOpen, setHeight, viewWindow],
+    [activePanelTabId, isOpen, persistState, setHeight, viewWindow],
   );
 
   const openPanel = useCallback(
@@ -167,9 +208,9 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       setActivePanelTab(targetTabId);
       setIsOpen(true);
-      persist({ isOpen: true });
+      persistState({ isOpen: true });
     },
-    [activePanelTabId, setActivePanelTab],
+    [activePanelTabId, persistState, setActivePanelTab],
   );
 
   const openWritePanelWithText = useCallback(
@@ -189,8 +230,8 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   const closePanel = useCallback(() => {
     setIsOpen(false);
-    persist({ isOpen: false });
-  }, []);
+    persistState({ isOpen: false });
+  }, [persistState]);
 
   const togglePanel = useCallback(
     (tabId?: string) => {
@@ -208,22 +249,30 @@ export const BottomPanelProvider: React.FC<{ children: ReactNode }> = ({ childre
     [activePanelTabId, closePanel, isOpen, openPanel],
   );
 
-  const setThreadListAutoRefreshEnabled = useCallback((enabled: boolean) => {
-    setThreadListAutoRefreshEnabledState(enabled);
-    persist({ threadListAutoRefreshEnabled: enabled });
-  }, []);
+  const setThreadListAutoRefreshEnabled = useCallback(
+    (enabled: boolean) => {
+      setThreadListAutoRefreshEnabledState(enabled);
+      persistState({ threadListAutoRefreshEnabled: enabled });
+    },
+    [persistState],
+  );
 
-  const setThreadListAutoRefreshIntervalSec = useCallback((seconds: number) => {
-    if (
-      !THREAD_LIST_AUTO_REFRESH_INTERVALS_SEC.includes(seconds as ThreadListAutoRefreshIntervalSec)
-    ) {
-      return;
-    }
+  const setThreadListAutoRefreshIntervalSec = useCallback(
+    (seconds: number) => {
+      if (
+        !THREAD_LIST_AUTO_REFRESH_INTERVALS_SEC.includes(
+          seconds as ThreadListAutoRefreshIntervalSec,
+        )
+      ) {
+        return;
+      }
 
-    const interval = seconds as ThreadListAutoRefreshIntervalSec;
-    setThreadListAutoRefreshIntervalSecState(interval);
-    persist({ threadListAutoRefreshIntervalSec: interval });
-  }, []);
+      const interval = seconds as ThreadListAutoRefreshIntervalSec;
+      setThreadListAutoRefreshIntervalSecState(interval);
+      persistState({ threadListAutoRefreshIntervalSec: interval });
+    },
+    [persistState],
+  );
 
   const clearWritePanelInsertRequest = useCallback((requestId: number) => {
     setWritePanelInsertRequest((prev) => {
