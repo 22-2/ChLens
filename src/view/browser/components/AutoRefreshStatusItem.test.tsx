@@ -8,7 +8,7 @@ import type { Page } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
-  viewTab: { id: "tab-a", threadDisplayMode: "normal" as "normal" | "live-chat" },
+  viewTab: { id: "tab-a" },
   dispatch: vi.fn(),
   viewPage: {
     type: "thread",
@@ -94,7 +94,6 @@ function renderItem() {
 
 describe("AutoRefreshStatusItem", () => {
   beforeEach(() => {
-    mocks.viewTab.threadDisplayMode = "normal";
     mocks.viewPage = {
       type: "thread",
       title: "スレッド",
@@ -152,10 +151,10 @@ describe("AutoRefreshStatusItem", () => {
     const select = screen.getByLabelText("表示形式");
     expect(select).toHaveValue("normal");
     fireEvent.change(select, { target: { value: "live-chat" } });
-    expect(mocks.dispatch).toHaveBeenCalledWith({
-      type: "SET_THREAD_DISPLAY_MODE",
-      mode: "live-chat",
-    });
+    // タブ状態ではなく設定へ保存し、新しいタブや再起動後も同じ表示形式を使う。
+    expect(container.config.set).toHaveBeenCalledWith("thread_display_mode", "live-chat");
+    expect(select).toHaveValue("live-chat");
+    expect(mocks.dispatch).not.toHaveBeenCalled();
     expect(mocks.autoRefreshPanel.toggle).not.toHaveBeenCalled();
     expect(mocks.autoRefreshPanel.setIntervalSec).not.toHaveBeenCalled();
   });

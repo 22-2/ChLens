@@ -22,7 +22,13 @@ export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
 }
 
 function normalizeLoadedTab(tab: Tab): Tab {
-  const { locked, ...fields } = tab;
+  // 変更理由: 表示形式は設定（thread_display_mode）へ移したため、旧セッションに残る
+  // タブ単位の threadDisplayMode は読み捨て、保存のたびに古い値を持ち越さない。
+  const {
+    locked,
+    threadDisplayMode: _legacyThreadDisplayMode,
+    ...fields
+  } = tab as Tab & { threadDisplayMode?: unknown };
   // 旧常設ホーム・空の新規タブを通常ホームへ移し、固定状態とタブIDは独立して引き継ぐ。
   const oldHistory: Page[] = (tab.history ?? []).map((page) =>
     ["newTab", "boardTree"].includes(page.type) ? { type: "home", title: "ホーム" } : page,

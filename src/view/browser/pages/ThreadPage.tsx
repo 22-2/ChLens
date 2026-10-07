@@ -38,6 +38,7 @@ import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
 import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
 import { useThreadData } from "src/view/browser/hooks/use-thread-data";
+import { useThreadDisplayModeSetting } from "src/view/browser/hooks/use-thread-display-mode-setting";
 import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import {
@@ -173,7 +174,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const { viewTab } = useTabStore();
   // 既存の直接利用者との互換性のため渡されたtabを残し、通常の描画経路ではそれを優先する。
   const navigationTab = tab ?? viewTab;
-  const isLiveChat = navigationTab.threadDisplayMode === "live-chat";
+  const { mode: threadDisplayMode } = useThreadDisplayModeSetting();
+  const isLiveChat = threadDisplayMode === "live-chat";
   const isFilterEnabled = filter !== "all" || searchQuery.trim() !== "";
   const liveChat = useLiveChatResponses({
     responses: filteredResponses,

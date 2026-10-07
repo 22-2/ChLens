@@ -20,7 +20,7 @@ describe("ホーム統合後のセッション移行", () => {
     storage.json = "";
   });
 
-  it("セッション復元でライブ表示を保持し、自動更新は開始しない", () => {
+  it("旧セッションのタブ単位の表示形式は読み捨て、自動更新は開始しない", () => {
     storage.json = JSON.stringify({
       panes: [
         {
@@ -34,10 +34,9 @@ describe("ホーム統合後のセッション移行", () => {
       activePaneId: "pane",
       closedTabs: [],
     });
-    expect(loadTabStoreSession()!.panes[0].tabs[0]).toMatchObject({
-      threadDisplayMode: "live-chat",
-      autoRefreshEnabled: false,
-    });
+    const restoredTab = loadTabStoreSession()!.panes[0].tabs[0];
+    expect(restoredTab).toMatchObject({ autoRefreshEnabled: false });
+    expect(restoredTab).not.toHaveProperty("threadDisplayMode");
   });
 
   it.each([0, 1, 2, 3])(

@@ -9,7 +9,6 @@ type ActionOf<Type extends TabAction["type"]> = Extract<TabAction, { type: Type 
 type PayloadOf<Type extends TabAction["type"]> = Omit<ActionOf<Type>, "type">;
 
 export interface TabActionCreators {
-  setThreadDisplayMode(mode: "normal" | "live-chat"): ActionOf<"SET_THREAD_DISPLAY_MODE">;
   addTab(options?: PayloadOf<"ADD_TAB">): ActionOf<"ADD_TAB">;
   openInNewTab(
     page: Page,
@@ -77,7 +76,6 @@ export interface TabActionCreators {
  * 一つのAPIへ集約している。アクションオブジェクト自体は毎回新しく生成する。
  */
 export const tabActions: TabActionCreators = {
-  setThreadDisplayMode: (mode) => ({ type: TAB_ACTION_TYPES.SET_THREAD_DISPLAY_MODE, mode }),
   addTab: (options = {}) => ({ type: TAB_ACTION_TYPES.ADD_TAB, ...options }),
   openInNewTab: (page, options = {}) => ({
     type: TAB_ACTION_TYPES.OPEN_IN_NEW_TAB,

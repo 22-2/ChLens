@@ -380,7 +380,6 @@ function actionUsesImplicitExistingTab(action: ScopedTabAction): boolean {
     case TAB_ACTION_TYPES.RELOAD:
     case TAB_ACTION_TYPES.FOLLOW_NEXT_THREAD:
     case TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED:
-    case TAB_ACTION_TYPES.SET_THREAD_DISPLAY_MODE:
     case TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY:
       return true;
     default:
