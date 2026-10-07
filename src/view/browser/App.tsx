@@ -1,4 +1,3 @@
-import { List as ListIcon, PenLine } from "lucide-react";
 import React, { useCallback, useEffect } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { useArchiveReplayMainThreadSync } from "src/features/archive-replay/browser/use-main-thread-sync";
@@ -27,24 +26,17 @@ import { TabWindowHost } from "src/features/tabs/ui/TabWindowHost";
 import { WindowNavigationBridge } from "src/features/tabs/ui/WindowNavigationBridge";
 import { IkioiStatusItem } from "src/features/thread/ui/IkioiStatusItem";
 import { PopularFilterStatusItem } from "src/features/thread/ui/PopularFilterStatusItem";
-import {
-  useWriteSessionControls,
-  WriteSessionProvider,
-} from "src/features/write/browser/use-write-session";
+import { ThreadListPanelToggleItem } from "src/features/thread-list/ui/ThreadListPanelToggleItem";
+import { WriteSessionProvider } from "src/features/write/browser/use-write-session";
+import { WritePanelToggleItem } from "src/features/write/ui/WritePanelToggleItem";
 import { WriteWindowHost } from "src/features/write/ui/WriteWindowHost";
 import { container } from "src/service-container/index";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
 import { PageCountStatusItem } from "src/view/browser/components/PageCountStatusItem";
-import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
-import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
+import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TitleBar } from "src/view/browser/components/TitleBar";
-import {
-  BOTTOM_PANEL_THREAD_LIST_TAB_ID,
-  BOTTOM_PANEL_WRITE_TAB_ID,
-  BottomPanelProvider,
-  useBottomPanel,
-} from "src/view/browser/hooks/use-bottom-panel";
+import { BottomPanelProvider } from "src/view/browser/hooks/use-bottom-panel";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
 import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-status";
 import { useTheme } from "src/view/browser/hooks/use-theme";
@@ -56,37 +48,6 @@ import { ToastProvider } from "src/view/browser/ui/Toast";
 import { TooltipProvider } from "src/view/browser/ui/Tooltip";
 import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
 import browser from "webextension-polyfill";
-
-// ステータスバー右端に表示する下部パネルの直接操作ボタン。
-// 変更理由: パネル種別を先に選ばせると書き込みまでの操作が増えるため、
-// スレ一覧と書き込みをそれぞれ1クリックで開けるようにする。
-const ThreadListPanelToggleItem: React.FC = () => {
-  const { togglePanel } = useBottomPanel();
-  const { viewPage } = useTabStore();
-
-  if (viewPage.type !== "thread") {
-    return null;
-  }
-
-  return (
-    <StatusBarItem
-      id="thread-list-panel-toggle"
-      alignment="right"
-      priority={STATUS_BAR_PRIORITY.right.threadListPanelToggle}
-      interactive
-      title="スレ一覧パネルを開閉"
-    >
-      <button
-        className="status-bar__btn"
-        onClick={() => togglePanel(BOTTOM_PANEL_THREAD_LIST_TAB_ID)}
-        aria-label="スレ一覧パネルを開閉"
-      >
-        <ListIcon size={12} />
-        <span>スレ一覧</span>
-      </button>
-    </StatusBarItem>
-  );
-};
 
 // MCPのURL省略要求とサービスワーカー用設定を保存する。
 // TabStoreはReact Context内の状態なので、UI外のサービスワーカーへはこの最小限の値だけ渡す。
@@ -113,53 +74,6 @@ const ActiveThreadBridgeState: React.FC<{ isActive: boolean }> = ({ isActive }) 
   }, [activeThreadUrl, format2chnet, isActive]);
 
   return null;
-};
-
-const WritePanelToggleItem: React.FC = () => {
-  const { isOpen, activePanelTabId, togglePanel, requestWritePanelFocus } = useBottomPanel();
-  const { viewPage } = useTabStore();
-  const { isWindowOpen, openWriteWindow, selectThread, requestWriteWindowFocus } =
-    useWriteSessionControls();
-
-  // 書き込み UI はスレッド専用なので、他ページではステータスバーに出さない。
-  if (viewPage.type !== "thread") {
-    return null;
-  }
-
-  return (
-    <StatusBarItem
-      id="write-panel-toggle"
-      alignment="right"
-      priority={STATUS_BAR_PRIORITY.right.writePanelToggle}
-      interactive
-      title="書き込みパネルを開閉"
-    >
-      <button
-        className="status-bar__btn"
-        onClick={() => {
-          // 表示中のスレから開いた場合は、そのスレを共通書き込み窓の初期選択にする。
-          selectThread(viewPage.threadUrl);
-          if (isWindowOpen) {
-            // 共有窓が既にある場合は下部パネルを再表示せず、同じエディタへ戻す。
-            if (openWriteWindow()) {
-              requestWriteWindowFocus();
-            }
-            return;
-          }
-          // 変更理由: 書き込みは入力欄と本文を両方見渡せる既定サイズで開き、
-          // スレ一覧を使った後も大きな高さがそのまま残らないようにする。
-          togglePanel(BOTTOM_PANEL_WRITE_TAB_ID);
-          if (!isOpen || activePanelTabId !== BOTTOM_PANEL_WRITE_TAB_ID) {
-            requestWritePanelFocus();
-          }
-        }}
-        aria-label="書き込みパネルを開閉"
-      >
-        <PenLine size={12} />
-        <span>書き込み</span>
-      </button>
-    </StatusBarItem>
-  );
 };
 
 // 1ペイン分の縦カラム（タブバー＋ナビゲーション＋コンテンツ）。
