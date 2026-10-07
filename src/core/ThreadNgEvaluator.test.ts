@@ -107,7 +107,10 @@ describe("evaluateThreadNg", () => {
   it("2chの1000超過以降のレスは判定しない", () => {
     mocks.isNGThread.mockReturnValue({ type: "Word" });
 
-    const results = evaluateThreadNg([res(1), res(2, { other: "Over 1000 Thread" }), res(3)], context);
+    const results = evaluateThreadNg(
+      [res(1), res(2, { other: "Over 1000 Thread" }), res(3)],
+      context,
+    );
 
     expect([...results.keys()]).toEqual([1]);
   });
