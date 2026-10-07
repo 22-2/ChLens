@@ -38,7 +38,7 @@ export async function chServerMoveDetect(
     }
   }
 
-  const res = /location\.href="(https?:\/\/[^\"]+)"/.exec(html);
+  const res = /location\.href="(https?:\/\/[^"]+)"/.exec(html);
   if (res) {
     let redirectedBoardUrl = resolveBoardMoveUrl(normalizedOldBoardUrl, res[1]);
     if (redirectedBoardUrl == null && getBoardNetwork(res[1]) === "5ch") {

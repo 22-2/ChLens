@@ -204,7 +204,8 @@ export function useThreadReadState({
     if (initialReadState?.last) {
       scrollToResponse(initialReadState.last, {
         highlight: false,
-        offset: initialReadState.offset,
+        // 保存値のnullはoffset未設定を表すため、スクロールAPIにはundefinedで渡す。
+        offset: initialReadState.offset ?? undefined,
       });
     }
 

@@ -1,7 +1,7 @@
 import { ChURL, getThreadReferenceKeys } from "packages/ch-lib/src/index";
 import Board from "src/core/Board";
-import { levenshteinDistance } from "src/core/Util";
 import { normalize } from "src/core/string-normalize";
+import { levenshteinDistance } from "src/core/Util";
 
 // 既存利用箇所のimport互換を保ちつつ、責務別の実装を直接利用できるよう再公開する。
 export { Anchor } from "src/core/anchor";

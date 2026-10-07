@@ -36,12 +36,14 @@ describe("command-runtime", () => {
   beforeEach(() => {
     copyTextMock.mockResolvedValue(undefined);
     container.bookmark = {
+      promiseFirstScan: Promise.resolve(true),
       get: vi.fn(),
       add: vi.fn(),
       remove: vi.fn(),
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: vi.fn(),
+      getAllBoards: vi.fn(() => []),
     };
   });
 
@@ -106,12 +108,14 @@ describe("command-runtime", () => {
     const remove = vi.fn();
     const get = vi.fn().mockReturnValue(undefined);
     container.bookmark = {
+      promiseFirstScan: Promise.resolve(true),
       get,
       add,
       remove,
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: vi.fn(),
+      getAllBoards: vi.fn(() => []),
     };
 
     await executeCommandRequest(

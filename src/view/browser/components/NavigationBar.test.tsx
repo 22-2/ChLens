@@ -141,12 +141,14 @@ describe("NavigationBar", () => {
     });
 
     container.bookmark = {
+      promiseFirstScan: Promise.resolve(true),
       get: bookmarkGetMock,
       add: bookmarkAddMock,
       remove: bookmarkRemoveMock,
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: vi.fn(),
+      getAllBoards: vi.fn(() => []),
     };
     container.message = {
       send: vi.fn(),
@@ -884,12 +886,14 @@ describe("NavigationBar titlebar slot", () => {
     paneHolder.activePaneId = "pane-1";
 
     container.bookmark = {
+      promiseFirstScan: Promise.resolve(true),
       get: vi.fn(),
       add: vi.fn(),
       remove: vi.fn(),
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: vi.fn(),
+      getAllBoards: vi.fn(() => []),
     };
     container.message = {
       send: vi.fn(),

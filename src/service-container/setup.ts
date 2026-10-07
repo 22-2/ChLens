@@ -3,17 +3,17 @@ import { defer } from "src/app/Defer";
 import message from "src/app/Message";
 import { escapeHtml, safeHref } from "src/app/Util";
 import { BBSMenuModel } from "src/core/BBSMenuModel";
-import Bookmark from "src/core/Bookmark";
-import * as ReadState from "src/core/ReadState";
-import { isNewerReadState } from "src/core/read-state-compare";
-import type { ComparableReadState } from "src/core/read-state-compare";
 import BoardService from "src/core/BoardService";
+import Bookmark from "src/core/Bookmark";
 import Cache from "src/core/Cache";
 import { setConsolaLevel } from "src/core/logger";
-import { configInstance } from "src/service-container/config-instance";
 import * as NG from "src/core/NG";
 import Notification from "src/core/Notification";
+import type { ComparableReadState } from "src/core/read-state-compare";
+import { isNewerReadState } from "src/core/read-state-compare";
+import * as ReadState from "src/core/ReadState";
 import ThreadService from "src/core/ThreadService";
+import { configInstance } from "src/service-container/config-instance";
 import { container } from "src/service-container/Container";
 import {
   IBBSMenuService,
@@ -237,7 +237,10 @@ export function setupContainer(): void {
   const utilAdapter: IUtil = {
     escapeHtml,
     safeHref,
-    defer,
+    // 変更理由: 待機結果の値は利用せず、IUtilでは完了だけを表すPromise<void>に揃える。
+    defer: async () => {
+      await defer();
+    },
     isNewerReadState: (
       a: ComparableReadState | null | undefined,
       b: ComparableReadState | null | undefined,
