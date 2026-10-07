@@ -58,6 +58,24 @@ function findTab(panes: readonly Pane[], tabId: string): { tab: Tab; paneId: str
   return null;
 }
 
+function unwatchTabWindow(entry: TabWindowEntry): void {
+  entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
+  entry.window.removeEventListener("load", entry.onLoad);
+}
+
+/**
+ * 別窓の監視を外してから窓を閉じる。
+ *
+ * 変更理由: 戻す・閉じる・タブ消滅・unmountの各経路で同じ手順を重複して持つと、
+ * 監視解除を片方だけ忘れ、プログラム終了をOS終了として二重処理する恐れがあるため。
+ */
+function releaseTabWindow(entry: TabWindowEntry): void {
+  unwatchTabWindow(entry);
+  if (!entry.window.closed) {
+    entry.window.close();
+  }
+}
+
 function isDetachablePage(page: Page): boolean {
   return page.type === "thread" || page.type === "threadList";
 }
@@ -118,8 +136,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
       }
 
       if (existing) {
-        existing.window.removeEventListener("beforeunload", existing.onBeforeUnload);
-        existing.window.removeEventListener("load", existing.onLoad);
+        unwatchTabWindow(existing);
         removeWindow(tabId, existing.window);
       }
 
@@ -214,11 +231,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
         return;
       }
 
-      entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
-      entry.window.removeEventListener("load", entry.onLoad);
-      if (!entry.window.closed) {
-        entry.window.close();
-      }
+      releaseTabWindow(entry);
       removeWindow(tabId, entry.window);
 
       const located = findTab(stateRef.current.panes, tabId);
@@ -250,11 +263,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
 
       // 先に監視を外してからCLOSE_TABを送ることで、プログラム終了をOS終了として
       // 二重処理せず、閉じたタブ履歴にも一度だけ記録する。
-      entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
-      entry.window.removeEventListener("load", entry.onLoad);
-      if (!entry.window.closed) {
-        entry.window.close();
-      }
+      releaseTabWindow(entry);
       removeWindow(tabId, entry.window);
       dispatch({
         ...tabActions.closeTab(tabId, {
@@ -342,11 +351,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
       if (availableTabIds.has(tabId)) {
         continue;
       }
-      entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
-      entry.window.removeEventListener("load", entry.onLoad);
-      if (!entry.window.closed) {
-        entry.window.close();
-      }
+      releaseTabWindow(entry);
       removeWindow(tabId, entry.window);
     }
   }, [panes, removeWindow]);
@@ -367,11 +372,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     return () => {
       for (const entry of windowsRef.current.values()) {
-        entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
-        entry.window.removeEventListener("load", entry.onLoad);
-        if (!entry.window.closed) {
-          entry.window.close();
-        }
+        releaseTabWindow(entry);
       }
     };
   }, []);
