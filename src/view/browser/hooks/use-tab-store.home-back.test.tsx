@@ -80,7 +80,7 @@ describe("通常タブのホームと閲覧履歴", () => {
     await mount();
     const first = activeTab().id;
     expect(activeTab().pinned).toBe(false);
-    expect(activeTab().locked).toBeUndefined();
+    expect(activeTab()).not.toHaveProperty("locked");
     act(() => dispatch({ type: "ADD_TAB" }));
     const second = activeTab().id;
     act(() => dispatch({ type: "ADD_TAB" }));
@@ -158,7 +158,12 @@ describe("通常タブのホームと閲覧履歴", () => {
   });
 
   it("旧固定ホームと旧空タブをIDを保って通常ホームへ移行する", async () => {
-    const oldHome: Tab = { ...createHomeTab("old-home"), locked: true, pinned: true };
+    // 旧セッションの常設ホームはlockedを持つため、現行のTab型に余分な項目を足して再現する。
+    const oldHome: Tab & { locked: boolean } = {
+      ...createHomeTab("old-home"),
+      locked: true,
+      pinned: true,
+    };
     const oldBlank: Tab = {
       ...createHomeTab("old-blank"),
       history: [{ type: "newTab", title: "新しいタブ" }],
@@ -169,9 +174,9 @@ describe("通常タブのホームと閲覧履歴", () => {
       closedTabs: [],
     });
     expect(stateRef.current.panes[0].tabs.map((tab) => tab.id)).toEqual([oldHome.id, oldBlank.id]);
-    expect(
-      stateRef.current.panes[0].tabs.every((tab) => !tab.pinned && tab.locked === undefined),
-    ).toBe(true);
+    expect(stateRef.current.panes[0].tabs.every((tab) => !tab.pinned && !("locked" in tab))).toBe(
+      true,
+    );
     expect(activeTab().id).toBe(oldBlank.id);
     expect(screen.getByTestId("page")).toHaveTextContent("home");
   });

@@ -1,5 +1,5 @@
 import { loadTabStoreSession } from "src/view/browser/hooks/tab-store-session";
-import { createHomeTab, getCurrentPage } from "src/view/browser/types";
+import { createHomeTab, getCurrentPage, type Tab } from "src/view/browser/types";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const storage = vi.hoisted(() => ({ json: "" }));
@@ -110,10 +110,44 @@ describe("ホーム統合後のセッション移行", () => {
     const pane = loadTabStoreSession()!.panes[0];
     expect(pane.tabs).toHaveLength(1);
     expect(pane.activeTabId).toBe("home-tab");
-    expect(pane.tabs[0].locked).toBeUndefined();
+    expect(pane.tabs[0]).not.toHaveProperty("locked");
     expect(pane.tabs[0]).toMatchObject({
       pinned: false,
       history: [{ type: "home", title: "ホーム" }],
+    });
+  });
+});
+
+describe("セッション保存形式", () => {
+  it("一時状態を書き出さず、履歴から外れたページの表示状態を切り捨てる", async () => {
+    const { toPersistedTab } = await import("src/view/browser/hooks/tab-store-session");
+    const threadPage = {
+      type: "thread" as const,
+      title: "サンプルスレ",
+      threadUrl: "https://example.com/test/read.cgi/sample/1/",
+    };
+    const tab: Tab = {
+      ...createHomeTab("tab"),
+      history: [{ type: "home", title: "ホーム" }, boardPage as never, threadPage],
+      currentIndex: 2,
+      reloadKey: 5,
+      autoRefreshEnabled: true,
+      autoRefreshPageKey: "thread:https://example.com/test/read.cgi/sample/1/",
+      viewStates: {
+        "thread:https://example.com/test/read.cgi/sample/1/": { searchQuery: "残す" },
+        "thread:https://example.com/test/read.cgi/sample/99/": { searchQuery: "捨てる" },
+      },
+    };
+    const persisted = toPersistedTab(tab);
+
+    expect(persisted).toEqual({
+      id: "tab",
+      history: [{ type: "home", title: "ホーム" }, boardPage, threadPage],
+      currentIndex: 2,
+      pinned: false,
+      viewStates: {
+        "thread:https://example.com/test/read.cgi/sample/1/": { searchQuery: "残す" },
+      },
     });
   });
 });

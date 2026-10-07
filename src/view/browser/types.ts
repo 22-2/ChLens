@@ -108,13 +108,27 @@ export interface TabViewState {
 
 export type TabViewStates = Record<string, TabViewState>;
 
-export interface Tab {
+/**
+ * セッションへ保存し、再起動後に復元するタブの状態。
+ *
+ * 変更理由: 以前は保存する値と実行中だけの値が Tab に混在し、保存時・復元時に
+ * 一時状態を個別に消していた。新しい一時状態を足すと消し忘れて保存されるため、
+ * 保存対象をこの型に限定し、セッション保存はこの型の項目だけを書き出す。
+ */
+export interface PersistedTab {
   id: string;
   history: Page[];
   currentIndex: number;
   pinned: boolean;
-  // 旧セッションの常設ホームを通常タブへ移行するためだけに読み取る。
-  locked?: boolean;
+  // ページごとの検索・絞り込み・並び順をタブに保持する。
+  // URLをキーに含めることで、同じタブ内で板やスレを移動しても状態が混ざらない。
+  viewStates?: TabViewStates;
+}
+
+/**
+ * 実行中だけ意味を持つタブの状態。セッションへは保存せず、復元時は既定値で作り直す。
+ */
+export interface TabRuntimeState {
   // ページの強制再読み込みに使うカウンター。インクリメントするとContentAreaがページを再マウントする
   reloadKey: number;
   // 自動更新は現在ページだけに結び付け、別ページへ移動した時点で解除する。
@@ -123,9 +137,17 @@ export interface Tab {
   autoRefreshPageKey: string | null;
   // dat落ち・満了・次スレ探索の期限終了を記録し、同じページの開始連打による再開を防ぐ。
   autoRefreshStoppedPageKey?: string | null;
-  // ページごとの検索・絞り込み・並び順をタブに保持する。
-  // URLをキーに含めることで、同じタブ内で板やスレを移動しても状態が混ざらない。
-  viewStates?: TabViewStates;
+}
+
+export interface Tab extends PersistedTab, TabRuntimeState {}
+
+export function createTabRuntimeState(): TabRuntimeState {
+  return {
+    reloadKey: 0,
+    autoRefreshEnabled: false,
+    autoRefreshPageKey: null,
+    autoRefreshStoppedPageKey: null,
+  };
 }
 
 // 横分割の1カラム。各ペインが独立したタブ群とアクティブタブを持つ。
@@ -190,10 +212,7 @@ export function createHomeTab(id?: string): Tab {
     history: [{ type: "home", title: "ホーム" }],
     currentIndex: 0,
     pinned: false,
-    reloadKey: 0,
-    autoRefreshEnabled: false,
-    autoRefreshPageKey: null,
-    autoRefreshStoppedPageKey: null,
+    ...createTabRuntimeState(),
   };
 }
 

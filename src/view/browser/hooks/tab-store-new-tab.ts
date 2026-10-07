@@ -4,6 +4,7 @@ import { deriveBoardUrlFromThreadUrl } from "src/view/browser/hooks/tab-store-st
 import {
   buildHierarchy,
   createHomeTab,
+  createTabRuntimeState,
   ensurePaneHasTab,
   getCurrentPage,
   type Page,
@@ -177,9 +178,7 @@ export function createTab(sourcePage: Page | null = null, sourceTab: Tab | null 
     history: buildHierarchy(initialPage),
     currentIndex: buildHierarchy(initialPage).length - 1,
     pinned: false,
-    reloadKey: 0,
-    autoRefreshEnabled: false,
-    autoRefreshPageKey: null,
+    ...createTabRuntimeState(),
   };
 }
 
@@ -190,9 +189,7 @@ export function createTabFromPage(page: Page): Tab {
     history,
     currentIndex: history.length - 1,
     pinned: false,
-    reloadKey: 0,
-    autoRefreshEnabled: false,
-    autoRefreshPageKey: null,
+    ...createTabRuntimeState(),
   };
 }
 

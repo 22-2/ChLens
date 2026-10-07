@@ -119,9 +119,15 @@ describe("タブセッションの操作時保存と再読み込み", () => {
     expect(window.location.hash).toBe("#section");
     const state = JSON.parse(localStorage.getItem(SESSION_KEY)!) as TabStoreState;
     expect(state.panes).toHaveLength(2);
-    expect(state.panes[0].tabs.find((tab) => tab.id === "board-tab")).toMatchObject(
-      saved.panes[0].tabs[1],
-    );
+    const savedBoardTab = saved.panes[0].tabs[1];
+    const persistedBoardTab = state.panes[0].tabs.find((tab) => tab.id === "board-tab");
+    // 保存対象の項目だけが書き出され、自動更新などの一時状態や未知の項目は保存しない。
+    expect(persistedBoardTab).toEqual({
+      id: savedBoardTab.id,
+      history: savedBoardTab.history,
+      currentIndex: savedBoardTab.currentIndex,
+      pinned: savedBoardTab.pinned,
+    });
     expect(state.closedTabs[0].id).toBe("closed-tab");
     cleanup();
     vi.resetModules();

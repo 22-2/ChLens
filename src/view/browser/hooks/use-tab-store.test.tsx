@@ -327,8 +327,10 @@ describe("TabProvider auto refresh state", () => {
       }>;
     };
 
-    expect(parsed.panes[0].tabs[0].autoRefreshEnabled).toBe(false);
-    expect(parsed.panes[0].tabs[0].autoRefreshPageKey).toBeNull();
+    // 一時状態は保存形式に含めず、復元時に既定値で作り直す。
+    expect(parsed.panes[0].tabs[0]).not.toHaveProperty("autoRefreshEnabled");
+    expect(parsed.panes[0].tabs[0]).not.toHaveProperty("autoRefreshPageKey");
+    expect(parsed.panes[0].tabs[0]).not.toHaveProperty("reloadKey");
   });
 
   it("セッション復元時に保存済み自動更新状態をリセットする", async () => {
@@ -1065,9 +1067,9 @@ describe("TabProvider auto refresh state", () => {
 
     function Harness() {
       const { state, viewPage, dispatch } = useTabStore();
-      const targetTabId = state.tabs.find((tab) => !tab.locked)?.id ?? "";
+      const targetTabId = state.tabs[0]?.id ?? "";
       const targetDispatch = useTabDispatchForTab(targetTabId);
-      const targetTab = state.tabs.find((tab) => !tab.locked);
+      const targetTab = state.tabs[0];
 
       return (
         <>
@@ -1183,7 +1185,7 @@ describe("TabProvider auto refresh state", () => {
     function Harness() {
       const { state, paneId, selectedTabId, viewTabId, dispatch } = useTabStore();
       // 変更理由: 常設ホームタブを除外し、選択中と異なる通常タブを別窓対象にする。
-      const detachedTabId = state.tabs.find((tab) => !tab.locked && tab.id !== selectedTabId)?.id;
+      const detachedTabId = state.tabs.find((tab) => tab.id !== selectedTabId)?.id;
 
       return (
         <>
@@ -1486,9 +1488,7 @@ describe("TabProvider auto refresh state", () => {
           </button>
           <button
             onClick={() => {
-              const target = state.tabs.find(
-                (tab) => tab.id !== state.selectedTabId && !tab.locked,
-              );
+              const target = state.tabs.find((tab) => tab.id !== state.selectedTabId);
               if (!target) return;
               dispatch({
                 type: "UPDATE_TITLE_FOR_TAB",
@@ -1503,8 +1503,7 @@ describe("TabProvider auto refresh state", () => {
           <output data-testid="active-tab-id">{viewTab.id}</output>
           <output data-testid="active-page-title">{viewPage.title}</output>
           <output data-testid="background-page-title">
-            {state.tabs.find((tab) => tab.id !== state.selectedTabId && !tab.locked)?.history.at(-1)
-              ?.title ?? ""}
+            {state.tabs.find((tab) => tab.id !== state.selectedTabId)?.history.at(-1)?.title ?? ""}
           </output>
         </>
       );
@@ -1823,9 +1822,7 @@ describe("TabProvider auto refresh state", () => {
           </button>
           <button
             onClick={() => {
-              const background = state.tabs.find(
-                (tab) => tab.id !== state.selectedTabId && !tab.locked,
-              );
+              const background = state.tabs.find((tab) => tab.id !== state.selectedTabId);
               if (!background) return;
               dispatch({ type: "SELECT_TAB", tabId: background.id });
             }}
