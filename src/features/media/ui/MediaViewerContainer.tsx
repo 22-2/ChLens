@@ -2,13 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type AuxiliaryWindowOptions,
   createAuxiliaryWindowRoot,
-} from "src/view/browser/hooks/auxiliary-window-root";
-import { openAuxiliaryWindow } from "src/view/browser/hooks/use-auxiliary-window";
+} from "src/features/auxiliary-window/browser/auxiliary-window-root";
+import { openAuxiliaryWindow } from "src/features/auxiliary-window/browser/use-auxiliary-window";
 import {
   useViewSurface,
   type ViewSurface,
   ViewSurfaceProvider,
-} from "src/view/browser/hooks/use-view-surface";
+} from "src/features/auxiliary-window/browser/use-view-surface";
 
 import { useMediaViewerStore } from "../browser/use-media-viewer-store";
 import { MediaViewerContent } from "./MediaViewerContent";

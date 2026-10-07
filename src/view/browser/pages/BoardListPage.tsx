@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from "react";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
+import { useTabStore } from "src/features/tabs/browser/use-tab-store";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
 import { BoardListContent } from "src/view/browser/pages/board-list/BoardListContent";
 import { ContextMenuHandler } from "src/view/browser/pages/board-list/ContextMenuHandler";

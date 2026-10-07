@@ -2,18 +2,23 @@ import { ChURL } from "packages/ch-lib/src/index";
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { upsertOpenedBoardEntry } from "src/core/OpenedBoards";
-import { container } from "src/service-container/index";
-import type { IThread } from "src/service-container/interfaces";
-import type { CommandRequest } from "src/view/browser/commands/command-runtime";
-import { runCommandRequest } from "src/view/browser/commands/command-runtime";
-import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
-import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
-  type DataTableSection,
-  SimpleDataTable,
-} from "src/view/browser/components/SimpleDataTable";
-import { createThreadContextMenuItems } from "src/view/browser/components/thread-context-menu-items";
+  BOARD_AUTO_REFRESH_CONFIG_KEY,
+  MIN_BOARD_AUTO_REFRESH_MS,
+  readBoardAutoRefreshIntervalMs,
+} from "src/features/auto-refresh/browser/auto-refresh-config";
+import {
+  readBookmarkStatus,
+  useBookmarkRevision,
+} from "src/features/bookmark/browser/use-bookmark-revision";
+import { useNgStatus } from "src/features/ng/browser/use-ng-status";
+import { useThreadTitleNgDialog } from "src/features/ng/browser/use-thread-title-ng-dialog";
+import { ThreadTitleNgDialog } from "src/features/ng/ui/ThreadTitleNgDialog";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
+import { useTabStore, useTabViewState } from "src/features/tabs/browser/use-tab-store";
+import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
+import { createThreadContextMenuItems } from "src/features/thread/ui/thread-context-menu-items";
 import {
   calcHeat,
   createHighlightDividerStyle,
@@ -31,28 +36,23 @@ import {
   type ThreadListSortColumn,
   type ThreadListSortPreference,
   writeThreadListSortPreference,
-} from "src/view/browser/components/thread-list-shared";
-import { ThreadTitleNgDialog } from "src/view/browser/components/ThreadTitleNgDialog";
+} from "src/features/thread-list/ui/thread-list-shared";
+import { container } from "src/service-container/index";
+import type { IThread } from "src/service-container/interfaces";
+import type { CommandRequest } from "src/view/browser/commands/command-runtime";
+import { runCommandRequest } from "src/view/browser/commands/command-runtime";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
+import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
+import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
-  BOARD_AUTO_REFRESH_CONFIG_KEY,
-  MIN_BOARD_AUTO_REFRESH_MS,
-  readBoardAutoRefreshIntervalMs,
-} from "src/view/browser/hooks/auto-refresh-config";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import {
-  readBookmarkStatus,
-  useBookmarkRevision,
-} from "src/view/browser/hooks/use-bookmark-revision";
-import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
+  type DataTableSection,
+  SimpleDataTable,
+} from "src/view/browser/components/SimpleDataTable";
 import {
   getThreadListPageCountKey,
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
-import { useTabStore, useTabViewState } from "src/view/browser/hooks/use-tab-store";
-import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
-import { useThreadTitleNgDialog } from "src/view/browser/hooks/use-thread-title-ng-dialog";
 import { isResolvedBoardTitle } from "src/view/browser/pages/board-list/board-list-utils";
 import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
 import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";
@@ -88,7 +88,7 @@ export type {
   ThreadListSortColumn,
   ThreadListSortDirection,
   ThreadListSortPreference,
-} from "src/view/browser/components/thread-list-shared";
+} from "src/features/thread-list/ui/thread-list-shared";
 
 interface Props {
   tabId: string;

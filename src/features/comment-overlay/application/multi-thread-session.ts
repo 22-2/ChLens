@@ -1,10 +1,10 @@
-import type { IBoardResult, IRes, IThread, IThreadDetail } from "src/service-container/interfaces";
-import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import {
   calculateTitleSimilarity,
   extractThreadSequenceNumber,
   findMainstreamThreadMatch,
-} from "src/view/browser/utils/next-thread-search";
+} from "src/features/next-thread/browser/next-thread-search";
+import type { IBoardResult, IRes, IThread, IThreadDetail } from "src/service-container/interfaces";
+import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 const CANDIDATE_MIN_SIMILARITY = 0.3;
 const CANDIDATE_POLL_INTERVAL_MS = 10_000;

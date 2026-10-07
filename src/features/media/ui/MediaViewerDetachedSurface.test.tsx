@@ -11,11 +11,11 @@ const mocks = vi.hoisted(() => ({
   createAuxiliaryWindowRoot: vi.fn(),
 }));
 
-vi.mock("src/view/browser/hooks/use-auxiliary-window", () => ({
+vi.mock("src/features/auxiliary-window/browser/use-auxiliary-window", () => ({
   openAuxiliaryWindow: mocks.openAuxiliaryWindow,
 }));
 
-vi.mock("src/view/browser/hooks/auxiliary-window-root", () => ({
+vi.mock("src/features/auxiliary-window/browser/auxiliary-window-root", () => ({
   createAuxiliaryWindowRoot: mocks.createAuxiliaryWindowRoot,
 }));
 

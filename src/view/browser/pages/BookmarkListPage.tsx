@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { container } from "src/service-container/index";
 import {
   BookmarkContextMenu,
   type BookmarkContextMenuState,
-} from "src/view/browser/components/BookmarkContextMenu";
+} from "src/features/bookmark/ui/BookmarkContextMenu";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useTabDispatch, useTabViewState } from "src/features/tabs/browser/use-tab-store";
+import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useTabDispatch, useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   getLegacyBookmarkService,

@@ -26,6 +26,18 @@ import React, {
 } from "react";
 import { createPortal } from "react-dom";
 import {
+  getAutoRefreshPageKey,
+  isAutoRefreshEnabledForPage,
+} from "src/features/auto-refresh/browser/auto-refresh-pages";
+import { useViewSurface } from "src/features/auxiliary-window/browser/use-view-surface";
+import { usePageBookmark } from "src/features/bookmark/browser/use-page-bookmark";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useNavHistoryMenuItems } from "src/features/tabs/browser/use-nav-history-menu-items";
+import { useTabBarOrientation } from "src/features/tabs/browser/use-tab-bar-orientation";
+import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
+import { useTabPanes, useTabStore } from "src/features/tabs/browser/use-tab-store";
+import { useResponseJumpDialog } from "src/features/thread/browser/use-response-jump-dialog";
+import {
   type BrowserCommandContext,
   resolveBrowserCommands,
 } from "src/view/browser/commands/browser-commands";
@@ -35,31 +47,19 @@ import {
 } from "src/view/browser/commands/command-palette-store";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { Omnibar } from "src/view/browser/components/Omnibar";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
   BOTTOM_PANEL_WRITE_TAB_ID,
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
 import { useBrowserCommandRunner } from "src/view/browser/hooks/use-browser-command-runner";
-import { useNavHistoryMenuItems } from "src/view/browser/hooks/use-nav-history-menu-items";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
-import { usePageBookmark } from "src/view/browser/hooks/use-page-bookmark";
-import { useResponseJumpDialog } from "src/view/browser/hooks/use-response-jump-dialog";
-import { useTabBarOrientation } from "src/view/browser/hooks/use-tab-bar-orientation";
-import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
-import { useTabPanes, useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useUrlBarVisibility } from "src/view/browser/hooks/use-url-bar-visibility";
-import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { canGoBack, canGoForward, getCurrentPage, getDisplayUrl } from "src/view/browser/types";
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Dialog } from "src/view/browser/ui/Dialog";
-import {
-  getAutoRefreshPageKey,
-  isAutoRefreshEnabledForPage,
-} from "src/view/browser/utils/auto-refresh-pages";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,

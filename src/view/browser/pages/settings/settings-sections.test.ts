@@ -9,7 +9,7 @@ vi.mock("src/service-container/index", () => ({
   },
 }));
 
-vi.mock("src/view/browser/components/NGEditor", () => ({
+vi.mock("src/features/ng/ui/NGEditor", () => ({
   NGEditor: () => null,
 }));
 

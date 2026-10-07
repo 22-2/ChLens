@@ -16,19 +16,19 @@ import React, { useCallback, useEffect, useRef } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { stringifyNgDslValue } from "src/core/ngDsl";
 import { requestArchiveReplaySeek } from "src/features/archive-replay/platform";
-import { container } from "src/service-container/index";
-import type { IRes } from "src/service-container/interfaces";
-import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
-import { useWriteRequest } from "src/view/browser/hooks/use-write-request";
-import type { Tab, ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
-import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
-} from "src/view/browser/utils/auto-refresh-pages";
+} from "src/features/auto-refresh/browser/auto-refresh-pages";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useTabStore } from "src/features/tabs/browser/use-tab-store";
+import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
+import { useWriteRequest } from "src/features/write/browser/use-write-request";
+import { container } from "src/service-container/index";
+import type { IRes } from "src/service-container/interfaces";
+import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
+import type { Tab, ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { buildKyodemoUrl } from "src/view/browser/utils/kyodemo-url";
 import { getLegacyWriteHistoryService } from "src/view/browser/utils/legacy-app";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";

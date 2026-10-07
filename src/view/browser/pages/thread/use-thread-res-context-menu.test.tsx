@@ -37,7 +37,7 @@ vi.mock("src/features/archive-replay/platform", async (importOriginal) => {
   return { ...actual, requestArchiveReplaySeek: mocks.requestArchiveReplaySeek };
 });
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabDispatchForTab: () => mocks.dispatch,
   useTabStore: () => ({
     viewTab: {
@@ -53,11 +53,11 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   }),
 }));
 
-vi.mock("src/view/browser/hooks/use-write-request", () => ({
+vi.mock("src/features/write/browser/use-write-request", () => ({
   useWriteRequest: () => mocks.openWritePanelWithText,
 }));
 
-vi.mock("src/view/browser/utils/auto-refresh-pages", () => ({
+vi.mock("src/features/auto-refresh/browser/auto-refresh-pages", () => ({
   getAutoRefreshPageKey: () => "thread:test",
   isAutoRefreshEnabledForPage: () => mocks.isAutoRefreshEnabled,
 }));

@@ -1,14 +1,14 @@
 import { AlertTriangle, ChevronDown, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { container } from "src/service-container/index";
 import {
   NG_DSL_EXAMPLE,
   NG_DSL_MULTILINE_EXAMPLE,
   NGDslHelpSnippet,
   NGEditor,
-} from "src/view/browser/components/NGEditor";
+} from "src/features/ng/ui/NGEditor";
+import { useTabViewState } from "src/features/tabs/browser/use-tab-store";
+import { container } from "src/service-container/index";
 import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
-import { useTabViewState } from "src/view/browser/hooks/use-tab-store";
 import {
   AUTO_SAVE_DELAY_MS,
   isSettingsSectionId,

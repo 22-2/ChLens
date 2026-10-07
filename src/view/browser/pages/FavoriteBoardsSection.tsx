@@ -1,11 +1,11 @@
 import React from "react";
-import { container } from "src/service-container/index";
 import {
   BookmarkContextMenu,
   type BookmarkContextMenuState,
-} from "src/view/browser/components/BookmarkContextMenu";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+} from "src/features/bookmark/ui/BookmarkContextMenu";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useTabStore } from "src/features/tabs/browser/use-tab-store";
+import { container } from "src/service-container/index";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
 import { Spinner } from "src/view/browser/ui/Spinner";

@@ -3,14 +3,14 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createRef } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
-import { container as serviceContainer } from "src/service-container/index";
-import type { IBoardService, IBookmark, IThread } from "src/service-container/interfaces";
+import { getAutoRefreshThreadPageKey } from "src/features/auto-refresh/browser/auto-refresh-pages";
 import {
   type DisplayThread,
   THREAD_LIST_COLUMNS,
-} from "src/view/browser/components/thread-list-shared";
+} from "src/features/thread-list/ui/thread-list-shared";
+import { container as serviceContainer } from "src/service-container/index";
+import type { IBoardService, IBookmark, IThread } from "src/service-container/interfaces";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
-import { getAutoRefreshThreadPageKey } from "src/view/browser/utils/auto-refresh-pages";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -39,9 +39,9 @@ const { bookmarkGetMock } = vi.hoisted(() => ({
   bookmarkGetMock: vi.fn(),
 }));
 
-vi.mock("src/view/browser/components/thread-list-shared", async (importOriginal) => {
+vi.mock("src/features/thread-list/ui/thread-list-shared", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("src/view/browser/components/thread-list-shared")>();
+    await importOriginal<typeof import("src/features/thread-list/ui/thread-list-shared")>();
   return {
     ...actual,
     // UIキャッシュの検証をページ表示の責務へ限定し、拡張機能APIを読み込まずに試す。
@@ -65,7 +65,7 @@ vi.mock("src/core/BoardUrlNormalizer", async (importOriginal) => {
   };
 });
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabStore: () => ({
     dispatch: dispatchMock,
     state: { selectedTabId: selectedTabIdRef.current },

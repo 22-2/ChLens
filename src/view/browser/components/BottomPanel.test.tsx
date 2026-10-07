@@ -17,14 +17,14 @@ const mocks = vi.hoisted(() => ({
   viewTab: { id: "tab-1" },
 }));
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabStore: () => ({
     viewPage: mocks.viewPage,
     viewTab: mocks.viewTab,
   }),
 }));
 
-vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
+vi.mock("src/features/tabs/browser/use-detached-tab-controller", () => ({
   useDetachedTabController: () => ({ isDetachedTab: () => mocks.detached }),
 }));
 
@@ -47,7 +47,7 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
   }),
 }));
 
-vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
+vi.mock("src/features/auto-refresh/browser/use-auto-scroll-state", () => ({
   useAutoScrollState: () => ({
     canAutoScroll: mocks.canAutoScroll,
     isAutoScrolling: mocks.isAutoScrolling,
@@ -55,7 +55,7 @@ vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
   }),
 }));
 
-vi.mock("src/view/browser/components/WritePanelContent", () => ({
+vi.mock("src/features/write/ui/WritePanelContent", () => ({
   WritePanelContent: () => <div>write panel</div>,
 }));
 

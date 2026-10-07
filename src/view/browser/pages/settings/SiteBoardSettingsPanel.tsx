@@ -5,13 +5,13 @@ import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { platformCookieManager } from "src/app/platform/CookieManager";
 import { getBoardUrlKey } from "src/core/BoardUrlNormalizer";
 import { OPENED_BOARDS_CONFIG_KEY, parseOpenedBoardEntries } from "src/core/OpenedBoards";
-import { container } from "src/service-container/index";
 import {
   MAX_BOARD_AUTO_REFRESH_MS,
   MAX_THREAD_AUTO_REFRESH_MS,
   MIN_BOARD_AUTO_REFRESH_MS,
   MIN_THREAD_AUTO_REFRESH_SETTING_MS,
-} from "src/view/browser/hooks/auto-refresh-config";
+} from "src/features/auto-refresh/browser/auto-refresh-config";
+import { container } from "src/service-container/index";
 import { Button } from "src/view/browser/ui/Button";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { Spinner } from "src/view/browser/ui/Spinner";

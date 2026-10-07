@@ -1,12 +1,12 @@
 import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { upsertOpenedBoardEntry } from "src/core/OpenedBoards";
-import { container } from "src/service-container/index";
-import type { IThread } from "src/service-container/interfaces";
 import {
   getThreadListCache,
   setThreadListCache,
-} from "src/view/browser/components/thread-list-shared";
+} from "src/features/thread-list/ui/thread-list-shared";
+import { container } from "src/service-container/index";
+import type { IThread } from "src/service-container/interfaces";
 import { consumeManualRefresh } from "src/view/browser/utils/manual-refresh";
 
 interface UseThreadListDataOptions {
