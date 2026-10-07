@@ -26,7 +26,7 @@ vi.mock("src/service-container/index", () => ({
   container: { config: { get: () => null, ready: configReady } },
 }));
 vi.mock("src/view/browser/hooks/use-media-query", () => ({ useMediaQuery: () => false }));
-vi.mock("src/view/browser/components/NGEditor", () => ({
+vi.mock("src/features/ng/ui/NGEditor", () => ({
   NGEditor: () => null,
   NGDslHelpSnippet: () => null,
   NG_DSL_EXAMPLE: "",

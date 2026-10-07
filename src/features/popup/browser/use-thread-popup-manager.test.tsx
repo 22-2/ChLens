@@ -11,11 +11,11 @@ import type {
   TreePopupItem,
 } from "src/features/popup/browser/popup-types";
 import { usePopupCore } from "src/features/popup/browser/use-popup-manager";
+import { AnchorPreview } from "src/features/popup/ui/AnchorPreview";
+import { ReplyTreePopup } from "src/features/popup/ui/ReplyTreePopup";
+import { ResPopup } from "src/features/popup/ui/ResPopup";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
-import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
-import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
-import { ResPopup } from "src/view/browser/components/ResPopup";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 

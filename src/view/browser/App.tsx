@@ -4,8 +4,14 @@ import { isTauriRuntime } from "src/app/platform/runtime";
 import { useArchiveReplayMainThreadSync } from "src/features/archive-replay/browser/use-main-thread-sync";
 import { openArchiveReplayWindow as openArchiveReplayNativeWindow } from "src/features/archive-replay/platform";
 import { AutoScrollStateProvider } from "src/features/auto-refresh/browser/use-auto-scroll-state";
+import { AutoRefreshStatusItem } from "src/features/auto-refresh/ui/AutoRefreshStatusItem";
+import { BookmarkRootSelectorDialog } from "src/features/bookmark/ui/BookmarkRootSelectorDialog";
+import { CommentOverlayJumpBridge } from "src/features/comment-overlay/ui/CommentOverlayJumpBridge";
+import { CommentOverlayStatusItem } from "src/features/comment-overlay/ui/CommentOverlayStatusItem";
 import { useNextThreadSearch } from "src/features/next-thread/browser/use-next-thread-search";
+import { NextThreadSearchDialog } from "src/features/next-thread/ui/NextThreadSearchDialog";
 import { NgStatusProvider } from "src/features/ng/browser/use-ng-status";
+import { NgStatusItem } from "src/features/ng/ui/NgStatusItem";
 import { tabActions } from "src/features/tabs/browser/tab-store-actions";
 import { useTabBarOrientation } from "src/features/tabs/browser/use-tab-bar-orientation";
 import {
@@ -15,30 +21,24 @@ import {
   useTabPanes,
   useTabStore,
 } from "src/features/tabs/browser/use-tab-store";
+import { ContentArea } from "src/features/tabs/ui/ContentArea";
+import { TabBar } from "src/features/tabs/ui/TabBar";
+import { TabWindowHost } from "src/features/tabs/ui/TabWindowHost";
+import { WindowNavigationBridge } from "src/features/tabs/ui/WindowNavigationBridge";
+import { IkioiStatusItem } from "src/features/thread/ui/IkioiStatusItem";
+import { PopularFilterStatusItem } from "src/features/thread/ui/PopularFilterStatusItem";
 import {
   useWriteSessionControls,
   WriteSessionProvider,
 } from "src/features/write/browser/use-write-session";
+import { WriteWindowHost } from "src/features/write/ui/WriteWindowHost";
 import { container } from "src/service-container/index";
-import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
-import { BookmarkRootSelectorDialog } from "src/view/browser/components/BookmarkRootSelectorDialog";
 import { BottomPanel } from "src/view/browser/components/BottomPanel";
-import { CommentOverlayJumpBridge } from "src/view/browser/components/CommentOverlayJumpBridge";
-import { CommentOverlayStatusItem } from "src/view/browser/components/CommentOverlayStatusItem";
-import { ContentArea } from "src/view/browser/components/ContentArea";
-import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
 import { NavigationBar } from "src/view/browser/components/NavigationBar";
-import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSearchDialog";
-import { NgStatusItem } from "src/view/browser/components/NgStatusItem";
 import { PageCountStatusItem } from "src/view/browser/components/PageCountStatusItem";
-import { PopularFilterStatusItem } from "src/view/browser/components/PopularFilterStatusItem";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
-import { TabBar } from "src/view/browser/components/TabBar";
-import { TabWindowHost } from "src/view/browser/components/TabWindowHost";
 import { TitleBar } from "src/view/browser/components/TitleBar";
-import { WindowNavigationBridge } from "src/view/browser/components/WindowNavigationBridge";
-import { WriteWindowHost } from "src/view/browser/components/WriteWindowHost";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
   BOTTOM_PANEL_WRITE_TAB_ID,

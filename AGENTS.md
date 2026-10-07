@@ -38,7 +38,7 @@
 
 ### Architecture & Design Decisions
 
-- **ブラウザビュー:** Vite のブラウザ向けエントリは `src/view/browser/index.tsx` です。`src/view/browser/App.tsx` がペイン、タブ、ナビゲーション、ステータスバー、下部パネルを組み合わせ、`src/view/browser/components/ContentArea.tsx` がタブ内の各ページを `src/view/browser/pages/` から描画します。機能に属するフック・状態管理・補助処理は `src/features/<機能名>/browser/` に置きます（例: `tabs`、`auto-refresh`、`next-thread`、`live-chat`、`write`、`popup`、`auxiliary-window`、`thread`、`ng`、`bookmark`）。`src/view/browser/hooks/` には特定の機能に属さない汎用フックだけを置き、共通のUI・ユーティリティは `src/view/browser/` 配下に置きます。
+- **ブラウザビュー:** Vite のブラウザ向けエントリは `src/view/browser/index.tsx` です。`src/view/browser/App.tsx` がペイン、タブ、ナビゲーション、ステータスバー、下部パネルを組み合わせ、`src/view/browser/components/ContentArea.tsx` がタブ内の各ページを `src/view/browser/pages/` から描画します。機能に属するフック・状態管理・補助処理は `src/features/<機能名>/browser/` に、その機能のReactコンポーネントは `src/features/<機能名>/ui/` に置きます（例: `tabs`、`auto-refresh`、`next-thread`、`live-chat`、`write`、`popup`、`auxiliary-window`、`thread`、`ng`、`bookmark`）。`src/view/browser/hooks/` と `src/view/browser/components/` には特定の機能に属さない汎用フック・画面の枠組み（ステータスバー、タイトルバー、ナビゲーションバーなど）だけを置き、`src/view/browser/pages/` は各機能を組み合わせるページの入口として扱います。共通のUI・ユーティリティは `src/view/browser/` 配下に置きます。
 - **コア機能:** `src/core/` に掲示板・スレッド・ブックマーク・履歴・キャッシュ・NG 判定などのドメイン処理を置きます。ビューから直接実装へ依存する処理は、可能な範囲でサービスコンテナ経由にします。
 - **サービスコンテナ:** `src/service-container/` がサービスのインターフェース、共有コンテナ、レガシー実装を接続するセットアップ処理を提供します。ビューはこのコンテナを通じて設定、取得、保存、通知などを利用します。
 - **プラットフォーム抽象化:** `src/app/platform/` がウィンドウ操作、HTTP、ストレージの共通インターフェースを定義し、`browser/` と `tauri/` の実装を実行環境に応じて選択します。Tauri 環境で不足する拡張機能 API は `src/browser-shim.js` が補います。

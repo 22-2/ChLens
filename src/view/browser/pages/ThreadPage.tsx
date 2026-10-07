@@ -10,6 +10,10 @@ import {
   getAutoRefreshPageKey,
   isAutoRefreshStoppedForPage,
 } from "src/features/auto-refresh/browser/auto-refresh-pages";
+import {
+  resolveThreadAutoRefreshStop,
+  shouldDeferExpiredAutoRefreshStop,
+} from "src/features/auto-refresh/browser/auto-refresh-stop";
 import { usePopupAutoScrollPauseSetting } from "src/features/auto-refresh/browser/use-popup-auto-scroll-pause-setting";
 import { useThreadAutoRefresh } from "src/features/auto-refresh/browser/use-thread-auto-refresh";
 import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
@@ -19,9 +23,11 @@ import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/features/next-thread/browser/use-auto-next-thread-setting";
+import { NextThreadSearchDialog } from "src/features/next-thread/ui/NextThreadSearchDialog";
 import { useNgStatus } from "src/features/ng/browser/use-ng-status";
 import type { ContextMenuPopupItem } from "src/features/popup/browser/popup-types";
 import { useThreadPopupManager } from "src/features/popup/browser/use-popup-manager";
+import { PopupRenderer } from "src/features/popup/ui/PopupRenderer";
 import { tabActions } from "src/features/tabs/browser/tab-store-actions";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useTabStore } from "src/features/tabs/browser/use-tab-store";
@@ -32,26 +38,20 @@ import {
   useWheelPagination,
   WHEEL_THRESHOLD,
 } from "src/features/thread/browser/useWheelPagination";
+import { ResItem } from "src/features/thread/ui/ResItem";
+import { ThreadMinimap } from "src/features/thread/ui/ThreadMinimap";
+import { ThreadScrollFloatingActions } from "src/features/thread/ui/ThreadScrollFloatingActions";
+import { WheelScrollIndicator } from "src/features/thread/ui/WheelScrollIndicator";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
-import { NextThreadSearchDialog } from "src/view/browser/components/NextThreadSearchDialog";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
-import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
-import { ResItem } from "src/view/browser/components/ResItem";
-import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
-import { ThreadScrollFloatingActions } from "src/view/browser/components/ThreadScrollFloatingActions";
-import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import {
   getThreadPageCountKey,
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
-import {
-  resolveThreadAutoRefreshStop,
-  shouldDeferExpiredAutoRefreshStop,
-} from "src/view/browser/pages/thread/auto-refresh-stop";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
 import { useCommentOverlaySync } from "src/view/browser/pages/thread/use-comment-overlay-sync";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";

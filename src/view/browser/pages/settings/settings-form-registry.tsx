@@ -6,7 +6,7 @@ import type {
   ValidatorType,
 } from "@rjsf/utils";
 import { Info } from "lucide-react";
-import { NGEditor, type NGEditorProps } from "src/view/browser/components/NGEditor";
+import { NGEditor, type NGEditorProps } from "src/features/ng/ui/NGEditor";
 import type {
   SettingsFieldDefinition,
   SettingsSectionFormData,

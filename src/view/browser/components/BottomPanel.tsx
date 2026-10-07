@@ -4,8 +4,8 @@ import { useAutoScrollState } from "src/features/auto-refresh/browser/use-auto-s
 import { useViewSurface } from "src/features/auxiliary-window/browser/use-view-surface";
 import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import { useTabStore } from "src/features/tabs/browser/use-tab-store";
-import { ThreadListPanel } from "src/view/browser/components/ThreadListPanel";
-import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
+import { ThreadListPanel } from "src/features/thread-list/ui/ThreadListPanel";
+import { WritePanelContent } from "src/features/write/ui/WritePanelContent";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
   BOTTOM_PANEL_WRITE_TAB_ID,

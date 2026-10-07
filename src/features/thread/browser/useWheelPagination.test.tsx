@@ -6,7 +6,7 @@ import {
   useWheelPagination,
   WHEEL_THRESHOLD,
 } from "src/features/thread/browser/useWheelPagination";
-import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
+import { WheelScrollIndicator } from "src/features/thread/ui/WheelScrollIndicator";
 import {
   getManualRefreshCooldownRemainingMs,
   MANUAL_REFRESH_COOLDOWN_MS,

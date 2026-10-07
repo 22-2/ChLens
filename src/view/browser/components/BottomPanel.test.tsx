@@ -55,7 +55,7 @@ vi.mock("src/features/auto-refresh/browser/use-auto-scroll-state", () => ({
   }),
 }));
 
-vi.mock("src/view/browser/components/WritePanelContent", () => ({
+vi.mock("src/features/write/ui/WritePanelContent", () => ({
   WritePanelContent: () => <div>write panel</div>,
 }));
 

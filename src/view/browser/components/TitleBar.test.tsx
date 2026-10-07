@@ -55,7 +55,7 @@ vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabPanes: () => ({ panes: [{ id: "pane-1" }], activePaneId: "pane-1" }),
 }));
 
-vi.mock("src/view/browser/components/TabContextMenu", () => ({
+vi.mock("src/features/tabs/ui/TabContextMenu", () => ({
   TabContextMenu: ({
     tab,
     position,
