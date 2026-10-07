@@ -1,6 +1,9 @@
 import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { createAuxiliaryWindowRoot } from "src/features/auxiliary-window/browser/auxiliary-window-root";
+import {
+  type AuxiliaryWindowWatcher,
+  watchAuxiliaryWindow,
+} from "src/features/auxiliary-window/browser/auxiliary-window-watcher";
 import {
   type AuxiliaryWindowHandle,
   type AuxiliaryWindowOptions,
@@ -19,8 +22,7 @@ import { getCurrentPage, type Page, type Pane, type Tab } from "src/view/browser
 
 interface TabWindowEntry extends AuxiliaryWindowHandle {
   tabId: string;
-  onBeforeUnload: () => void;
-  onLoad: () => void;
+  watcher: AuxiliaryWindowWatcher;
 }
 
 function findTab(panes: readonly Pane[], tabId: string): { tab: Tab; paneId: string } | null {
@@ -31,24 +33,6 @@ function findTab(panes: readonly Pane[], tabId: string): { tab: Tab; paneId: str
     }
   }
   return null;
-}
-
-function unwatchTabWindow(entry: TabWindowEntry): void {
-  entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
-  entry.window.removeEventListener("load", entry.onLoad);
-}
-
-/**
- * 別窓の監視を外してから窓を閉じる。
- *
- * 変更理由: 戻す・閉じる・タブ消滅・unmountの各経路で同じ手順を重複して持つと、
- * 監視解除を片方だけ忘れ、プログラム終了をOS終了として二重処理する恐れがあるため。
- */
-function releaseTabWindow(entry: TabWindowEntry): void {
-  unwatchTabWindow(entry);
-  if (!entry.window.closed) {
-    entry.window.close();
-  }
 }
 
 function isDetachablePage(page: Page): boolean {
@@ -144,7 +128,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
       }
 
       if (existing) {
-        unwatchTabWindow(existing);
+        existing.watcher.unwatch();
         removeWindow(tabId, existing.window);
       }
 
@@ -155,35 +139,21 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
         return false;
       }
 
+      // OSの×では親窓のclosed監視も併用し、再読み込みでタブを誤って消さないようにする。
       const entry: TabWindowEntry = {
         ...opened,
         tabId,
-        // beforeunload直後はreloadでも発火するため、closedを確認できた時だけタブを終了する。
-        // OSの×では親窓の監視も併用し、再読み込みでタブを誤って消さないようにする。
-        onBeforeUnload: () => {
-          const current = windowsRef.current.get(tabId);
-          if (current?.window !== opened.window || !opened.window.closed) {
-            return;
-          }
-          closeDetachedTabRef.current(tabId);
-        },
-        onLoad: () => {
-          const current = windowsRef.current.get(tabId);
-          if (!current || current.window !== opened.window || opened.window.closed) {
-            return;
-          }
-          const currentLocation = findTab(stateRef.current.panes, tabId);
-          if (!currentLocation) {
-            return;
-          }
-          try {
-            // popupの再読み込みではPortal先のDOMも破棄されるため、同じWindowProxyへ
-            // rootとスタイルを再接続し、タブを元窓へ勝手に戻さない。
-            const root = createAuxiliaryWindowRoot(
-              document,
-              opened.window,
-              createTabWindowOptions(currentLocation.tab),
-            );
+        watcher: watchAuxiliaryWindow({
+          window: opened.window,
+          sourceDocument: document,
+          isCurrent: () => windowsRef.current.get(tabId)?.window === opened.window,
+          getReconnectOptions: () => {
+            const currentLocation = findTab(stateRef.current.panes, tabId);
+            return currentLocation ? createTabWindowOptions(currentLocation.tab) : null;
+          },
+          onClosed: () => closeDetachedTabRef.current(tabId),
+          onReconnect: (root) => {
+            // タブを元窓へ勝手に戻さず、同じWindowProxyのrootだけを差し替える。
             const next = new Map(windowsRef.current);
             const latest = next.get(tabId);
             if (!latest || latest.window !== opened.window) {
@@ -192,13 +162,9 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
             next.set(tabId, { ...latest, root });
             windowsRef.current = next;
             setWindows(next);
-          } catch (error) {
-            console.error("[DetachedTab] 再読み込み後の別窓を再接続できませんでした", error);
-          }
-        },
+          },
+        }),
       };
-      opened.window.addEventListener("beforeunload", entry.onBeforeUnload, { once: true });
-      opened.window.addEventListener("load", entry.onLoad);
       const next = new Map(windowsRef.current);
       next.set(tabId, entry);
       windowsRef.current = next;
@@ -221,7 +187,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
         return;
       }
 
-      releaseTabWindow(entry);
+      entry.watcher.release();
       removeWindow(tabId, entry.window);
 
       const located = findTab(stateRef.current.panes, tabId);
@@ -253,7 +219,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
 
       // 先に監視を外してからCLOSE_TABを送ることで、プログラム終了をOS終了として
       // 二重処理せず、閉じたタブ履歴にも一度だけ記録する。
-      releaseTabWindow(entry);
+      entry.watcher.release();
       removeWindow(tabId, entry.window);
       dispatch({
         ...tabActions.closeTab(tabId, {
@@ -321,7 +287,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
       if (availableTabIds.has(tabId)) {
         continue;
       }
-      releaseTabWindow(entry);
+      entry.watcher.release();
       removeWindow(tabId, entry.window);
     }
   }, [panes, removeWindow]);
@@ -342,7 +308,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     return () => {
       for (const entry of windowsRef.current.values()) {
-        releaseTabWindow(entry);
+        entry.watcher.release();
       }
     };
   }, []);
