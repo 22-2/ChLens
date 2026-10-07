@@ -1,24 +1,24 @@
 import { Clipboard, ExternalLink, ImagePlus, MoreVertical, Settings } from "lucide-react";
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useViewSurface } from "src/features/auxiliary-window/browser/use-view-surface";
 import { uploadImageToImgur } from "src/features/media/application/imgur-upload";
 import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
 import { extractUrlsFromMessage, toViewerImageUrl } from "src/features/media/domain/url-media";
 import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
-import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
-import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
-import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
-import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { useToast } from "src/view/browser/hooks/use-toast";
-import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import { useWrite } from "src/view/browser/hooks/use-write";
+import { useTabStore } from "src/features/tabs/browser/use-tab-store";
+import { useWrite } from "src/features/write/browser/use-write";
 import {
   useWriteDraft,
   useWriteDraftActions,
   useWriteSessionControls,
-} from "src/view/browser/hooks/use-write-session";
+} from "src/features/write/browser/use-write-session";
+import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
+import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
+import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
+import { useToast } from "src/view/browser/hooks/use-toast";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { CheckboxField } from "src/view/browser/ui/FormControls";
 import { copyText, readClipboardImage } from "src/view/browser/utils/clipboard";

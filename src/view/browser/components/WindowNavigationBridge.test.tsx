@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   detachedDispatch: vi.fn(),
 }));
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabStore: () => ({
     selectedTab: { id: mocks.activeTabId },
     dispatch: mocks.mainDispatch,
@@ -18,7 +18,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabDispatchForTab: () => mocks.detachedDispatch,
 }));
 
-vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
+vi.mock("src/features/tabs/browser/use-detached-tab-controller", () => ({
   useDetachedTabController: () => ({
     isDetachedTab: (tabId: string) => tabId === "tab-detached",
   }),

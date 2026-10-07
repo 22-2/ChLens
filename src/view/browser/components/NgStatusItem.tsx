@@ -1,11 +1,11 @@
 import { Ban, Settings2 } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNgStatus } from "src/features/ng/browser/use-ng-status";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useTabStore } from "src/features/tabs/browser/use-tab-store";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
 import { createSettingsPage } from "src/view/browser/utils/tab-pages";
 
 export const NgStatusItem: React.FC = () => {

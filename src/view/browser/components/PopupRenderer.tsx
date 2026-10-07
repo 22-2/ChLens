@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useRef } from "react";
-import type { IRes } from "src/service-container/interfaces";
-import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
-import { PopupPortalLayer } from "src/view/browser/components/PopupPortalLayer";
-import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
-import { ResPopup } from "src/view/browser/components/ResPopup";
 import type {
   AnchorPopupItem,
   ContextMenuPopupItem,
   IdPopupItem,
   TreePopupItem,
-} from "src/view/browser/hooks/popup-manager/types";
+} from "src/features/popup/browser/popup-types";
+import type { IRes } from "src/service-container/interfaces";
+import { AnchorPreview } from "src/view/browser/components/AnchorPreview";
+import { PopupPortalLayer } from "src/view/browser/components/PopupPortalLayer";
+import { ReplyTreePopup } from "src/view/browser/components/ReplyTreePopup";
+import { ResPopup } from "src/view/browser/components/ResPopup";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 

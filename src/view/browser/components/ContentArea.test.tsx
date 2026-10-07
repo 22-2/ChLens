@@ -14,11 +14,11 @@ const threadPageLifecycle = vi.hoisted(() => ({
 }));
 const detachedTabIds = vi.hoisted(() => new Set<string>());
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
 }));
 
-vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
+vi.mock("src/features/tabs/browser/use-detached-tab-controller", () => ({
   useDetachedTabController: () => ({
     isDetachedTab: (tabId: string) => detachedTabIds.has(tabId),
   }),

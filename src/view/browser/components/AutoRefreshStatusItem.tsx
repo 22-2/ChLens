@@ -1,27 +1,27 @@
 import { Clock3, Pause, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { MiniWindow } from "src/view/browser/components/MiniWindow";
-import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
-import { StatusBarItem, StatusBarMode } from "src/view/browser/components/StatusBar";
-import type { IdleStopTimeoutOption } from "src/view/browser/hooks/auto-refresh-config";
-import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/view/browser/hooks/auto-refresh-config";
-import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
+import type { IdleStopTimeoutOption } from "src/features/auto-refresh/browser/auto-refresh-config";
+import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/features/auto-refresh/browser/auto-refresh-config";
 import {
   MAX_BOARD_INTERVAL_SEC,
   MAX_INTERVAL_SEC,
   MIN_BOARD_INTERVAL_SEC,
   MIN_INTERVAL_SEC,
   useAutoRefreshPanel,
-} from "src/view/browser/hooks/use-auto-refresh-panel";
-import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
-import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+} from "src/features/auto-refresh/browser/use-auto-refresh-panel";
+import { useAutoScrollState } from "src/features/auto-refresh/browser/use-auto-scroll-state";
+import { usePopupAutoScrollPauseSetting } from "src/features/auto-refresh/browser/use-popup-auto-scroll-pause-setting";
 import {
   normalizeThreadDisplayMode,
   type ThreadDisplayMode,
   useThreadDisplayModeSetting,
-} from "src/view/browser/hooks/use-thread-display-mode-setting";
-import type { AutoNextThreadMode } from "src/view/browser/utils/next-thread-search";
+} from "src/features/live-chat/browser/use-thread-display-mode-setting";
+import type { AutoNextThreadMode } from "src/features/next-thread/browser/next-thread-search";
+import { useAutoNextThreadSetting } from "src/features/next-thread/browser/use-auto-next-thread-setting";
+import { useTabStore } from "src/features/tabs/browser/use-tab-store";
+import { MiniWindow } from "src/view/browser/components/MiniWindow";
+import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
+import { StatusBarItem, StatusBarMode } from "src/view/browser/components/StatusBar";
 
 // -----------------------------------------------------------------------
 // ミニウィンドウの中身（UI のみ、ロジックは props 経由）

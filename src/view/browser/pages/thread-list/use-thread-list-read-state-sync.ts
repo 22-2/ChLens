@@ -1,14 +1,14 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { getBoardUrlKey } from "src/core/BoardUrlNormalizer";
-import { container } from "src/service-container/index";
-import type { IReadState, IThread } from "src/service-container/interfaces";
-import { useActivePaneId, usePaneId, useTabPanes } from "src/view/browser/hooks/use-tab-store";
-import { getCurrentPage } from "src/view/browser/types";
 import {
   getAutoRefreshThreadPageKey,
   isAutoRefreshEnabledForPage,
-} from "src/view/browser/utils/auto-refresh-pages";
+} from "src/features/auto-refresh/browser/auto-refresh-pages";
+import { useActivePaneId, usePaneId, useTabPanes } from "src/features/tabs/browser/use-tab-store";
+import { container } from "src/service-container/index";
+import type { IReadState, IThread } from "src/service-container/interfaces";
+import { getCurrentPage } from "src/view/browser/types";
 
 interface UseThreadListReadStateSyncOptions {
   boardUrl: string;

@@ -1,12 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { ViewSurfaceProvider } from "src/features/auxiliary-window/browser/use-view-surface";
 import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
 import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
-import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
@@ -61,7 +61,7 @@ function renderWritePanel(standalone = false) {
   );
 }
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabStore: () => ({
     viewPage: {
       type: "thread",
@@ -84,7 +84,7 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
   }),
 }));
 
-vi.mock("src/view/browser/hooks/use-write", () => ({
+vi.mock("src/features/write/browser/use-write", () => ({
   useWrite: () => ({
     name: mocks.name,
     mail: mocks.mail,
@@ -108,7 +108,7 @@ vi.mock("src/view/browser/hooks/use-write", () => ({
   }),
 }));
 
-vi.mock("src/view/browser/hooks/use-write-session", () => ({
+vi.mock("src/features/write/browser/use-write-session", () => ({
   useWriteSessionControls: () => ({
     isWindowOpen: false,
     writeWindowRoot: null,

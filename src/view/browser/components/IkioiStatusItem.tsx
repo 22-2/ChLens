@@ -1,12 +1,12 @@
 import { Flame } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useViewSurface } from "src/features/auxiliary-window/browser/use-view-surface";
+import { useTabStore } from "src/features/tabs/browser/use-tab-store";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { Spinner } from "src/view/browser/ui/Spinner";
 
 const MOMENTUM_BUCKET_COUNT = 30;

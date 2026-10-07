@@ -86,7 +86,7 @@ const { orientationHolder } = vi.hoisted(() => ({
   orientationHolder: { value: "horizontal" },
 }));
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabStore: () => ({
     state: { tabs: [viewTab], closedTabs: [] },
     viewTab,
@@ -98,7 +98,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   useTabPanes: () => ({ panes: paneHolder.panes, activePaneId: paneHolder.activePaneId }),
 }));
 
-vi.mock("src/view/browser/hooks/use-tab-bar-orientation", () => ({
+vi.mock("src/features/tabs/browser/use-tab-bar-orientation", () => ({
   // 変更理由: タブバー方向は設定由来のため、テストでは方向指定で描画先を切り替える。
   useTabBarOrientation: () => orientationHolder.value,
 }));

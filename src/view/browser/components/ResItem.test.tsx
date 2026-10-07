@@ -1,9 +1,9 @@
 import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { NgStatusProvider } from "src/features/ng/browser/use-ng-status";
 import type { IRes } from "src/service-container/interfaces";
 import { ResItem } from "src/view/browser/components/ResItem";
-import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const ngMocks = vi.hoisted(() => ({

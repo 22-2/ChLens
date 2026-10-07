@@ -1,5 +1,5 @@
 import React, { useId } from "react";
-import type { ThreadTitleNgDialogController } from "src/view/browser/hooks/use-thread-title-ng-dialog";
+import type { ThreadTitleNgDialogController } from "src/features/ng/browser/use-thread-title-ng-dialog";
 
 interface Props {
   controller: ThreadTitleNgDialogController;

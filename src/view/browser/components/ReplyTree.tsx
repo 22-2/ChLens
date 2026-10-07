@@ -1,8 +1,8 @@
 import { MoreVertical } from "lucide-react";
 import React from "react";
+import type { SubTreeMenuClickHandler } from "src/features/popup/browser/use-reply-tree-menus";
 import type { IRes } from "src/service-container";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
-import type { SubTreeMenuClickHandler } from "src/view/browser/hooks/use-reply-tree-menus";
 import { MAX_TREE_DEPTH } from "src/view/browser/utils/constants";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 

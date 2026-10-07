@@ -127,7 +127,7 @@ describe("ホームの板項目のミドルクリック", () => {
 
   async function renderPage(newTab = false) {
     vi.resetModules();
-    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const { TabProvider, useTabStore } = await import("src/features/tabs/browser/use-tab-store");
     const { HomeTabPage } = await import("src/view/browser/pages/HomeTabPage");
     function StartPage() {
       return <HomeTabPage />;
@@ -200,7 +200,7 @@ describe("ホームの板項目のミドルクリック", () => {
       expect(screen.getByTestId("active-tab-id")).toHaveTextContent(originalId!);
       expect(screen.getByTestId("active-page-type")).toHaveTextContent("threadList");
       expect(screen.getByTestId("tab-count")).toHaveTextContent("2");
-      expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
+      expect(screen.getByTestId("home-history").textContent).toBe("home");
       expect(askBoardTitleMock).not.toHaveBeenCalled();
     },
   );
@@ -235,8 +235,8 @@ describe("ホームの板項目のミドルクリック", () => {
     fireEvent.click(screen.getByRole("button", { name: "板一覧を開く" }));
     expect(screen.getByTestId("active-page-type")).toHaveTextContent("boardList");
     expect(screen.getByTestId("tab-count")).toHaveTextContent("2");
-    expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
-    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^home\|boardList$/);
+    expect(screen.getByTestId("home-history").textContent).toBe("home");
+    expect(screen.getByTestId("new-tab-history").textContent).toBe("home|boardList");
   });
 
   it.each(["現在のタブで開く", "新しいタブで開く"])(
@@ -342,8 +342,8 @@ describe("ホームの板項目のミドルクリック", () => {
     expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialCount);
     fireEvent.click(screen.getByRole("button", { name: "新しいタブで開く" }));
     expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialCount + 1);
-    expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
-    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^home\|threadList$/);
+    expect(screen.getByTestId("home-history").textContent).toBe("home");
+    expect(screen.getByTestId("new-tab-history").textContent).toBe("home|threadList");
   });
 
   it.each([
@@ -361,7 +361,7 @@ describe("ホームの板項目のミドルクリック", () => {
         expect.objectContaining({ window, document }),
       ),
     );
-    expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
+    expect(screen.getByTestId("home-history").textContent).toBe("home");
   });
 
   it("ホームからお気に入りを削除しても最近開いた板は残す", async () => {
@@ -372,7 +372,7 @@ describe("ホームの板項目のミドルクリック", () => {
       expect(screen.getAllByRole("button", { name: /サンプル板/ })).toHaveLength(1),
     );
     expect(removeBookmarkMock).toHaveBeenCalledWith("https://example.com/sample/");
-    expect(screen.getByTestId("home-history")).toHaveTextContent(/^home$/);
+    expect(screen.getByTestId("home-history").textContent).toBe("home");
   });
 
   it("削除の例外を通知し、お気に入り板を画面に残す", async () => {
@@ -402,8 +402,8 @@ describe("ホームの板項目のミドルクリック", () => {
       screen.getByRole("button", { name: "新しいタブで開く" }),
       new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
     );
-    expect(screen.getByTestId("active-page-type")).toHaveTextContent(/^home$/);
-    expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^home\|threadList$/);
+    expect(screen.getByTestId("active-page-type").textContent).toBe("home");
+    expect(screen.getByTestId("new-tab-history").textContent).toBe("home|threadList");
   });
 
   it.each(["最近開いた板", "お気に入り板"] as const)(
@@ -445,8 +445,8 @@ describe("ホームの板項目のミドルクリック", () => {
       const initialTabCount = Number(screen.getByTestId("tab-count").textContent);
       fireEvent.click(board);
       expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialTabCount);
-      expect(screen.getByTestId("home-history")).toHaveTextContent(/^home\|threadList$/);
-      expect(screen.getByTestId("new-tab-history")).toHaveTextContent(/^home\|threadList$/);
+      expect(screen.getByTestId("home-history").textContent).toBe("home|threadList");
+      expect(screen.getByTestId("new-tab-history").textContent).toBe("home|threadList");
     },
   );
 
@@ -456,7 +456,7 @@ describe("ホームの板項目のミドルクリック", () => {
     const boardList = screen.getByRole("button", { name: "板一覧を開く" });
     fireEvent.click(boardList);
     expect(screen.getByTestId("active-page-type")).toHaveTextContent("boardList");
-    expect(screen.getByTestId("home-history")).toHaveTextContent(/^home\|boardList$/);
+    expect(screen.getByTestId("home-history").textContent).toBe("home|boardList");
     expect(Number(screen.getByTestId("tab-count").textContent)).toBe(initialTabCount);
   });
 });

@@ -37,7 +37,7 @@ const mocks = vi.hoisted(() => ({
   isPaused: false,
 }));
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabStore: () => ({
     viewPage: mocks.viewPage,
     viewTab: mocks.viewTab,
@@ -45,7 +45,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   }),
 }));
 
-vi.mock("src/view/browser/hooks/use-auto-refresh-panel", () => ({
+vi.mock("src/features/auto-refresh/browser/use-auto-refresh-panel", () => ({
   MIN_INTERVAL_SEC: 5,
   MAX_INTERVAL_SEC: 120,
   MIN_BOARD_INTERVAL_SEC: 20,
@@ -53,15 +53,15 @@ vi.mock("src/view/browser/hooks/use-auto-refresh-panel", () => ({
   useAutoRefreshPanel: () => mocks.autoRefreshPanel,
 }));
 
-vi.mock("src/view/browser/hooks/use-auto-next-thread-setting", () => ({
+vi.mock("src/features/next-thread/browser/use-auto-next-thread-setting", () => ({
   useAutoNextThreadSetting: () => mocks.autoNextThreadSetting,
 }));
 
-vi.mock("src/view/browser/hooks/use-popup-auto-scroll-pause-setting", () => ({
+vi.mock("src/features/auto-refresh/browser/use-popup-auto-scroll-pause-setting", () => ({
   usePopupAutoScrollPauseSetting: () => mocks.popupAutoScrollPauseSetting,
 }));
 
-vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
+vi.mock("src/features/auto-refresh/browser/use-auto-scroll-state", () => ({
   useAutoScrollState: () => ({
     canAutoScroll: mocks.canAutoScroll,
     isAutoScrolling: false,

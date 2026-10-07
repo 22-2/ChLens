@@ -2,11 +2,11 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { useRef, useState } from "react";
+import { useAutoRefresh } from "src/features/auto-refresh/browser/use-auto-refresh";
+import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
+import { useThreadRefreshController } from "src/features/thread/browser/use-thread-refresh-controller";
 import { container } from "src/service-container/index";
 import type { IConfig } from "src/service-container/interfaces";
-import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
-import { useAutoRefresh } from "src/view/browser/hooks/use-auto-refresh";
-import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
 import { resolveThreadAutoRefreshStop } from "src/view/browser/pages/thread/auto-refresh-stop";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 

@@ -64,7 +64,7 @@ vi.mock("src/view/browser/utils/legacy-app", () => ({
   waitForLegacyBookmarkReady: mocks.waitForBookmarkReady,
 }));
 
-vi.mock("src/view/browser/utils/browser-session-storage", () => ({
+vi.mock("src/features/tabs/browser/browser-session-storage", () => ({
   getBrowserSessionJson: mocks.getBrowserSessionJson,
   setBrowserSessionJson: mocks.setBrowserSessionJson,
 }));

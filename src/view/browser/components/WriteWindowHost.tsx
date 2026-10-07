@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
+import { ViewSurfaceProvider } from "src/features/auxiliary-window/browser/use-view-surface";
+import { useWriteSessionControls } from "src/features/write/browser/use-write-session";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { WritePanelContent } from "src/view/browser/components/WritePanelContent";
 import { useTheme } from "src/view/browser/hooks/use-theme";
-import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
-import { useWriteSessionControls } from "src/view/browser/hooks/use-write-session";
 import { ToastProvider } from "src/view/browser/ui/Toast";
 
 /**

@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useViewSurface } from "src/features/auxiliary-window/browser/use-view-surface";
 import { useImgurAlbumMedia } from "src/features/media/application/imgur-album";
 import { extractUrlsFromMessage } from "src/features/media/domain/url-media";
 import { ResMediaGallery } from "src/features/media/ui/ResMediaGallery";
+import {
+  useIsNgTemporarilyDisabled,
+  useNgDisplayMode,
+} from "src/features/ng/browser/use-ng-status";
 import type { IRes } from "src/service-container";
 import { NgBadge } from "src/view/browser/components/NgBadge";
 import { NgResponsePlaceholder } from "src/view/browser/components/NgResponsePlaceholder";
 import { ResBody } from "src/view/browser/components/ResBody";
-import { useIsNgTemporarilyDisabled, useNgDisplayMode } from "src/view/browser/hooks/use-ng-status";
-import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ThreadSearchTarget } from "src/view/browser/types";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";

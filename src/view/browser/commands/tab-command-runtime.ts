@@ -1,5 +1,5 @@
 import type { Dispatch } from "react";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
 import {
   canCloseTab,
   canOpenInRightPane,
@@ -8,8 +8,8 @@ import {
   hasClosableOtherTabs,
   hasClosableRightTabs,
   type TabLocation,
-} from "src/view/browser/hooks/tab-store-selectors";
-import type { ScopedTabAction, TabStoreState } from "src/view/browser/hooks/tab-store-types";
+} from "src/features/tabs/browser/tab-store-selectors";
+import type { ScopedTabAction, TabStoreState } from "src/features/tabs/browser/tab-store-types";
 import { canGoBack, canGoForward, getCurrentPage } from "src/view/browser/types";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 

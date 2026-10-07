@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 import { useCallback } from "react";
+import type { ThreadPopupManagerResult } from "src/features/popup/browser/use-popup-manager";
 import type { IRes } from "src/service-container/interfaces";
-import type { ThreadPopupManagerResult } from "src/view/browser/hooks/use-popup-manager";
 import { resolveReplyTreeRootResNum } from "src/view/browser/utils/reply-tree-root";
 
 interface Indexes {

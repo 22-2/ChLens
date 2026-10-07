@@ -2,9 +2,9 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, render } from "@testing-library/react";
 import type React from "react";
+import type { ContextMenuPopupItem, IdPopupItem } from "src/features/popup/browser/popup-types";
 import { container } from "src/service-container";
 import { PopupRenderer } from "src/view/browser/components/PopupRenderer";
-import type { ContextMenuPopupItem, IdPopupItem } from "src/view/browser/hooks/popup-manager/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const popupResCardLifecycle = vi.hoisted(() => ({

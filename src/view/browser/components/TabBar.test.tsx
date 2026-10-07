@@ -68,7 +68,7 @@ vi.mock("src/view/browser/components/TabContextMenu", () => ({
   TabContextMenu: () => null,
 }));
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabStore: () => ({
     state: mocks.tabStore.state,
     // 本物同様、ホイールハンドラが常に最新 state を同期参照できる ref を模す。
@@ -94,11 +94,11 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   }),
 }));
 
-vi.mock("src/view/browser/hooks/use-auto-scroll-state", () => ({
+vi.mock("src/features/auto-refresh/browser/use-auto-scroll-state", () => ({
   useAutoScrollState: () => mocks.autoScrollState,
 }));
 
-vi.mock("src/view/browser/hooks/use-detached-tab-controller", () => ({
+vi.mock("src/features/tabs/browser/use-detached-tab-controller", () => ({
   useDetachedTabController: () => ({
     isDetachedTab: (tabId: string) => mocks.detachedTabIds.has(tabId),
   }),
@@ -402,14 +402,14 @@ describe("TabBar wheel switching", () => {
       value: scrollIntoViewMock,
     });
 
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function (this: HTMLElement) {
-        if (this.classList.contains("tab-list")) {
-          return { left: 0, right: 200, top: 0, bottom: 32, width: 200, height: 32 } as DOMRect;
-        }
-        return { left: 20, right: 180, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect;
-      },
-    );
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.classList.contains("tab-list")) {
+        return { left: 0, right: 200, top: 0, bottom: 32, width: 200, height: 32 } as DOMRect;
+      }
+      return { left: 20, right: 180, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect;
+    });
 
     try {
       const { rerender } = render(<TabBar />);
@@ -441,16 +441,16 @@ describe("TabBar wheel switching", () => {
       value: scrollIntoViewMock,
     });
 
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function (this: HTMLElement) {
-        if (this.classList.contains("tab-list")) {
-          return { left: 0, right: 200, top: 0, bottom: 32, width: 200, height: 32 } as DOMRect;
-        }
-        return this.dataset.tabId === "tab-2"
-          ? ({ left: 201, right: 361, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect)
-          : ({ left: 20, right: 180, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect);
-      },
-    );
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.classList.contains("tab-list")) {
+        return { left: 0, right: 200, top: 0, bottom: 32, width: 200, height: 32 } as DOMRect;
+      }
+      return this.dataset.tabId === "tab-2"
+        ? ({ left: 201, right: 361, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect)
+        : ({ left: 20, right: 180, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect);
+    });
 
     try {
       const { rerender } = render(<TabBar />);
@@ -492,16 +492,16 @@ describe("TabBar wheel switching", () => {
       value: scrollIntoViewMock,
     });
 
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function (this: HTMLElement) {
-        if (this.classList.contains("tab-list")) {
-          return { left: 0, right: 200, top: 0, bottom: 32, width: 200, height: 32 } as DOMRect;
-        }
-        return activeTabIsOutside && this.dataset.tabId === "tab-1"
-          ? ({ left: -1, right: 159, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect)
-          : ({ left: 20, right: 180, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect);
-      },
-    );
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.classList.contains("tab-list")) {
+        return { left: 0, right: 200, top: 0, bottom: 32, width: 200, height: 32 } as DOMRect;
+      }
+      return activeTabIsOutside && this.dataset.tabId === "tab-1"
+        ? ({ left: -1, right: 159, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect)
+        : ({ left: 20, right: 180, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect);
+    });
 
     try {
       render(<TabBar />);
@@ -544,16 +544,16 @@ describe("TabBar wheel switching", () => {
       value: scrollIntoViewMock,
     });
 
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function (this: HTMLElement) {
-        if (this.classList.contains("tab-list")) {
-          return { left: 0, right: 200, top: 0, bottom: 32, width: 200, height: 32 } as DOMRect;
-        }
-        return this.dataset.tabId === "tab-1"
-          ? ({ left: 201, right: 361, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect)
-          : ({ left: 20, right: 180, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect);
-      },
-    );
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.classList.contains("tab-list")) {
+        return { left: 0, right: 200, top: 0, bottom: 32, width: 200, height: 32 } as DOMRect;
+      }
+      return this.dataset.tabId === "tab-1"
+        ? ({ left: 201, right: 361, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect)
+        : ({ left: 20, right: 180, top: 0, bottom: 32, width: 160, height: 32 } as DOMRect);
+    });
 
     try {
       render(<TabBar />);

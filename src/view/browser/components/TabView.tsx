@@ -1,5 +1,9 @@
 import { memo, type RefObject, useEffect, useRef, useState } from "react";
-import { type ViewSurface, ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
+import { isAutoRefreshEnabledForPage } from "src/features/auto-refresh/browser/auto-refresh-pages";
+import {
+  type ViewSurface,
+  ViewSurfaceProvider,
+} from "src/features/auxiliary-window/browser/use-view-surface";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
@@ -11,7 +15,6 @@ import { ThreadPage } from "src/view/browser/pages/ThreadPage";
 import { WriteHistoryListPage } from "src/view/browser/pages/WriteHistoryListPage";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
-import { isAutoRefreshEnabledForPage } from "src/view/browser/utils/auto-refresh-pages";
 
 function buildPageRenderKey(
   tabId: string,

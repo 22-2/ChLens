@@ -2,8 +2,8 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
+import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import { TabWindowHost } from "src/view/browser/components/TabWindowHost";
-import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
 import type { Pane, Tab } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   root: null as HTMLElement | null,
 }));
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   PaneProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useTabDispatch: () => mocks.tabDispatch,
   useTabDispatchForTab: () => vi.fn(),
@@ -37,7 +37,7 @@ vi.mock("src/view/browser/hooks/use-tab-store", () => ({
   },
 }));
 
-vi.mock("src/view/browser/hooks/use-auxiliary-window", () => ({
+vi.mock("src/features/auxiliary-window/browser/use-auxiliary-window", () => ({
   openAuxiliaryWindow: mocks.openAuxiliaryWindow,
 }));
 
@@ -67,11 +67,11 @@ vi.mock("src/view/browser/components/PopularFilterStatusItem", () => ({
 }));
 vi.mock("src/view/browser/components/TitleBar", () => ({ TitleBar: () => null }));
 
-vi.mock("src/view/browser/hooks/use-ng-status", () => ({
+vi.mock("src/features/ng/browser/use-ng-status", () => ({
   NgStatusProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("src/view/browser/hooks/use-write-session", () => ({
+vi.mock("src/features/write/browser/use-write-session", () => ({
   useWriteSessionControls: () => ({
     openWriteWindow: vi.fn(),
     selectThread: vi.fn(),

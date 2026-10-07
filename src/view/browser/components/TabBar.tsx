@@ -12,14 +12,10 @@ import {
 } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { container } from "src/service-container/index";
-import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
-import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
-import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
-import { useDetachedTabController } from "src/view/browser/hooks/use-detached-tab-controller";
+import { isAutoRefreshEnabledForPage } from "src/features/auto-refresh/browser/auto-refresh-pages";
+import { useAutoScrollState } from "src/features/auto-refresh/browser/use-auto-scroll-state";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import {
   clampTabBarWidth,
   TAB_BAR_COLLAPSED_WIDTH,
@@ -27,13 +23,17 @@ import {
   TAB_BAR_WIDTH_MIN,
   type TabBarOrientation,
   useVerticalTabBarLayout,
-} from "src/view/browser/hooks/use-tab-bar-orientation";
-import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
+} from "src/features/tabs/browser/use-tab-bar-orientation";
+import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
+import { useTabStore } from "src/features/tabs/browser/use-tab-store";
+import { container } from "src/service-container/index";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
+import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
+import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
+import { TabContextMenu } from "src/view/browser/components/TabContextMenu";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
-import { isAutoRefreshEnabledForPage } from "src/view/browser/utils/auto-refresh-pages";
 
 interface ContextMenuState {
   tab: Tab;

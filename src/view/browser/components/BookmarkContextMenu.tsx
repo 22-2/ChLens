@@ -1,4 +1,5 @@
 import { Clipboard, ExternalLink, Trash2 } from "lucide-react";
+import { useViewSurface } from "src/features/auxiliary-window/browser/use-view-surface";
 import { container } from "src/service-container/index";
 import {
   COMMAND_REQUEST_IDS,
@@ -6,7 +7,6 @@ import {
   runCommandRequest,
 } from "src/view/browser/commands/command-runtime";
 import { useToast } from "src/view/browser/hooks/use-toast";
-import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 
 export interface BookmarkContextMenuState<Entry> {

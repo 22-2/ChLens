@@ -1,12 +1,12 @@
 import type React from "react";
 import { useCallback, useMemo } from "react";
 import { buildReplyIndexes } from "src/core/reply-index";
+import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
+import { useReplyTreeMenus } from "src/features/popup/browser/use-reply-tree-menus";
 import type { IRes } from "src/service-container";
 import { PopupHeader } from "src/view/browser/components/PopupHeader";
 import { PopupResCard } from "src/view/browser/components/PopupResCard";
 import { ReplyTree } from "src/view/browser/components/ReplyTree";
-import { usePopupHeaderMenu } from "src/view/browser/hooks/use-popup-header-menu";
-import { useReplyTreeMenus } from "src/view/browser/hooks/use-reply-tree-menus";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";

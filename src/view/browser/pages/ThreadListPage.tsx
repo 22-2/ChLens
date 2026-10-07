@@ -2,6 +2,21 @@ import { ChURL } from "packages/ch-lib/src/index";
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
 import { upsertOpenedBoardEntry } from "src/core/OpenedBoards";
+import {
+  BOARD_AUTO_REFRESH_CONFIG_KEY,
+  MIN_BOARD_AUTO_REFRESH_MS,
+  readBoardAutoRefreshIntervalMs,
+} from "src/features/auto-refresh/browser/auto-refresh-config";
+import {
+  readBookmarkStatus,
+  useBookmarkRevision,
+} from "src/features/bookmark/browser/use-bookmark-revision";
+import { useNgStatus } from "src/features/ng/browser/use-ng-status";
+import { useThreadTitleNgDialog } from "src/features/ng/browser/use-thread-title-ng-dialog";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
+import { useTabStore, useTabViewState } from "src/features/tabs/browser/use-tab-store";
+import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
@@ -34,25 +49,10 @@ import {
 } from "src/view/browser/components/thread-list-shared";
 import { ThreadTitleNgDialog } from "src/view/browser/components/ThreadTitleNgDialog";
 import {
-  BOARD_AUTO_REFRESH_CONFIG_KEY,
-  MIN_BOARD_AUTO_REFRESH_MS,
-  readBoardAutoRefreshIntervalMs,
-} from "src/view/browser/hooks/auto-refresh-config";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import {
-  readBookmarkStatus,
-  useBookmarkRevision,
-} from "src/view/browser/hooks/use-bookmark-revision";
-import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
-import {
   getThreadListPageCountKey,
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
-import { useTabStore, useTabViewState } from "src/view/browser/hooks/use-tab-store";
-import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
-import { useThreadTitleNgDialog } from "src/view/browser/hooks/use-thread-title-ng-dialog";
 import { isResolvedBoardTitle } from "src/view/browser/pages/board-list/board-list-utils";
 import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
 import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";

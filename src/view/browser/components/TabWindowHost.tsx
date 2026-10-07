@@ -1,6 +1,31 @@
 import { PenLine } from "lucide-react";
 import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { AutoScrollStateProvider } from "src/features/auto-refresh/browser/use-auto-scroll-state";
+import { createAuxiliaryWindowRoot } from "src/features/auxiliary-window/browser/auxiliary-window-root";
+import {
+  type AuxiliaryWindowHandle,
+  type AuxiliaryWindowOptions,
+  openAuxiliaryWindow,
+} from "src/features/auxiliary-window/browser/use-auxiliary-window";
+import {
+  type ViewSurface,
+  ViewSurfaceProvider,
+} from "src/features/auxiliary-window/browser/use-view-surface";
+import { NgStatusProvider } from "src/features/ng/browser/use-ng-status";
+import {
+  type DetachedTabController,
+  DetachedTabControllerContext,
+} from "src/features/tabs/browser/detached-tab-controller";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import {
+  PaneProvider,
+  useTabDispatch,
+  useTabPanes,
+  useTabStore,
+} from "src/features/tabs/browser/use-tab-store";
+import { TabViewScopeProvider } from "src/features/tabs/browser/use-tab-view-scope";
+import { useWriteSessionControls } from "src/features/write/browser/use-write-session";
 import { AutoRefreshStatusItem } from "src/view/browser/components/AutoRefreshStatusItem";
 import { CommentOverlayStatusItem } from "src/view/browser/components/CommentOverlayStatusItem";
 import { IkioiStatusItem } from "src/view/browser/components/IkioiStatusItem";
@@ -12,30 +37,8 @@ import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/co
 import { TabPanel } from "src/view/browser/components/TabView";
 import { TitleBar } from "src/view/browser/components/TitleBar";
 import { WindowNavigationBridge } from "src/view/browser/components/WindowNavigationBridge";
-import { createAuxiliaryWindowRoot } from "src/view/browser/hooks/auxiliary-window-root";
-import {
-  type DetachedTabController,
-  DetachedTabControllerContext,
-} from "src/view/browser/hooks/detached-tab-controller";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import { AutoScrollStateProvider } from "src/view/browser/hooks/use-auto-scroll-state";
-import {
-  type AuxiliaryWindowHandle,
-  type AuxiliaryWindowOptions,
-  openAuxiliaryWindow,
-} from "src/view/browser/hooks/use-auxiliary-window";
-import { NgStatusProvider } from "src/view/browser/hooks/use-ng-status";
 import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-status";
-import {
-  PaneProvider,
-  useTabDispatch,
-  useTabPanes,
-  useTabStore,
-} from "src/view/browser/hooks/use-tab-store";
-import { TabViewScopeProvider } from "src/view/browser/hooks/use-tab-view-scope";
 import { useTheme } from "src/view/browser/hooks/use-theme";
-import { type ViewSurface, ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
-import { useWriteSessionControls } from "src/view/browser/hooks/use-write-session";
 import { getCurrentPage, type Page, type Pane, type Tab } from "src/view/browser/types";
 import { ToastProvider } from "src/view/browser/ui/Toast";
 

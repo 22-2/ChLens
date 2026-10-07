@@ -1,6 +1,6 @@
 import { Star } from "lucide-react";
 import React from "react";
-import { usePageBookmark } from "src/view/browser/hooks/use-page-bookmark";
+import { usePageBookmark } from "src/features/bookmark/browser/use-page-bookmark";
 import type { Page } from "src/view/browser/types";
 
 interface PageBookmarkButtonProps {

@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { NextThreadSearchState } from "src/view/browser/hooks/use-next-thread-search";
-import { Dialog } from "src/view/browser/ui/Dialog";
-import { Spinner } from "src/view/browser/ui/Spinner";
 import type {
   NextThreadEvidence,
   ThreadSearchCandidate,
-} from "src/view/browser/utils/next-thread-search";
+} from "src/features/next-thread/browser/next-thread-search";
+import type { NextThreadSearchState } from "src/features/next-thread/browser/use-next-thread-search";
+import { Dialog } from "src/view/browser/ui/Dialog";
+import { Spinner } from "src/view/browser/ui/Spinner";
 
 interface NextThreadSearchDialogProps {
   state: NextThreadSearchState;

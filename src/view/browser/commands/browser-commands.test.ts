@@ -1,3 +1,4 @@
+import type { ScopedTabAction } from "src/features/tabs/browser/use-tab-store";
 import { container } from "src/service-container";
 import {
   type BrowserCommandContext,
@@ -7,7 +8,6 @@ import {
   resolveBrowserCommands,
 } from "src/view/browser/commands/browser-commands";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import type { ScopedTabAction } from "src/view/browser/hooks/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";

@@ -1,5 +1,15 @@
 import { Check, RotateCw, Search } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useViewSurface } from "src/features/auxiliary-window/browser/use-view-surface";
+import {
+  readBookmarkStatus,
+  useBookmarkRevision,
+} from "src/features/bookmark/browser/use-bookmark-revision";
+import { useNgStatus } from "src/features/ng/browser/use-ng-status";
+import { useThreadTitleNgDialog } from "src/features/ng/browser/use-thread-title-ng-dialog";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
+import { useTabStore, useTabViewState } from "src/features/tabs/browser/use-tab-store";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
@@ -30,21 +40,11 @@ import {
   writeThreadListSortPreference,
 } from "src/view/browser/components/thread-list-shared";
 import { ThreadTitleNgDialog } from "src/view/browser/components/ThreadTitleNgDialog";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import {
-  readBookmarkStatus,
-  useBookmarkRevision,
-} from "src/view/browser/hooks/use-bookmark-revision";
 import {
   THREAD_LIST_AUTO_REFRESH_INTERVALS_SEC,
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
-import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
-import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
-import { useTabStore, useTabViewState } from "src/view/browser/hooks/use-tab-store";
-import { useThreadTitleNgDialog } from "src/view/browser/hooks/use-thread-title-ng-dialog";
 import { useToast } from "src/view/browser/hooks/use-toast";
-import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import {
   getBoardUrlFromThreadUrl,

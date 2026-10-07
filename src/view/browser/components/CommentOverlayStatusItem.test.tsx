@@ -34,7 +34,7 @@ vi.mock("src/app/platform/runtime", () => ({
   isTauriRuntime: () => mocks.isTauri,
 }));
 
-vi.mock("src/view/browser/hooks/use-tab-store", () => ({
+vi.mock("src/features/tabs/browser/use-tab-store", () => ({
   useTabStore: () => ({ viewPage: mocks.viewPage }),
 }));
 

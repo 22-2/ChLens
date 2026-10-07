@@ -5,9 +5,33 @@ import {
   ArchiveReplayPositionLine,
   getReplayBoundaryIndex,
 } from "src/features/archive-replay/ui/ArchiveReplayPositionLine";
+import { readThreadAutoRefreshIntervalSec } from "src/features/auto-refresh/browser/auto-refresh-config";
+import {
+  getAutoRefreshPageKey,
+  isAutoRefreshStoppedForPage,
+} from "src/features/auto-refresh/browser/auto-refresh-pages";
+import { usePopupAutoScrollPauseSetting } from "src/features/auto-refresh/browser/use-popup-auto-scroll-pause-setting";
+import { useThreadAutoRefresh } from "src/features/auto-refresh/browser/use-thread-auto-refresh";
 import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
+import { useLiveChatResponses } from "src/features/live-chat/browser/use-live-chat-responses";
+import { useThreadDisplayModeSetting } from "src/features/live-chat/browser/use-thread-display-mode-setting";
 import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
+import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
+import { useAutoNextThreadSetting } from "src/features/next-thread/browser/use-auto-next-thread-setting";
+import { useNgStatus } from "src/features/ng/browser/use-ng-status";
+import type { ContextMenuPopupItem } from "src/features/popup/browser/popup-types";
+import { useThreadPopupManager } from "src/features/popup/browser/use-popup-manager";
+import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
+import { useTabStore } from "src/features/tabs/browser/use-tab-store";
+import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
+import { useThreadData } from "src/features/thread/browser/use-thread-data";
+import { useThreadRefreshController } from "src/features/thread/browser/use-thread-refresh-controller";
+import {
+  useWheelPagination,
+  WHEEL_THRESHOLD,
+} from "src/features/thread/browser/useWheelPagination";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
@@ -19,28 +43,11 @@ import { ResItem } from "src/view/browser/components/ResItem";
 import { ThreadMinimap } from "src/view/browser/components/ThreadMinimap";
 import { ThreadScrollFloatingActions } from "src/view/browser/components/ThreadScrollFloatingActions";
 import { WheelScrollIndicator } from "src/view/browser/components/WheelScrollIndicator";
-import { readThreadAutoRefreshIntervalSec } from "src/view/browser/hooks/auto-refresh-config";
-import type { ContextMenuPopupItem } from "src/view/browser/hooks/popup-manager/types";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
-import { useAutoNextThread } from "src/view/browser/hooks/use-auto-next-thread";
-import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
-import { useLiveChatResponses } from "src/view/browser/hooks/use-live-chat-responses";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
-import { useNgStatus } from "src/view/browser/hooks/use-ng-status";
 import {
   getThreadPageCountKey,
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
-import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
-import { useThreadPopupManager } from "src/view/browser/hooks/use-popup-manager";
-import { useTabCommandRunner } from "src/view/browser/hooks/use-tab-command-runner";
-import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import { useTabViewRuntime } from "src/view/browser/hooks/use-tab-view-runtime";
-import { useThreadAutoRefresh } from "src/view/browser/hooks/use-thread-auto-refresh";
-import { useThreadData } from "src/view/browser/hooks/use-thread-data";
-import { useThreadDisplayModeSetting } from "src/view/browser/hooks/use-thread-display-mode-setting";
-import { useThreadRefreshController } from "src/view/browser/hooks/use-thread-refresh-controller";
-import { useWheelPagination, WHEEL_THRESHOLD } from "src/view/browser/hooks/useWheelPagination";
 import {
   resolveThreadAutoRefreshStop,
   shouldDeferExpiredAutoRefreshStop,
@@ -62,10 +69,6 @@ import {
   type ThreadPage as ThreadPageType,
 } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
-import {
-  getAutoRefreshPageKey,
-  isAutoRefreshStoppedForPage,
-} from "src/view/browser/utils/auto-refresh-pages";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
