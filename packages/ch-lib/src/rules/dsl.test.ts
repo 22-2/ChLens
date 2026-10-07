@@ -185,18 +185,23 @@ highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
   });
 
   it("表示方式名を動作の別名として受け付ける", () => {
-    // NGレスの表示方式（hard-ng/soft-ng/highlight-ng）は設定画面で目にする名称のため、
-    // ルールの動作欄へ誤って書かれてもNG判定が止まらないよう別名として正規化する。
+    // NGレスの表示方式（hard-ng/soft-ng）は設定画面で目にする名称のため、
+    // ルールの動作欄へ書かれてもNG判定が止まらないよう別名として正規化する。
     const result = parseRuleDsl(`hard-ng body contains:
   荒らし
 
 soft-ng body contains:
-  spam
-
-highlight-ng title contains:
-  注目`);
+  spam`);
     expect(result.diagnostics).toEqual([]);
-    expect(result.rules.map((rule) => rule.action)).toEqual(["hide", "hide", "highlight"]);
+    expect(result.rules.map((rule) => rule.action)).toEqual(["hide", "hide"]);
+  });
+
+  it("highlight-ngは動作として受け付けない", () => {
+    // highlightと同じ意味の別名を持つ必要がないため、互換を残さず削除した。
+    const result = parseRuleDsl(`highlight-ng title contains:
+  注目`);
+    expect(result.rules).toEqual([]);
+    expect(result.diagnostics[0]?.message).toContain("未対応の動作です: highlight-ng");
   });
 });
 
