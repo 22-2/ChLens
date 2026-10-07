@@ -1,9 +1,9 @@
+import { flexRender } from "@tanstack/react-table";
 import {
-  type ColumnDef as TanstackColumnDef,
-  flexRender,
+  type LegacyColumnDef as TanstackColumnDef,
   getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
+  useLegacyTable,
+} from "@tanstack/react-table/legacy";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import React, { useEffect, useMemo } from "react";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
@@ -52,7 +52,8 @@ interface Props<TRow> {
   columnVisibilityLockedKeys?: readonly string[];
 }
 
-export function SimpleDataTable<TRow>({
+// 変更理由: TanStack Table v9 の RowData 制約（オブジェクトか配列）を満たすため TRow を object に制限する。
+export function SimpleDataTable<TRow extends object>({
   columns,
   rows,
   sections,
@@ -96,7 +97,9 @@ export function SimpleDataTable<TRow>({
 
   // ソートは呼び出し元 (ThreadListPage) が管理するため manualSorting: true にする。
   // TanStack Table はロウモデル管理とセル描画ループの一元化のために使用する。
-  const table = useReactTable({
+  // 変更理由: TanStack Table v9 では useReactTable が useTable に置き換わり API が大きく変わった。
+  //           行モデルとセル描画しか使っていないため、v8 互換の useLegacyTable で移行コストを抑える。
+  const table = useLegacyTable<TRow>({
     data: rows,
     columns: tanstackColumns,
     getCoreRowModel: getCoreRowModel(),
