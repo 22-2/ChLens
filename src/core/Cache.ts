@@ -1,4 +1,4 @@
-import { platform } from "src/app";
+import { platform } from "src/app/platform";
 import type { ObjectStore } from "src/app/platform/types";
 import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
 import { isHttps } from "src/core/URL";

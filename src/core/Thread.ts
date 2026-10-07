@@ -19,7 +19,7 @@ import {
   toArchiveThreadUrl,
   type XhrInfo,
 } from "packages/ch-lib/src/index";
-import { platform } from "src/app";
+import { platform } from "src/app/platform";
 import type Cache from "src/core/Cache.js";
 import { chServerMoveDetect } from "src/core/jsutil.js";
 import { isMissingFromSubject, shouldForceSubjectCheck } from "src/core/SubjectPresence";

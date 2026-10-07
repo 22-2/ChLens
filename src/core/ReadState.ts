@@ -2,7 +2,7 @@ import { ChURL, normalizeReadStateUrl } from "packages/ch-lib/src/index";
 import { assertArg, criticalError, log } from "src/app/Log";
 import message from "src/app/Message";
 import { deepCopy } from "src/app/Util";
-import { indexedDBRequestToPromise } from "src/core/jsutil.js";
+import { indexedDBRequestToPromise } from "src/core/idb-request";
 import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
 import type { IReadState } from "src/service-container/interfaces";
 

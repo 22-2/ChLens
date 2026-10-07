@@ -57,14 +57,14 @@
 
 ### 第2段階: ブックマークと既読状態をサービスコンテナへ寄せる
 
-- `IBookmark` に `promiseFirstScan` と `getAllBoards` を追加し、`BoardTitleSolver` の `app.bookmark` 参照をなくす。
-- `src/app.ts` の `initializeBookmarkRuntime` をサービスコンテナのセットアップ側へ移し、`setupContainer` が `window.app.bookmark` / `window.app.ReadState` / `window.app.util` を経由せず実装を直接 import するようにする。
-- `IUtil.isNewerReadState` の引数を `unknown` から `ComparableReadState` へ型付けする。
+- [x] `IBookmark` に `promiseFirstScan` と `getAllBoards` を追加し、`BoardTitleSolver` の `app.bookmark` 参照をなくす。
+- [x] `initializeBookmarkRuntime` をサービスコンテナのセットアップ側へ移し、`setupContainer` が `window.app` の各機能を経由せず実装を直接 import する。
+- [x] `IUtil.isNewerReadState` の引数を `ComparableReadState` へ型付けする。
 
 ### 第3段階: core → `src/app.ts` の循環 import を解消する
 
-- `platform` と `message` を `src/app/platform`、`src/app/Message` から直接 import する。
-- `src/app.ts` は `window.app` の組み立てと `boot` だけを担う合成ルートにする。
+- [x] `platform` と `message` を `src/app/platform`、`src/app/Message` から直接 import する。
+- [x] `src/app.ts` は `window.app` の組み立てと `boot` を担う合成ルートにする。
 
 ### 第4段階: JS ファイルの TS 化
 
@@ -73,9 +73,26 @@
 
 ### 第5段階: `window.app` の縮小
 
-- `Object.assign(appObj, {...})` で載せている core モジュールのうち、`window.app` 経由の利用が無いものを外す。
-- `src/global.d.ts` の `namespace app` を実際に残る API だけに縮める。
-- 最終的に `LegacyAppForSetup` を削除し、`setupContainer` を引数なしにする。
+- [x] `Object.assign(appObj, {...})` で載せていたcoreモジュールのうち、`window.app` 経由の利用が無いものを外す。
+- [x] `src/global.d.ts` の `namespace app` を実際に残るAPIへ縮める。
+- [x] `LegacyAppForSetup` を削除し、`setupContainer` を引数なしにする。
+
+### 第4段階の実施記録
+
+- [x] `src/core/` に残っていたJS実装と `MessageProcessor.test.js`、`jsutil.test.js` をTypeScriptへ移した。
+- [x] `jsutil` のアンカー解析、サーバー移転検出、文字列正規化、日付変換を責務別モジュールへ分け、既存import向けの `jsutil.ts` ファサードを残した。
+- [x] IndexedDB要求のPromise化を独立モジュールへ移し、`ReadState` から直接利用する。
+- [x] `jsutil.test.ts` にアンカー、半角カタカナの濁点、日付、旧ファサード経由の移転検出の回帰確認を追加した。
+- [x] CIに全体のTypeScript型チェックと変更コードだけを対象とする `vp check` を追加した。追加・変更・rename先を対象にし、削除済みファイルと未変更ファイルの既存フォーマット差分を除外する。
+- [ ] CI上の型チェック、静的解析、ユニット/E2Eテストの結果を確認する。
+
+### 第2・3・5段階の実施記録
+
+- [x] ブックマークの初期化とサービスAPIをサービスコンテナへ移し、BoardTitleSolverからグローバル参照を除いた。
+- [x] `src/core/` から `src/app.ts` を直接 import する依存を除き、platform/messageは専用モジュールから参照する。
+- [x] 合成ルートの `window.app` から未使用のcoreモジュールを外し、`LegacyAppForSetup` と setupContainer引数を削除した。
+- 残る互換APIは `src/app/*` の汎用ヘルパー、config/platform、boot時に公開するbookmark関連API、および利用箇所が残るHistory/ReadState/WriteHistory。
+- CIの型チェック、変更ファイルの `vp check`、ユニット/E2Eテストは未実行のため、結果確認は未完了。
 
 ## 検証
 
@@ -85,3 +102,5 @@
 - `vp check`（このPRで触れていないファイルの既存のフォーマット差分は対象外）
 - `vp test run`
 - `pnpm run build:chrome`
+
+CIでは `pnpm exec tsc --noEmit -p .` を全体へ実行する。`vp check` は [`scripts/check-changed-files.mjs`](../../scripts/check-changed-files.mjs) がGit差分から選んだコードファイルへ実行し、未変更ファイルの既存フォーマット差分を検査対象に含めない。ユニットテストとE2Eテストは既存jobで実行し、E2E jobのChrome向けビルドも維持する。

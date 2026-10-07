@@ -1,11 +1,19 @@
 import { LogLevels } from "consola";
+import { defer } from "src/app/Defer";
+import message from "src/app/Message";
+import { escapeHtml, safeHref } from "src/app/Util";
 import { BBSMenuModel } from "src/core/BBSMenuModel";
-import BoardService from "src/core/BoardService.js";
-import Cache from "src/core/Cache.js";
+import Bookmark from "src/core/Bookmark";
+import * as ReadState from "src/core/ReadState";
+import { isNewerReadState } from "src/core/read-state-compare";
+import type { ComparableReadState } from "src/core/read-state-compare";
+import BoardService from "src/core/BoardService";
+import Cache from "src/core/Cache";
 import { setConsolaLevel } from "src/core/logger";
+import { configInstance } from "src/service-container/config-instance";
 import * as NG from "src/core/NG";
 import Notification from "src/core/Notification";
-import ThreadService from "src/core/ThreadService.js";
+import ThreadService from "src/core/ThreadService";
 import { container } from "src/service-container/Container";
 import {
   IBBSMenuService,
@@ -27,55 +35,62 @@ import {
 } from "src/service-container/interfaces";
 import { toastStore } from "src/service-container/toast-store";
 
-// レガシー window.app の型。IServiceContainer への完全移行後に削除予定。
-interface LegacyAppForSetup {
-  config: {
-    get(key: string): string | null;
-    set(key: string, val: unknown): Promise<void>;
-    ready(cb: () => void): void;
-    getAll(): Record<string, string>;
-    del(key: string): Promise<void>;
-  };
-  message: {
-    send(type: string, data?: unknown): void;
-    // global.d.ts の app.message と同様、コールバック側の型を推論させる。
-    on<T = unknown>(type: string, cb: (data: T) => void): void;
-    off<T = unknown>(type: string, cb: (data: T) => void): void;
-  };
-  bookmark?: {
-    // IBookmark アダプタの戻り値型と揃える (unknown だと代入エラーになるため)。
-    get(url: string): IBookmarkItem | undefined;
-    add?(url: string, title: string, resCount?: number): Promise<boolean>;
-    remove(url: string): Promise<boolean>;
-    updateResCount(url: string, count: number): Promise<boolean>;
-    updateExpired(url: string, exp: boolean): Promise<boolean>;
-    getByBoard(url: string): IBookmarkItem[];
-  };
-  ReadState?: {
-    // IReadStateService の型と揃える。
-    get(url: string): Promise<IReadState | undefined>;
-    getByBoard(boardUrl: string): Promise<IReadState[]>;
-    set(readState: IReadState): Promise<void>;
-  };
-  escapeHtml(str: string): string;
-  safeHref(url: string): string;
-  defer(): Promise<void>;
-  util?: {
-    isNewerReadState(a: unknown, b: unknown): boolean;
-    guessType?(url: string): { bbsType: string; protocol: string };
-  };
+let bookmarkRuntime: Bookmark | undefined;
+
+export function getBookmarkRuntime(): Bookmark | undefined {
+  return bookmarkRuntime;
 }
 
-export function setupContainer(app: LegacyAppForSetup) {
+function initializeBookmarkRuntime(): void {
+  if (bookmarkRuntime) return;
+
+  const configuredBookmarkId = configInstance.get("bookmark_id");
+  const rootNodeId =
+    typeof configuredBookmarkId === "string" && configuredBookmarkId.length > 0
+      ? configuredBookmarkId
+      : "dummy";
+  bookmarkRuntime = new Bookmark(rootNodeId);
+  const entryList = bookmarkRuntime.bel as Bookmark["bel"] & {
+    needReconfigureRootNodeId?: {
+      add: (callback: () => void) => void;
+      wasCalled: boolean;
+    };
+    setRootNodeId?: (rootNodeId: string) => Promise<boolean>;
+  };
+  const notifyRootSelectionRequired = () => {
+    message.send("bookmark_root_reconfigure_required");
+  };
+
+  entryList.needReconfigureRootNodeId?.add(notifyRootSelectionRequired);
+  // persistent callback は過去の通知を再生しないため、起動前に判明した不正rootもUIへ伝える。
+  if (entryList.needReconfigureRootNodeId?.wasCalled) {
+    notifyRootSelectionRequired();
+  }
+
+  message.on("config_updated", ({ key, val }: { key?: string; val?: unknown }) => {
+    if (key !== "bookmark_id") return;
+    const nextRootNodeId = typeof val === "string" && val.length > 0 ? val : "dummy";
+    void entryList.setRootNodeId?.(nextRootNodeId);
+  });
+}
+
+// 変更理由: 旧実装と同じく、設定の読み込み完了時点で初回scanを開始し、
+// DOMの準備を待っている間にブックマーク初期表示が遅れないようにする。
+configInstance.ready(initializeBookmarkRuntime);
+
+export function setupContainer(): void {
+  const config = configInstance;
+  const runtimeMessage = message;
+  // app.boot は config.ready の完了後に呼ぶため、ここでは読込済み設定からrootを決める。
   const syncConsolaLevel = () => {
-    setConsolaLevel(app.config.get("debug_log") === "on" ? LogLevels.debug : LogLevels.info);
+    setConsolaLevel(config.get("debug_log") === "on" ? LogLevels.debug : LogLevels.info);
   };
 
   syncConsolaLevel();
 
   // Config Adapter
   const configAdapter: IConfig = {
-    get: (key: string) => app.config.get(key),
+    get: (key: string) => config.get(key),
     set: async (key: string, val: unknown) => {
       // 変更理由: 設定保存は非同期ストレージへ書き込むため、ここで Promise を落とすと
       // 「見た目は更新されたのにリロード直後に戻る」競合を呼び込みやすい。
@@ -84,7 +99,8 @@ export function setupContainer(app: LegacyAppForSetup) {
         // 次回起動でも警告が残るため、検証成功後にだけストレージを書き換える。
         NG.validate(typeof val === "string" ? val : "");
       }
-      await app.config.set(key, val);
+      // 変更理由: Config実装はstring/numberを受理するため、型宣言のstringへ変換せず値を渡す。
+      await config.set(key, val as string);
       // NGワード設定が更新されたら、NGサービス側の内部状態とキャッシュも同期する。
       // これにより、設定画面での保存が即座にNG判定ロジックへ反映されるようになる。
       if (key === "ngwords") {
@@ -94,12 +110,12 @@ export function setupContainer(app: LegacyAppForSetup) {
         syncConsolaLevel();
       }
     },
-    ready: (cb: () => void) => app.config.ready(cb),
-    getAll: () => app.config.getAll(),
-    del: (key: string) => app.config.del(key),
+    ready: (cb: () => void) => config.ready(cb),
+    getAll: () => config.getAll(),
+    del: (key: string) => config.del(key),
   };
 
-  app.message.on("config_updated", ({ key }: { key?: string }) => {
+  runtimeMessage.on("config_updated", ({ key }: { key?: string }) => {
     if (key === "debug_log") {
       syncConsolaLevel();
     }
@@ -109,26 +125,32 @@ export function setupContainer(app: LegacyAppForSetup) {
   // on/off はジェネリックメソッドのため、アロー関数プロパティではなく
   // メソッド構文で実装して bivariance を効かせる。
   const messageAdapter: IMessage = {
-    send: (type: string, data?: unknown) => app.message.send(type, data),
+    send: (type: string, data?: unknown) => runtimeMessage.send(type, data),
     on(type, cb) {
-      app.message.on(type, cb);
+      runtimeMessage.on(type, cb);
     },
     off(type, cb) {
-      app.message.off(type, cb);
+      runtimeMessage.off(type, cb);
     },
   };
 
   // Bookmark Adapter
+  // app.bootはConfig.ready後に呼ばれるため、ここではscan済みの共有実体を登録する。
+  const activeBookmark = bookmarkRuntime;
+  if (!activeBookmark) {
+    throw new Error("Bookmark runtime is not initialized before Config.ready");
+  }
   const bookmarkAdapter: IBookmark = {
-    get: (url: string) => app.bookmark?.get(url),
-    // container側では `IBookmarkItem` を受け取るため、
-    // core の `app.bookmark.add(url, title, resCount?)` へ適切に展開して渡す。
-    add: (item: IBookmarkItem) => app.bookmark?.add?.(item.url, item.title, item.resCount),
-    remove: (url: string) => app.bookmark?.remove(url),
-    updateResCount: (url: string, count: number) => app.bookmark?.updateResCount(url, count),
-    updateExpired: (url: string, exp: boolean) => app.bookmark?.updateExpired(url, exp),
-    // レガシー app.bookmark が未初期化のときは「ブックマークなし」として扱う。
-    getByBoard: (url: string) => app.bookmark?.getByBoard(url) ?? [],
+    promiseFirstScan: activeBookmark.promiseFirstScan,
+    get: (url: string) => activeBookmark.get(url),
+    // nullはBookmark.addの数値チェックで未指定と同じ扱いなのでundefinedへ揃える。
+    add: (item: IBookmarkItem) =>
+      activeBookmark.add(item.url, item.title, item.resCount ?? undefined),
+    remove: (url: string) => activeBookmark.remove(url),
+    updateResCount: (url: string, count: number) => activeBookmark.updateResCount(url, count),
+    updateExpired: (url: string, expired: boolean) => activeBookmark.updateExpired(url, expired),
+    getByBoard: (url: string) => activeBookmark.getByBoard(url),
+    getAllBoards: () => activeBookmark.getAllBoards(),
   };
 
   // Cache Adapter
@@ -139,12 +161,11 @@ export function setupContainer(app: LegacyAppForSetup) {
   };
 
   // ReadState Adapter
-  // レガシー app.ReadState が未初期化でも Promise を返す契約を守るため async にする。
   const readStateAdapter: IReadStateService = {
-    get: async (url: string) => app.ReadState?.get(url),
-    getByBoard: async (boardUrl: string) => (await app.ReadState?.getByBoard(boardUrl)) ?? [],
+    get: async (url: string) => (await ReadState.get(url)) ?? undefined,
+    getByBoard: (boardUrl: string) => ReadState.getByBoard(boardUrl),
     set: async (readState: IReadState) => {
-      await app.ReadState?.set(readState);
+      await ReadState.set(readState);
     },
   };
 
@@ -214,13 +235,15 @@ export function setupContainer(app: LegacyAppForSetup) {
 
   // Util Adapter
   const utilAdapter: IUtil = {
-    escapeHtml: (str: string) => app.escapeHtml(str),
-    safeHref: (url: string) => app.safeHref(url),
-    defer: () => app.defer(),
-    // app.util 未初期化時は「より新しいとは判定しない」= false を返す。
-    isNewerReadState: (a: unknown, b: unknown) => app.util?.isNewerReadState(a, b) ?? false,
-    guessType: (url: string) =>
-      app.util?.guessType ? app.util.guessType(url) : { bbsType: "2ch", protocol: "https:" },
+    escapeHtml,
+    safeHref,
+    defer,
+    isNewerReadState: (
+      a: ComparableReadState | null | undefined,
+      b: ComparableReadState | null | undefined,
+    ) => isNewerReadState(a, b),
+    // 変更理由: 旧アダプターの既定値を保ち、URL分類の仕様変更をこの移行へ混ぜない。
+    guessType: (_url: string) => ({ bbsType: "2ch", protocol: "https:" }),
   };
 
   container.config = configAdapter;

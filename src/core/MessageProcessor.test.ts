@@ -1,9 +1,9 @@
-import MessageProcessor from "src/core/MessageProcessor.js";
+import MessageProcessor from "src/core/MessageProcessor";
 import { describe, expect, it } from "vite-plus/test";
 
-describe("MessageProcessor", () => {
-  describe("decode", () => {
-    it("should convert URLs to anchor tags", () => {
+describe("レス本文の表示処理", () => {
+  describe("デコード", () => {
+    it("URLをアンカータグへ変換する", () => {
       const res = {
         name: "テスト名前",
         mail: "",
@@ -23,7 +23,7 @@ describe("MessageProcessor", () => {
       expect(result.messageHtml).toContain('rel="noopener noreferrer"');
     });
 
-    it("should handle http URLs", () => {
+    it("httpのURLを処理する", () => {
       const res = {
         name: "テスト",
         mail: "",
@@ -35,7 +35,7 @@ describe("MessageProcessor", () => {
       expect(result.messageHtml).toContain('<a href="http://example.com/test"');
     });
 
-    it("should render literal dat anchors as anchor links", () => {
+    it("dat内のアンカーをアンカーリンクとして表示する", () => {
       const result = MessageProcessor.decode(
         {
           name: "名無し",
@@ -52,7 +52,7 @@ describe("MessageProcessor", () => {
       expect(anchorText).toBe(">>3");
     });
 
-    it("should restore URLs with shortened protocols", () => {
+    it("短縮プロトコルのURLを復元する", () => {
       const res = {
         name: "テスト",
         mail: "",
@@ -73,7 +73,7 @@ describe("MessageProcessor", () => {
       );
     });
 
-    it("should handle URLs with query parameters", () => {
+    it("クエリパラメーター付きURLを処理する", () => {
       const res = {
         name: "テスト",
         mail: "",
@@ -87,7 +87,7 @@ describe("MessageProcessor", () => {
       );
     });
 
-    it("should parse URLs wrapped by full-width parentheses", () => {
+    it("全角括弧で囲まれたURLを解析する", () => {
       const res = {
         name: "テスト",
         mail: "",
@@ -108,7 +108,7 @@ describe("MessageProcessor", () => {
       );
     });
 
-    it("should not double-convert already linked URLs", () => {
+    it("リンク済みURLを二重変換しない", () => {
       const res = {
         name: "テスト",
         mail: "",
@@ -122,7 +122,7 @@ describe("MessageProcessor", () => {
       expect(linkCount).toBe(1);
     });
 
-    it("should handle both ID and SLIP in otherHtml", () => {
+    it("otherHtmlにIDとSLIPを表示する", () => {
       const res = {
         name: "テスト </b>(L20 abcd-efgh)<b>",
         mail: "",
@@ -137,7 +137,7 @@ describe("MessageProcessor", () => {
       expect(result.otherHtml).toContain('<span class="id">ID:test123</span>');
     });
 
-    it("should preserve color-only span markup in names", () => {
+    it("名前欄の色指定spanを保持する", () => {
       const result = MessageProcessor.decode(
         {
           name: '風吹けば名無し <span style="color:green;">警備員[Lv.10]</span>',
@@ -150,7 +150,7 @@ describe("MessageProcessor", () => {
       expect(result.nameHtml).toContain('<span style="color:green;">警備員[Lv.10]</span>');
     });
 
-    it("should escape unsupported name attributes", () => {
+    it("許可されていない名前属性をエスケープする", () => {
       const result = MessageProcessor.decode(
         {
           name: '<span onclick="alert(1)">危険</span>',

@@ -7,7 +7,7 @@ import {
   getBoardNetwork,
   resolveBoardRedirectUrl,
 } from "packages/ch-lib/src/index";
-import { platform } from "src/app";
+import { platform } from "src/app/platform";
 import { Response } from "src/core/HTTP";
 import { chServerMoveDetect } from "src/core/jsutil";
 import { container } from "src/service-container/index";

@@ -20,11 +20,11 @@ vi.mock("src/service-container/index", () => ({
 }));
 
 // 置換設定はグローバルのappを参照するため、テストでは入力をそのまま返す既定動作に差し替える。
-vi.mock("src/core/ReplaceStrTxt.js", () => ({
+vi.mock("src/core/ReplaceStrTxt", () => ({
   replace: mocks.replaceStrTxt,
 }));
 
-vi.mock("src/core/Thread.js", () => ({
+vi.mock("src/core/Thread", () => ({
   default: class Thread {
     title = "テストスレッド";
     res = [];
@@ -53,7 +53,7 @@ interface FormattedResponse {
 }
 
 interface ThreadServiceLike {
-  _formatResult(thread: unknown): { res: FormattedResponse[] };
+  _formatResult(thread: unknown): { title: string | null; res: FormattedResponse[] };
   getThread(
     url: string,
     options?: {
@@ -64,7 +64,7 @@ interface ThreadServiceLike {
   ): Promise<unknown>;
 }
 
-describe("ThreadService", () => {
+describe("スレッドサービス", () => {
   beforeEach(() => {
     mocks.isNGThread.mockReset();
     mocks.threadGet.mockReset();
@@ -85,7 +85,7 @@ describe("ThreadService", () => {
     });
     const firstCache = vi.fn();
     const secondCache = vi.fn();
-    const { default: threadService } = await import("src/core/ThreadService.js");
+    const { default: threadService } = await import("src/core/ThreadService");
     const service = threadService as unknown as ThreadServiceLike;
     const url = "https://example.com/test/read.cgi/board/1000000000/";
 
@@ -109,7 +109,7 @@ describe("ThreadService", () => {
 
   it("自動更新の取得だけsubject.txt確認を間引き、手動更新が合流したら間引かない", async () => {
     mocks.threadGet.mockResolvedValue(undefined);
-    const { default: threadService } = await import("src/core/ThreadService.js");
+    const { default: threadService } = await import("src/core/ThreadService");
     const service = threadService as unknown as ThreadServiceLike;
     const url = "https://example.com/test/read.cgi/board/1000000000/";
 
@@ -137,7 +137,7 @@ describe("ThreadService", () => {
         }),
     );
     mocks.threadGet.mockResolvedValueOnce(undefined);
-    const { default: threadService } = await import("src/core/ThreadService.js");
+    const { default: threadService } = await import("src/core/ThreadService");
     const service = threadService as unknown as ThreadServiceLike;
     const url = "https://example.com/test/read.cgi/board/2000000000/";
 
@@ -153,12 +153,12 @@ describe("ThreadService", () => {
     });
   });
 
-  it("builds the full reply index before applying response NG", async () => {
+  it("レスNGの適用前に全返信の索引を作る", async () => {
     mocks.isNGThread.mockImplementation((res: { replyCount?: number }) =>
       res.replyCount != null && res.replyCount >= 2 ? { type: "ReplyCount" } : null,
     );
 
-    const { default: threadService } = await import("src/core/ThreadService.js");
+    const { default: threadService } = await import("src/core/ThreadService");
     const service = threadService as unknown as ThreadServiceLike;
     const result = service._formatResult({
       title: "title",
@@ -182,8 +182,8 @@ describe("ThreadService", () => {
     );
   });
 
-  it("keeps an ID extracted directly from the HTML post when metadata differs", async () => {
-    const { default: threadService } = await import("src/core/ThreadService.js");
+  it("メタ情報と異なるHTMLレス内のIDを保持する", async () => {
+    const { default: threadService } = await import("src/core/ThreadService");
     const service = threadService as unknown as ThreadServiceLike;
     const result = service._formatResult({
       title: "title",
@@ -202,7 +202,7 @@ describe("ThreadService", () => {
     expect(result.res[0]?.id).toBe("from-attribute");
   });
 
-  it("extracts a timestamp when a dat uses a multi-character weekday", async () => {
+  it("datの曜日表記が複数文字でも日時を抽出する", async () => {
     const now = new Date();
     const weekday = new Intl.DateTimeFormat("en-US", {
       timeZone: "UTC",
@@ -210,7 +210,7 @@ describe("ThreadService", () => {
     }).format(now);
     const timestamp = `${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${String(now.getUTCDate()).padStart(2, "0")}(${weekday}) ${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}:${String(now.getUTCSeconds()).padStart(2, "0")}.${String(now.getUTCMilliseconds()).padStart(3, "0")}`;
 
-    const { default: threadService } = await import("src/core/ThreadService.js");
+    const { default: threadService } = await import("src/core/ThreadService");
     const service = threadService as unknown as ThreadServiceLike;
     const result = service._formatResult({
       title: "title",
@@ -229,7 +229,7 @@ describe("ThreadService", () => {
         message: res.message.replace("置換前", "置換後"),
       }),
     );
-    const { default: threadService } = await import("src/core/ThreadService.js");
+    const { default: threadService } = await import("src/core/ThreadService");
     const service = threadService as unknown as ThreadServiceLike;
     const result = service._formatResult({
       title: "title",
@@ -244,7 +244,7 @@ describe("ThreadService", () => {
   it("設定で有効な自動NGを現行の取得結果へ反映する", async () => {
     mocks.config.set("nothing_id_ng", "on");
     mocks.config.set("how_to_judgment_id", "first_res");
-    const { default: threadService } = await import("src/core/ThreadService.js");
+    const { default: threadService } = await import("src/core/ThreadService");
     const service = threadService as unknown as ThreadServiceLike;
     const result = service._formatResult({
       title: "title",
@@ -257,5 +257,17 @@ describe("ThreadService", () => {
 
     expect(result.res[0]?.ng).toBeUndefined();
     expect(result.res[1]?.ng).toEqual({ type: "NothingID" });
+  });
+
+  it("取得結果がない場合も旧契約どおりタイトルのnullを保持する", async () => {
+    const { default: threadService } = await import("src/core/ThreadService");
+    const service = threadService as unknown as ThreadServiceLike;
+    const result = service._formatResult({
+      title: null,
+      url: { url: { href: "https://example.com/test/read.cgi/board/1/" } },
+      res: null,
+    });
+
+    expect(result.title).toBeNull();
   });
 });

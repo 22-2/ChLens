@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   messageSend: vi.fn(),
 }));
 
-vi.mock("src/app", () => ({
+vi.mock("src/app/platform", () => ({
   platform: { http: { fetch: mocks.fetch } },
 }));
 

@@ -1,0 +1,147 @@
+import { type ReplaceStrTarget, toCanonicalThread } from "packages/ch-lib/src/index";
+import type { ThreadRes } from "packages/ch-lib/src/parser/ThreadParser";
+import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt";
+import Thread from "src/core/Thread";
+import { evaluateThreadNg } from "src/core/ThreadNgEvaluator";
+import { toViewRes } from "src/core/to-view-res";
+import type { IRes, IThreadDetail, IThreadService } from "src/service-container/interfaces";
+
+// 移行理由: 取得集約と置換処理の既存契約を保ちつつ、要求状態と返却モデルを明示的な型で管理する。
+interface GetThreadOptions {
+  forceUpdate?: boolean;
+  throttleSubjectCheck?: boolean;
+  onCache?: (thread: IThreadDetail) => void;
+}
+
+interface PendingRequest {
+  started: boolean;
+  forceUpdate: boolean;
+  manualForceUpdate: boolean;
+  callbacks: Set<(thread: IThreadDetail) => void>;
+  lastCacheResult?: IThreadDetail;
+  promise: Promise<IThreadDetail>;
+}
+
+/** 自動更新ではない強制取得か。 */
+const isManualForceUpdate = (options: GetThreadOptions): boolean =>
+  options.forceUpdate === true && options.throttleSubjectCheck !== true;
+
+class ThreadServiceImpl implements IThreadService {
+  private pendingRequests = new Map<string, PendingRequest>();
+
+  async getThread(url: string, options: GetThreadOptions = {}): Promise<IThreadDetail> {
+    const existingRequest = this.pendingRequests.get(url);
+    if (
+      existingRequest &&
+      (!existingRequest.started ||
+        !options.forceUpdate ||
+        (existingRequest.forceUpdate &&
+          // 開始済みの自動更新へ手動更新を合流させると、subject.txtを確認できない。
+          (existingRequest.manualForceUpdate || !isManualForceUpdate(options))))
+    ) {
+      // 同じ更新世代の同一URL要求を共有し、開始前なら強制更新条件も統合する。
+      existingRequest.forceUpdate ||= options.forceUpdate === true;
+      // 自動更新と手動更新が合流した場合は、利用者の操作を優先してsubject.txtを確認する。
+      existingRequest.manualForceUpdate ||= isManualForceUpdate(options);
+      if (options.onCache) {
+        existingRequest.callbacks.add(options.onCache);
+        if (existingRequest.lastCacheResult) {
+          try {
+            options.onCache(existingRequest.lastCacheResult);
+          } catch (error) {
+            // 遅れて合流した表示先の例外でも、共有中の取得結果は他の利用者へ返し続ける。
+            console.error("[ThreadService] キャッシュ通知に失敗しました:", error);
+          }
+        }
+      }
+      return existingRequest.promise;
+    }
+
+    const request: PendingRequest = {
+      started: false,
+      forceUpdate: options.forceUpdate === true,
+      manualForceUpdate: isManualForceUpdate(options),
+      callbacks: new Set(options.onCache ? [options.onCache] : []),
+      // Promiseは生成時から保持し、呼び出し順により二重取得へ戻らないようmicrotaskで要求を集約する。
+      promise: Promise.resolve()
+        .then(async () => {
+          request.started = true;
+          return await this._fetchThread(url, request);
+        })
+        .finally(() => {
+          // 開始済みの通常取得と後発の強制取得が並行した場合、後発の管理情報を消さない。
+          if (this.pendingRequests.get(url) === request) {
+            this.pendingRequests.delete(url);
+          }
+        }),
+    };
+    this.pendingRequests.set(url, request);
+    return request.promise;
+  }
+
+  private async _fetchThread(url: string, request: PendingRequest): Promise<IThreadDetail> {
+    const thread = new Thread(url);
+    const progress = (): void => {
+      const result = this._formatResult(thread);
+      request.lastCacheResult = result;
+      for (const callback of request.callbacks) {
+        try {
+          callback(result);
+        } catch (error) {
+          // 一つの表示先の例外で他の購読先やスレ取得自体を止めない。
+          console.error("[ThreadService] キャッシュ通知に失敗しました:", error);
+        }
+      }
+    };
+
+    try {
+      await thread.get(request.forceUpdate, progress, {
+        throttleSubjectCheck: !request.manualForceUpdate,
+      });
+      return this._formatResult(thread);
+    } catch (error) {
+      // 取得失敗時もキャッシュ結果を返す従来動作を保ちつつ、原因を追跡可能にする。
+      console.error("[ThreadService] thread fetch failed:", error);
+      const result = this._formatResult(thread);
+      result.message = thread.message || "スレッドの取得に失敗しました";
+      return result;
+    }
+  }
+
+  private _formatResult(thread: Thread): IThreadDetail {
+    // Threadのキャッシュ形式はHTML差分合成が使うため維持し、NG判定前に共有モデルへ正規化する。
+    const title = thread.title || "";
+    const url = thread.url.url.href;
+    // 置換ルールは名前・日付からのID/Slip抽出より前に適用する（旧ThreadModelと同じ順序）。
+    // 置換適用がThreadModelと共に使われなくなり、設定が無効化されていたためここで適用する。
+    const replacedRes = (thread.res ?? []).map((response: ThreadRes) => ({
+      ...response,
+      // ThreadRes は文字列レス本文を持つ一方、置換器の辞書型 index signature を宣言していない。
+      // 実際に置換対象となる各本文フィールドはstringなので、この境界でのみ旧JSDoc型へ合わせる。
+      ...replaceStrTxt(url, title, response as ReplaceStrTarget),
+    }));
+    const canonicalThread = toCanonicalThread({
+      title: thread.title || undefined,
+      res: replacedRes,
+    });
+    const parsedResponses = canonicalThread.posts.map(toViewRes);
+    // 自動NG（連鎖・ID無し等）は、全レスを見渡せるこの時点で一括して行う。
+    const ngResults = evaluateThreadNg(parsedResponses, { title, url });
+
+    return {
+      url,
+      // 取得失敗時は旧実装どおりnullになり得るため、サービス契約側でもnullableとして扱う。
+      title: thread.title,
+      // 返信数や連鎖NGは後続レスにも依存するため、全レスの索引を作ってから判定結果を載せる。
+      res: parsedResponses.map((response: IRes) => ({
+        ...response,
+        ng: ngResults.get(response.num),
+      })),
+      expired: !!thread.expired,
+      missingFromSubject: !!thread.missingFromSubject,
+    };
+  }
+}
+
+const threadService: IThreadService = new ThreadServiceImpl();
+export default threadService;

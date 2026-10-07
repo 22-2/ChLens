@@ -18,8 +18,8 @@ const state = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("src/app", () => ({
-  message: {
+vi.mock("src/app/Message", () => ({
+  default: {
     send: messageSend,
   },
 }));

@@ -8,18 +8,16 @@ declare global {
   }
 
   namespace app {
+    function boot(
+      path: string,
+      requirements: ((...modules: unknown[]) => void) | string[] | null,
+      callback?: (...modules: unknown[]) => void,
+    ): Promise<void>;
     // src/app.ts で appObj に代入される app/Util 由来のヘルパー群
     const replaceAll: (str: string, before: string, after: string) => string;
     const escapeHtml: (str: string) => string;
     const safeHref: (url: string) => string;
-    const config: {
-      get(key: string): string | null;
-      set(key: string, val: string): Promise<void>;
-      ready: (...args: unknown[]) => unknown;
-      getAll(): Record<string, string>;
-      del(key: string): Promise<void>;
-      isOn(key: string): boolean;
-    };
+    const config: import("./app/Config").default;
     // 実装 (src/app/Callbacks.ts) と同じくジェネリックで宣言し、
     // 購読側が狭い型のコールバックを add できるようにする。
     const Callbacks: {
@@ -34,15 +32,8 @@ declare global {
       };
     };
     const log: (...args: unknown[]) => void;
-    const LocalStorage: {
-      get(key: string): Promise<string | null>;
-      set(key: string, value: string): Promise<void>;
-      remove(key: string): Promise<void>;
-      getAll(): Promise<Record<string, string>>;
-      onChanged(
-        cb: (changes: Record<string, { oldValue: string | null; newValue: string | null }>) => void,
-      ): void;
-    };
+    // delなど実装が公開するstatic APIと同期し、存在しないremoveを宣言しない。
+    const LocalStorage: typeof import("./app/LocalStorage").default;
     const deepCopy: <T>(obj: T) => T;
     const message: {
       send(type: string, data?: unknown): void;
@@ -54,51 +45,12 @@ declare global {
     const defer: () => Promise<void>;
     const platform: import("./app/platform/types").Platform;
 
-    const bookmark: {
-      get(url: string): import("./core/BookmarkEntryList").Entry | null;
-      getByBoard(boardURL: string): import("./core/BookmarkEntryList").Entry[];
-      getAll(): import("./core/BookmarkEntryList").Entry[];
-      getAllThreads(): import("./core/BookmarkEntryList").Entry[];
-      getAllBoards(): import("./core/BookmarkEntryList").Entry[];
-      add(url: string, title: string, resCount?: number): Promise<boolean>;
-      remove(url: string): Promise<boolean>;
-      updateReadState(readState: Record<string, unknown>): Promise<boolean>;
-      updateResCount(url: string, resCount: number): Promise<boolean>;
-      updateExpired(url: string, expired: boolean): Promise<boolean>;
-      readonly bel: {
-        ready: { add(cb: () => void): void; wasCalled: boolean; call(): void };
-      };
-      readonly promiseFirstScan: Promise<boolean>;
-    };
-    const HTTP: {
-      getWithAbort(
-        url: string,
-        options?: { mimeType?: string; timeout?: number },
-      ): {
-        response: Promise<{
-          readAsText(charset: string): Promise<string>;
-          getResponseHeader(name: string): string | undefined;
-          status: number;
-          finalUrl?: string;
-          headers?: Record<string, string>;
-        }>;
-        abort(): void;
-      };
-      get(
-        url: string,
-        options?: { mimeType?: string; timeout?: number },
-      ): Promise<{
-        readAsText(charset: string): Promise<string>;
-        getResponseHeader(name: string): string | undefined;
-        status: number;
-        finalUrl?: string;
-        headers?: Record<string, string>;
-      }>;
-    };
-    const util: {
-      isNewerReadState(a: unknown, b: unknown): boolean;
-      guessType(url: string): { bbsType: string; protocol: string };
-    };
+    const bookmark: import("./core/Bookmark").default;
+    const bookmarkEntryList: import("./core/Bookmark").default["bel"];
+    const History: typeof import("./core/History");
+    const ReadState: typeof import("./core/ReadState");
+    const WriteHistory: typeof import("./core/WriteHistory");
+    const _config: import("./app/Config").default;
   }
 
   namespace browser.bookmarks {

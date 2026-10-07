@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { cachedMenuMock, menuMock, requestMock, sendMock, titlesConfig, bookmarks } = vi.hoisted(
   () => ({
@@ -36,6 +36,11 @@ vi.mock("src/core/URL", () => ({
 vi.mock("src/service-container/index", () => ({
   container: {
     config: { get: () => titlesConfig.raw },
+    bookmark: {
+      promiseFirstScan: Promise.resolve(true),
+      getAllBoards: () => bookmarks.boards,
+      get: () => null,
+    },
     bbsMenu: {
       getCached: cachedMenuMock,
       get: menuMock,
@@ -55,16 +60,7 @@ describe("保存済み板名の参照と選択した板の取得", () => {
       .mockResolvedValue({ status: 200, body: "BBS_TITLE_ORIG=選択した板の名前" });
     titlesConfig.raw = "{}";
     bookmarks.boards = [];
-    vi.stubGlobal("app", {
-      bookmark: {
-        promiseFirstScan: Promise.resolve(true),
-        getAllBoards: () => bookmarks.boards,
-        get: () => null,
-      },
-    });
   });
-  afterEach(() => vi.unstubAllGlobals());
-
   it("保存済み板一覧・その他の板名・お気に入りを通信せずまとめて参照する", async () => {
     cachedMenuMock.mockResolvedValue({
       status: "success",

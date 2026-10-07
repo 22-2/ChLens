@@ -81,7 +81,7 @@ const store = {
   },
 };
 
-vi.mock("src/app", () => ({
+vi.mock("src/app/platform", () => ({
   platform: {
     storage: {
       getStore: () => store,

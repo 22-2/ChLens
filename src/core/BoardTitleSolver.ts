@@ -45,14 +45,14 @@ export const getCachedTitles = async (): Promise<Map<string, string>> => {
       console.error("保存済みの板名を読み込めませんでした", error);
     }
   }
-  if (typeof app !== "undefined" && app.bookmark) {
+  if (container.bookmark) {
     // 初回のローカル読み取りを待ち、起動直後も保存済みのお気に入り名を使う。
     try {
-      await app.bookmark.promiseFirstScan;
+      await container.bookmark.promiseFirstScan;
     } catch (error) {
       console.error("お気に入りの初回読み込みに失敗しました", error);
     }
-    for (const board of app.bookmark.getAllBoards()) {
+    for (const board of container.bookmark.getAllBoards()) {
       addTitle(board.url, _formatBoardTitle(board.title, new ChURL(board.url)));
     }
   }
@@ -134,12 +134,8 @@ const _formatBoardTitle = (title: string, url: ChURL): string => {
 };
 
 const searchFromBookmark = (url: ChURL): string | null => {
-  if (!app.bookmark) {
-    return null;
-  }
-
   const url2 = url.createProtocolToggled();
-  const bookmark = app.bookmark.get(url.href) ?? app.bookmark.get(url2.href);
+  const bookmark = container.bookmark.get(url.href) ?? container.bookmark.get(url2.href);
   if (bookmark == null) {
     return null;
   }

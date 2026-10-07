@@ -1,4 +1,4 @@
-import { platform } from "src/app";
+import { platform } from "src/app/platform";
 import { createLogger } from "src/core/logger";
 
 const logger = createLogger("HTTP");

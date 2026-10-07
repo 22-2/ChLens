@@ -10,7 +10,8 @@ interface ToonThreadResponse {
 }
 
 export interface ToonThread {
-  title: string;
+  // 取得失敗時も旧出力のnullを保持し、エンコード前に値を置き換えない。
+  title: string | null;
   url: string;
   responses: ToonThreadResponse[];
 }
