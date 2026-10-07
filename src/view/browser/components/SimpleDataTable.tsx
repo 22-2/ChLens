@@ -1,7 +1,7 @@
 import { flexRender } from "@tanstack/react-table";
 import {
-  type LegacyColumnDef as TanstackColumnDef,
   getCoreRowModel,
+  type LegacyColumnDef as TanstackColumnDef,
   useLegacyTable,
 } from "@tanstack/react-table/legacy";
 import { ChevronDown, ChevronUp } from "lucide-react";
