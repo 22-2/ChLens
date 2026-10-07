@@ -6,8 +6,8 @@ import type { IBBSMenuResult } from "src/service-container/interfaces";
  *
  * 変更理由: 以前はこのモジュールが BBSMenuModel のシングルトンを持ち、
  * BoardTitleSolver や jsutil が直接 import していたため、container.bbsMenu と入口が分かれていた。
- * 板一覧の状態はサービスコンテナの bbsMenu だけが持ち、ここは既存の window.app API を
- * 既存のモジュールAPIを維持するための委譲だけを残す。新しいコードは container.bbsMenu を使うこと。
+ * 板一覧の状態はサービスコンテナの bbsMenu だけが持ち、ここは既存のモジュールAPIを
+ * 維持するための委譲だけを残す。新しいコードは container.bbsMenu を使うこと。
  */
 
 /** 変更通知の購読口 */

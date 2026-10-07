@@ -119,8 +119,9 @@ export default class SikiGuard {
     try {
       await board.get();
       return { status: "success", data: board.idMap };
-    } catch (error) {
-      console.error("[SikiGuard] 応答データの解析に失敗しました:", error);
+    } catch {
+      // 変更理由: インスタンス側の get が失敗原因を詳細にログ出力してから理由なしで reject するため、
+      // ここで再度ログを出すと中身が undefined の重複ログになり、通信失敗も「解析失敗」と誤表示していた。
       return {
         status: "error",
         message: board.message != null ? board.message : null,

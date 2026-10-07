@@ -39,7 +39,8 @@ class ThreadServiceImpl implements IThreadService {
           // 開始済みの自動更新へ手動更新を合流させると、subject.txtを確認できない。
           (existingRequest.manualForceUpdate || !isManualForceUpdate(options))))
     ) {
-      // 同じ更新世代の同一URL要求を共有し、開始前なら強制更新条件も統合する。
+      // 変更理由: スレ本文と勢い表示は同じ更新世代で同一URLを要求するため、
+      // 通信開始前なら強いforceUpdateへまとめ、開始後も条件を弱めない要求だけを共有する。
       existingRequest.forceUpdate ||= options.forceUpdate === true;
       // 自動更新と手動更新が合流した場合は、利用者の操作を優先してsubject.txtを確認する。
       existingRequest.manualForceUpdate ||= isManualForceUpdate(options);
@@ -62,7 +63,10 @@ class ThreadServiceImpl implements IThreadService {
       forceUpdate: options.forceUpdate === true,
       manualForceUpdate: isManualForceUpdate(options),
       callbacks: new Set(options.onCache ? [options.onCache] : []),
-      // Promiseは生成時から保持し、呼び出し順により二重取得へ戻らないようmicrotaskで要求を集約する。
+      // 同じReact effect処理内の要求をmicrotaskまで集め、後から来たforceUpdateも
+      // 最初の通信へ反映して、呼び出し順により二重取得へ戻らないようにする。
+      // 変更理由: nullを一時値としてPromise型へキャストすると、型契約と実値が矛盾する。
+      // Promiseのコールバックはmicrotaskで実行されるため、生成時から完全なPromiseを保持できる。
       promise: Promise.resolve()
         .then(async () => {
           request.started = true;
@@ -100,7 +104,7 @@ class ThreadServiceImpl implements IThreadService {
       });
       return this._formatResult(thread);
     } catch (error) {
-      // 取得失敗時もキャッシュ結果を返す従来動作を保ちつつ、原因を追跡可能にする。
+      // 変更理由: 取得失敗時もキャッシュ結果を返す従来動作を保ちつつ、原因を追跡可能にする。
       console.error("[ThreadService] thread fetch failed:", error);
       const result = this._formatResult(thread);
       result.message = thread.message || "スレッドの取得に失敗しました";
@@ -113,7 +117,7 @@ class ThreadServiceImpl implements IThreadService {
     const title = thread.title || "";
     const url = thread.url.url.href;
     // 置換ルールは名前・日付からのID/Slip抽出より前に適用する（旧ThreadModelと同じ順序）。
-    // 置換適用がThreadModelと共に使われなくなり、設定が無効化されていたためここで適用する。
+    // 変更理由: 旧経路の置換適用がThreadModelと共に使われなくなり、置換設定が無効化されていたため。
     const replacedRes = (thread.res ?? []).map((response: ThreadRes) => ({
       ...response,
       // ThreadRes は文字列レス本文を持つ一方、置換器の辞書型 index signature を宣言していない。

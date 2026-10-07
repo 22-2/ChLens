@@ -45,16 +45,18 @@ export const getCachedTitles = async (): Promise<Map<string, string>> => {
       console.error("保存済みの板名を読み込めませんでした", error);
     }
   }
-  if (container.bookmark) {
-    // 初回のローカル読み取りを待ち、起動直後も保存済みのお気に入り名を使う。
-    try {
-      await container.bookmark.promiseFirstScan;
-    } catch (error) {
-      console.error("お気に入りの初回読み込みに失敗しました", error);
-    }
-    for (const board of container.bookmark.getAllBoards()) {
-      addTitle(board.url, _formatBoardTitle(board.title, new ChURL(board.url)));
-    }
+  // 変更理由: container.bookmark は未登録時に値を返さず例外を投げるため、存在確認の if は
+  // 常に真か例外のどちらかにしかならない。呼び出し元は app.boot 後の画面だけなので、
+  // 登録済みを前提に直接参照し、誤解を招く判定を置かない。
+  const bookmark = container.bookmark;
+  // 初回のローカル読み取りを待ち、起動直後も保存済みのお気に入り名を使う。
+  try {
+    await bookmark.promiseFirstScan;
+  } catch (error) {
+    console.error("お気に入りの初回読み込みに失敗しました", error);
+  }
+  for (const board of bookmark.getAllBoards()) {
+    addTitle(board.url, _formatBoardTitle(board.title, new ChURL(board.url)));
   }
   return titles;
 };
