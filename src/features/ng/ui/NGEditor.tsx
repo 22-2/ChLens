@@ -90,9 +90,26 @@ demote title contains:
 hide url regex:
   "https?://(?:x|twitter)\\.com/.+"
 
+// 名前欄・メール欄・SLIPも対象にできます
+hide name contains:
+  名無しの荒らし
+
+hide slip contains:
+  ワッチョイ
+
+// 数値条件は「対象 >= 数値:」で書きます
 hide reply-count >= 5:
 
-hide anchor-count >= 3:`;
+hide anchor-count >= 3:
+
+// hard-ng・soft-ngはhideの別名です。
+// 消し方（完全非表示・クリックで表示）は「NGレスの表示方式」設定に従います
+hard-ng body contains:
+  宣伝
+
+// ルールを一時的に止めるときはdisabled=trueを付けます
+hide title contains disabled=true:
+  雑談`;
 
 export const NG_DSL_MULTILINE_EXAMPLE = `// 同じブロックの条件はORで判定します
 highlight title contains color=red label=注目 sites=[eddibb.cc 5ch.io]:

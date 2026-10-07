@@ -271,7 +271,8 @@ export default defineConfig(({ mode }) => {
     },
     fmt: {
       // ドキュメントは文章構成を優先し、コード用フォーマッターで意図せず書き換えない。
-      ignorePatterns: ["docs/**", "**/*.md"],
+      // Peggyが生成するDSLパーサーは生成物なので整形しない（generate:dslで再生成する）。
+      ignorePatterns: ["docs/**", "**/*.md", "packages/ch-lib/src/rules/dsl-grammar.{js,d.ts}"],
     },
     lint: {
       plugins: ["oxc", "typescript", "unicorn", "react", "import"],
@@ -293,6 +294,7 @@ export default defineConfig(({ mode }) => {
         "playwright-report/**",
         "test-results/**",
         "src-tauri/target/**",
+        "packages/ch-lib/src/rules/dsl-grammar.{js,d.ts}",
       ],
       rules: {
         "vite-plus/prefer-vite-plus-imports": "error",

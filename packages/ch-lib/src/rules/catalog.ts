@@ -44,8 +44,6 @@ export const RULE_ACTION_CATALOG: readonly RuleCatalogEntry<RuleAction>[] = [
   },
   {
     name: "highlight",
-    // hideと同様に、表示方式名を動作欄へ書いても強調として扱う。
-    aliases: ["highlight-ng"],
     description: "一致した対象を強調します。",
   },
   {

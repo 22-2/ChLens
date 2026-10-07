@@ -6,6 +6,14 @@ import {
   normalizeRuleTarget,
   RULE_ACTION_CATALOG,
 } from "./catalog";
+import type { DslValue } from "./dsl-ast";
+import { parse as parseGrammar } from "./dsl-grammar.js";
+import {
+  RESPONSE_RULE_ACTIONS,
+  RESPONSE_RULE_TARGETS,
+  THREAD_LIST_RULE_ACTIONS,
+  THREAD_LIST_RULE_TARGETS,
+} from "./engine";
 import {
   getRuleConditions,
   type Rule,
@@ -26,85 +34,52 @@ export interface RuleDslParseResult {
   readonly diagnostics: readonly RuleDslDiagnostic[];
 }
 
-const HEADER_PATTERN = /^(\S+)\s+(\S+)(?:\s+([\s\S]*?))?:\s*$/u;
 // 未対応の動作を指摘する際は、入力可能な候補を添えて修正先を示す。
 const AVAILABLE_ACTIONS_HINT = RULE_ACTION_CATALOG.map((entry) => entry.name).join("、");
 type BlockMatcherKind = "contains" | "regex";
 type RuleHeaderMatcherKind = BlockMatcherKind | "comparison";
 
-interface ParsedQuotedValue {
-  readonly value: string;
-  readonly rest: string;
+/**
+ * 構文解析はdsl.peggyから生成したパーサーに任せる。
+ * 文法は全行を必ずいずれかの行ノードへ一致させるため、通常の入力では例外にならない。
+ * それでも例外が出た場合は文法自体の不具合なので、握りつぶさず詳細を残して再送出する。
+ */
+function parseWithGrammar<T>(run: () => T, input: string, startRule: string): T {
+  try {
+    return run();
+  } catch (error) {
+    console.error(`[ruleDsl] 文法での解析に失敗しました (startRule=${startRule})`, {
+      input,
+      error,
+    });
+    throw error;
+  }
 }
 
-/**
- * DSLの引用符はJSON文字列ではなく、正規表現をそのまま書くための境界にする。
- * そのため、バックスラッシュは保持し、区切り文字を含めたい場合だけ引用符を逃がす。
- */
-function parseQuotedValue(source: string): ParsedQuotedValue | null {
-  const trimmed = source.trim();
-  const quote = trimmed[0];
-  if (quote !== '"' && quote !== "'") return null;
-
-  let value = "";
-  for (let index = 1; index < trimmed.length; index += 1) {
-    const char = trimmed[index];
-    if (char === "\\" && trimmed[index + 1] === quote) {
-      value += quote;
-      index += 1;
-      continue;
-    }
-    if (char === quote) {
-      return { value, rest: trimmed.slice(index + 1).trim() };
-    }
-    value += char;
+/** 単独の値を解釈する。引用符付きなら中身、閉じていない・余分な文字がある場合はnull。 */
+function toPlainValue(value: DslValue): string | null {
+  switch (value.kind) {
+    case "bare":
+      return value.text;
+    case "quoted":
+      return value.rest ? null : value.value;
+    case "unclosed":
+      return null;
   }
-  return null;
+}
+
+function parseDslValue(source: string): string | null {
+  return toPlainValue(
+    parseWithGrammar(() => parseGrammar(source, { startRule: "Scalar" }), source, "Scalar"),
+  );
 }
 
 function tokenizeOptions(source: string): string[] {
-  const result: string[] = [];
-  let current = "";
-  let quote: "'" | '"' | null = null;
-  let bracketDepth = 0;
-
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index];
-    if (quote) {
-      current += char;
-      if (char === "\\" && source[index + 1] !== undefined) {
-        current += source[index + 1];
-        index += 1;
-      } else if (char === quote) {
-        quote = null;
-      }
-      continue;
-    }
-    if (char === "'" || char === '"') {
-      quote = char;
-      current += char;
-    } else if (char === "[") {
-      bracketDepth += 1;
-      current += char;
-    } else if (char === "]") {
-      bracketDepth = Math.max(0, bracketDepth - 1);
-      current += char;
-    } else if (/\s/u.test(char) && bracketDepth === 0) {
-      if (current) result.push(current);
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-  if (current) result.push(current);
-  return result;
-}
-
-function parseDslValue(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed.startsWith('"') && !trimmed.startsWith("'")) return trimmed;
-  const parsed = parseQuotedValue(trimmed);
-  return parsed && !parsed.rest ? parsed.value : null;
+  return parseWithGrammar(
+    () => parseGrammar(source, { startRule: "OptionList" }),
+    source,
+    "OptionList",
+  );
 }
 
 function unquote(value: string): string {
@@ -114,6 +89,25 @@ function unquote(value: string): string {
 function parseSites(value: string): string[] {
   const unwrapped = value.startsWith("[") && value.endsWith("]") ? value.slice(1, -1) : value;
   return tokenizeOptions(unwrapped.replace(/,/gu, " ")).map(unquote).filter(Boolean);
+}
+
+/**
+ * ルールを判定できる画面（スレ一覧・レス）ごとの動作と対象。
+ * engineはルールの全条件の対象が同じ画面で判定できない場合に黙って読み飛ばすため、
+ * DSL側で同じ基準を使い、決して一致しないAND条件を入力時点で弾く。
+ */
+const RULE_EVALUATION_SCOPES = [
+  { name: "スレ一覧", actions: THREAD_LIST_RULE_ACTIONS, targets: THREAD_LIST_RULE_TARGETS },
+  { name: "レス", actions: RESPONSE_RULE_ACTIONS, targets: RESPONSE_RULE_TARGETS },
+] as const;
+
+function getEvaluationScopes(
+  action: Rule["action"],
+  targets: readonly RuleTarget[],
+): (typeof RULE_EVALUATION_SCOPES)[number][] {
+  return RULE_EVALUATION_SCOPES.filter(
+    (scope) => scope.actions.has(action) && targets.every((target) => scope.targets.has(target)),
+  );
 }
 
 function getComparisonOperator(target: RuleTarget): ">" | ">=" | null {
@@ -128,24 +122,21 @@ function getComparisonOperator(target: RuleTarget): ">" | ">=" | null {
 }
 
 function parseRegexMatcherValue(
-  source: string,
+  value: DslValue,
   defaultFlags?: string,
 ): { matcher: RuleMatcher; valid: true } | { valid: false } {
-  const parsed = parseQuotedValue(source);
-  if (!parsed) return { valid: false };
+  if (value.kind !== "quoted") return { valid: false };
   let flags = defaultFlags;
-  if (parsed.rest) {
-    const flagsMatch = /^flags=(\S+)$/u.exec(parsed.rest);
+  if (value.rest) {
+    const flagsMatch = /^flags=(\S+)$/u.exec(value.rest);
     if (!flagsMatch) return { valid: false };
     flags = flagsMatch[1];
   }
   return {
     valid: true,
-    matcher: { kind: "regex", source: parsed.value, ...(flags ? { flags } : {}) },
+    matcher: { kind: "regex", source: value.value, ...(flags ? { flags } : {}) },
   };
 }
-
-const AND_HEADER_PATTERN = /^and\s+(\S+)(?:\s+([\s\S]*?))?:\s*$/iu;
 
 interface ParsedConditionHeader {
   readonly target: RuleTarget;
@@ -362,7 +353,12 @@ function parseConditionHeader(
 
 /** 新仕様のブロックDSLだけを認識する。旧形式は意図的に受け付けない。 */
 export function parseRuleDsl(source: string): RuleDslParseResult {
-  const lines = source.replace(/\r\n?/gu, "\n").split("\n");
+  const normalizedSource = source.replace(/\r\n?/gu, "\n");
+  const nodes = parseWithGrammar(
+    () => parseGrammar(normalizedSource),
+    normalizedSource,
+    "Document",
+  );
   const rules: Rule[] = [];
   const diagnostics: RuleDslDiagnostic[] = [];
   let recognized = false;
@@ -374,6 +370,8 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
   let currentHasError = false;
   let ruleHasError = false;
   let additionalConditions: RuleCondition[] = [];
+  // AND条件を含め、このルールで指定された対象。同時に判定できるかの検証に使う。
+  let conditionTargets: RuleTarget[] = [];
 
   const resetState = (): void => {
     current = null;
@@ -383,6 +381,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
     currentHasError = false;
     ruleHasError = false;
     additionalConditions = [];
+    conditionTargets = [];
   };
 
   const finishCurrentCondition = (line: number): RuleCondition | null => {
@@ -419,29 +418,18 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
     resetState();
   };
 
-  for (let index = 0; index < lines.length; index += 1) {
-    const rawLine = lines[index];
-    // Monacoや貼り付け元によってBOM/ゼロ幅文字がコメント先頭へ混ざることがあるため、
-    // 判定前にコメント用の不可視文字だけを取り除く。
-    const trimmed = rawLine.replace(/^[\uFEFF\u200B\u200C\u200D]+/u, "").trim();
-    if (
-      !trimmed ||
-      trimmed.startsWith("//") ||
-      trimmed.startsWith("#") ||
-      trimmed.startsWith("/*") ||
-      trimmed.startsWith("*") ||
-      trimmed.startsWith("*/")
-    )
-      continue;
-    const isIndented = /^\s/u.test(rawLine);
+  for (const node of nodes) {
+    // flush等は旧実装と同じく0始まりの行番号を受け取るため、index・lineの両方を用意する。
+    const line = node.line;
+    const index = line - 1;
+    if (node.type === "blank" || node.type === "comment") continue;
 
-    if (!isIndented) {
-      const andMatch = AND_HEADER_PATTERN.exec(trimmed);
-      if (andMatch) {
+    if (node.type !== "value") {
+      if (node.type === "and-header") {
         recognized = true;
         if (!current) {
           diagnostics.push({
-            line: index + 1,
+            line,
             column: 1,
             message: "AND条件は既存のルールの後に指定してください。",
           });
@@ -454,9 +442,9 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
 
         const parsedHeader = parseConditionHeader(
           currentRule.action,
-          andMatch[1],
-          andMatch[2] ?? "",
-          index + 1,
+          node.target,
+          node.optionsSource,
+          line,
           diagnostics,
           true,
         );
@@ -469,6 +457,26 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
         regexFlags = parsedHeader.regexFlags;
         matchers = [];
         currentHasError = parsedHeader.hasError;
+
+        // 主条件だけで既に判定できないルールは、AND条件の責任にせず従来どおり扱う。
+        // 判定できていたルールがこのAND条件で判定不能になる場合だけ指摘する。
+        const scopesBefore = getEvaluationScopes(currentRule.action, conditionTargets);
+        conditionTargets = [...conditionTargets, parsedHeader.target];
+        if (
+          scopesBefore.length > 0 &&
+          getEvaluationScopes(currentRule.action, conditionTargets).length === 0
+        ) {
+          currentHasError = true;
+          diagnostics.push({
+            line,
+            column: 1,
+            message: `AND条件の ${parsedHeader.target} は、${conditionTargets
+              .slice(0, -1)
+              .join("・")} と同じ画面（${scopesBefore
+              .map((scope) => scope.name)
+              .join("・")}）で判定できないため、このルールは一致しません。`,
+          });
+        }
         if (!parsedHeader.hasError && parsedHeader.matcherKind === "comparison") {
           if (parsedHeader.inlineValue != null) {
             matchers.push({ kind: "contains", value: parsedHeader.inlineValue });
@@ -477,10 +485,10 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
         continue;
       }
 
-      if (/^and(?:\s|:|$)/iu.test(trimmed)) {
+      if (node.type === "invalid-and") {
         recognized = true;
         diagnostics.push({
-          line: index + 1,
+          line,
           column: 1,
           message: "AND条件の見出しが不正です。",
         });
@@ -488,28 +496,27 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       }
 
       flush(index);
-      const match = HEADER_PATTERN.exec(trimmed);
-      if (!match) {
-        unknownTopLevelLines.push(index + 1);
+      if (node.type === "unknown") {
+        unknownTopLevelLines.push(line);
         continue;
       }
       recognized = true;
-      const action = normalizeRuleAction(match[1]);
+      const action = normalizeRuleAction(node.action);
       if (!action) {
         diagnostics.push({
-          line: index + 1,
+          line,
           column: 1,
           // develop側の改善（利用可能な動作ヒント）を維持する。対象の検証はparseConditionHeader側で行うため、ここでは動作のみ判定する。
-          message: `未対応の動作です: ${match[1]}（利用可能な動作: ${AVAILABLE_ACTIONS_HINT}）`,
+          message: `未対応の動作です: ${node.action}（利用可能な動作: ${AVAILABLE_ACTIONS_HINT}）`,
         });
         continue;
       }
 
       const parsedHeader = parseConditionHeader(
         action,
-        match[2],
-        match[3] ?? "",
-        index + 1,
+        node.target,
+        node.optionsSource,
+        line,
         diagnostics,
         false,
       );
@@ -532,6 +539,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       matcherKind = parsedHeader.matcherKind;
       regexFlags = parsedHeader.regexFlags;
       currentHasError = parsedHeader.hasError;
+      conditionTargets = [parsedHeader.target];
       matchers = [];
       if (!parsedHeader.hasError && parsedHeader.matcherKind === "comparison") {
         if (parsedHeader.inlineValue != null) {
@@ -546,19 +554,19 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       currentHasError = true;
       ruleHasError = true;
       diagnostics.push({
-        line: index + 1,
+        line,
         column: 1,
         message: "比較条件は見出しと同じ行に指定してください。",
       });
       continue;
     }
     if (matcherKind === "regex") {
-      const parsed = parseRegexMatcherValue(trimmed, regexFlags);
+      const parsed = parseRegexMatcherValue(node.value, regexFlags);
       if (!parsed.valid) {
         currentHasError = true;
         ruleHasError = true;
         diagnostics.push({
-          line: index + 1,
+          line,
           column: 1,
           message: "regex の値は引用符で囲んでください。",
         });
@@ -568,12 +576,12 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       continue;
     }
 
-    const value = parseDslValue(trimmed);
+    const value = toPlainValue(node.value);
     if (value == null) {
       currentHasError = true;
       ruleHasError = true;
       diagnostics.push({
-        line: index + 1,
+        line,
         column: 1,
         message: "contains の値の引用符が閉じていません。",
       });
@@ -581,7 +589,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
     }
     matchers.push({ kind: "contains", value });
   }
-  flush(lines.length);
+  flush(nodes.length);
   if (recognized) {
     for (const line of unknownTopLevelLines) {
       diagnostics.push({
