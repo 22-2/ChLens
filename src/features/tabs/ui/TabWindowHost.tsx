@@ -1,51 +1,28 @@
-import { PenLine } from "lucide-react";
 import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { AutoScrollStateProvider } from "src/features/auto-refresh/browser/use-auto-scroll-state";
-import { AutoRefreshStatusItem } from "src/features/auto-refresh/ui/AutoRefreshStatusItem";
-import { createAuxiliaryWindowRoot } from "src/features/auxiliary-window/browser/auxiliary-window-root";
+import {
+  type AuxiliaryWindowWatcher,
+  watchAuxiliaryWindow,
+} from "src/features/auxiliary-window/browser/auxiliary-window-watcher";
 import {
   type AuxiliaryWindowHandle,
   type AuxiliaryWindowOptions,
   openAuxiliaryWindow,
 } from "src/features/auxiliary-window/browser/use-auxiliary-window";
-import {
-  type ViewSurface,
-  ViewSurfaceProvider,
-} from "src/features/auxiliary-window/browser/use-view-surface";
-import { CommentOverlayStatusItem } from "src/features/comment-overlay/ui/CommentOverlayStatusItem";
-import { NgStatusProvider } from "src/features/ng/browser/use-ng-status";
-import { NgStatusItem } from "src/features/ng/ui/NgStatusItem";
+import type { ViewSurface } from "src/features/auxiliary-window/browser/use-view-surface";
 import {
   type DetachedTabController,
   DetachedTabControllerContext,
 } from "src/features/tabs/browser/detached-tab-controller";
 import { tabActions } from "src/features/tabs/browser/tab-store-actions";
-import {
-  PaneProvider,
-  useTabDispatch,
-  useTabPanes,
-  useTabStore,
-} from "src/features/tabs/browser/use-tab-store";
-import { TabViewScopeProvider } from "src/features/tabs/browser/use-tab-view-scope";
-import { TabPanel } from "src/features/tabs/ui/TabView";
-import { WindowNavigationBridge } from "src/features/tabs/ui/WindowNavigationBridge";
-import { IkioiStatusItem } from "src/features/thread/ui/IkioiStatusItem";
-import { PopularFilterStatusItem } from "src/features/thread/ui/PopularFilterStatusItem";
-import { useWriteSessionControls } from "src/features/write/browser/use-write-session";
-import { PageCountStatusItem } from "src/view/browser/components/PageCountStatusItem";
-import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
-import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
-import { TitleBar } from "src/view/browser/components/TitleBar";
-import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-status";
+import { useTabDispatch, useTabPanes, useTabStore } from "src/features/tabs/browser/use-tab-store";
+import { DetachedTabWindowContent } from "src/features/tabs/ui/DetachedTabWindowContent";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { getCurrentPage, type Page, type Pane, type Tab } from "src/view/browser/types";
-import { ToastProvider } from "src/view/browser/ui/Toast";
 
 interface TabWindowEntry extends AuxiliaryWindowHandle {
   tabId: string;
-  onBeforeUnload: () => void;
-  onLoad: () => void;
+  watcher: AuxiliaryWindowWatcher;
 }
 
 function findTab(panes: readonly Pane[], tabId: string): { tab: Tab; paneId: string } | null {
@@ -104,6 +81,39 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
     setWindows(next);
   }, []);
 
+  /**
+   * paneのactiveTabが別窓へ移っていたら、本窓で操作できるタブへactiveを移す。
+   *
+   * 変更理由: 切り離し直後と、本窓側の閉じる操作でactiveTabが別窓タブへ移った後とで
+   * 同じ補正を二重に持つと、片方だけ修正されて不可視タブへ入力が誤配送される恐れがあるため。
+   */
+  const ensureVisibleActiveTab = useCallback(
+    (pane: Pane) => {
+      const activeWindow = windowsRef.current.get(pane.activeTabId)?.window;
+      if (!activeWindow || activeWindow.closed) {
+        return;
+      }
+
+      const fallbackTab = pane.tabs.find((tab) => {
+        const candidateWindow = windowsRef.current.get(tab.id)?.window;
+        return !candidateWindow || candidateWindow.closed;
+      });
+      if (fallbackTab) {
+        // 切り離し中のタブを本窓のactiveTabに残すと、タブバーから消えた後に
+        // 本文と戻る/進む入力だけが別窓へ誤配送されるため、表示可能なタブへ移す。
+        dispatch({
+          ...tabActions.selectTab(fallbackTab.id, { preserveActivePane: true }),
+          paneId: pane.id,
+        });
+      } else {
+        // ペイン内の全タブが別窓にある場合も、本窓の操作対象を不可視タブへ残さない。
+        // 本窓で操作できる新規タブを一つ補い、別窓の所有権は保つ。
+        dispatch({ ...tabActions.addTab({ preserveActivePane: true }), paneId: pane.id });
+      }
+    },
+    [dispatch],
+  );
+
   const detachTab = useCallback(
     (tabId: string) => {
       const located = findTab(panes, tabId);
@@ -118,8 +128,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
       }
 
       if (existing) {
-        existing.window.removeEventListener("beforeunload", existing.onBeforeUnload);
-        existing.window.removeEventListener("load", existing.onLoad);
+        existing.watcher.unwatch();
         removeWindow(tabId, existing.window);
       }
 
@@ -130,35 +139,21 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
         return false;
       }
 
+      // OSの×では親窓のclosed監視も併用し、再読み込みでタブを誤って消さないようにする。
       const entry: TabWindowEntry = {
         ...opened,
         tabId,
-        // beforeunload直後はreloadでも発火するため、closedを確認できた時だけタブを終了する。
-        // OSの×では親窓の監視も併用し、再読み込みでタブを誤って消さないようにする。
-        onBeforeUnload: () => {
-          const current = windowsRef.current.get(tabId);
-          if (current?.window !== opened.window || !opened.window.closed) {
-            return;
-          }
-          closeDetachedTabRef.current(tabId);
-        },
-        onLoad: () => {
-          const current = windowsRef.current.get(tabId);
-          if (!current || current.window !== opened.window || opened.window.closed) {
-            return;
-          }
-          const currentLocation = findTab(stateRef.current.panes, tabId);
-          if (!currentLocation) {
-            return;
-          }
-          try {
-            // popupの再読み込みではPortal先のDOMも破棄されるため、同じWindowProxyへ
-            // rootとスタイルを再接続し、タブを元窓へ勝手に戻さない。
-            const root = createAuxiliaryWindowRoot(
-              document,
-              opened.window,
-              createTabWindowOptions(currentLocation.tab),
-            );
+        watcher: watchAuxiliaryWindow({
+          window: opened.window,
+          sourceDocument: document,
+          isCurrent: () => windowsRef.current.get(tabId)?.window === opened.window,
+          getReconnectOptions: () => {
+            const currentLocation = findTab(stateRef.current.panes, tabId);
+            return currentLocation ? createTabWindowOptions(currentLocation.tab) : null;
+          },
+          onClosed: () => closeDetachedTabRef.current(tabId),
+          onReconnect: (root) => {
+            // タブを元窓へ勝手に戻さず、同じWindowProxyのrootだけを差し替える。
             const next = new Map(windowsRef.current);
             const latest = next.get(tabId);
             if (!latest || latest.window !== opened.window) {
@@ -167,44 +162,22 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
             next.set(tabId, { ...latest, root });
             windowsRef.current = next;
             setWindows(next);
-          } catch (error) {
-            console.error("[DetachedTab] 再読み込み後の別窓を再接続できませんでした", error);
-          }
-        },
+          },
+        }),
       };
-      opened.window.addEventListener("beforeunload", entry.onBeforeUnload, { once: true });
-      opened.window.addEventListener("load", entry.onLoad);
       const next = new Map(windowsRef.current);
       next.set(tabId, entry);
       windowsRef.current = next;
       setWindows(next);
 
       const locatedPane = panes.find((pane) => pane.id === located.paneId);
-      if (locatedPane?.activeTabId === tabId) {
-        const fallbackTab = locatedPane.tabs.find((candidate) => {
-          const candidateWindow = windowsRef.current.get(candidate.id)?.window;
-          return candidate.id !== tabId && (!candidateWindow || candidateWindow.closed);
-        });
-        if (fallbackTab) {
-          // 切り離し中のタブを本窓のactiveTabに残すと、タブバーから消えた後に
-          // 本文と戻る/進む入力だけが別窓へ誤配送されるため、表示可能なタブへ移す。
-          dispatch({
-            ...tabActions.selectTab(fallbackTab.id, { preserveActivePane: true }),
-            paneId: located.paneId,
-          });
-        } else {
-          // ペイン内の最後の表示タブを切り離しても、本窓の操作対象を不可視タブへ
-          // 残さない。元ページを引き継ぐ新規タブを表示用に作り、別窓の所有権を保つ。
-          dispatch({
-            ...tabActions.addTab({ preserveActivePane: true }),
-            paneId: located.paneId,
-          });
-        }
+      if (locatedPane) {
+        ensureVisibleActiveTab(locatedPane);
       }
       opened.window.focus();
       return true;
     },
-    [dispatch, panes, removeWindow, stateRef],
+    [ensureVisibleActiveTab, panes, removeWindow, stateRef],
   );
 
   const reattachTab = useCallback(
@@ -214,11 +187,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
         return;
       }
 
-      entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
-      entry.window.removeEventListener("load", entry.onLoad);
-      if (!entry.window.closed) {
-        entry.window.close();
-      }
+      entry.watcher.release();
       removeWindow(tabId, entry.window);
 
       const located = findTab(stateRef.current.panes, tabId);
@@ -250,11 +219,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
 
       // 先に監視を外してからCLOSE_TABを送ることで、プログラム終了をOS終了として
       // 二重処理せず、閉じたタブ履歴にも一度だけ記録する。
-      entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
-      entry.window.removeEventListener("load", entry.onLoad);
-      if (!entry.window.closed) {
-        entry.window.close();
-      }
+      entry.watcher.release();
       removeWindow(tabId, entry.window);
       dispatch({
         ...tabActions.closeTab(tabId, {
@@ -311,29 +276,9 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
 
   useEffect(() => {
     for (const pane of panes) {
-      const activeTab = pane.tabs.find((tab) => tab.id === pane.activeTabId);
-      const activeWindow = activeTab && windowsRef.current.get(activeTab.id);
-      if (!activeTab || !activeWindow || activeWindow.window.closed) {
-        continue;
-      }
-
-      const fallbackTab = pane.tabs.find((tab) => {
-        const entry = windowsRef.current.get(tab.id);
-        return !entry || entry.window.closed;
-      });
-      if (fallbackTab) {
-        // 本窓側の閉じる操作でactiveTabが別窓タブへ移った場合も、不可視タブを
-        // ナビゲーションやステータスの暗黙の対象に残さない。
-        dispatch({
-          ...tabActions.selectTab(fallbackTab.id, { preserveActivePane: true }),
-          paneId: pane.id,
-        });
-      } else {
-        // 全タブが別窓へ移っているペインには、本窓で操作できるタブを一つ補う。
-        dispatch({ ...tabActions.addTab({ preserveActivePane: true }), paneId: pane.id });
-      }
+      ensureVisibleActiveTab(pane);
     }
-  }, [dispatch, panes, windows]);
+  }, [ensureVisibleActiveTab, panes, windows]);
 
   // タブを閉じる／復元する操作と別窓のライフサイクルを同期する。
   useEffect(() => {
@@ -342,11 +287,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
       if (availableTabIds.has(tabId)) {
         continue;
       }
-      entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
-      entry.window.removeEventListener("load", entry.onLoad);
-      if (!entry.window.closed) {
-        entry.window.close();
-      }
+      entry.watcher.release();
       removeWindow(tabId, entry.window);
     }
   }, [panes, removeWindow]);
@@ -367,11 +308,7 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     return () => {
       for (const entry of windowsRef.current.values()) {
-        entry.window.removeEventListener("beforeunload", entry.onBeforeUnload);
-        entry.window.removeEventListener("load", entry.onLoad);
-        if (!entry.window.closed) {
-          entry.window.close();
-        }
+        entry.watcher.release();
       }
     };
   }, []);
@@ -395,94 +332,15 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
           document: entry.window.document,
         };
         return createPortal(
-          <TabViewScopeProvider scope={{ paneId: located.paneId, tabId: located.tab.id }}>
-            <PaneProvider paneId={located.paneId}>
-              <StatusBarProvider>
-                <PageCountStatusProvider>
-                  <NgStatusProvider>
-                    <AutoScrollStateProvider>
-                      <TabWindowSurface surface={viewSurface}>
-                        <WindowNavigationBridge
-                          tabId={located.tab.id}
-                          manageBrowserHistory={false}
-                        />
-                        {/* 別窓内の返信・別窓生成失敗などの通知を、表示中の窓へ出す。 */}
-                        <ToastProvider topOffset="16px" rightOffset="16px" />
-                        {/* 表示タブをContextで固定し、元ペインの選択変更に影響されない共通タイトルを出す。 */}
-                        <TitleBar />
-                        <div className="content-area">
-                          <TabPanel
-                            tab={located.tab}
-                            isActive
-                            isOverlayTarget={false}
-                            viewSurface={viewSurface}
-                          />
-                        </div>
-                        <NgStatusItem />
-                        <IkioiStatusItem />
-                        <PopularFilterStatusItem />
-                        <AutoRefreshStatusItem />
-                        <CommentOverlayStatusItem isActive />
-                        <PageCountStatusItem />
-                        <TabWindowWriteStatusItem />
-                        <StatusBar />
-                      </TabWindowSurface>
-                    </AutoScrollStateProvider>
-                  </NgStatusProvider>
-                </PageCountStatusProvider>
-              </StatusBarProvider>
-            </PaneProvider>
-          </TabViewScopeProvider>,
+          <DetachedTabWindowContent
+            tab={located.tab}
+            paneId={located.paneId}
+            surface={viewSurface}
+          />,
           entry.root,
           entry.tabId,
         );
       })}
     </DetachedTabControllerContext.Provider>
   );
-};
-
-const TabWindowWriteStatusItem: React.FC = () => {
-  const { viewPage } = useTabStore();
-  const { openWriteWindow, selectThread } = useWriteSessionControls();
-
-  if (viewPage.type !== "thread") {
-    return null;
-  }
-
-  return (
-    <StatusBarItem
-      id="detached-write-window-toggle"
-      alignment="right"
-      priority={STATUS_BAR_PRIORITY.right.writePanelToggle}
-      interactive
-      title="書き込み窓を開く"
-    >
-      <button
-        type="button"
-        className="status-bar__btn"
-        onClick={() => {
-          // 別窓では下部パネルを開かず、常に共有の書き込み窓へ表示中スレを渡す。
-          selectThread(viewPage.threadUrl);
-          openWriteWindow();
-        }}
-        aria-label="書き込み窓を開く"
-      >
-        <PenLine size={12} />
-        <span>書き込み</span>
-      </button>
-    </StatusBarItem>
-  );
-};
-
-const TabWindowSurface: React.FC<{
-  surface: ViewSurface;
-  children: ReactNode;
-}> = ({ surface, children }) => {
-  // 窓ごとに同一のsurfaceオブジェクトを渡し、ページ内のイベント購読を不要に解除しない。
-  const { document: surfaceDocument, window: surfaceWindow } = surface;
-  const stableSurface = useMemo(
-    () => ({ document: surfaceDocument, window: surfaceWindow }),
-    [surfaceDocument, surfaceWindow],
-  );
-  return <ViewSurfaceProvider surface={stableSurface}>{children}</ViewSurfaceProvider>;
 };
