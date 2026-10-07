@@ -6,8 +6,8 @@ import React, {
   useContext,
   useEffect,
   useMemo,
-  useReducer,
   useRef,
+  useState,
 } from "react";
 import { platform } from "src/app/platform";
 import {
@@ -124,15 +124,15 @@ export const PaneProvider: React.FC<{
 };
 
 export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, baseDispatch] = useReducer(tabReducer, initialState);
+  // 変更理由: reducerはタブ生成時にcrypto.randomUUID()や設定値を使うため純粋ではない。
+  // 以前はdispatch内の同期計算とuseReducerで2回評価しており、新規タブのIDが
+  // stateRef側と描画側で食い違って閲覧履歴のタイトル同期などが外れていた。
+  // reducerはdispatchで1回だけ評価し、その結果をstateRefとReact stateの両方へ渡す。
+  const [state, setState] = useState(initialState);
   const stateRef = useRef(state);
   const threadVisitRef = useRef<Map<string, ThreadHistoryVisit>>(new Map());
   // ウィンドウタイトル更新用に、アクティブペインのアクティブタブの現在ページを参照する。
   const currentPage = getCurrentPage(getActivePaneActiveTab(state));
-
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
 
   const persistThreadVisit = useCallback(
     (tabId: string, page: Extract<Page, { type: "thread" }>) => {
@@ -221,11 +221,14 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     (action) => {
       const prevState = stateRef.current;
       const nextState = tabReducer(prevState, action);
+      if (nextState === prevState) return;
+      // stateRefは常に最後にdispatchした結果を指す。描画後のEffectで書き戻すと、
+      // startTransitionで先に確定した古い描画がrefを巻き戻すため、ここだけで更新する。
       stateRef.current = nextState;
-      baseDispatch(action);
-      // Reactの描画後のEffectまで保存を待つと、その前のF5・終了で直前の操作が失われる。
-      // 同期更新した状態を操作時点で保存し、描画後にも実際のタブIDを含む確定状態へ同期する。
-      if (nextState !== prevState) saveTabStoreSession(nextState);
+      setState(nextState);
+      // Reactの描画後のEffectまで保存を待つと、その前のF5・終了で直前の操作が失われるため、
+      // 操作時点で保存する。reducerは1回しか評価しないので、保存内容と描画内容は一致する。
+      saveTabStoreSession(nextState);
 
       const recordThreadVisitForTab = (tabId: string) => {
         const nextTab = findTabAcrossPanes(nextState, tabId);
@@ -300,7 +303,7 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           return;
       }
     },
-    [baseDispatch, persistThreadVisit, syncThreadVisitTitle],
+    [persistThreadVisit, syncThreadVisitTitle],
   );
 
   // background からの新タブ追加指示を受け取り OPEN_IN_NEW_TAB をディスパッチする
@@ -320,10 +323,11 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, [dispatch]);
 
-  // セッション永続化: state変更時にlocalStorageへ保存
+  // セッション永続化: 変更はdispatch時に保存済みなので、ここでは起動時の初期状態だけを保存する。
+  // 起動URLのqで追加したタブを、下のEffectでqを消す前に保存しておく必要がある。
   useEffect(() => {
-    saveTabStoreSession(state);
-  }, [state]);
+    saveTabStoreSession(stateRef.current);
+  }, []);
 
   useEffect(() => {
     if (!initialPageFromLocation) return;

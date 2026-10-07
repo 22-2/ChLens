@@ -703,6 +703,74 @@ describe("TabProvider auto refresh state", () => {
     });
   });
 
+  it("新しいタブでURL直開きしたスレも描画中のタブIDで履歴タイトルを補正する", async () => {
+    // reducerを2回評価していた頃は、履歴記録に使うタブIDと描画されたタブIDが食い違い、
+    // タイトル解決後の補正が対象の閲覧記録を見つけられずURLのまま残っていた。
+    vi.resetModules();
+    const { TabProvider, useTabStore } = await import("src/view/browser/hooks/use-tab-store");
+    const threadUrl = "https://example.com/test/read.cgi/board-a/2/";
+
+    function Harness() {
+      const { state, stateRef, dispatch } = useTabStore();
+      const openedTab = state.tabs.at(-1);
+
+      return (
+        <>
+          <button
+            onClick={() =>
+              dispatch({
+                type: "OPEN_IN_NEW_TAB",
+                page: { type: "thread", title: threadUrl, threadUrl },
+              })
+            }
+          >
+            新しいタブでURL直開き
+          </button>
+          <button
+            onClick={() =>
+              openedTab &&
+              dispatch({
+                type: "UPDATE_TITLE_FOR_TAB",
+                tabId: openedTab.id,
+                title: "解決後タイトル",
+              })
+            }
+          >
+            タイトル解決
+          </button>
+          <output data-testid="rendered-tab-id">{openedTab?.id}</output>
+          <output data-testid="ref-tab-id">{stateRef.current.panes[0].tabs.at(-1)?.id}</output>
+        </>
+      );
+    }
+
+    render(
+      <TabProvider>
+        <Harness />
+      </TabProvider>,
+    );
+
+    fireEvent.click(screen.getByText("新しいタブでURL直開き"));
+    expect(screen.getByTestId("ref-tab-id").textContent).toBe(
+      screen.getByTestId("rendered-tab-id").textContent,
+    );
+    await waitFor(() => expect(historyAddMock).toHaveBeenCalledTimes(1));
+    const recordedDate = historyAddMock.mock.calls[0][2] as number;
+    historyAddMock.mockClear();
+
+    fireEvent.click(screen.getByText("タイトル解決"));
+
+    await waitFor(() => {
+      expect(historyRemoveMock).toHaveBeenCalledWith(threadUrl, recordedDate);
+      expect(historyAddMock).toHaveBeenCalledWith(
+        threadUrl,
+        "解決後タイトル",
+        recordedDate,
+        "board-a",
+      );
+    });
+  });
+
   it("履歴からURLだけで開いた過去スレは既存タイトルを引き継ぐ", async () => {
     vi.resetModules();
     historyGetByUrlMock.mockResolvedValueOnce([
