@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { getBoardUrlKey } from "src/core/BoardUrlNormalizer";
+import { getBoardUrlKey } from "src/core/board/BoardUrlNormalizer";
 import {
   getAutoRefreshThreadPageKey,
   isAutoRefreshEnabledForPage,

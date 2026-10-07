@@ -14,7 +14,7 @@ import {
   add as addHistoryRecord,
   getByUrl as getHistoryRecordsByUrl,
   remove as removeHistoryRecord,
-} from "src/core/History";
+} from "src/core/history/History";
 import { tabActions } from "src/features/tabs/browser/tab-store-actions";
 import {
   clearThreadVisitsForTab,

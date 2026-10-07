@@ -1,6 +1,6 @@
 import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { OpenedBoardEntry } from "src/core/OpenedBoards";
+import type { OpenedBoardEntry } from "src/core/board/OpenedBoards";
 import { useTabViewState } from "src/features/tabs/browser/use-tab-store";
 import {
   buildCategoryId,

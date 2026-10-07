@@ -3,8 +3,8 @@ import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { platformCookieManager } from "src/app/platform/CookieManager";
-import { getBoardUrlKey } from "src/core/BoardUrlNormalizer";
-import { OPENED_BOARDS_CONFIG_KEY, parseOpenedBoardEntries } from "src/core/OpenedBoards";
+import { getBoardUrlKey } from "src/core/board/BoardUrlNormalizer";
+import { OPENED_BOARDS_CONFIG_KEY, parseOpenedBoardEntries } from "src/core/board/OpenedBoards";
 import {
   MAX_BOARD_AUTO_REFRESH_MS,
   MAX_THREAD_AUTO_REFRESH_MS,

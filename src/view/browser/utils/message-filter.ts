@@ -1,4 +1,4 @@
-import { normalizeObfuscatedUrl, URL_LIKE_PATTERN } from "src/core/url-utils";
+import { normalizeObfuscatedUrl, URL_LIKE_PATTERN } from "src/core/network/url-utils";
 import { isInlineVideoEmbedUrl } from "src/features/media/domain/external-media";
 
 /**

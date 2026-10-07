@@ -1,6 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Cache from "src/core/Cache";
+import Cache from "src/core/storage/Cache";
 import { container } from "src/service-container/index";
 import {
   buildDataExportFilename,

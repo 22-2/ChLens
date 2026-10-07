@@ -1,6 +1,6 @@
 import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { upsertOpenedBoardEntry } from "src/core/OpenedBoards";
+import { upsertOpenedBoardEntry } from "src/core/board/OpenedBoards";
 import {
   getThreadListCache,
   setThreadListCache,

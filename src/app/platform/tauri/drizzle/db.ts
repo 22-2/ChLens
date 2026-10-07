@@ -1,6 +1,6 @@
 import Database from "@tauri-apps/plugin-sql";
 import { drizzle } from "drizzle-orm/sqlite-proxy";
-import { createLogger } from "src/core/logger";
+import { createLogger } from "src/app/logger";
 
 const logger = createLogger("TauriDrizzle");
 

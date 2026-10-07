@@ -1,18 +1,18 @@
 import { LogLevels } from "consola";
 import { defer } from "src/app/Defer";
+import { setConsolaLevel } from "src/app/logger";
 import message from "src/app/Message";
+import Notification from "src/app/Notification";
 import { escapeHtml, safeHref } from "src/app/Util";
-import { BBSMenuModel } from "src/core/BBSMenuModel";
-import BoardService from "src/core/BoardService";
-import Bookmark from "src/core/Bookmark";
-import Cache from "src/core/Cache";
-import { setConsolaLevel } from "src/core/logger";
-import * as NG from "src/core/NG";
-import Notification from "src/core/Notification";
-import type { ComparableReadState } from "src/core/read-state-compare";
-import { isNewerReadState } from "src/core/read-state-compare";
-import * as ReadState from "src/core/ReadState";
-import ThreadService from "src/core/ThreadService";
+import { BBSMenuModel } from "src/core/board/BBSMenuModel";
+import BoardService from "src/core/board/BoardService";
+import Bookmark from "src/core/bookmark/Bookmark";
+import type { ComparableReadState } from "src/core/bookmark/read-state-compare";
+import { isNewerReadState } from "src/core/bookmark/read-state-compare";
+import * as ReadState from "src/core/bookmark/ReadState";
+import * as NG from "src/core/ng/NG";
+import Cache from "src/core/storage/Cache";
+import ThreadService from "src/core/thread/ThreadService";
 import { configInstance } from "src/service-container/config-instance";
 import { container } from "src/service-container/Container";
 import {
@@ -177,7 +177,7 @@ export function setupContainer(): void {
   };
 
   // BBSMenu Service Adapter
-  // 変更理由: 以前は src/core/BBSMenu.js のシングルトンを各所が直接 import しており、
+  // 変更理由: 以前は src/core/board/BBSMenu.js のシングルトンを各所が直接 import しており、
   // container.bbsMenu と入口が分かれていた。板一覧の状態はここで作る1つのモデルだけが持つ。
   const bbsMenuModel = new BBSMenuModel();
   const bbsMenuServiceAdapter: IBBSMenuService = {

@@ -11,7 +11,7 @@ const { addHistory, updateHistory } = vi.hoisted(() => ({
   addHistory: vi.fn(),
   updateHistory: vi.fn(),
 }));
-vi.mock("src/core/WriteHistory", () => ({
+vi.mock("src/core/history/WriteHistory", () => ({
   getByUrl: async () => [],
   add: addHistory,
   update: updateHistory,

@@ -14,7 +14,7 @@ export interface ICacheItem {
   // 既存実装では、事前に data/lastUpdated を設定済みなら put() を引数なしで呼べる。
   // 呼び出し側（Board/Thread/URL 等）との整合を保つため data は optional にする。
   put(data?: string, options?: { lastModified?: number; etag?: string }): Promise<void>;
-  // Cache 実装 (src/core/Cache.ts) は文字列データを保持する。unknown だと
+  // Cache 実装 (src/core/storage/Cache.ts) は文字列データを保持する。unknown だと
   // put() や parse 系に渡せず型エラーになるため実態に合わせる。
   data: string | null;
   lastUpdated: number;
@@ -90,8 +90,8 @@ export interface IUtil {
   safeHref(url: string): string;
   defer(): Promise<void>;
   isNewerReadState(
-    a: import("src/core/read-state-compare").ComparableReadState | null | undefined,
-    b: import("src/core/read-state-compare").ComparableReadState | null | undefined,
+    a: import("src/core/bookmark/read-state-compare").ComparableReadState | null | undefined,
+    b: import("src/core/bookmark/read-state-compare").ComparableReadState | null | undefined,
   ): boolean;
   guessType(url: string): { bbsType: string; protocol: string };
 }

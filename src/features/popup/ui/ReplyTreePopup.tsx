@@ -1,6 +1,6 @@
 import type React from "react";
 import { useCallback, useMemo } from "react";
-import { buildReplyIndexes } from "src/core/reply-index";
+import { buildReplyIndexes } from "src/core/thread/reply-index";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
 import { useReplyTreeMenus } from "src/features/popup/browser/use-reply-tree-menus";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";

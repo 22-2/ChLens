@@ -20,7 +20,7 @@ vi.mock("src/app/platform", () => ({
   },
 }));
 
-vi.mock("src/core/History", () => ({
+vi.mock("src/core/history/History", () => ({
   add: vi.fn().mockResolvedValue(undefined),
   remove: vi.fn().mockResolvedValue(undefined),
 }));

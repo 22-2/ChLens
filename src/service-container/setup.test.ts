@@ -55,7 +55,7 @@ vi.mock("src/app/Util", () => ({
   escapeHtml: (value: string) => value,
   safeHref: (value: string) => value,
 }));
-vi.mock("src/core/Bookmark", () => ({
+vi.mock("src/core/bookmark/Bookmark", () => ({
   default: class {
     readonly bel = mocks.bookmarkEntryList;
     readonly promiseFirstScan = mocks.promiseFirstScan;
@@ -71,24 +71,26 @@ vi.mock("src/core/Bookmark", () => ({
     updateExpired = vi.fn(async () => true);
   },
 }));
-vi.mock("src/core/ReadState", () => ({
+vi.mock("src/core/bookmark/ReadState", () => ({
   get: mocks.readStateGet,
   getByBoard: mocks.readStateGetByBoard,
   set: mocks.readStateSet,
 }));
-vi.mock("src/core/read-state-compare", () => ({ isNewerReadState: mocks.isNewerReadState }));
-vi.mock("src/core/BBSMenuModel", () => ({
+vi.mock("src/core/bookmark/read-state-compare", () => ({
+  isNewerReadState: mocks.isNewerReadState,
+}));
+vi.mock("src/core/board/BBSMenuModel", () => ({
   BBSMenuModel: class {
     get = vi.fn(async () => ({ status: "success" as const }));
     getCached = vi.fn(async () => ({ status: "success" as const }));
     onChange = { add: vi.fn(), remove: vi.fn() };
   },
 }));
-vi.mock("src/core/BoardService", () => ({
+vi.mock("src/core/board/BoardService", () => ({
   default: { getThreads: vi.fn(), getCachedResCount: vi.fn() },
 }));
-vi.mock("src/core/Cache", () => ({ default: class {} }));
-vi.mock("src/core/NG", () => ({
+vi.mock("src/core/storage/Cache", () => ({ default: class {} }));
+vi.mock("src/core/ng/NG", () => ({
   validate: vi.fn(),
   apply: vi.fn(),
   isNGBoard: vi.fn(),
@@ -97,14 +99,14 @@ vi.mock("src/core/NG", () => ({
   invalidateCache: vi.fn(),
   execExpire: vi.fn(),
 }));
-vi.mock("src/core/Notification", () => ({
+vi.mock("src/app/Notification", () => ({
   default: class {
     ready = Promise.resolve(true);
     static isSupported = vi.fn(() => true);
   },
 }));
-vi.mock("src/core/ThreadService", () => ({ default: { getThread: vi.fn() } }));
-vi.mock("src/core/logger", () => ({ setConsolaLevel: vi.fn() }));
+vi.mock("src/core/thread/ThreadService", () => ({ default: { getThread: vi.fn() } }));
+vi.mock("src/app/logger", () => ({ setConsolaLevel: vi.fn() }));
 vi.mock("src/service-container/Container", () => ({ container: {} }));
 vi.mock("src/service-container/toast-store", () => ({ toastStore: {} }));
 

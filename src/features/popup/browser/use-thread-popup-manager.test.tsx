@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { MouseEvent as ReactMouseEvent } from "react";
-import { buildReplyIndexes } from "src/core/reply-index";
+import { buildReplyIndexes } from "src/core/thread/reply-index";
 import type {
   AnchorPopupItem,
   ContextMenuPopupItem,

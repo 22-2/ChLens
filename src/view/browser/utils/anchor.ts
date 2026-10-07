@@ -1,4 +1,4 @@
-import { parseReplyAnchorTargets } from "src/core/reply-index";
+import { parseReplyAnchorTargets } from "src/core/thread/reply-index";
 
 /**
  * レスアンカーの解析をまとめる。

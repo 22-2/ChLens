@@ -1,8 +1,8 @@
 import React from "react";
-import { getCachedTitles } from "src/core/BoardTitleSolver.js";
-import { getBoardUrlKey, normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
-import { getAll as getAllHistory } from "src/core/History";
-import { OPENED_BOARDS_CONFIG_KEY, parseOpenedBoardEntries } from "src/core/OpenedBoards";
+import { getCachedTitles } from "src/core/board/BoardTitleSolver.js";
+import { getBoardUrlKey, normalizeBoardUrl } from "src/core/board/BoardUrlNormalizer";
+import { OPENED_BOARDS_CONFIG_KEY, parseOpenedBoardEntries } from "src/core/board/OpenedBoards";
+import { getAll as getAllHistory } from "src/core/history/History";
 import { tabActions } from "src/features/tabs/browser/tab-store-actions";
 import { useTabStore } from "src/features/tabs/browser/use-tab-store";
 import { container } from "src/service-container/index";

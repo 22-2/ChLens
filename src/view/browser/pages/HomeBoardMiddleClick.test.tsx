@@ -18,19 +18,19 @@ const { historyRecords, favoriteBoards, removeBookmarkMock, copyTextMock, toastE
     favoriteBoards: [{ url: "https://example.com/sample/", title: "サンプル板" }],
   }));
 
-vi.mock("src/core/History", () => ({ getAll: vi.fn(async () => historyRecords) }));
+vi.mock("src/core/history/History", () => ({ getAll: vi.fn(async () => historyRecords) }));
 const { openedBoards, askBoardTitleMock, getCachedTitlesMock, listeners } = vi.hoisted(() => ({
   openedBoards: { raw: "[]" },
   askBoardTitleMock: vi.fn(async (_url: string): Promise<string | null> => "表示用の板名"),
   getCachedTitlesMock: vi.fn(async () => new Map<string, string>()),
   listeners: new Map<string, Set<(payload: { key?: string }) => void>>(),
 }));
-vi.mock("src/core/BoardTitleSolver.js", () => ({
+vi.mock("src/core/board/BoardTitleSolver.js", () => ({
   askByUrl: askBoardTitleMock,
   getCachedTitles: getCachedTitlesMock,
 }));
-vi.mock("src/core/BoardUrlNormalizer", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("src/core/BoardUrlNormalizer")>();
+vi.mock("src/core/board/BoardUrlNormalizer", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/core/board/BoardUrlNormalizer")>();
   // 架空の掲示板ホストを使い、実在の板URLをテストへ持ち込まず保存データを検証する。
   return {
     ...actual,

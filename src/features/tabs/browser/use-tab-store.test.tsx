@@ -21,7 +21,7 @@ vi.mock("src/app/platform", () => ({
   },
 }));
 
-vi.mock("src/core/History", () => ({
+vi.mock("src/core/history/History", () => ({
   add: historyAddMock,
   getByUrl: historyGetByUrlMock,
   remove: historyRemoveMock,

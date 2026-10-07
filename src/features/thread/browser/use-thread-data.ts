@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { evaluateThreadNg } from "src/core/ThreadNgEvaluator";
+import { evaluateThreadNg } from "src/core/ng/ThreadNgEvaluator";
 import {
   useIsNgTemporarilyDisabled,
   useNgDisplayMode,
