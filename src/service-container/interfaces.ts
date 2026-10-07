@@ -43,8 +43,8 @@ export interface IReadState {
   last: number;
   read: number;
   received: number;
-  offset?: number;
-  date?: number;
+  offset?: number | null;
+  date?: number | null;
 }
 
 export interface IReadStateService {
@@ -56,19 +56,24 @@ export interface IReadStateService {
 export interface IBookmarkItem {
   url: string;
   title: string;
-  type: "thread" | "board";
-  resCount?: number;
-  readState?: IReadState;
+  // CoreのEntryは保存形式をそのまま公開するため、typeは将来値も含めたstringで受ける。
+  type: string;
+  // Coreの保存形式では未設定値をnullで保持するため、境界で値を置き換えない。
+  resCount?: number | null;
+  readState?: IReadState | null;
   expired?: boolean;
 }
 
 export interface IBookmark {
-  get(url: string): IBookmarkItem | undefined;
+  /** 初回の永続データ読み込みが終わるまで待つ。 */
+  readonly promiseFirstScan: Promise<boolean>;
+  get(url: string): IBookmarkItem | null | undefined;
   add(item: IBookmarkItem): void;
   remove(url: string): void;
   updateResCount(url: string, count: number): void;
   updateExpired(url: string, expired: boolean): void;
   getByBoard(boardUrl: string): IBookmarkItem[];
+  getAllBoards(): IBookmarkItem[];
 }
 
 export interface IMessage {
@@ -84,7 +89,10 @@ export interface IUtil {
   escapeHtml(str: string): string;
   safeHref(url: string): string;
   defer(): Promise<void>;
-  isNewerReadState(a: unknown, b: unknown): boolean;
+  isNewerReadState(
+    a: import("src/core/read-state-compare").ComparableReadState | null | undefined,
+    b: import("src/core/read-state-compare").ComparableReadState | null | undefined,
+  ): boolean;
   guessType(url: string): { bbsType: string; protocol: string };
 }
 
@@ -120,7 +128,8 @@ export interface IRes {
 
 export interface IThreadDetail {
   url: string;
-  title: string;
+  // 取得元によってタイトルが無いケースがあるため、TS移行前のnullを保持する。
+  title: string | null;
   res: IRes[];
   message?: string;
   expired?: boolean;

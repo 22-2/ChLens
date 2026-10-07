@@ -6,8 +6,8 @@ const { messageSend } = vi.hoisted(() => ({
   messageSend: vi.fn(),
 }));
 
-vi.mock("src/app", () => ({
-  message: {
+vi.mock("src/app/Message", () => ({
+  default: {
     send: messageSend,
   },
 }));

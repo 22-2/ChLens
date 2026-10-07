@@ -1,9 +1,9 @@
 import "webextension-polyfill";
 
 ///<reference path="global.d" />
-import Config from "src/app/Config";
 import * as platformInternal from "src/app/platform";
-import { setupContainer } from "src/service-container/setup";
+import { config, configInstance as _config } from "src/service-container/config-instance";
+import { getBookmarkRuntime, setupContainer } from "src/service-container/setup";
 
 export * from "./app/BrowserDetect";
 export { default as Callbacks } from "./app/Callbacks";
@@ -64,24 +64,8 @@ export const platform = new Proxy({} as typeof platformInternal.platform, {
   },
 });
 
-// 親ウィンドウからアクセスできるように内部configも公開
-export { _config };
-
-let _config: Config | undefined;
-_config = new Config();
-
-// 変更理由: Config は共有ストレージを監視して同期できるため、
-// iframe でもローカルインスタンスを持たせて親依存を減らす。
-export const config = new Proxy({} as Config, {
-  get(_target, prop) {
-    const actualConfig = _config;
-    if (!actualConfig) {
-      console.error("config is not initialized");
-      return undefined;
-    }
-    return actualConfig[prop as keyof Config];
-  },
-});
+// 親ウィンドウからアクセスできる互換APIとして内部configも公開する。
+export { _config, config };
 
 appObj.platform = platform;
 appObj.config = config;
@@ -89,129 +73,37 @@ appObj._config = _config;
 
 // Core modules - previously in app_core.js
 import { Point, QDollarRecognizer } from "src/core/$Q";
-import * as BBSMenu from "src/core/BBSMenu.js";
-import Board from "src/core/Board.js";
-import BoardService from "src/core/BoardService.js";
-import * as BoardTitleSolver from "src/core/BoardTitleSolver.js";
+import * as BBSMenu from "src/core/BBSMenu";
+import Board from "src/core/Board";
+import BoardService from "src/core/BoardService";
+import * as BoardTitleSolver from "src/core/BoardTitleSolver";
 import Bookmark from "src/core/Bookmark";
 import * as BookmarkEntryList from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
-import Cache from "src/core/Cache.js";
+import Cache from "src/core/Cache";
 import * as History from "src/core/History";
 import * as HTTP from "src/core/HTTP";
 import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
-import * as ImageReplaceDat from "src/core/ImageReplaceDat.js";
-import * as util from "src/core/jsutil.js";
+import * as ImageReplaceDat from "src/core/ImageReplaceDat";
+import * as util from "src/core/jsutil";
 import * as NG from "src/core/NG";
 import Notification from "src/core/Notification";
-import * as ReadState from "src/core/ReadState.js";
-import * as ReplaceStrTxt from "src/core/ReplaceStrTxt.js";
-import SikiGuard from "src/core/SikiGuard.js";
-import Thread from "src/core/Thread.js";
-import ThreadSearch from "src/core/ThreadSearch.js";
-import ThreadService from "src/core/ThreadService.js";
+import * as ReadState from "src/core/ReadState";
+import * as ReplaceStrTxt from "src/core/ReplaceStrTxt";
+import SikiGuard from "src/core/SikiGuard";
+import Thread from "src/core/Thread";
+import ThreadSearch from "src/core/ThreadSearch";
+import ThreadService from "src/core/ThreadService";
 import * as URL from "src/core/URL";
 import * as Util from "src/core/Util";
 import * as WriteHistory from "src/core/WriteHistory";
 
-type BookmarkEntryListRuntime = Bookmark["bel"] & {
-  needReconfigureRootNodeId?: {
-    add: (callback: () => void) => void;
-    wasCalled: boolean;
-  };
-  setRootNodeId?: (rootNodeId: string) => Promise<boolean>;
-};
-
-type RuntimeAppShape = {
-  config: Config;
-  message: typeof messageInstance;
-  bookmark?: Bookmark;
-  bookmarkEntryList?: BookmarkEntryListRuntime;
-};
-
-const MISSING_BOOKMARK_ROOT_NODE_ID = "dummy";
-
-let bookmarkRuntimeInitialized = false;
-
-function resolveBookmarkRootNodeId(configInstance: Config): string {
-  const bookmarkId = configInstance.get("bookmark_id");
-  return typeof bookmarkId === "string" && bookmarkId.length > 0
-    ? bookmarkId
-    : MISSING_BOOKMARK_ROOT_NODE_ID;
-}
-
-function initializeBookmarkRuntime(target: RuntimeAppShape): void {
-  if (bookmarkRuntimeInitialized) {
-    return;
-  }
-  bookmarkRuntimeInitialized = true;
-
-  target.config.ready(() => {
-    if (!target.bookmark) {
-      // 変更理由: bookmark は旧 browser view 側でのみ初期化されていたため、
-      // new-ui 単独では外部 window に依存しないと永続ブックマークが動かなかった。
-      target.bookmark = new Bookmark(resolveBookmarkRootNodeId(target.config));
-    }
-
-    const entryList = target.bookmark.bel as BookmarkEntryListRuntime;
-    target.bookmarkEntryList = entryList;
-
-    const notifyRootSelectionRequired = () => {
-      target.message.send("bookmark_root_reconfigure_required");
-    };
-
-    entryList.needReconfigureRootNodeId?.add(notifyRootSelectionRequired);
-
-    // 変更理由: persistent callback は過去の call を replay しないため、
-    // 初期化直後に rootNodeId 不正が確定していたケースも UI へ明示的に伝える。
-    if (entryList.needReconfigureRootNodeId?.wasCalled) {
-      notifyRootSelectionRequired();
-    }
-
-    target.message.on("config_updated", ({ key, val }: { key?: string; val?: unknown }) => {
-      if (key !== "bookmark_id") {
-        return;
-      }
-
-      const rootNodeId =
-        typeof val === "string" && val.length > 0 ? val : MISSING_BOOKMARK_ROOT_NODE_ID;
-
-      void entryList.setRootNodeId?.(rootNodeId);
-    });
-  });
-}
-
-// Populate app object with core modules
+// window.app には実際に参照される旧互換APIだけを残す。
 Object.assign(appObj, {
-  BBSMenu,
-  Board,
-  BoardService,
-  BoardTitleSolver,
-  Bookmark,
-  BookmarkEntryList,
-  BrowserBookmarkEntryList,
-  IDBBookmarkEntryList,
-  Cache,
   History,
-  HTTP,
-  ImageReplaceDat,
-  NG,
-  Notification,
-  Point,
-  QDollarRecognizer,
   ReadState,
-  ReplaceStrTxt,
-  SikiGuard,
-  Thread,
-  ThreadSearch,
-  ThreadService,
-  URL,
-  util,
-  Util,
   WriteHistory,
 });
-
-initializeBookmarkRuntime(appObj as unknown as RuntimeAppShape);
 
 appObj.boot = boot; // Will be defined later
 
@@ -300,9 +192,14 @@ export async function boot(
 
     const onload = () => {
       config.ready(() => {
-        const localApp = (window as unknown as { app: LegacyAppObject })
-          .app as unknown as Parameters<typeof setupContainer>[0];
-        setupContainer(localApp);
+        setupContainer();
+        const localApp = (window as unknown as { app: LegacyAppObject }).app;
+        const bookmarkRuntime = getBookmarkRuntime();
+        if (bookmarkRuntime) {
+          // ブックマーク移行中の旧画面とroot設定UIが参照する互換APIを維持する。
+          localApp.bookmark = bookmarkRuntime;
+          localApp.bookmarkEntryList = bookmarkRuntime.bel;
+        }
 
         if (moduleNames == null) {
           bootCallback();

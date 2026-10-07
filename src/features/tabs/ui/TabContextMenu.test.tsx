@@ -69,12 +69,14 @@ describe("TabContextMenu", () => {
     container.toast = { notify: vi.fn(), success: vi.fn(), error: vi.fn(), info: vi.fn() };
     copyTextMock.mockResolvedValue();
     container.bookmark = {
+      promiseFirstScan: Promise.resolve(true),
       get: vi.fn(),
       add: vi.fn(),
       remove: vi.fn(),
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: vi.fn(),
+      getAllBoards: vi.fn(() => []),
     };
   });
 

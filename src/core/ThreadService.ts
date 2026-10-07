@@ -1,44 +1,35 @@
-import { toCanonicalThread } from "packages/ch-lib/src/index";
-import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt.js";
-import Thread from "src/core/Thread.js";
+import { type ReplaceStrTarget, toCanonicalThread } from "packages/ch-lib/src/index";
+import type { ThreadRes } from "packages/ch-lib/src/parser/ThreadParser";
+import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt";
+import Thread from "src/core/Thread";
 import { evaluateThreadNg } from "src/core/ThreadNgEvaluator";
 import { toViewRes } from "src/core/to-view-res";
-import { container } from "src/service-container/index";
+import type { IRes, IThreadDetail, IThreadService } from "src/service-container/interfaces";
 
-/**
- * @typedef {import("../service-container/interfaces").IThreadService} IThreadService
- * @typedef {import("../service-container/interfaces").IThreadDetail} IThreadDetail
- * @typedef {import("../service-container/interfaces").IRes} IRes
- */
+// 移行理由: 取得集約と置換処理の既存契約を保ちつつ、要求状態と返却モデルを明示的な型で管理する。
+interface GetThreadOptions {
+  forceUpdate?: boolean;
+  throttleSubjectCheck?: boolean;
+  onCache?: (thread: IThreadDetail) => void;
+}
 
-/**
- * 自動更新ではない強制取得か。
- * @param {{ forceUpdate?: boolean, throttleSubjectCheck?: boolean }} options
- * @returns {boolean}
- */
-const isManualForceUpdate = (options) =>
+interface PendingRequest {
+  started: boolean;
+  forceUpdate: boolean;
+  manualForceUpdate: boolean;
+  callbacks: Set<(thread: IThreadDetail) => void>;
+  lastCacheResult?: IThreadDetail;
+  promise: Promise<IThreadDetail>;
+}
+
+/** 自動更新ではない強制取得か。 */
+const isManualForceUpdate = (options: GetThreadOptions): boolean =>
   options.forceUpdate === true && options.throttleSubjectCheck !== true;
 
-class ThreadServiceImpl {
-  constructor() {
-    /** @type {Map<string, {
-     *   started: boolean,
-     *   forceUpdate: boolean,
-     *   manualForceUpdate: boolean,
-     *   callbacks: Set<(thread: IThreadDetail) => void>,
-     *   lastCacheResult?: IThreadDetail,
-     *   promise: Promise<IThreadDetail>
-     * }>} */
-    this.pendingRequests = new Map();
-  }
+class ThreadServiceImpl implements IThreadService {
+  private pendingRequests = new Map<string, PendingRequest>();
 
-  /**
-   * Fetches a thread and its responses.
-   * @param {string} url
-   * @param {{ forceUpdate?: boolean, throttleSubjectCheck?: boolean, onCache?: (thread: IThreadDetail) => void }} [options]
-   * @returns {Promise<IThreadDetail>}
-   */
-  async getThread(url, options = {}) {
+  async getThread(url: string, options: GetThreadOptions = {}): Promise<IThreadDetail> {
     const existingRequest = this.pendingRequests.get(url);
     if (
       existingRequest &&
@@ -67,15 +58,7 @@ class ThreadServiceImpl {
       return existingRequest.promise;
     }
 
-    /** @type {{
-     *   started: boolean,
-     *   forceUpdate: boolean,
-     *   manualForceUpdate: boolean,
-     *   callbacks: Set<(thread: IThreadDetail) => void>,
-     *   lastCacheResult?: IThreadDetail,
-     *   promise: Promise<IThreadDetail>
-     * }} */
-    const request = {
+    const request: PendingRequest = {
       started: false,
       forceUpdate: options.forceUpdate === true,
       manualForceUpdate: isManualForceUpdate(options),
@@ -100,21 +83,9 @@ class ThreadServiceImpl {
     return request.promise;
   }
 
-  /**
-   * @private
-   * @param {string} url
-   * @param {{
-   *   forceUpdate: boolean,
-   *   manualForceUpdate: boolean,
-   *   callbacks: Set<(thread: IThreadDetail) => void>,
-   *   lastCacheResult?: IThreadDetail
-   * }} request
-   * @returns {Promise<IThreadDetail>}
-   */
-  async _fetchThread(url, request) {
+  private async _fetchThread(url: string, request: PendingRequest): Promise<IThreadDetail> {
     const thread = new Thread(url);
-
-    const progress = () => {
+    const progress = (): void => {
       const result = this._formatResult(thread);
       request.lastCacheResult = result;
       for (const callback of request.callbacks) {
@@ -141,38 +112,34 @@ class ThreadServiceImpl {
     }
   }
 
-  /**
-   * Formats a Thread instance into a structured IThreadDetail.
-   * @private
-   * @param {any} thread
-   * @returns {IThreadDetail}
-   */
-  _formatResult(thread) {
-    // Thread keeps the legacy `res` cache shape because its HTML delta merge relies on it;
-    // normalize once here so NG and every service consumer receive the shared ch-lib model.
+  private _formatResult(thread: Thread): IThreadDetail {
+    // Threadのキャッシュ形式はHTML差分合成が使うため維持し、NG判定前に共有モデルへ正規化する。
     const title = thread.title || "";
     const url = thread.url.url.href;
     // 置換ルールは名前・日付からのID/Slip抽出より前に適用する（旧ThreadModelと同じ順序）。
     // 変更理由: 旧経路の置換適用がThreadModelと共に使われなくなり、置換設定が無効化されていたため。
-    const replacedRes = (thread.res || []).map((/** @type {any} */ res) => ({
-      ...res,
-      ...replaceStrTxt(url, title, res),
+    const replacedRes = (thread.res ?? []).map((response: ThreadRes) => ({
+      ...response,
+      // ThreadRes は文字列レス本文を持つ一方、置換器の辞書型 index signature を宣言していない。
+      // 実際に置換対象となる各本文フィールドはstringなので、この境界でのみ旧JSDoc型へ合わせる。
+      ...replaceStrTxt(url, title, response as ReplaceStrTarget),
     }));
     const canonicalThread = toCanonicalThread({
       title: thread.title || undefined,
       res: replacedRes,
     });
     const parsedResponses = canonicalThread.posts.map(toViewRes);
-    // 自動NG（連鎖・ID無し等）を含むNG判定は、全レスを見渡せるこの時点で一括して行う。
+    // 自動NG（連鎖・ID無し等）は、全レスを見渡せるこの時点で一括して行う。
     const ngResults = evaluateThreadNg(parsedResponses, { title, url });
 
     return {
       url,
+      // 取得失敗時は旧実装どおりnullになり得るため、サービス契約側でもnullableとして扱う。
       title: thread.title,
-      // 返信数や連鎖NGは後続レスにも依存するため、全レスの索引を作ってから判定済みの結果を載せる。
-      res: parsedResponses.map((/** @type {IRes} */ res) => ({
-        ...res,
-        ng: ngResults.get(res.num),
+      // 返信数や連鎖NGは後続レスにも依存するため、全レスの索引を作ってから判定結果を載せる。
+      res: parsedResponses.map((response: IRes) => ({
+        ...response,
+        ng: ngResults.get(response.num),
       })),
       expired: !!thread.expired,
       missingFromSubject: !!thread.missingFromSubject,
@@ -180,5 +147,5 @@ class ThreadServiceImpl {
   }
 }
 
-/** @type {IThreadService} */
-export default new ThreadServiceImpl();
+const threadService: IThreadService = new ThreadServiceImpl();
+export default threadService;

@@ -84,12 +84,14 @@ describe("BookmarkListPage", () => {
       ready: (callback: () => void) => callback(),
     };
     container.bookmark = {
+      promiseFirstScan: Promise.resolve(true),
       get: vi.fn(),
       add: vi.fn(),
       remove: removeBookmarkMock,
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: () => [],
+      getAllBoards: () => [],
     };
     container.toast = { notify: vi.fn(), info: vi.fn(), success: vi.fn(), error: toastErrorMock };
   });

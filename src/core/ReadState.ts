@@ -2,7 +2,7 @@ import { ChURL, normalizeReadStateUrl } from "packages/ch-lib/src/index";
 import { assertArg, criticalError, log } from "src/app/Log";
 import message from "src/app/Message";
 import { deepCopy } from "src/app/Util";
-import { indexedDBRequestToPromise } from "src/core/jsutil.js";
+import { indexedDBRequestToPromise } from "src/core/idb-request";
 import { getTauriRepositories, isTauriRuntime } from "src/core/TauriDrizzleBridge";
 import type { IReadState } from "src/service-container/interfaces";
 
@@ -146,11 +146,9 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
     const req = db.transaction("ReadState").objectStore("ReadState").get(filteredUrl.replaced.href);
     const {
       target: { result },
-    } = (await indexedDBRequestToPromise(req)) as {
-      target: { result: ReadStateRecord | null };
-    };
+    } = await indexedDBRequestToPromise<ReadStateRecord | null>(req);
 
-    const data = deepCopy(result) as ReadStateRecord | null;
+    const data = deepCopy(result);
     if (data != null) {
       data.url = filteredUrl.original.href;
     }
@@ -176,9 +174,7 @@ export const getAll = async (): Promise<ReadStateRecord[]> => {
   try {
     const db = await _openDB;
     const req = db.transaction("ReadState").objectStore("ReadState").getAll();
-    const event = (await indexedDBRequestToPromise(req)) as {
-      target: { result: ReadStateRecord[] };
-    };
+    const event = await indexedDBRequestToPromise<ReadStateRecord[]>(req);
     return event.target.result;
   } catch (e) {
     log("error", "app.ReadState.getAll: トランザクション中断");
@@ -216,9 +212,7 @@ export const getByBoard = async (url: string): Promise<ReadStateRecord[]> => {
 
     const {
       target: { result: data },
-    } = (await indexedDBRequestToPromise(req)) as {
-      target: { result: ReadStateRecord[] };
-    };
+    } = await indexedDBRequestToPromise<ReadStateRecord[]>(req);
 
     for (const readState of data) {
       readState.url = readState.url.replace(

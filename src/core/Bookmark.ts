@@ -1,5 +1,5 @@
 import { ChURL } from "packages/ch-lib/src/index";
-import { message } from "src/app";
+import message from "src/app/Message";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { Entry, ReadState, SyncableEntryList } from "src/core/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";

@@ -15,6 +15,42 @@ permissions:
   contents: read
 
 jobs:
+  static-checks:
+    name: 静的解析と型チェック
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.9.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 25
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm exec tsc --noEmit -p .
+
+      # vp checkは変更コードだけへ実行し、既存の未変更フォーマット差分を除外する。
+      - name: Check changed code files
+        if: ${{ !cancelled() }}
+        run: node scripts/check-changed-files.mjs
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+          CI_DIFF_BASE: ${{ github.event.before }}
+
   unit:
     name: ユニットテスト
     runs-on: ubuntu-latest

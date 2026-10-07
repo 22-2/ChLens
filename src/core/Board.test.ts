@@ -13,7 +13,7 @@ const { fetchMock, cache } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("src/app", () => ({
+vi.mock("src/app/platform", () => ({
   platform: {
     http: {
       fetch: fetchMock,

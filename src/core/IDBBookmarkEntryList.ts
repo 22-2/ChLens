@@ -1,4 +1,7 @@
 import { type DBSchema, type IDBPDatabase, openDB } from "idb";
+import Callbacks from "src/app/Callbacks";
+import { log } from "src/app/Log";
+import { deepCopy } from "src/app/Util";
 import { Entry, SyncableEntryList } from "src/core/BookmarkEntryList";
 
 /**
@@ -28,8 +31,8 @@ function getDB(): Promise<IDBPDatabase<BookmarkDB>> {
 }
 
 export default class IDBBookmarkEntryList extends SyncableEntryList {
-  readonly ready = new app.Callbacks();
-  readonly needReconfigureRootNodeId = new app.Callbacks({ persistent: true });
+  readonly ready = new Callbacks();
+  readonly needReconfigureRootNodeId = new Callbacks({ persistent: true });
 
   constructor() {
     super();
@@ -44,7 +47,7 @@ export default class IDBBookmarkEntryList extends SyncableEntryList {
         await super.add(entry);
       }
     } catch (e) {
-      app.log("error", `IDBBookmarkEntryList._load: 読み込みに失敗しました: ${String(e)}`);
+      log("error", `IDBBookmarkEntryList._load: 読み込みに失敗しました: ${String(e)}`);
     }
     if (!this.ready.wasCalled) {
       this.ready.call();
@@ -56,7 +59,7 @@ export default class IDBBookmarkEntryList extends SyncableEntryList {
       const db = await getDB();
       await db.put(STORE_NAME, entry);
     } catch (e) {
-      app.log("error", `IDBBookmarkEntryList._persist: 保存に失敗しました: ${String(e)}`);
+      log("error", `IDBBookmarkEntryList._persist: 保存に失敗しました: ${String(e)}`);
     }
   }
 
@@ -65,19 +68,19 @@ export default class IDBBookmarkEntryList extends SyncableEntryList {
       const db = await getDB();
       await db.delete(STORE_NAME, url);
     } catch (e) {
-      app.log("error", `IDBBookmarkEntryList._delete: 削除に失敗しました: ${String(e)}`);
+      log("error", `IDBBookmarkEntryList._delete: 削除に失敗しました: ${String(e)}`);
     }
   }
 
   async add(entry: Entry): Promise<boolean> {
-    entry = app.deepCopy(entry);
+    entry = deepCopy(entry);
     if (!(await super.add(entry))) return false;
     await this._persist(entry);
     return true;
   }
 
   async update(entry: Entry): Promise<boolean> {
-    entry = app.deepCopy(entry);
+    entry = deepCopy(entry);
     if (!(await super.update(entry))) return false;
     await this._persist(entry);
     return true;
