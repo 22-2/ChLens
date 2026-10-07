@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { AuxiliaryWindowOptions } from "src/features/auxiliary-window/browser/auxiliary-window-root";
 import {
-  type AuxiliaryWindowOptions,
-  createAuxiliaryWindowRoot,
-} from "src/features/auxiliary-window/browser/auxiliary-window-root";
+  type AuxiliaryWindowWatcher,
+  watchAuxiliaryWindow,
+} from "src/features/auxiliary-window/browser/auxiliary-window-watcher";
 import { openAuxiliaryWindow } from "src/features/auxiliary-window/browser/use-auxiliary-window";
 import {
   useViewSurface,
@@ -20,8 +21,7 @@ interface MediaViewerContainerProps {
 interface DetachedMediaViewerWindow {
   window: Window;
   root: HTMLElement;
-  onBeforeUnload: () => void;
-  onLoad: () => void;
+  watcher: AuxiliaryWindowWatcher;
 }
 
 const MEDIA_VIEWER_WINDOW_OPTIONS: AuxiliaryWindowOptions = {
@@ -46,8 +46,7 @@ export function MediaViewerContainer({
     if (!current || (expectedWindow && current.window !== expectedWindow)) {
       return;
     }
-    current.window.removeEventListener("beforeunload", current.onBeforeUnload);
-    current.window.removeEventListener("load", current.onLoad);
+    current.watcher.unwatch();
     detachedRef.current = null;
     setDetached(null);
   }, []);
@@ -85,39 +84,26 @@ export function MediaViewerContainer({
 
     const entry: DetachedMediaViewerWindow = {
       ...opened,
-      onBeforeUnload: () => {
-        if (detachedRef.current?.window !== opened.window) {
-          return;
-        }
-        if (opened.window.closed) {
+      watcher: watchAuxiliaryWindow({
+        window: opened.window,
+        sourceDocument: sourceSurface.document,
+        isCurrent: () => detachedRef.current?.window === opened.window,
+        // 再読み込みで消えたPortal rootだけを作り直し、controllerと画像状態を保持する。
+        getReconnectOptions: () => MEDIA_VIEWER_WINDOW_OPTIONS,
+        onClosed: () => {
           useMediaViewerStore.getState().closeViewer(scopeId);
           removeDetachedWindow(opened.window);
-        }
-      },
-      onLoad: () => {
-        if (detachedRef.current?.window !== opened.window || opened.window.closed) {
-          return;
-        }
-        try {
-          // 再読み込みで消えたPortal rootだけを作り直し、controllerと画像状態を保持する。
-          const root = createAuxiliaryWindowRoot(
-            sourceSurface.document,
-            opened.window,
-            MEDIA_VIEWER_WINDOW_OPTIONS,
-          );
+        },
+        onReconnect: (root) => {
           const latest = detachedRef.current;
           if (latest?.window === opened.window) {
             const next = { ...latest, root };
             detachedRef.current = next;
             setDetached(next);
           }
-        } catch (error) {
-          console.error("[MediaViewer] 再読み込み後の別窓を再接続できませんでした", error);
-        }
-      },
+        },
+      }),
     };
-    opened.window.addEventListener("beforeunload", entry.onBeforeUnload);
-    opened.window.addEventListener("load", entry.onLoad);
     detachedRef.current = entry;
     setDetached(entry);
     opened.window.focus();
@@ -143,11 +129,7 @@ export function MediaViewerContainer({
       if (!current) {
         return;
       }
-      current.window.removeEventListener("beforeunload", current.onBeforeUnload);
-      current.window.removeEventListener("load", current.onLoad);
-      if (!current.window.closed) {
-        current.window.close();
-      }
+      current.watcher.release();
     };
   }, []);
 
