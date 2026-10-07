@@ -16,8 +16,8 @@
   },
   "devDependencies": {
     "peggy": "^5.1.0",
-    "tsup": "^8.0.0",
-    "typescript": "^5.0.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }
