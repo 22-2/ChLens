@@ -11,10 +11,11 @@
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
     "test": "vp test",
-    "dev": "tsup src/index.ts --format cjs,esm --watch --dts"
+    "dev": "tsup src/index.ts --format cjs,esm --watch --dts",
+    "generate:dsl": "peggy --format es --dts --allowed-start-rules Document,Scalar,OptionList --return-types '{\"Document\":\"import(\\\"./dsl-ast\\\").DslLine[]\",\"Scalar\":\"import(\\\"./dsl-ast\\\").DslValue\",\"OptionList\":\"string[]\"}' -o src/rules/dsl-grammar.js src/rules/dsl.peggy"
   },
-  "dependencies": {},
   "devDependencies": {
+    "peggy": "^5.1.0",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",
     "vite": "catalog:",
