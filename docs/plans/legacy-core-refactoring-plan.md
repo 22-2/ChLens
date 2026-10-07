@@ -84,7 +84,6 @@
 - [x] IndexedDB要求のPromise化を独立モジュールへ移し、`ReadState` から直接利用する。
 - [x] `jsutil.test.ts` にアンカー、半角カタカナの濁点、日付、旧ファサード経由の移転検出の回帰確認を追加した。
 - [x] CIに全体のTypeScript型チェックと変更コードだけを対象とする `vp check` を追加した。追加・変更・rename先を対象にし、削除済みファイルと未変更ファイルの既存フォーマット差分を除外する。
-- [ ] CI上の型チェック、静的解析、ユニット/E2Eテストの結果を確認する。
 
 ### 第2・3・5段階の実施記録
 
@@ -92,7 +91,7 @@
 - [x] `src/core/` から `src/app.ts` を直接 import する依存を除き、platform/messageは専用モジュールから参照する。
 - [x] 合成ルートの `window.app` から未使用のcoreモジュールを外し、`LegacyAppForSetup` と setupContainer引数を削除した。
 - 残る互換APIは `src/app/*` の汎用ヘルパー、config/platform、boot時に公開するbookmark関連API、および利用箇所が残るHistory/ReadState/WriteHistory。
-- CIの型チェック、変更ファイルの `vp check`、ユニット/E2Eテストは未実行のため、結果確認は未完了。
+- CIでは型チェック、変更ファイルの `vp check`、ユニット/E2Eテスト、Chrome向けビルドを実行する。最新の実行結果は[PR #150のチェック](https://github.com/22-2/ChLens/pull/150/checks)を参照する。
 
 ## 検証
 
@@ -103,4 +102,4 @@
 - `vp test run`
 - `pnpm run build:chrome`
 
-CIでは `pnpm exec tsc --noEmit -p .` を全体へ実行する。`vp check` は [`scripts/check-changed-files.mjs`](../../scripts/check-changed-files.mjs) がGit差分から選んだコードファイルへ実行し、未変更ファイルの既存フォーマット差分を検査対象に含めない。ユニットテストとE2Eテストは既存jobで実行し、E2E jobのChrome向けビルドも維持する。
+CIでは `pnpm exec tsc --noEmit -p .` を全体へ実行する。`vp check` は [`scripts/check-changed-files.mjs`](../../scripts/check-changed-files.mjs) がGit差分から選んだコードファイルへ実行し、未変更ファイルの既存フォーマット差分を検査対象に含めない。ユニットテストとE2Eテストは既存jobで実行し、E2E jobのChrome向けビルドも維持する。最新の検証結果は[PR #150のチェック](https://github.com/22-2/ChLens/pull/150/checks)を参照する。
