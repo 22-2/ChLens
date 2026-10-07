@@ -97,6 +97,39 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
     setWindows(next);
   }, []);
 
+  /**
+   * paneのactiveTabが別窓へ移っていたら、本窓で操作できるタブへactiveを移す。
+   *
+   * 変更理由: 切り離し直後と、本窓側の閉じる操作でactiveTabが別窓タブへ移った後とで
+   * 同じ補正を二重に持つと、片方だけ修正されて不可視タブへ入力が誤配送される恐れがあるため。
+   */
+  const ensureVisibleActiveTab = useCallback(
+    (pane: Pane) => {
+      const activeWindow = windowsRef.current.get(pane.activeTabId)?.window;
+      if (!activeWindow || activeWindow.closed) {
+        return;
+      }
+
+      const fallbackTab = pane.tabs.find((tab) => {
+        const candidateWindow = windowsRef.current.get(tab.id)?.window;
+        return !candidateWindow || candidateWindow.closed;
+      });
+      if (fallbackTab) {
+        // 切り離し中のタブを本窓のactiveTabに残すと、タブバーから消えた後に
+        // 本文と戻る/進む入力だけが別窓へ誤配送されるため、表示可能なタブへ移す。
+        dispatch({
+          ...tabActions.selectTab(fallbackTab.id, { preserveActivePane: true }),
+          paneId: pane.id,
+        });
+      } else {
+        // ペイン内の全タブが別窓にある場合も、本窓の操作対象を不可視タブへ残さない。
+        // 本窓で操作できる新規タブを一つ補い、別窓の所有権は保つ。
+        dispatch({ ...tabActions.addTab({ preserveActivePane: true }), paneId: pane.id });
+      }
+    },
+    [dispatch],
+  );
+
   const detachTab = useCallback(
     (tabId: string) => {
       const located = findTab(panes, tabId);
@@ -172,31 +205,13 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
       setWindows(next);
 
       const locatedPane = panes.find((pane) => pane.id === located.paneId);
-      if (locatedPane?.activeTabId === tabId) {
-        const fallbackTab = locatedPane.tabs.find((candidate) => {
-          const candidateWindow = windowsRef.current.get(candidate.id)?.window;
-          return candidate.id !== tabId && (!candidateWindow || candidateWindow.closed);
-        });
-        if (fallbackTab) {
-          // 切り離し中のタブを本窓のactiveTabに残すと、タブバーから消えた後に
-          // 本文と戻る/進む入力だけが別窓へ誤配送されるため、表示可能なタブへ移す。
-          dispatch({
-            ...tabActions.selectTab(fallbackTab.id, { preserveActivePane: true }),
-            paneId: located.paneId,
-          });
-        } else {
-          // ペイン内の最後の表示タブを切り離しても、本窓の操作対象を不可視タブへ
-          // 残さない。元ページを引き継ぐ新規タブを表示用に作り、別窓の所有権を保つ。
-          dispatch({
-            ...tabActions.addTab({ preserveActivePane: true }),
-            paneId: located.paneId,
-          });
-        }
+      if (locatedPane) {
+        ensureVisibleActiveTab(locatedPane);
       }
       opened.window.focus();
       return true;
     },
-    [dispatch, panes, removeWindow, stateRef],
+    [ensureVisibleActiveTab, panes, removeWindow, stateRef],
   );
 
   const reattachTab = useCallback(
@@ -295,29 +310,9 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
 
   useEffect(() => {
     for (const pane of panes) {
-      const activeTab = pane.tabs.find((tab) => tab.id === pane.activeTabId);
-      const activeWindow = activeTab && windowsRef.current.get(activeTab.id);
-      if (!activeTab || !activeWindow || activeWindow.window.closed) {
-        continue;
-      }
-
-      const fallbackTab = pane.tabs.find((tab) => {
-        const entry = windowsRef.current.get(tab.id);
-        return !entry || entry.window.closed;
-      });
-      if (fallbackTab) {
-        // 本窓側の閉じる操作でactiveTabが別窓タブへ移った場合も、不可視タブを
-        // ナビゲーションやステータスの暗黙の対象に残さない。
-        dispatch({
-          ...tabActions.selectTab(fallbackTab.id, { preserveActivePane: true }),
-          paneId: pane.id,
-        });
-      } else {
-        // 全タブが別窓へ移っているペインには、本窓で操作できるタブを一つ補う。
-        dispatch({ ...tabActions.addTab({ preserveActivePane: true }), paneId: pane.id });
-      }
+      ensureVisibleActiveTab(pane);
     }
-  }, [dispatch, panes, windows]);
+  }, [ensureVisibleActiveTab, panes, windows]);
 
   // タブを閉じる／復元する操作と別窓のライフサイクルを同期する。
   useEffect(() => {
