@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createRef } from "react";
-import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
+import { ask as askBoardTitle } from "src/core/board/BoardTitleSolver.js";
 import { getAutoRefreshThreadPageKey } from "src/features/auto-refresh/browser/auto-refresh-pages";
 import {
   type DisplayThread,
@@ -50,11 +50,11 @@ vi.mock("src/features/thread-list/ui/thread-list-shared", async (importOriginal)
   };
 });
 
-vi.mock("src/core/BoardTitleSolver.js", () => ({
+vi.mock("src/core/board/BoardTitleSolver.js", () => ({
   ask: vi.fn(async () => null),
 }));
-vi.mock("src/core/BoardUrlNormalizer", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("src/core/BoardUrlNormalizer")>();
+vi.mock("src/core/board/BoardUrlNormalizer", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("src/core/board/BoardUrlNormalizer")>();
   // 実在の板へ依存せず、予約済みドメインで板を開いた記録を検証する。
   return {
     ...actual,

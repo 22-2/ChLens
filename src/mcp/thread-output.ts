@@ -1,7 +1,7 @@
 import { encode } from "@toon-format/toon";
 
-import { buildReplyIndexes } from "../core/reply-index";
-import { stripHtml } from "../core/strip-html";
+import { buildReplyIndexes } from "../core/thread/reply-index";
+import { stripHtml } from "../core/util/strip-html";
 import type { IRes, IThreadDetail } from "../service-container/interfaces";
 import type { ThreadReadParams } from "./protocol";
 

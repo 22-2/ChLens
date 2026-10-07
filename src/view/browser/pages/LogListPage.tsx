@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Cache, { type LogRecord } from "src/core/Cache";
+import Cache, { type LogRecord } from "src/core/storage/Cache";
 import { tabActions } from "src/features/tabs/browser/tab-store-actions";
 import { useTabDispatch, useTabViewState } from "src/features/tabs/browser/use-tab-store";
 import { container } from "src/service-container/index";

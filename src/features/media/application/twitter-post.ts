@@ -1,4 +1,4 @@
-import { createLogger } from "src/core/logger";
+import { createLogger } from "src/app/logger";
 
 import { toTwitterPostEmbed, type TwitterPostEmbed } from "../domain/external-media";
 

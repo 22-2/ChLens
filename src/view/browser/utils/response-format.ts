@@ -1,5 +1,5 @@
-import MessageProcessor from "src/core/MessageProcessor";
-import { stripHtml } from "src/core/strip-html";
+import MessageProcessor from "src/core/thread/MessageProcessor";
+import { stripHtml } from "src/core/util/strip-html";
 import type { IRes } from "src/service-container";
 
 /**
@@ -8,7 +8,7 @@ import type { IRes } from "src/service-container";
  * 分離して、レスのデータ変換だけを追えるようにしている。
  */
 
-export { stripHtml } from "src/core/strip-html";
+export { stripHtml } from "src/core/util/strip-html";
 
 export function normalizeIdLinkText(text: string): string {
   return text

@@ -72,31 +72,31 @@ appObj.config = config;
 appObj._config = _config;
 
 // Core modules - previously in app_core.js
-import { Point, QDollarRecognizer } from "src/core/$Q";
-import * as BBSMenu from "src/core/BBSMenu";
-import Board from "src/core/Board";
-import BoardService from "src/core/BoardService";
-import * as BoardTitleSolver from "src/core/BoardTitleSolver";
-import Bookmark from "src/core/Bookmark";
-import * as BookmarkEntryList from "src/core/BookmarkEntryList";
-import BrowserBookmarkEntryList from "src/core/BrowserBookmarkEntryList";
-import Cache from "src/core/Cache";
-import * as History from "src/core/History";
-import * as HTTP from "src/core/HTTP";
-import IDBBookmarkEntryList from "src/core/IDBBookmarkEntryList";
-import * as ImageReplaceDat from "src/core/ImageReplaceDat";
-import * as util from "src/core/jsutil";
-import * as NG from "src/core/NG";
-import Notification from "src/core/Notification";
-import * as ReadState from "src/core/ReadState";
-import * as ReplaceStrTxt from "src/core/ReplaceStrTxt";
-import SikiGuard from "src/core/SikiGuard";
-import Thread from "src/core/Thread";
-import ThreadSearch from "src/core/ThreadSearch";
-import ThreadService from "src/core/ThreadService";
-import * as URL from "src/core/URL";
-import * as Util from "src/core/Util";
-import * as WriteHistory from "src/core/WriteHistory";
+import { Point, QDollarRecognizer } from "src/app/$Q";
+import Notification from "src/app/Notification";
+import * as BBSMenu from "src/core/board/BBSMenu";
+import Board from "src/core/board/Board";
+import BoardService from "src/core/board/BoardService";
+import * as BoardTitleSolver from "src/core/board/BoardTitleSolver";
+import Bookmark from "src/core/bookmark/Bookmark";
+import * as BookmarkEntryList from "src/core/bookmark/BookmarkEntryList";
+import BrowserBookmarkEntryList from "src/core/bookmark/BrowserBookmarkEntryList";
+import IDBBookmarkEntryList from "src/core/bookmark/IDBBookmarkEntryList";
+import * as ReadState from "src/core/bookmark/ReadState";
+import * as History from "src/core/history/History";
+import * as WriteHistory from "src/core/history/WriteHistory";
+import * as HTTP from "src/core/network/HTTP";
+import * as URL from "src/core/network/URL";
+import * as NG from "src/core/ng/NG";
+import Cache from "src/core/storage/Cache";
+import * as ImageReplaceDat from "src/core/thread/ImageReplaceDat";
+import * as ReplaceStrTxt from "src/core/thread/ReplaceStrTxt";
+import SikiGuard from "src/core/thread/SikiGuard";
+import Thread from "src/core/thread/Thread";
+import ThreadSearch from "src/core/thread/ThreadSearch";
+import ThreadService from "src/core/thread/ThreadService";
+import * as util from "src/core/util/jsutil";
+import * as Util from "src/core/util/Util";
 
 // window.app には実際に参照される旧互換APIだけを残す。
 Object.assign(appObj, {

@@ -45,7 +45,7 @@ describe("BoardParser", () => {
     // 実際のテストファイルを読み込む
     const testFilePath = path.join(
       import.meta.dirname,
-      "../../../../src/core/__test__/bbyall_subject.txt",
+      "../../../../src/core/board/__test__/bbyall_subject.txt",
     );
     const buffer = fs.readFileSync(testFilePath);
     const text = new TextDecoder("shift-jis").decode(buffer);

@@ -1,12 +1,12 @@
 import Editor, { loader, useMonaco } from "@monaco-editor/react";
 import React, { useEffect, useMemo } from "react";
 import { platform } from "src/app/platform";
-import { NG_DSL_LANGUAGE_ID, RULE_DSL_LANGUAGE_DEFINITION } from "src/core/ngDsl";
+import { NG_DSL_LANGUAGE_ID, RULE_DSL_LANGUAGE_DEFINITION } from "src/core/ng/ngDsl";
 import {
   RULE_ACTION_CATALOG,
   RULE_OPTION_CATALOG,
   RULE_TARGET_CATALOG,
-} from "src/core/rules/catalog";
+} from "src/core/ng/rules/catalog";
 import { ensureNgDslLanguage } from "src/features/ng/ui/ngDslMonaco";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 

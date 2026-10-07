@@ -3,7 +3,7 @@ import {
   add as addWriteHistoryRecord,
   getByUrl as getWriteHistoryByUrl,
   update as updateWriteHistoryRecord,
-} from "src/core/WriteHistory";
+} from "src/core/history/WriteHistory";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { stripHtml } from "src/view/browser/utils/response-format";

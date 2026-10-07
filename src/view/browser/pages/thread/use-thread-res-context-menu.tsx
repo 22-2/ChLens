@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useRef } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
-import { stringifyNgDslValue } from "src/core/ngDsl";
+import { stringifyNgDslValue } from "src/core/ng/ngDsl";
 import { requestArchiveReplaySeek } from "src/features/archive-replay/platform";
 import {
   getAutoRefreshPageKey,

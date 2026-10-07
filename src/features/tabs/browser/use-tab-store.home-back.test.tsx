@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 vi.mock("src/app/platform", () => ({
   platform: { window: { setTitle: vi.fn(async () => undefined) } },
 }));
-vi.mock("src/core/History", () => ({
+vi.mock("src/core/history/History", () => ({
   add: vi.fn(async () => undefined),
   getByUrl: vi.fn(async () => []),
   remove: vi.fn(async () => undefined),

@@ -1,4 +1,4 @@
-import { normalizeObfuscatedUrl, URL_LIKE_PATTERN } from "src/core/url-utils";
+import { normalizeObfuscatedUrl, URL_LIKE_PATTERN } from "src/core/network/url-utils";
 
 /**
  * レス本文からのURL抽出と画像ビューア向けURL変換をまとめる。

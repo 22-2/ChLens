@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 vi.mock("src/app/platform", () => ({
   platform: { window: { setTitle: vi.fn(async () => undefined) } },
 }));
-vi.mock("src/core/History", () => ({
+vi.mock("src/core/history/History", () => ({
   add: vi.fn(async () => undefined),
   getByUrl: vi.fn(async () => []),
   remove: vi.fn(async () => undefined),
@@ -152,7 +152,7 @@ describe("タブセッションの操作時保存と再読み込み", () => {
     const url = new URL(window.location.href);
     url.searchParams.set("q", threadUrl);
     window.history.replaceState(null, "", url.href);
-    const { add, remove } = await import("src/core/History");
+    const { add, remove } = await import("src/core/history/History");
     const dispatch = await renderViewer();
     await vi.waitFor(() =>
       expect(add).toHaveBeenCalledWith(threadUrl, threadUrl, expect.any(Number), "sample"),

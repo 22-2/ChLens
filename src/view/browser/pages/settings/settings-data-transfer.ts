@@ -1,8 +1,8 @@
 import JSZip from "jszip";
-import type { Entry as BookmarkEntry, ReadState } from "src/core/BookmarkEntryList";
-import Cache, { type LogArchiveRecord } from "src/core/Cache";
-import * as History from "src/core/History";
-import * as WriteHistory from "src/core/WriteHistory";
+import type { Entry as BookmarkEntry, ReadState } from "src/core/bookmark/BookmarkEntryList";
+import * as History from "src/core/history/History";
+import * as WriteHistory from "src/core/history/WriteHistory";
+import Cache, { type LogArchiveRecord } from "src/core/storage/Cache";
 import {
   getBrowserSessionJson,
   setBrowserSessionJson,

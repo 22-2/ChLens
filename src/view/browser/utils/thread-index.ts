@@ -1,4 +1,4 @@
-import { buildReplyIndexes } from "src/core/reply-index";
+import { buildReplyIndexes } from "src/core/thread/reply-index";
 import type { IRes } from "src/service-container";
 import { type NgDisplayMode, resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 

@@ -34,19 +34,19 @@ vi.mock("src/service-container/index", () => ({
   },
 }));
 
-vi.mock("src/core/History", () => ({
+vi.mock("src/core/history/History", () => ({
   getAll: mocks.historyGetAll,
   clear: mocks.historyClear,
   add: mocks.historyAdd,
 }));
 
-vi.mock("src/core/WriteHistory", () => ({
+vi.mock("src/core/history/WriteHistory", () => ({
   getAll: mocks.writeHistoryGetAll,
   clear: mocks.writeHistoryClear,
   add: mocks.writeHistoryAdd,
 }));
 
-vi.mock("src/core/Cache", () => ({
+vi.mock("src/core/storage/Cache", () => ({
   default: {
     getLogArchiveRecords: mocks.getLogArchiveRecords,
     replaceLogArchiveRecords: mocks.replaceLogArchiveRecords,

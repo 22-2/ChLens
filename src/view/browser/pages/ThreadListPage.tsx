@@ -1,7 +1,7 @@
 import { ChURL } from "packages/ch-lib/src/index";
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ask as askBoardTitle } from "src/core/BoardTitleSolver.js";
-import { upsertOpenedBoardEntry } from "src/core/OpenedBoards";
+import { ask as askBoardTitle } from "src/core/board/BoardTitleSolver.js";
+import { upsertOpenedBoardEntry } from "src/core/board/OpenedBoards";
 import {
   BOARD_AUTO_REFRESH_CONFIG_KEY,
   MIN_BOARD_AUTO_REFRESH_MS,

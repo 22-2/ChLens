@@ -1,4 +1,4 @@
-import { normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
+import { normalizeBoardUrl } from "src/core/board/BoardUrlNormalizer";
 import { container } from "src/service-container/index";
 import { readConfigValue } from "src/view/browser/utils/config-setting";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";

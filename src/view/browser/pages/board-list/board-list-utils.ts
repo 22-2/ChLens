@@ -1,5 +1,5 @@
-import { normalizeBoardUrl } from "src/core/BoardUrlNormalizer";
-import type { OpenedBoardEntry } from "src/core/OpenedBoards";
+import { normalizeBoardUrl } from "src/core/board/BoardUrlNormalizer";
+import type { OpenedBoardEntry } from "src/core/board/OpenedBoards";
 
 export function isResolvedBoardTitle(boardUrl: string, candidate: string): boolean {
   if (!candidate.trim() || candidate === boardUrl) return false;

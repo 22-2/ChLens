@@ -61,7 +61,7 @@ vi.mock("webextension-polyfill", () => ({
   default: browserCommandMocks.extensionBrowserApiMock,
 }));
 
-vi.mock("src/core/BoardTitleSolver.js", () => ({
+vi.mock("src/core/board/BoardTitleSolver.js", () => ({
   askByUrl: browserCommandMocks.askBoardTitleByUrlMock,
 }));
 

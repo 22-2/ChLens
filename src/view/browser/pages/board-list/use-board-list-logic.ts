@@ -1,11 +1,11 @@
 import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
 import { useCallback, useEffect, useState } from "react";
-import { createLogger } from "src/core/logger";
+import { createLogger } from "src/app/logger";
 import {
   OPENED_BOARDS_CONFIG_KEY,
   type OpenedBoardEntry,
   parseOpenedBoardEntries,
-} from "src/core/OpenedBoards";
+} from "src/core/board/OpenedBoards";
 import { container } from "src/service-container/index";
 import { normalizeBoardUrlForRemove } from "src/view/browser/pages/board-list/board-list-utils";
 

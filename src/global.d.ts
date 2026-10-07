@@ -45,11 +45,11 @@ declare global {
     const defer: () => Promise<void>;
     const platform: import("./app/platform/types").Platform;
 
-    const bookmark: import("./core/Bookmark").default;
-    const bookmarkEntryList: import("./core/Bookmark").default["bel"];
-    const History: typeof import("./core/History");
-    const ReadState: typeof import("./core/ReadState");
-    const WriteHistory: typeof import("./core/WriteHistory");
+    const bookmark: import("./core/bookmark/Bookmark").default;
+    const bookmarkEntryList: import("./core/bookmark/Bookmark").default["bel"];
+    const History: typeof import("./core/history/History");
+    const ReadState: typeof import("./core/bookmark/ReadState");
+    const WriteHistory: typeof import("./core/history/WriteHistory");
     const _config: import("./app/Config").default;
   }
 

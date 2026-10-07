@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { stringifyNgDslValue } from "src/core/ngDsl";
+import { stringifyNgDslValue } from "src/core/ng/ngDsl";
 import { container } from "src/service-container";
 import type { IThread, IToastService } from "src/service-container/interfaces";
 
