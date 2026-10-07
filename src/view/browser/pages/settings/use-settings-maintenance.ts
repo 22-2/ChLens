@@ -1,4 +1,4 @@
-import { fetchHttpsFirst } from "packages/ch-lib/src/fetcher/https-first";
+import { fetchHttpsFirst } from "packages/chlib/src/fetcher/https-first";
 import { type MutableRefObject, useCallback, useState } from "react";
 import { container } from "src/service-container/index";
 import {

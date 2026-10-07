@@ -8,7 +8,7 @@ describe("normalizePageLocation", () => {
     );
   });
 
-  it("旧ホストの板URLもch-libの正規形に揃えて同一視する", () => {
+  it("旧ホストの板URLもchlibの正規形に揃えて同一視する", () => {
     expect(normalizePageLocation("https://egg.5ch.net/software/")).toBe(
       normalizePageLocation("https://egg.5ch.io/software/"),
     );

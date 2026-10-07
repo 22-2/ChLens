@@ -206,7 +206,7 @@ export type ThreadData = IThread;
 
 /**
  * 既存の共有APIを保ちながら、解析自体は全形式を扱う共通パーサーへ委譲する。
- * 変更理由: coreとch-libで別実装を育てず、書き込み・表示経路が同じ解析規則を使う。
+ * 変更理由: coreとchlibで別実装を育てず、書き込み・表示経路が同じ解析規則を使う。
  */
 export class ThreadParser {
   static parse(chUrl: ChURL, text: string): ThreadData {

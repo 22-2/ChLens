@@ -1,4 +1,4 @@
-import { ChURL, replaceBoardUrlServer } from "packages/ch-lib/src/index";
+import { ChURL, replaceBoardUrlServer } from "packages/chlib/src/index";
 import Callbacks from "src/app/Callbacks";
 import { deepCopy } from "src/app/Util";
 import { isNewerReadState } from "src/core/bookmark/read-state-compare";
@@ -108,7 +108,7 @@ export class EntryList {
 
     // スレブックマーク移行
     for (const entry of this.getThreadsByBoardURL(from)) {
-      // 変更理由: originの文字列置換でURL末尾のslashやpathを壊さず、移転先への生成をch-libへ委譲する。
+      // 変更理由: originの文字列置換でURL末尾のslashやpathを壊さず、移転先への生成をchlibへ委譲する。
       const movedUrl = replaceBoardUrlServer(entry.url, to);
       if (movedUrl === null) {
         console.error("スレッドのお気に入りを移転できませんでした", { from, to, url: entry.url });

@@ -19,7 +19,7 @@ export interface NormalizableBBSMenu {
  *
  * 変更理由: 複数のBBSMENUを併用すると同じ板が別メニューへ重複登録されるため、
  * 取得元ごとのキャッシュではなく、表示直前の全体で一度だけ重複排除する。
- * 板URLの正規化規則だけに依存する純粋処理なので、アプリ側からch-libへ移した。
+ * 板URLの正規化規則だけに依存する純粋処理なので、アプリ側からchlibへ移した。
  */
 export function normalizeBBSMenus<T extends NormalizableBBSMenu>(menus: T[]): T[] {
   const seenBoardKeys = new Set<string>();

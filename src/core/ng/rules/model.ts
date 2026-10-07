@@ -7,6 +7,6 @@ export type {
   RulePresentation,
   RuleScope,
   RuleTarget,
-} from "@chlen/ch-lib";
-export { RULE_ACTIONS, RULE_TARGETS } from "@chlen/ch-lib";
-export { getRuleConditions } from "@chlen/ch-lib";
+} from "@chlen/chlib";
+export { RULE_ACTIONS, RULE_TARGETS } from "@chlen/chlib";
+export { getRuleConditions } from "@chlen/chlib";

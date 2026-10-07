@@ -1,4 +1,4 @@
-import { ChURL, getThreadReferenceKeys } from "packages/ch-lib/src/index";
+import { ChURL, getThreadReferenceKeys } from "packages/chlib/src/index";
 import Board from "src/core/board/Board";
 import { normalize } from "src/core/util/string-normalize";
 import { levenshteinDistance } from "src/core/util/Util";

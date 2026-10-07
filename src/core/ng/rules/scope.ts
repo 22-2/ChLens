@@ -1,1 +1,1 @@
-export { matchesRuleSites } from "@chlen/ch-lib";
+export { matchesRuleSites } from "@chlen/chlib";

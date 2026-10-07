@@ -1,4 +1,4 @@
-import { decodeCharReference } from "packages/ch-lib/src/utils/entities";
+import { decodeCharReference } from "packages/chlib/src/utils/entities";
 
 /**
  * レス本文から表示用のプレーンテキストを作る純粋な変換。

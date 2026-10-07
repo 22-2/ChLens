@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { fromCanonicalThread, toCanonicalThread } from "packages/ch-lib/src/index";
+import { fromCanonicalThread, toCanonicalThread } from "packages/chlib/src/index";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("thread model adapter", () => {

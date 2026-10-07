@@ -6,8 +6,8 @@ import {
 import { describe, expect, it, vi } from "vite-plus/test";
 
 // 実在するスレッドを使わず、通信方式と保存キーの違いを検証する。
-vi.mock("packages/ch-lib/src/url/hosts", async (importOriginal) => {
-  const hosts = await importOriginal<typeof import("packages/ch-lib/src/url/hosts")>();
+vi.mock("packages/chlib/src/url/hosts", async (importOriginal) => {
+  const hosts = await importOriginal<typeof import("packages/chlib/src/url/hosts")>();
   return { ...hosts, HOSTNAME: { ...hosts.HOSTNAME, EDDIBB: "edge.example.com" } };
 });
 

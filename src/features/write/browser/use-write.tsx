@@ -2,7 +2,7 @@ import {
   getWriteFormData,
   isWriteAuthToken,
   resolveWriteAuthCodeUrl,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
@@ -85,7 +85,7 @@ function buildFormData(
   mail: string,
   message: string,
 ): WriteFormData | null {
-  // 変更理由: 投稿先ごとのURL形式・項目名・文字コードをUI側へ重複させず、ch-libでフォーム仕様を解決する。
+  // 変更理由: 投稿先ごとのURL形式・項目名・文字コードをUI側へ重複させず、chlibでフォーム仕様を解決する。
   return getWriteFormData(threadUrl, {
     name,
     mail,

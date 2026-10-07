@@ -1,4 +1,4 @@
-import { type MessageToken, parseMessage } from "@chlen/ch-lib";
+import { type MessageToken, parseMessage } from "@chlen/chlib";
 
 interface DecodedMessage {
   nameHtml: string;
@@ -43,7 +43,7 @@ function renderMessageTokens(tokens: readonly MessageToken[]): string {
         case "id":
           return `<a href="javascript:undefined;" class="anchor_id">${token.value}</a>`;
         case "url":
-          // 意図: URLの意味解析はch-libに任せ、リンク属性やCSSクラスはアプリ表示層で決める。
+          // 意図: URLの意味解析はchlibに任せ、リンク属性やCSSクラスはアプリ表示層で決める。
           return `<a href="${token.href}" target="_blank" rel="noopener noreferrer">${token.value}</a>`;
       }
     })

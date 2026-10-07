@@ -1,4 +1,4 @@
-import { ChURL, normalizeReadStateUrl } from "packages/ch-lib/src/index";
+import { ChURL, normalizeReadStateUrl } from "packages/chlib/src/index";
 import { assertArg, criticalError, log } from "src/app/Log";
 import message from "src/app/Message";
 import { deepCopy } from "src/app/Util";

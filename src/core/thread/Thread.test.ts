@@ -1,5 +1,5 @@
 // @vitest-environment node
-import type { ParsedThread } from "packages/ch-lib/src/index";
+import type { ParsedThread } from "packages/chlib/src/index";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({

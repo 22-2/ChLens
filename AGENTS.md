@@ -42,7 +42,7 @@
 - **コア機能:** `src/core/` に掲示板・スレッド・ブックマーク・履歴・キャッシュ・NG 判定などのドメイン処理を、`board/`、`thread/`、`ng/`、`bookmark/`、`history/`、`network/`（HTTP・URL）、`storage/`（キャッシュ・IndexedDB・Tauri DB）、`util/`（ドメインに属さない純粋関数）のドメイン別ディレクトリに置きます。ログ、通知、ジェスチャ認識など特定のドメインに属さない処理は `src/app/` に置きます。ビューから直接実装へ依存する処理は、可能な範囲でサービスコンテナ経由にします。
 - **サービスコンテナ:** `src/service-container/` がサービスのインターフェース、共有コンテナ、レガシー実装を接続するセットアップ処理を提供します。ビューはこのコンテナを通じて設定、取得、保存、通知などを利用します。
 - **プラットフォーム抽象化:** `src/app/platform/` がウィンドウ操作、HTTP、ストレージの共通インターフェースを定義し、`browser/` と `tauri/` の実装を実行環境に応じて選択します。Tauri 環境で不足する拡張機能 API は `src/browser-shim.js` が補います。
-- **共有ライブラリ:** `packages/ch-lib/` はワークスペース内の共有パッケージで、5ch 互換 URL、掲示板・スレッド・bbsmenu のパーサー、取得処理などを提供します。
+- **共有ライブラリ:** `packages/chlib/` はワークスペース内の共有パッケージで、5ch 互換 URL、掲示板・スレッド・bbsmenu のパーサー、取得処理などを提供します。
 - **スタイル管理:** CSS のエントリポイントは `src/view/browser/styles/index.css` です。foundation、UI、layout、components、pages のスタイルをこのファイルから import し、`src/view/browser/index.tsx` で読み込みます。
 - **レガシー互換層:** `src/app.ts` は起動処理と既存の `window.app` API を維持し、新しいコードでは ES module と `src/service-container/` を優先します。
 - **ビルド構成:** `vite.config.ts` が `src/view/browser/index.tsx` を起点に、`PLATFORM` に応じた Chrome、Firefox、Tauri 向けの出力を構成します。開発・ビルド・テスト・静的解析には Vite+ の `vp` コマンドを使用します。
@@ -72,7 +72,7 @@
   - `write`: 書き込み機能
   - `popup`: ポップアップ、ペイン
   - `platform`: Browser/Tauriのプラットフォーム抽象化
-  - `ch-lib`: `packages/ch-lib/` の共有ライブラリ
+  - `chlib`: `packages/chlib/` の共有ライブラリ
   - `workflow`: Issue、todo、自動化などの開発ワークフロー
   - `architecture`: 設計文書、構成説明
   - 既存の一覧で表せない全体変更だけは、scopeを省略して構いません。

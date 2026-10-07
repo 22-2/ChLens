@@ -3,7 +3,7 @@ export type {
   NgDslColorPresetName,
   RuleDslCompletionCandidate,
   RuleDslCompletionCategory,
-} from "@chlen/ch-lib";
+} from "@chlen/chlib";
 export {
   NG_DSL_LANGUAGE_ID,
   NG_HIGHLIGHT_COLOR_PRESET_DESCRIPTIONS,
@@ -12,4 +12,4 @@ export {
   RULE_DSL_COMPLETION_CANDIDATES,
   RULE_DSL_LANGUAGE_DEFINITION,
   stringifyNgDslValue,
-} from "@chlen/ch-lib";
+} from "@chlen/chlib";

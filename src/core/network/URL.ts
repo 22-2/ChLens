@@ -1,4 +1,4 @@
-import { ChURL } from "packages/ch-lib/src/index";
+import { ChURL } from "packages/chlib/src/index";
 import { Request } from "src/core/network/HTTP";
 import Cache from "src/core/storage/Cache.js";
 import { container } from "src/service-container/index";

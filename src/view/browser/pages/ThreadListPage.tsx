@@ -1,4 +1,4 @@
-import { ChURL } from "packages/ch-lib/src/index";
+import { ChURL } from "packages/chlib/src/index";
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ask as askBoardTitle } from "src/core/board/BoardTitleSolver.js";
 import { upsertOpenedBoardEntry } from "src/core/board/OpenedBoards";

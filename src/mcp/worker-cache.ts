@@ -1,4 +1,4 @@
-import type { ParsedThread } from "@chlen/ch-lib";
+import type { ParsedThread } from "@chlen/chlib";
 
 import {
   listByDateDesc,

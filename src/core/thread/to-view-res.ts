@@ -1,8 +1,8 @@
-import { extractPostDate, type IRes as CanonicalRes } from "packages/ch-lib/src/index";
+import { extractPostDate, type IRes as CanonicalRes } from "packages/chlib/src/index";
 import type { IRes } from "src/service-container/interfaces";
 
 /**
- * ch-libの共有レス（CanonicalRes）を、ビューへ渡すIResへ変換する。
+ * chlibの共有レス（CanonicalRes）を、ビューへ渡すIResへ変換する。
  *
  * 型の境界: CanonicalResは番号を`number`、日付を入力の生文字列で持つ。
  * IResは番号を`num`、日付を表示用の日時だけで持ち、NG判定結果などの表示状態も載せる。
@@ -17,7 +17,7 @@ export function toViewRes(post: CanonicalRes): IRes {
     mail: post.mail,
     message: post.message,
     other,
-    // 日時の形式差はch-libへ集約し、見つからなければ空文字にする。
+    // 日時の形式差はchlibへ集約し、見つからなければ空文字にする。
     date: other ? (extractPostDate(other) ?? "") : "",
     id: post.id,
     slip: post.slip,

@@ -1,6 +1,6 @@
 import type { Plugin } from "vite";
 
-import { isCompatibleBoardHost } from "../packages/ch-lib/src/url/hosts.ts";
+import { isCompatibleBoardHost } from "../packages/chlib/src/url/hosts.ts";
 import { CHLENS_STORYBOOK_THREAD_PROXY_PATH } from "./thread-proxy-path.ts";
 
 function parseThreadUrl(rawUrl: string | null): URL {

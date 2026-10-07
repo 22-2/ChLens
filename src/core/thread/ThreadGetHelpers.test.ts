@@ -4,8 +4,8 @@ import {
   buildThreadFetchPlan,
   resolveThreadFromResponse,
   shouldRejectThreadResult,
-} from "@chlen/ch-lib";
-import type { ParsedThread } from "packages/ch-lib/src/index";
+} from "@chlen/chlib";
+import type { ParsedThread } from "packages/chlib/src/index";
 import { isMissingFromSubject } from "src/core/board/SubjectPresence";
 import { describe, expect, it } from "vite-plus/test";
 

@@ -22,7 +22,7 @@ describe("掲示板URLの依存境界", () => {
       const source = readFileSync(file, "utf8");
       return [
         ...source.matchAll(
-          /import\s*\{([^}]+)\}\s*from\s*["'](?:packages\/ch-lib\/src\/index|@chlen\/ch-lib)["']/gs,
+          /import\s*\{([^}]+)\}\s*from\s*["'](?:packages\/chlib\/src\/index|@chlen\/chlib)["']/gs,
         ),
       ].flatMap((match) =>
         match[1]

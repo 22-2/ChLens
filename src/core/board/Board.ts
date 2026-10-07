@@ -6,7 +6,7 @@ import {
   getBoardFetchInfo,
   getBoardNetwork,
   resolveBoardRedirectUrl,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import { platform } from "src/app/platform";
 import { Response } from "src/core/network/HTTP";
 import { chServerMoveDetect } from "src/core/util/jsutil";
@@ -14,7 +14,7 @@ import { container } from "src/service-container/index";
 
 // 変更理由: 5ch/2ch.scのホスト名判定をcoreへ複製せず、通信条件だけを意味分類で選ぶ。
 
-// JSDocの型情報をTypeScriptに変換。subject parserの基本形はch-libを正とし、
+// JSDocの型情報をTypeScriptに変換。subject parserの基本形はchlibを正とし、
 // NG／表示状態だけをChlens側のBoard projectionとして追加する。
 type BoardThread = CanonicalBoardThread & {
   ng?: unknown;
@@ -104,7 +104,7 @@ export default class Board {
 
           // サーバー移転判定
           // 2chで自動移動しているときはサーバー移転
-          // 変更理由: responseURLから板URLを作る形式解析はch-libへ移し、移転検知は取得結果だけで判断する。
+          // 変更理由: responseURLから板URLを作る形式解析はchlibへ移し、移転検知は取得結果だけで判断する。
           if (
             response != null &&
             getBoardNetwork(this.url) === "5ch" &&

@@ -5,7 +5,7 @@ import {
   type HttpRequest,
   type HttpResponse,
   type ThreadData,
-} from "@chlen/ch-lib";
+} from "@chlen/chlib";
 
 import { CHLENS_STORYBOOK_THREAD_PROXY_PATH } from "../../../../.storybook/thread-proxy-path.ts";
 

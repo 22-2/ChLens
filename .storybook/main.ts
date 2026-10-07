@@ -9,7 +9,7 @@ const repositoryRoot = path.resolve(fileURLToPath(new URL("..", import.meta.url)
 const repositoryAliases = {
   src: path.resolve(repositoryRoot, "src"),
   packages: path.resolve(repositoryRoot, "packages"),
-  "@chlen/ch-lib": path.resolve(repositoryRoot, "packages/ch-lib/src/index.ts"),
+  "@chlen/chlib": path.resolve(repositoryRoot, "packages/chlib/src/index.ts"),
 };
 
 const config: StorybookConfig = {

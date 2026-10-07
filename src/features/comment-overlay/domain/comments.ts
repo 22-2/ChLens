@@ -1,4 +1,4 @@
-import { decodeCharReference } from "@chlen/ch-lib";
+import { decodeCharReference } from "@chlen/chlib";
 
 import type {
   CommentBatch,

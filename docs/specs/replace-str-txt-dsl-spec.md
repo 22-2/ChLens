@@ -18,7 +18,7 @@ Status: Draft
 現行実装は次のファイルに分散している。
 
 - `src/core/ReplaceStrTxt.js`: 設定・キャッシュ・アプリケーションとの接続
-- `packages/ch-lib/src/parser/ReplaceStrParser.ts`: 旧形式のパースと置換実行
+- `packages/chlib/src/parser/ReplaceStrParser.ts`: 旧形式のパースと置換実行
 - `src/core/ThreadService.js`: スレ取得結果の整形時にID・Slip抽出より前へ適用
 
 スレ取得結果の整形時にレスへ置換が適用され、その後にメタデータ解析・アンカー解析・NG判定が行われる。
@@ -226,7 +226,7 @@ interface ReplacementCondition {
 ## 7. 実装構成
 
 ```text
-packages/ch-lib/src/replacement/
+packages/chlib/src/replacement/
 ├── model.ts       # ReplacementRuleなどの型
 ├── dsl.ts         # 新DSLのparse・format・診断
 ├── legacy.ts      # 旧ReplaceStr.txtの読み込み
@@ -242,7 +242,7 @@ packages/ch-lib/src/replacement/
 新しいDSL ─────── DSL parser ─────┘
 ```
 
-`packages/ch-lib` に置く理由は、置換のモデル・パーサー・実行エンジンをChrome、Firefox、Tauriで共通利用できるためである。
+`packages/chlib` に置く理由は、置換のモデル・パーサー・実行エンジンをChrome、Firefox、Tauriで共通利用できるためである。
 
 ## 8. 旧形式との互換
 

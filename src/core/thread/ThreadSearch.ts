@@ -1,4 +1,4 @@
-import { ChURL } from "packages/ch-lib/src/index";
+import { ChURL } from "packages/chlib/src/index";
 import { ask as askBoardTitleSolver } from "src/core/board/BoardTitleSolver.js";
 import { Request } from "src/core/network/HTTP.ts";
 import { setProtocol } from "src/core/network/URL.ts";

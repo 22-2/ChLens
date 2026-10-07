@@ -1,4 +1,4 @@
-import { ChURL } from "packages/ch-lib/src/index";
+import { ChURL } from "packages/chlib/src/index";
 import Callbacks from "src/app/Callbacks";
 import { log } from "src/app/Log";
 import { deepCopy } from "src/app/Util";

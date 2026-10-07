@@ -18,7 +18,7 @@ import {
   type ThreadResponse,
   toArchiveThreadUrl,
   type XhrInfo,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import { platform } from "src/app/platform";
 import { isMissingFromSubject, shouldForceSubjectCheck } from "src/core/board/SubjectPresence";
 import type Cache from "src/core/storage/Cache.js";
@@ -610,7 +610,7 @@ export default class Thread {
     hasCache: boolean;
     thread: ParsedThread | undefined;
   }): Promise<string> {
-    // 変更理由: ホスト名ごとの通信仕様をURL文字列比較で分岐せず、ch-libの分類を使う。
+    // 変更理由: ホスト名ごとの通信仕様をURL文字列比較で分岐せず、chlibの分類を使う。
     if (getBoardNetwork(this.url.url) === "5ch" && response) {
       return this._build5chioErrorMessage({ response, hasCache, thread });
     }
@@ -679,7 +679,7 @@ export default class Thread {
           "\n該当するスレッドは存在しません。\nURLが間違っているか過去ログに移動せずに削除されています。";
         break;
       case "STORAGE IN": {
-        // 変更理由: 過去ログURLのパス形式はch-libで一元管理し、表示側は変換結果だけを使う。
+        // 変更理由: 過去ログURLのパス形式はchlibで一元管理し、表示側は変換結果だけを使う。
         const newUrl = toArchiveThreadUrl(this.url.url.href) ?? this.url.url.href;
         const href = container.util.escapeHtml(container.util.safeHref(newUrl));
         const label = container.util.escapeHtml(newUrl);

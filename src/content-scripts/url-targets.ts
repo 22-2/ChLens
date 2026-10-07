@@ -2,4 +2,4 @@
 export {
   isTargetContentScriptUrl,
   normalizeContentScriptTargetUrl,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
