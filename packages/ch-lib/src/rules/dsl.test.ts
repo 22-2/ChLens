@@ -199,3 +199,52 @@ highlight-ng title contains:
     expect(result.rules.map((rule) => rule.action)).toEqual(["hide", "hide", "highlight"]);
   });
 });
+
+describe("同時に判定できないAND条件", () => {
+  it("スレ一覧専用の対象とレス専用の対象をANDで組み合わせたルールを弾く", () => {
+    const result = parseRuleDsl(`hide res-count >= 100:
+and body contains:
+  ほげ
+hide title contains:
+  残る`);
+
+    expect(result.rules.map((rule) => rule.target)).toEqual(["title"]);
+    expect(result.diagnostics).toEqual([
+      {
+        line: 2,
+        column: 1,
+        message:
+          "AND条件の body は、res-count と同じ画面（スレ一覧）で判定できないため、このルールは一致しません。",
+      },
+    ]);
+  });
+
+  it("スレ一覧でしか使えない動作にレス専用の対象をANDで足すと弾く", () => {
+    const result = parseRuleDsl(`highlight title contains:
+  注目
+and anchor-count >= 3:`);
+
+    expect(result.rules).toEqual([]);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.line)).toEqual([3]);
+  });
+
+  it("同じ画面で判定できるAND条件は受け付ける", () => {
+    const result = parseRuleDsl(`hide body contains:
+  ほげ
+and anchor-count >= 3:
+and id contains:
+  abc`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules).toHaveLength(1);
+  });
+
+  it("主条件だけで判定できないルールはAND条件の誤りとして指摘しない", () => {
+    // demote bodyは主条件の時点で判定できる画面がないため、AND条件側の診断対象にしない。
+    const result = parseRuleDsl(`demote body contains:
+  x
+and res-count >= 1:`);
+
+    expect(result.diagnostics).toEqual([]);
+  });
+});

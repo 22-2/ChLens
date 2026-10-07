@@ -9,6 +9,12 @@ import {
 import type { DslValue } from "./dsl-ast";
 import { parse as parseGrammar } from "./dsl-grammar.js";
 import {
+  RESPONSE_RULE_ACTIONS,
+  RESPONSE_RULE_TARGETS,
+  THREAD_LIST_RULE_ACTIONS,
+  THREAD_LIST_RULE_TARGETS,
+} from "./engine";
+import {
   getRuleConditions,
   type Rule,
   type RuleCondition,
@@ -83,6 +89,25 @@ function unquote(value: string): string {
 function parseSites(value: string): string[] {
   const unwrapped = value.startsWith("[") && value.endsWith("]") ? value.slice(1, -1) : value;
   return tokenizeOptions(unwrapped.replace(/,/gu, " ")).map(unquote).filter(Boolean);
+}
+
+/**
+ * ルールを判定できる画面（スレ一覧・レス）ごとの動作と対象。
+ * engineはルールの全条件の対象が同じ画面で判定できない場合に黙って読み飛ばすため、
+ * DSL側で同じ基準を使い、決して一致しないAND条件を入力時点で弾く。
+ */
+const RULE_EVALUATION_SCOPES = [
+  { name: "スレ一覧", actions: THREAD_LIST_RULE_ACTIONS, targets: THREAD_LIST_RULE_TARGETS },
+  { name: "レス", actions: RESPONSE_RULE_ACTIONS, targets: RESPONSE_RULE_TARGETS },
+] as const;
+
+function getEvaluationScopes(
+  action: Rule["action"],
+  targets: readonly RuleTarget[],
+): (typeof RULE_EVALUATION_SCOPES)[number][] {
+  return RULE_EVALUATION_SCOPES.filter(
+    (scope) => scope.actions.has(action) && targets.every((target) => scope.targets.has(target)),
+  );
 }
 
 function getComparisonOperator(target: RuleTarget): ">" | ">=" | null {
@@ -345,6 +370,8 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
   let currentHasError = false;
   let ruleHasError = false;
   let additionalConditions: RuleCondition[] = [];
+  // AND条件を含め、このルールで指定された対象。同時に判定できるかの検証に使う。
+  let conditionTargets: RuleTarget[] = [];
 
   const resetState = (): void => {
     current = null;
@@ -354,6 +381,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
     currentHasError = false;
     ruleHasError = false;
     additionalConditions = [];
+    conditionTargets = [];
   };
 
   const finishCurrentCondition = (line: number): RuleCondition | null => {
@@ -429,6 +457,26 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
         regexFlags = parsedHeader.regexFlags;
         matchers = [];
         currentHasError = parsedHeader.hasError;
+
+        // 主条件だけで既に判定できないルールは、AND条件の責任にせず従来どおり扱う。
+        // 判定できていたルールがこのAND条件で判定不能になる場合だけ指摘する。
+        const scopesBefore = getEvaluationScopes(currentRule.action, conditionTargets);
+        conditionTargets = [...conditionTargets, parsedHeader.target];
+        if (
+          scopesBefore.length > 0 &&
+          getEvaluationScopes(currentRule.action, conditionTargets).length === 0
+        ) {
+          currentHasError = true;
+          diagnostics.push({
+            line,
+            column: 1,
+            message: `AND条件の ${parsedHeader.target} は、${conditionTargets
+              .slice(0, -1)
+              .join("・")} と同じ画面（${scopesBefore
+              .map((scope) => scope.name)
+              .join("・")}）で判定できないため、このルールは一致しません。`,
+          });
+        }
         if (!parsedHeader.hasError && parsedHeader.matcherKind === "comparison") {
           if (parsedHeader.inlineValue != null) {
             matchers.push({ kind: "contains", value: parsedHeader.inlineValue });
@@ -440,7 +488,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       if (node.type === "invalid-and") {
         recognized = true;
         diagnostics.push({
-          line: line,
+          line,
           column: 1,
           message: "AND条件の見出しが不正です。",
         });
@@ -456,7 +504,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       const action = normalizeRuleAction(node.action);
       if (!action) {
         diagnostics.push({
-          line: line,
+          line,
           column: 1,
           // develop側の改善（利用可能な動作ヒント）を維持する。対象の検証はparseConditionHeader側で行うため、ここでは動作のみ判定する。
           message: `未対応の動作です: ${node.action}（利用可能な動作: ${AVAILABLE_ACTIONS_HINT}）`,
@@ -491,6 +539,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       matcherKind = parsedHeader.matcherKind;
       regexFlags = parsedHeader.regexFlags;
       currentHasError = parsedHeader.hasError;
+      conditionTargets = [parsedHeader.target];
       matchers = [];
       if (!parsedHeader.hasError && parsedHeader.matcherKind === "comparison") {
         if (parsedHeader.inlineValue != null) {
@@ -505,7 +554,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       currentHasError = true;
       ruleHasError = true;
       diagnostics.push({
-        line: line,
+        line,
         column: 1,
         message: "比較条件は見出しと同じ行に指定してください。",
       });
@@ -517,7 +566,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
         currentHasError = true;
         ruleHasError = true;
         diagnostics.push({
-          line: line,
+          line,
           column: 1,
           message: "regex の値は引用符で囲んでください。",
         });
@@ -532,7 +581,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       currentHasError = true;
       ruleHasError = true;
       diagnostics.push({
-        line: line,
+        line,
         column: 1,
         message: "contains の値の引用符が閉じていません。",
       });
