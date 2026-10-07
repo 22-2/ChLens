@@ -43,7 +43,7 @@ export interface ResponseRuleContext extends RuleMatchContext {
 
 export const BOARD_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "highlight", "demote"]);
 export const BOARD_RULE_TARGETS = new Set<RuleTarget>(["all", "title", "url", "res-count"]);
-export const RESPONSE_RULE_ACTIONS = new Set<Rule["action"]>(["hide"]);
+export const RESPONSE_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "collapse"]);
 export const RESPONSE_RULE_TARGETS = new Set<RuleTarget>([
   "all",
   "title",

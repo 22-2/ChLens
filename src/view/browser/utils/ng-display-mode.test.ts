@@ -4,7 +4,9 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   DEFAULT_NG_DISPLAY_MODE,
   NG_DISPLAY_MODE_OPTIONS,
+  NG_DISPLAY_MODES,
   normalizeNgDisplayMode,
+  resolveNgDisplayMode,
 } from "./ng-display-mode";
 
 describe("NGレス表示方式", () => {
@@ -28,5 +30,19 @@ describe("NGレス表示方式", () => {
     expect(normalizeNgDisplayMode(undefined)).toBe(DEFAULT_NG_DISPLAY_MODE);
     expect(normalizeNgDisplayMode(null)).toBe(DEFAULT_NG_DISPLAY_MODE);
     expect(normalizeNgDisplayMode("unexpected")).toBe(DEFAULT_NG_DISPLAY_MODE);
+  });
+});
+
+describe("レスごとのNG表示方式", () => {
+  it("collapseルールに一致したレスは全体設定にかかわらず折りたたむ", () => {
+    for (const mode of NG_DISPLAY_MODES) {
+      expect(resolveNgDisplayMode(mode, { action: "collapse" })).toBe("soft-ng");
+    }
+  });
+
+  it("hideルール・自動NG・NGなしは全体設定に従う", () => {
+    expect(resolveNgDisplayMode("hard-ng", { action: "hide" })).toBe("hard-ng");
+    expect(resolveNgDisplayMode("highlight-ng", {})).toBe("highlight-ng");
+    expect(resolveNgDisplayMode("soft-ng", null)).toBe("soft-ng");
   });
 });

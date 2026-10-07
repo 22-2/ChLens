@@ -36,11 +36,17 @@ export interface RuleTargetDefinition extends RuleCatalogEntry<RuleTarget> {
 export const RULE_ACTION_CATALOG: readonly RuleCatalogEntry<RuleAction>[] = [
   {
     name: "hide",
-    // NGレスの表示方式名（hard-ng/soft-ng）は設定画面で目にする名称のため、
-    // 動作欄へ書かれてもNG判定全体を止めないよう別名として受け付ける。
-    // 表示の出し分けは全体の表示方式設定に従うため、ここではhideへ正規化する。
-    aliases: ["hard-ng", "soft-ng"],
-    description: "一致した対象を非表示にします。",
+    // 設定画面の表示方式名hard-ngを別名として受け付ける。
+    // hideの消し方は全体の「NGレスの表示方式」設定に従う（既定は完全非表示）。
+    aliases: ["hard-ng"],
+    description: "一致した対象を非表示にします。消し方は表示方式の設定に従います。",
+  },
+  {
+    name: "collapse",
+    // soft-ngは「クリックで表示」の表示方式名なので、同じ意味を持つcollapseの別名にする。
+    aliases: ["soft-ng"],
+    description:
+      "一致したレスを折りたたみ、クリックで表示できるようにします。表示方式の設定より優先します。",
   },
   {
     name: "highlight",
@@ -201,5 +207,7 @@ export function getRuleTargetDefinition(target: RuleTarget): RuleTargetDefinitio
 
 /** 現在UIまで実装済みの組み合わせ。warnは将来拡張用の予約語として保持する。 */
 export function isRuleCombinationSupported(action: RuleAction, target: RuleTarget): boolean {
+  // collapseはレス表示の折りたたみなので、レスで判定できる対象だけに限る。
+  if (action === "collapse") return getRuleTargetDefinition(target).allowedOnThread;
   return action === "hide" || action === "demote" || (action === "highlight" && target === "title");
 }

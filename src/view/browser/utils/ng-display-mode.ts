@@ -31,5 +31,17 @@ export function normalizeNgDisplayMode(value: string | null | undefined): NgDisp
   }
 }
 
+/**
+ * レスごとの実効的なNG表示方式を求める。
+ * collapseルールに一致したレスは、全体設定にかかわらずクリックで表示できる折りたたみにする。
+ * それ以外（hideルール・自動NG・連鎖NG）は全体設定に従う。
+ */
+export function resolveNgDisplayMode(
+  globalMode: NgDisplayMode,
+  ng: { readonly action?: string } | null | undefined,
+): NgDisplayMode {
+  return ng?.action === "collapse" ? "soft-ng" : globalMode;
+}
+
 // 変更理由: NG表示方式の実効既定値も、保存設定の既定値を正規化して一元管理する。
 export const DEFAULT_NG_DISPLAY_MODE = normalizeNgDisplayMode(DEFAULT_CONFIG.display_ng);

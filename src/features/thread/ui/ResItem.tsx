@@ -15,6 +15,7 @@ import type { ThreadSearchTarget } from "src/view/browser/types";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
+import { resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import { decodeResponseHtml } from "src/view/browser/utils/response-format";
 import {
@@ -76,7 +77,8 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
   }) => {
     const { window: viewWindow } = useViewSurface();
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
-    const ngDisplayMode = useNgDisplayMode();
+    // collapseルールに一致したレスは全体設定より優先して折りたたむため、レスごとに解決する。
+    const ngDisplayMode = resolveNgDisplayMode(useNgDisplayMode(), res.ng);
     // res.ng はサービス層がNGワード照合した結果を格納するフィールド。
     // 古いビューは class[] の "ng" 要素で判定していたが、new viewでは res.ng を優先チェックする。
     // 一時解除中はデータ自体を消さずに表示判定だけをオフにして、復帰時の再評価コストを避ける。

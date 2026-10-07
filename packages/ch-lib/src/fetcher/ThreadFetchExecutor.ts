@@ -88,7 +88,11 @@ async function tryFallback<TUrl, TThread extends ThreadLike<unknown>>(
       }
     } catch (error) {
       // ミラー障害の内容を残しつつ、次の候補があれば続けて確認できるようにする。
-      console.error("[ThreadFetchExecutor] 過去ログ候補の取得に失敗しました:", fallback.path, error);
+      console.error(
+        "[ThreadFetchExecutor] 過去ログ候補の取得に失敗しました:",
+        fallback.path,
+        error,
+      );
     }
   }
   return null;

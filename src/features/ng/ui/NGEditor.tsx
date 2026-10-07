@@ -102,9 +102,10 @@ hide reply-count >= 5:
 
 hide anchor-count >= 3:
 
-// hard-ng・soft-ngはhideの別名です。
-// 消し方（完全非表示・クリックで表示）は「NGレスの表示方式」設定に従います
-hard-ng body contains:
+// hideの消し方は「NGレスの表示方式」設定に従います
+// collapseは設定にかかわらず折りたたみ、クリックで表示できます
+// （hard-ngはhide、soft-ngはcollapseの別名です）
+collapse body contains:
   宣伝
 
 // ルールを一時的に止めるときはdisabled=trueを付けます

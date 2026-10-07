@@ -42,7 +42,7 @@ export function deriveThreadData(options: ThreadDerivedDataOptions): ThreadDeriv
   // anchor--ng-targetのジャンプ先を維持する。hard-ngの除外は索引側だけへ限定する。
   const visibleResponses = responses;
   const indexes = buildIndexes(responses, {
-    excludeHardNgResponses: ngDisplayMode === "hard-ng" && !isNgTemporarilyDisabled,
+    hardNgExclusionMode: isNgTemporarilyDisabled ? undefined : ngDisplayMode,
   });
 
   let filteredResponses = visibleResponses;

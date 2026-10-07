@@ -1,5 +1,6 @@
 import { buildReplyIndexes } from "src/core/reply-index";
 import type { IRes } from "src/service-container";
+import { type NgDisplayMode, resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 
 // --- インデックス構築 ---
 interface ThreadIndexes {
@@ -9,18 +10,24 @@ interface ThreadIndexes {
   resMap: Map<number, IRes>;
 }
 interface BuildIndexesOptions {
-  excludeHardNgResponses?: boolean;
+  /** 指定時、この全体表示方式でhard-ngとなるNGレスを返信索引から除外する。 */
+  hardNgExclusionMode?: NgDisplayMode;
 }
 
 export function buildIndexes(
   responses: IRes[],
-  { excludeHardNgResponses = false }: BuildIndexesOptions = {},
+  { hardNgExclusionMode }: BuildIndexesOptions = {},
 ): ThreadIndexes {
   const idIndex = new Map<string, Set<number>>();
   const resMap = new Map<number, IRes>();
 
-  const replyIndexedResponses = excludeHardNgResponses
-    ? responses.filter((res) => res.ng == null && !res.class?.includes("ng"))
+  // collapseルールのレスは折りたたみ表示で残るため、レスごとの表示方式でhard-ngだけを除外する。
+  const replyIndexedResponses = hardNgExclusionMode
+    ? responses.filter(
+        (res) =>
+          (res.ng == null && !res.class?.includes("ng")) ||
+          resolveNgDisplayMode(hardNgExclusionMode, res.ng) !== "hard-ng",
+      )
     : responses;
   // hard-ngのレスは返信ツリーと返信数からも除外し、非表示レスがUIの返信情報へ残らないようにする。
   const replyIndexes = buildReplyIndexes(replyIndexedResponses);
