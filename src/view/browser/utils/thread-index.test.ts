@@ -20,12 +20,25 @@ describe("スレッド索引", () => {
         createResponse(2, "&gt;&gt;1", { type: "Body" }),
         createResponse(3, "&gt;&gt;1"),
       ],
-      { excludeHardNgResponses: true },
+      { hardNgExclusionMode: "hard-ng" },
     );
 
     expect(indexes.repIndex.get(1)).toEqual(new Set([3]));
     expect(indexes.ancIndex.has(2)).toBe(false);
     expect(indexes.ancIndex.get(3)).toEqual(new Set([1]));
+  });
+
+  it("collapseルールのレスは全体がhard-ngでも返信索引に残す", () => {
+    // collapseは折りたたみとして画面に残るため、返信数・返信ツリーからも消さない。
+    const indexes = buildIndexes(
+      [
+        createResponse(1, "本文"),
+        createResponse(2, "&gt;&gt;1", { type: "Body", action: "collapse" }),
+      ],
+      { hardNgExclusionMode: "hard-ng" },
+    );
+
+    expect(indexes.repIndex.get(1)).toEqual(new Set([2]));
   });
 
   it("通常の索引ではNGレスも返信情報へ含める", () => {

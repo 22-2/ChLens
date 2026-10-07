@@ -13,6 +13,7 @@ import type { IRes } from "src/service-container";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
+import { resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import { decodeResponseHtml } from "src/view/browser/utils/response-format";
 
@@ -45,7 +46,8 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
   }) => {
     const { window: viewWindow } = useViewSurface();
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
-    const ngDisplayMode = useNgDisplayMode();
+    // ResItemと同じく、collapseルールの折りたたみを全体設定より優先する。
+    const ngDisplayMode = resolveNgDisplayMode(useNgDisplayMode(), res.ng);
     const decoded = useMemo(() => decodeResponseHtml(res, messageProtocol), [messageProtocol, res]);
     // ポップアップも自動更新中の親再描画に巻き込まれるため、同じHTMLの再代入を避けて
     // 選択中のText nodeを維持する。

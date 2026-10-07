@@ -91,7 +91,8 @@ hide anchor-count >= 10:`;
     expect(result.rules).toEqual([]);
     expect(result.diagnostics[0]).toMatchObject({
       line: 1,
-      message: "未対応の動作です: remove（利用可能な動作: hide、highlight、demote、warn）",
+      message:
+        "未対応の動作です: remove（利用可能な動作: hide、collapse、highlight、demote、warn）",
     });
   });
 
@@ -100,7 +101,7 @@ hide anchor-count >= 10:`;
       action: "demote",
     });
     expect(parseRuleDsl("mute title contains:\n  quiet").diagnostics[0]).toMatchObject({
-      message: "未対応の動作です: mute（利用可能な動作: hide、highlight、demote、warn）",
+      message: "未対応の動作です: mute（利用可能な動作: hide、collapse、highlight、demote、warn）",
     });
   });
 

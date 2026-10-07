@@ -269,3 +269,28 @@ describe("rule engine", () => {
     ).toBe("HighlightTitle");
   });
 });
+
+describe("collapseルール", () => {
+  it("レスの判定ではcollapseルールを評価し、スレ一覧では評価しない", () => {
+    const rules: Rule[] = [
+      {
+        action: "collapse",
+        target: "all",
+        enabled: true,
+        matchers: [{ kind: "contains", value: "宣伝" }],
+      },
+    ];
+
+    expect(
+      evaluateResponseRules(rules, {
+        all: "宣伝です",
+        title: "",
+        body: "宣伝です",
+        name: "",
+        mail: "",
+        url: "",
+      })?.rule.action,
+    ).toBe("collapse");
+    expect(evaluateBoardRules(rules, { title: "宣伝です", url: "", resCount: 1 })).toBeNull();
+  });
+});

@@ -107,42 +107,36 @@ export const RULE_DSL_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate
       const isComparison =
         target.comparison === "greater-than" || target.comparison === "greater-than-or-equal";
       const matcherKinds = isComparison ? ["comparison"] : ["contains", "regex"];
-      return matcherKinds.map(
-        (matcherKind): RuleDslCompletionCandidate => ({
-          category: "header",
-          label:
-            matcherKind === "comparison"
-              ? `${action.name} ${target.name} >=`
-              : `${action.name} ${target.name} ${matcherKind}`,
-          detail: `${action.description} 対象: ${target.description}`,
-          insertText:
-            matcherKind === "comparison"
-              ? `${action.name} ${target.name} ${target.comparison === "greater-than" ? ">" : ">="} \${1:10}:`
-              : matcherKind === "regex"
-                ? `${action.name} ${target.name} regex:\n  "\${1:パターン}"`
-                : `${action.name} ${target.name} contains:\n  \${1:キーワード}`,
-          isSnippet: true,
-        }),
-      );
+      return matcherKinds.map((matcherKind): RuleDslCompletionCandidate => ({
+        category: "header",
+        label:
+          matcherKind === "comparison"
+            ? `${action.name} ${target.name} >=`
+            : `${action.name} ${target.name} ${matcherKind}`,
+        detail: `${action.description} 対象: ${target.description}`,
+        insertText:
+          matcherKind === "comparison"
+            ? `${action.name} ${target.name} ${target.comparison === "greater-than" ? ">" : ">="} \${1:10}:`
+            : matcherKind === "regex"
+              ? `${action.name} ${target.name} regex:\n  "\${1:パターン}"`
+              : `${action.name} ${target.name} contains:\n  \${1:キーワード}`,
+        isSnippet: true,
+      }));
     }),
   ),
   ...RULE_DSL_AND_COMPLETION_CANDIDATES,
-  ...RULE_OPTION_CATALOG.map(
-    (option): RuleDslCompletionCandidate => ({
-      category: "option",
-      label: option.name,
-      detail: option.description,
-      insertText: `${option.name}=`,
-    }),
-  ),
-  ...NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map(
-    (preset): RuleDslCompletionCandidate => ({
-      category: "color",
-      label: preset.name,
-      detail: `${preset.hex} / ${preset.description}`,
-      insertText: preset.name,
-    }),
-  ),
+  ...RULE_OPTION_CATALOG.map((option): RuleDslCompletionCandidate => ({
+    category: "option",
+    label: option.name,
+    detail: option.description,
+    insertText: `${option.name}=`,
+  })),
+  ...NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map((preset): RuleDslCompletionCandidate => ({
+    category: "color",
+    label: preset.name,
+    detail: `${preset.hex} / ${preset.description}`,
+    insertText: preset.name,
+  })),
   {
     category: "color",
     label: "#rrggbb",
