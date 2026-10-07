@@ -70,7 +70,7 @@
     "idb": "^8.0.4",
     "jszip": "^3.10.2",
     "lucide-react": "^1.52.0",
-    "monaco-editor": "^0.56.0",
+    "monaco-editor": "^0.57.0",
     "normalize-wheel": "^1.0.1",
     "playwright": "^1.63.0",
     "radix-ui": "^1.7.0",
