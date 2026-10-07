@@ -27,7 +27,7 @@ describe("NG shared evaluator characterization", () => {
 hide body regex:
   "(imgur\\.com/.+?){2}"`;
     const { evaluateBoardRules, evaluateResponseRules, parseRuleDsl } =
-      await import("@chlen/ch-lib");
+      await import("@chlen/chlib");
     const { apply, invalidateCache, isNGBoard, isNGThread } = await import("src/core/ng/NG");
     invalidateCache();
     apply(source);

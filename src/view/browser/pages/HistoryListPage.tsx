@@ -1,4 +1,4 @@
-import { normalizeReadStateUrl } from "packages/ch-lib/src/index";
+import { normalizeReadStateUrl } from "packages/chlib/src/index";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { platform } from "src/app";
 import { tabActions } from "src/features/tabs/browser/tab-store-actions";

@@ -1,4 +1,4 @@
-import { ChURL } from "packages/ch-lib/src/index";
+import { ChURL } from "packages/chlib/src/index";
 import type { Dispatch, MouseEvent } from "react";
 import { useCallback } from "react";
 import { platform } from "src/app/platform/index";

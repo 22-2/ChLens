@@ -33,7 +33,7 @@ export function parseLastModifiedHeader(value: string | undefined): number | und
  * bbsmenuのレスポンスとキャッシュから、使う本文を決める。
  *
  * 変更理由: 200/304/通信失敗の判定はHTTPクライアントや保存先に依存しない掲示板仕様なので、
- * スレッド取得のThreadResponseResolverと同様にch-libへ置き、アプリ側はI/Oだけを担う。
+ * スレッド取得のThreadResponseResolverと同様にchlibへ置き、アプリ側はI/Oだけを担う。
  * 使える本文がない場合は、呼び出し元が利用者へ通知できるよう例外にする。
  */
 export function resolveBBSMenuResponse({

@@ -272,7 +272,7 @@ export default defineConfig(({ mode }) => {
     fmt: {
       // ドキュメントは文章構成を優先し、コード用フォーマッターで意図せず書き換えない。
       // Peggyが生成するDSLパーサーは生成物なので整形しない（generate:dslで再生成する）。
-      ignorePatterns: ["docs/**", "**/*.md", "packages/ch-lib/src/rules/dsl-grammar.{js,d.ts}"],
+      ignorePatterns: ["docs/**", "**/*.md", "packages/chlib/src/rules/dsl-grammar.{js,d.ts}"],
     },
     lint: {
       plugins: ["oxc", "typescript", "unicorn", "react", "import"],
@@ -294,7 +294,7 @@ export default defineConfig(({ mode }) => {
         "playwright-report/**",
         "test-results/**",
         "src-tauri/target/**",
-        "packages/ch-lib/src/rules/dsl-grammar.{js,d.ts}",
+        "packages/chlib/src/rules/dsl-grammar.{js,d.ts}",
       ],
       rules: {
         "vite-plus/prefer-vite-plus-imports": "error",
@@ -327,7 +327,7 @@ export default defineConfig(({ mode }) => {
         // NodeのBufferを参照するため、WebViewでも同じ実装を解決できるようにする。
         buffer: path.resolve(__dirname, "./node_modules/buffer/index.js"),
         // Chlens側もLive側と同じ共有rules sourceを解決し、評価器の二重実装を防ぐ。
-        "@chlen/ch-lib": path.resolve(__dirname, "./packages/ch-lib/src/index.ts"),
+        "@chlen/chlib": path.resolve(__dirname, "./packages/chlib/src/index.ts"),
         "webextension-polyfill":
           platform === "tauri"
             ? path.resolve(__dirname, "./src/browser-shim.js")

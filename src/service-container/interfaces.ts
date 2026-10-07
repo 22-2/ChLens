@@ -1,4 +1,4 @@
-import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
+import type { ParsedBBSMenu } from "packages/chlib/src/index";
 export interface IConfig {
   // 設定ストアは文字列ベース (app.config.get は string | null を返す)。
   // unknown だと利用側で JSON.parse 等に渡せず型エラーになるため実態に合わせる。

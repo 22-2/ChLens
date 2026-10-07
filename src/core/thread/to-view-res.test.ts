@@ -1,5 +1,5 @@
 // @vitest-environment node
-import type { IRes as CanonicalRes } from "packages/ch-lib/src/index";
+import type { IRes as CanonicalRes } from "packages/chlib/src/index";
 import { describe, expect, it } from "vite-plus/test";
 
 import { toViewRes } from "./to-view-res";

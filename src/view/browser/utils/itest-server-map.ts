@@ -1,9 +1,9 @@
-import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
-import { createItestServerMap } from "packages/ch-lib/src/index";
+import type { ParsedBBSMenu } from "packages/chlib/src/index";
+import { createItestServerMap } from "packages/chlib/src/index";
 
 const STORAGE_KEY = "itestServerMap";
 
-// URLの解釈と対応表の組み立てはch-libへ委譲し、画面側では保存した結果だけを扱う。
+// URLの解釈と対応表の組み立てはchlibへ委譲し、画面側では保存した結果だけを扱う。
 let serverMap = new Map<string, string>();
 
 function loadPersistedMap(): void {

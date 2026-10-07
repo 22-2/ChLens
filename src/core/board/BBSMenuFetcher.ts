@@ -3,7 +3,7 @@ import {
   buildBBSMenuFetchPolicy,
   type ParsedBBSMenu,
   resolveBBSMenuResponse,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import { createLogger } from "src/app/logger";
 import { Request } from "src/core/network/HTTP";
 import { ICacheItem } from "src/service-container/interfaces";
@@ -92,7 +92,7 @@ export class BBSMenuFetcher {
    * キャッシュが存在する場合は If-Modified-Since / If-None-Match を付与する。
    */
   private async sendRequest(url: string, cache: ICacheItem | undefined): Promise<HttpResponse> {
-    // 変更理由: 文字コードと条件付きGETはbbsmenuの取得仕様としてch-libで決め、
+    // 変更理由: 文字コードと条件付きGETはbbsmenuの取得仕様としてchlibで決め、
     // この層はアプリのHTTPクライアントへ要求を渡すことに専念する。
     const policy = buildBBSMenuFetchPolicy({
       hasCache: cache != null,
@@ -110,7 +110,7 @@ export class BBSMenuFetcher {
 
   /**
    * レスポンス（または undefined）とキャッシュからメニューを解決する。
-   * 200/304/キャッシュ利用の判定はch-libのresolveBBSMenuResponseに任せ、
+   * 200/304/キャッシュ利用の判定はchlibのresolveBBSMenuResponseに任せ、
    * ここではキャッシュの書き戻しと解析だけを行う。
    */
   private async resolveMenu(

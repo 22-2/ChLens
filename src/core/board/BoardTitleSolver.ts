@@ -3,7 +3,7 @@ import {
   createBoardTitleRequest,
   formatBoardTitleForUrl,
   resolveBoardTitle,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import { defer } from "src/app/Defer";
 import { getBoardUrlKey } from "src/core/board/BoardUrlNormalizer";
 import { Request } from "src/core/network/HTTP";

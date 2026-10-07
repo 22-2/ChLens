@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
-import { ChURL, normalizeReadStateUrl } from "packages/ch-lib/src/index";
+import { ChURL, normalizeReadStateUrl } from "packages/chlib/src/index";
 import { getTauriDrizzleContext } from "src/app/platform/tauri/drizzle/db";
 import {
   bbsMenuCacheTable,

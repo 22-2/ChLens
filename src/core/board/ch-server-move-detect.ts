@@ -3,7 +3,7 @@ import {
   extractBoardServerInfo,
   getBoardNetwork,
   resolveBoardMoveUrl,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import { Request } from "src/core/network/HTTP";
 import { container } from "src/service-container/index";
 

@@ -2,7 +2,7 @@ import {
   type BoardThread as CanonicalBoardThread,
   getReadStateBoardUrl,
   getReadStateThreadUrl,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import Board from "src/core/board/Board.js";
 import { container } from "src/service-container/index";
 import type { IBoardResult, IReadState, IThread } from "src/service-container/interfaces";
@@ -49,7 +49,7 @@ const BoardService = {
 
       return {
         // BoardParser's canonical subject fields are projected into the legacy service item
-        // explicitly; this keeps service-only state from leaking back into ch-lib.
+        // explicitly; this keeps service-only state from leaking back into chlib.
         // 既読照合キーは表示URLへ流用せず、一覧取得元のHTTP/HTTPSを投稿まで引き継ぐ。
         url: thread.url,
         title: thread.title,

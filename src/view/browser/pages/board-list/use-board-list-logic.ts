@@ -1,4 +1,4 @@
-import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
+import type { ParsedBBSMenu } from "packages/chlib/src/index";
 import { useCallback, useEffect, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {

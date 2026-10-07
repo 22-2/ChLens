@@ -1,12 +1,12 @@
 // @vitest-environment node
-import { ChURL } from "packages/ch-lib/src/index";
+import { ChURL } from "packages/chlib/src/index";
 import {
   getThreadXhrInfo,
   isHtmlThread,
   parseJbbsThread,
   parseNetThread,
   parseThread,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("ThreadParser", () => {

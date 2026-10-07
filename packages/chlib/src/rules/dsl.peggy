@@ -4,7 +4,7 @@
 // エラーで解析全体を止めないため、どの行も最終的にUnknownLineへ必ず一致させる。
 // 構文上の誤りは例外ではなく行ノードとして返し、呼び出し側で複数の診断へ変換する。
 //
-// 生成物: pnpm --filter @chlen/ch-lib run generate:dsl
+// 生成物: pnpm --filter @chlen/chlib run generate:dsl
 
 Document
   = first:Line rest:("\n" @Line)* { return [first, ...rest]; }

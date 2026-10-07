@@ -1,5 +1,5 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { fetchHttpsFirst } from "packages/ch-lib/src/fetcher/https-first";
+import { fetchHttpsFirst } from "packages/chlib/src/fetcher/https-first";
 import {
   type BinaryHttpResponse,
   type HttpClient,

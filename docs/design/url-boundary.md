@@ -1,8 +1,8 @@
 # 掲示板URLの責務境界
 
-掲示板URLの形式、ホスト分類、正規化、意味情報の抽出とURL生成は `packages/ch-lib` に集約する。`src/` は取得結果を画面や保存形式へ渡すが、`read.cgi` などのパス構造や掲示板ホストを直接解析しない。
+掲示板URLの形式、ホスト分類、正規化、意味情報の抽出とURL生成は `packages/chlib` に集約する。`src/` は取得結果を画面や保存形式へ渡すが、`read.cgi` などのパス構造や掲示板ホストを直接解析しない。
 
-## ch-libへ置く処理
+## chlibへ置く処理
 
 - 5ch互換、したらば、まちBBSなどのホスト・パス形式の分類
 - 標準、短縮、dat、itest、ULA、過去ログ形式の解析と正規URLへの変換
@@ -20,7 +20,7 @@
 - localStorage、IndexedDB、SQLiteなどの保存方式と、保存するタイミング
 - host permissionやcontent scriptの実行範囲など、ブラウザ拡張の権限設定
 
-保存先の都合で必要なキー変換も、形式を `src/` で解釈せずch-libの意味APIを使う。たとえば既読DBのホスト横断キーは `normalizeReadStateUrl`、照合用のboard/thread identityは `resolveBoardUrl` の `boardKey` / `threadKey` を使う。これらは保存・比較キーであり、利用者に見せるURLではない。
+保存先の都合で必要なキー変換も、形式を `src/` で解釈せずchlibの意味APIを使う。たとえば既読DBのホスト横断キーは `normalizeReadStateUrl`、照合用のboard/thread identityは `resolveBoardUrl` の `boardKey` / `threadKey` を使う。これらは保存・比較キーであり、利用者に見せるURLではない。
 
 ## URLと識別値
 
@@ -30,6 +30,6 @@
 
 ## 型の一本化と依存ルール
 
-掲示板URLを扱うクラスは `packages/ch-lib` の `ChURL` に一本化する。`src/core/URL.ts` は短縮URL展開などのアプリ処理と、既存の `window.app.URL.URL` 公開契約を保つための `ChURL` の別名だけを持ち、独自のURLクラスや掲示板解析を実装しない。新しい呼び出し元は `ChURL` を直接利用する。
+掲示板URLを扱うクラスは `packages/chlib` の `ChURL` に一本化する。`src/core/URL.ts` は短縮URL展開などのアプリ処理と、既存の `window.app.URL.URL` 公開契約を保つための `ChURL` の別名だけを持ち、独自のURLクラスや掲示板解析を実装しない。新しい呼び出し元は `ChURL` を直接利用する。
 
-旧来の呼び出し元が使う `fix`、`setProtocol`、`getResNumber` などのヘルパーは、保存キーや履歴との互換性を確認したうえで `ChURL` とch-libの意味APIへ委譲する。`src/` から `PATTERNS`、`ROUTE_PATTERNS`、`HOSTNAME`、`TSLD` を直接importしない。掲示板パスの正規表現、segment分解、`read.cgi`等のURL組み立ても追加しない。該当処理が必要ならch-libの意味APIを拡張する。
+旧来の呼び出し元が使う `fix`、`setProtocol`、`getResNumber` などのヘルパーは、保存キーや履歴との互換性を確認したうえで `ChURL` とchlibの意味APIへ委譲する。`src/` から `PATTERNS`、`ROUTE_PATTERNS`、`HOSTNAME`、`TSLD` を直接importしない。掲示板パスの正規表現、segment分解、`read.cgi`等のURL組み立ても追加しない。該当処理が必要ならchlibの意味APIを拡張する。

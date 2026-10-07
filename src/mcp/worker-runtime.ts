@@ -10,7 +10,7 @@ import {
   resolveBoardUrl,
   type ThreadResponse,
   toCanonicalThread,
-} from "@chlen/ch-lib";
+} from "@chlen/chlib";
 import browser from "webextension-polyfill";
 
 import type { HttpResponse } from "../app/platform/types";

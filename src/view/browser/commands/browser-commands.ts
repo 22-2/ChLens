@@ -23,7 +23,7 @@ import {
   Star,
   X,
 } from "lucide-react";
-import { ChURL } from "packages/ch-lib/src/index";
+import { ChURL } from "packages/chlib/src/index";
 import type { Dispatch } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import type { ViewSurface } from "src/features/auxiliary-window/browser/use-view-surface";

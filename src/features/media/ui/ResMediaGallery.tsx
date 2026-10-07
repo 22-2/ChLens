@@ -1,4 +1,4 @@
-import { parseMessage } from "@chlen/ch-lib";
+import { parseMessage } from "@chlen/chlib";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { imgurVideoResolver, isImgurVideoResolutionCandidate } from "../application/imgur-album";

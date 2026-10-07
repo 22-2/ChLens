@@ -2,7 +2,7 @@ import {
   ReplaceStrParser,
   type ReplaceStrRule,
   type ReplaceStrTarget,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import { container } from "src/service-container/index";
 
 let _replaceTable: ReplaceStrRule[] | null = null;

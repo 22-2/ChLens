@@ -1,4 +1,4 @@
-import { ChURL, createSikiGuardRequestUrl } from "packages/ch-lib/src/index";
+import { ChURL, createSikiGuardRequestUrl } from "packages/chlib/src/index";
 import { Request } from "src/core/network/HTTP.ts";
 import Cache from "src/core/storage/Cache.js";
 

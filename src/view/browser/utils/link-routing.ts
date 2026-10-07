@@ -1,7 +1,7 @@
 import {
   getBoardUrlFromThreadUrl as getChLibBoardUrlFromThreadUrl,
   resolveBoardUrl as resolveChLibBoardUrl,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import type { MouseEvent } from "react";
 import { resolveItestServerHostname } from "src/view/browser/utils/itest-server-map";
 
@@ -73,7 +73,7 @@ export function resolveBoardUrlForBrowser(
   mode: "strict" | "browse" | "guess" = "browse",
 ) {
   // 変更理由: 掲示板ごとのホスト・URL形式・正規化規則を画面側へ複製せず、
-  // 入力経路ごとの許容方針だけを指定して ch-lib の意味単位APIへ渡す。
+  // 入力経路ごとの許容方針だけを指定して chlib の意味単位APIへ渡す。
   return resolveChLibBoardUrl(absoluteUrl, {
     mode,
     resolveServerHostname: resolveItestServerHostname,
@@ -85,7 +85,7 @@ function resolvePage(absoluteUrl: string, mode: "strict" | "browse" | "guess") {
 }
 
 export function getBoardUrlFromThreadUrl(threadUrl: string): string {
-  // 変更理由: 既存の入力スキームを保ちつつ、必要なサーバー対応表も注入して板URL生成をch-libに委譲する。
+  // 変更理由: 既存の入力スキームを保ちつつ、必要なサーバー対応表も注入して板URL生成をchlibに委譲する。
   return getChLibBoardUrlFromThreadUrl(threadUrl, {
     resolveServerHostname: resolveItestServerHostname,
   });

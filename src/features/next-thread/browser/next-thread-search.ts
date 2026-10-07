@@ -376,7 +376,7 @@ function isMarkedThread(title: string): boolean {
 }
 
 function isSameBoard(leftUrl: string, rightUrl: string): boolean {
-  // 変更理由: 板名とホスト名の組み合わせはURL形式ごとに異なるため、同一板判定はch-libのキーを使う。
+  // 変更理由: 板名とホスト名の組み合わせはURL形式ごとに異なるため、同一板判定はchlibのキーを使う。
   const left = resolveBoardUrlForBrowser(leftUrl);
   const right = resolveBoardUrlForBrowser(rightUrl);
   if (left?.type !== "thread" || right?.type !== "thread") return false;

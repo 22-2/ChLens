@@ -3,7 +3,7 @@ import {
   RULE_DSL_COMPLETION_CANDIDATES,
   RULE_DSL_LANGUAGE_DEFINITION,
   type RuleDslCompletionCandidate,
-} from "@chlen/ch-lib";
+} from "@chlen/chlib";
 import type * as Monaco from "monaco-editor";
 
 type MonacoNamespace = typeof Monaco;

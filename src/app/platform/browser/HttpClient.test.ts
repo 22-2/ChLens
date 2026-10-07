@@ -7,8 +7,8 @@ vi.mock("webextension-polyfill", () => ({
   default: { cookies: cookieApi },
 }));
 
-vi.mock("packages/ch-lib/src/url/hosts", async (importOriginal) => {
-  const original = await importOriginal<typeof import("packages/ch-lib/src/url/hosts")>();
+vi.mock("packages/chlib/src/url/hosts", async (importOriginal) => {
+  const original = await importOriginal<typeof import("packages/chlib/src/url/hosts")>();
   // 実在の掲示板へ依存せず、エッヂ固有の投稿経路を予約済みドメインで検証する。
   return {
     ...original,
@@ -18,8 +18,8 @@ vi.mock("packages/ch-lib/src/url/hosts", async (importOriginal) => {
   };
 });
 
-import { resolveBoardUrl } from "packages/ch-lib/src/url/resolveBoardUrl";
-import { getWriteFormData } from "packages/ch-lib/src/url/write";
+import { resolveBoardUrl } from "packages/chlib/src/url/resolveBoardUrl";
+import { getWriteFormData } from "packages/chlib/src/url/write";
 
 import { BrowserHttpClient } from "./HttpClient";
 

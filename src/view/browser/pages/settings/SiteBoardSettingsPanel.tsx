@@ -1,5 +1,5 @@
 import { MoreVertical } from "lucide-react";
-import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
+import type { ParsedBBSMenu } from "packages/chlib/src/index";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { platformCookieManager } from "src/app/platform/CookieManager";

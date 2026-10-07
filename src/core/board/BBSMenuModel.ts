@@ -1,4 +1,4 @@
-import { BBSMenuHtmlParser, type ParsedBBSMenu } from "packages/ch-lib/src/index";
+import { BBSMenuHtmlParser, type ParsedBBSMenu } from "packages/chlib/src/index";
 import Callbacks from "src/app/Callbacks";
 import { createLogger } from "src/app/logger";
 import { BBSMenuFetcher } from "src/core/board/BBSMenuFetcher";
@@ -21,7 +21,7 @@ export type BBSMenuData = IBBSMenuResult;
  * BBSMenu のデータモデル（オーケストレーター）
  *
  * 板一覧の取得フローを調整する責務のみを持つ。
- * 形式解析・TLDフィルタリングは ch-lib の共有パーサー、
+ * 形式解析・TLDフィルタリングは chlib の共有パーサー、
  * HTTP通信・キャッシュ管理は BBSMenuFetcher、
  * 未登録板の収集は OtherBoardsCollector が担当する。
  */

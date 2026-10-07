@@ -1,5 +1,5 @@
-import { type ReplaceStrTarget, toCanonicalThread } from "packages/ch-lib/src/index";
-import type { ThreadRes } from "packages/ch-lib/src/parser/ThreadParser";
+import { type ReplaceStrTarget, toCanonicalThread } from "packages/chlib/src/index";
+import type { ThreadRes } from "packages/chlib/src/parser/ThreadParser";
 import { evaluateThreadNg } from "src/core/ng/ThreadNgEvaluator";
 import { replace as replaceStrTxt } from "src/core/thread/ReplaceStrTxt";
 import Thread from "src/core/thread/Thread";

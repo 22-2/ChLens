@@ -1,5 +1,5 @@
 import { Star } from "lucide-react";
-import { ChURL } from "packages/ch-lib/src/url/ChURL";
+import { ChURL } from "packages/chlib/src/url/ChURL";
 import React from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import type { IThread } from "src/service-container/interfaces";

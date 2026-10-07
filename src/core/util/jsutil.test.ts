@@ -1,4 +1,4 @@
-import { ChURL } from "packages/ch-lib/src/url/ChURL";
+import { ChURL } from "packages/chlib/src/url/ChURL";
 import { Anchor } from "src/core/thread/anchor";
 import { stringToDate } from "src/core/util/date-convert";
 import { normalize } from "src/core/util/string-normalize";

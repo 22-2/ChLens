@@ -1,4 +1,4 @@
-import { ChURL, type ParsedBBSMenu } from "packages/ch-lib/src/index";
+import { ChURL, type ParsedBBSMenu } from "packages/chlib/src/index";
 import { getBoardUrlKey, normalizeBoardUrl } from "src/core/board/BoardUrlNormalizer";
 
 export interface ReadStateEntry {

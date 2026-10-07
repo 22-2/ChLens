@@ -1,7 +1,7 @@
 import {
   isWriteResultPageUrl as isChLibWriteResultPageUrl,
   resolveWriteAuthCodeUrl as resolveChLibWriteAuthCodeUrl,
-} from "packages/ch-lib/src/index";
+} from "packages/chlib/src/index";
 import type { WriteConfirmationPage } from "src/view/browser/utils/write-confirmation";
 
 export type WriteResultMessage =
@@ -80,7 +80,7 @@ export function classifyWriteResult(page: WriteResultPageData): WriteResultMessa
 
   const authCode = text.match(WRITE_AUTH_CODE_PATTERN)?.[1];
   if (authCode != null && page.errorCode === "E-Unauthenticated") {
-    // 変更理由: 書き込みフォームのURL形式と安全な認証先判定は掲示板仕様としてch-libへ委譲する。
+    // 変更理由: 書き込みフォームのURL形式と安全な認証先判定は掲示板仕様としてchlibへ委譲する。
     const authCodeUrl = resolveChLibWriteAuthCodeUrl(text, page.url);
     if (authCodeUrl != null) {
       return { type: "auth-code", code: authCode, url: authCodeUrl };

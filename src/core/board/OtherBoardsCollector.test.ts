@@ -1,4 +1,4 @@
-import type { ParsedBBSMenu } from "packages/ch-lib/src/index";
+import type { ParsedBBSMenu } from "packages/chlib/src/index";
 import { IOtherBoardsDeps, OtherBoardsCollector } from "src/core/board/OtherBoardsCollector";
 import { describe, expect, it, vi } from "vite-plus/test";
 

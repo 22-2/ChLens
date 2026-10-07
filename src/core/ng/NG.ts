@@ -7,7 +7,7 @@ import {
   type RuleMatchResult,
   type RuleRepository,
   validateRuleDsl,
-} from "@chlen/ch-lib";
+} from "@chlen/chlib";
 import { createLogger } from "src/app/logger";
 import { countReplyAnchorTargets } from "src/core/thread/reply-index";
 import type { INGResult } from "src/service-container/index";

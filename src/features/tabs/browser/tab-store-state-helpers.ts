@@ -137,7 +137,7 @@ export function pushPageToTabHistory(tab: Tab, page: Page): Tab {
 }
 
 export function deriveBoardUrlFromThreadUrl(threadUrl: string): string | null {
-  // 変更理由: 履歴スタックの親板は、形式を解釈せずch-libの意味解析結果から得る。
+  // 変更理由: 履歴スタックの親板は、形式を解釈せずchlibの意味解析結果から得る。
   const resolved = resolveBoardUrlForBrowser(threadUrl);
   return resolved?.type === "thread" ? resolved.boardUrl : null;
 }
