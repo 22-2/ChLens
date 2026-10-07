@@ -78,7 +78,18 @@ describe("useWriteRequest", () => {
     expect(mocks.openWriteWindow).not.toHaveBeenCalled();
   });
 
-  it("別窓では共有書き込み窓へ下書きを渡して開く", () => {
+  it("別窓でも下部パネルがあれば、そのパネルへ要求を渡す", () => {
+    mocks.viewWindow = {} as Window;
+
+    render(<Probe />);
+    fireEvent.click(screen.getByRole("button", { name: "返信" }));
+
+    expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(">>10\n", THREAD_URL);
+    expect(mocks.openWriteWindow).not.toHaveBeenCalled();
+  });
+
+  it("下部パネルのない表示先では共有書き込み窓へ下書きを渡して開く", () => {
+    mocks.bottomPanel = null;
     mocks.viewWindow = {} as Window;
 
     render(<Probe />);

@@ -108,6 +108,30 @@ describe("BottomPanel", () => {
     });
   });
 
+  it("別窓内に置いたパネルは、自タブが切り離し中でも閉じない", () => {
+    mocks.detached = true;
+
+    render(<BottomPanel hostedInTabWindow />);
+
+    expect(screen.getByText("write panel")).toBeInTheDocument();
+    expect(mocks.closePanel).not.toHaveBeenCalled();
+  });
+
+  it("別窓内に置いたパネルも、スレッド以外へ移動したら閉じる", async () => {
+    mocks.detached = true;
+    mocks.viewPage = {
+      type: "boardList" as const,
+      title: "ホーム",
+      threadUrl: "",
+    };
+
+    render(<BottomPanel hostedInTabWindow />);
+
+    await waitFor(() => {
+      expect(mocks.closePanel).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("自動追従有効中にパネルが開いてもスレッド末尾へ同期する", () => {
     mocks.canAutoScroll = true;
 

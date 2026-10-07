@@ -13,7 +13,18 @@ import {
 } from "src/view/browser/hooks/use-bottom-panel";
 import { isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
-export const BottomPanel: React.FC = () => {
+interface BottomPanelProps {
+  /**
+   * 切り離したタブ自身の別窓の中に置かれたパネルか。
+   *
+   * 変更理由: 本窓のパネルは、表示中のタブが別窓へ移ったら操作対象を失うため閉じる。
+   * 一方、別窓内のパネルは固定された自タブ(常に切り離し中)を操作するので、
+   * 同じ判定を使うと開いた直後に閉じてしまう。
+   */
+  hostedInTabWindow?: boolean;
+}
+
+export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = false }) => {
   const { viewTab, viewPage } = useTabStore();
   const { isDetachedTab } = useDetachedTabController();
   // 変更理由: 下部パネルを別窓へ移しても、リサイズ操作と開閉直後の追従を
@@ -32,10 +43,13 @@ export const BottomPanel: React.FC = () => {
   useEffect(() => {
     // スレ一覧・書き込みのどちらも現在スレを操作対象にするため、別ページへ移動したら
     // 下部パネルを閉じて、板・スレの文脈がない状態で誤操作できないようにする。
-    if (isOpen && (viewPage.type !== "thread" || isDetachedTab(viewTab.id))) {
+    if (
+      isOpen &&
+      (viewPage.type !== "thread" || (!hostedInTabWindow && isDetachedTab(viewTab.id)))
+    ) {
       closePanel();
     }
-  }, [closePanel, isDetachedTab, isOpen, viewPage.type, viewTab.id]);
+  }, [closePanel, hostedInTabWindow, isDetachedTab, isOpen, viewPage.type, viewTab.id]);
 
   useEffect(() => {
     if (!isOpen) {

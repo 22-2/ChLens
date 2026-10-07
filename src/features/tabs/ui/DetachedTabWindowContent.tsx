@@ -1,4 +1,3 @@
-import { PenLine } from "lucide-react";
 import React, { type ReactNode, useMemo } from "react";
 import { AutoScrollStateProvider } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import { AutoRefreshStatusItem } from "src/features/auto-refresh/ui/AutoRefreshStatusItem";
@@ -9,17 +8,19 @@ import {
 import { CommentOverlayStatusItem } from "src/features/comment-overlay/ui/CommentOverlayStatusItem";
 import { NgStatusProvider } from "src/features/ng/browser/use-ng-status";
 import { NgStatusItem } from "src/features/ng/ui/NgStatusItem";
-import { PaneProvider, useTabStore } from "src/features/tabs/browser/use-tab-store";
+import { PaneProvider } from "src/features/tabs/browser/use-tab-store";
 import { TabViewScopeProvider } from "src/features/tabs/browser/use-tab-view-scope";
 import { TabPanel } from "src/features/tabs/ui/TabView";
 import { WindowNavigationBridge } from "src/features/tabs/ui/WindowNavigationBridge";
 import { IkioiStatusItem } from "src/features/thread/ui/IkioiStatusItem";
 import { PopularFilterStatusItem } from "src/features/thread/ui/PopularFilterStatusItem";
-import { useWriteSessionControls } from "src/features/write/browser/use-write-session";
+import { ThreadListPanelToggleItem } from "src/features/thread-list/ui/ThreadListPanelToggleItem";
+import { WritePanelToggleItem } from "src/features/write/ui/WritePanelToggleItem";
+import { BottomPanel } from "src/view/browser/components/BottomPanel";
 import { PageCountStatusItem } from "src/view/browser/components/PageCountStatusItem";
-import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
-import { StatusBar, StatusBarItem, StatusBarProvider } from "src/view/browser/components/StatusBar";
+import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { TitleBar } from "src/view/browser/components/TitleBar";
+import { BottomPanelProvider } from "src/view/browser/hooks/use-bottom-panel";
 import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-status";
 import type { Tab } from "src/view/browser/types";
 import { ToastProvider } from "src/view/browser/ui/Toast";
@@ -42,22 +43,28 @@ export const DetachedTabWindowContent: React.FC<{
           <NgStatusProvider>
             <AutoScrollStateProvider>
               <TabWindowSurface surface={surface}>
-                <WindowNavigationBridge tabId={tab.id} manageBrowserHistory={false} />
-                {/* 別窓内の返信・別窓生成失敗などの通知を、表示中の窓へ出す。 */}
-                <ToastProvider topOffset="16px" rightOffset="16px" />
-                {/* 表示タブをContextで固定し、元ペインの選択変更に影響されない共通タイトルを出す。 */}
-                <TitleBar />
-                <div className="content-area">
-                  <TabPanel tab={tab} isActive isOverlayTarget={false} viewSurface={surface} />
-                </div>
-                <NgStatusItem />
-                <IkioiStatusItem />
-                <PopularFilterStatusItem />
-                <AutoRefreshStatusItem />
-                <CommentOverlayStatusItem isActive />
-                <PageCountStatusItem />
-                <TabWindowWriteStatusItem />
-                <StatusBar />
+                {/* 本窓とレイアウトを共有せず、別窓ごとに下部パネルの開閉・高さを持つ。 */}
+                <BottomPanelProvider isolated>
+                  <WindowNavigationBridge tabId={tab.id} manageBrowserHistory={false} />
+                  {/* 別窓内の返信・別窓生成失敗などの通知を、表示中の窓へ出す。 */}
+                  <ToastProvider topOffset="16px" rightOffset="16px" />
+                  {/* 表示タブをContextで固定し、元ペインの選択変更に影響されない共通タイトルを出す。 */}
+                  <TitleBar />
+                  <div className="content-area">
+                    <TabPanel tab={tab} isActive isOverlayTarget={false} viewSurface={surface} />
+                  </div>
+                  {/* 固定タブ自身が切り離し中でも閉じないよう、別窓内のパネルとして明示する。 */}
+                  <BottomPanel hostedInTabWindow />
+                  <NgStatusItem />
+                  <IkioiStatusItem />
+                  <PopularFilterStatusItem />
+                  <AutoRefreshStatusItem />
+                  <CommentOverlayStatusItem isActive />
+                  <PageCountStatusItem />
+                  <ThreadListPanelToggleItem />
+                  <WritePanelToggleItem />
+                  <StatusBar />
+                </BottomPanelProvider>
               </TabWindowSurface>
             </AutoScrollStateProvider>
           </NgStatusProvider>
@@ -66,39 +73,6 @@ export const DetachedTabWindowContent: React.FC<{
     </PaneProvider>
   </TabViewScopeProvider>
 );
-
-const TabWindowWriteStatusItem: React.FC = () => {
-  const { viewPage } = useTabStore();
-  const { openWriteWindow, selectThread } = useWriteSessionControls();
-
-  if (viewPage.type !== "thread") {
-    return null;
-  }
-
-  return (
-    <StatusBarItem
-      id="detached-write-window-toggle"
-      alignment="right"
-      priority={STATUS_BAR_PRIORITY.right.writePanelToggle}
-      interactive
-      title="書き込み窓を開く"
-    >
-      <button
-        type="button"
-        className="status-bar__btn"
-        onClick={() => {
-          // 別窓では下部パネルを開かず、常に共有の書き込み窓へ表示中スレを渡す。
-          selectThread(viewPage.threadUrl);
-          openWriteWindow();
-        }}
-        aria-label="書き込み窓を開く"
-      >
-        <PenLine size={12} />
-        <span>書き込み</span>
-      </button>
-    </StatusBarItem>
-  );
-};
 
 const TabWindowSurface: React.FC<{
   surface: ViewSurface;

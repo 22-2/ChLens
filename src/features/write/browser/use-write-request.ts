@@ -9,8 +9,9 @@ export type WriteRequest = (text: string, threadUrl?: string) => void;
 /**
  * 返信・引用から共有書き込みセッションへ入力を渡す。
  *
- * 変更理由: 下部パネルのContextだけに依存すると、別窓へ移したタブから返信した時に
- * 表示元のないパネルを開こうとするため、表示環境と書き込み窓の状態をここで振り分ける。
+ * 変更理由: 共有書き込み窓を表示中は同じ入力欄を二重に出さず、窓へ下書きを渡す必要がある。
+ * 下部パネルのない表示先では窓を開く必要もあるため、表示先と書き込み窓の状態をここで
+ * 振り分ける。別窓へ移したタブも自前の下部パネルを持つので、窓の種類では分けない。
  */
 export function useWriteRequest(): WriteRequest {
   const bottomPanel = useOptionalBottomPanel();
@@ -21,9 +22,7 @@ export function useWriteRequest(): WriteRequest {
 
   return useCallback<WriteRequest>(
     (text, threadUrl) => {
-      const isDetachedSurface = typeof window !== "undefined" && viewWindow !== window;
-
-      if (isWindowOpen || isDetachedSurface || !bottomPanel) {
+      if (isWindowOpen || !bottomPanel) {
         if (isWindowOpen) {
           // 共有書き込み窓を表示中は、同じ入力欄を下部パネルにも残さない。
           bottomPanel?.closePanel();
@@ -36,7 +35,7 @@ export function useWriteRequest(): WriteRequest {
         if (!isWindowOpen) {
           const opened = openWriteWindow(viewWindow);
           if (opened === false) {
-            // 下部パネルのない別窓では、ポップアップブロックを画面上でも伝える。
+            // 下部パネルのない表示先では、ポップアップブロックを画面上でも伝える。
             toast.error("書き込み窓を開けませんでした。ポップアップ設定を確認してください");
           }
         }

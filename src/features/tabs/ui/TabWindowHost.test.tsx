@@ -66,16 +66,24 @@ vi.mock("src/features/thread/ui/PopularFilterStatusItem", () => ({
   PopularFilterStatusItem: () => null,
 }));
 vi.mock("src/view/browser/components/TitleBar", () => ({ TitleBar: () => null }));
+// 下部パネルとその開閉ボタンも同様に、別窓内への配置だけを確認し中身は対象外にする。
+vi.mock("src/view/browser/components/BottomPanel", () => ({
+  BottomPanel: ({ hostedInTabWindow }: { hostedInTabWindow?: boolean }) => (
+    <div data-testid="detached-bottom-panel" data-hosted={String(Boolean(hostedInTabWindow))} />
+  ),
+}));
+vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
+  BottomPanelProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+vi.mock("src/features/write/ui/WritePanelToggleItem", () => ({
+  WritePanelToggleItem: () => null,
+}));
+vi.mock("src/features/thread-list/ui/ThreadListPanelToggleItem", () => ({
+  ThreadListPanelToggleItem: () => null,
+}));
 
 vi.mock("src/features/ng/browser/use-ng-status", () => ({
   NgStatusProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
-
-vi.mock("src/features/write/browser/use-write-session", () => ({
-  useWriteSessionControls: () => ({
-    openWriteWindow: vi.fn(),
-    selectThread: vi.fn(),
-  }),
 }));
 
 function createThreadTab(id: string): Tab {
@@ -157,6 +165,21 @@ describe("TabWindowHost", () => {
     expect(mocks.tabDispatch).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: "CLOSE_TAB", tabId: "tab-1" }),
     );
+  });
+
+  it("切り離した別窓に、別窓用として下部パネルを配置する", () => {
+    render(
+      <TabWindowHost>
+        <Probe />
+      </TabWindowHost>,
+    );
+
+    expect(screen.queryByTestId("detached-bottom-panel")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "開く" }));
+
+    // 自タブが切り離し中でも閉じないよう、別窓内のパネルとして配置される。
+    expect(screen.getByTestId("detached-bottom-panel")).toHaveAttribute("data-hosted", "true");
   });
 
   it("別窓の再読み込みではタブを終了しない", () => {
