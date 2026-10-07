@@ -10,6 +10,8 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   // EdgeLiveViewerと同じく候補がまだ立っていない間だけ待ち、subjectの無期限取得を防ぐ。
   next_thread_search_duration: "180",
   pause_auto_scroll_on_popup: "on",
+  // 更新コントロールで選ぶスレッド表示形式。未変更時は従来どおり通常表示にする。
+  thread_display_mode: "normal",
   image_blur: "on",
   image_blur_length: "4",
   image_blur_word: ".{0,5}[^ァ-ヺ^ー]グロ(?:[^ァ-ヺ^ー].{0,5}|$)|.{0,5}死ね.{0,5}",
@@ -153,6 +155,8 @@ export const CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM = [
   "write_sanitize_urls_on_paste",
   // 更新コントロールから自動停止時間を選択できる。
   "auto_load_idle_stop_timeout",
+  // 更新コントロールからスレッドの表示形式を選択できる。
+  "thread_display_mode",
   // ドメイン・板設定からsageの既定動作を切り替える。
   "sage_flag",
 ] as const;

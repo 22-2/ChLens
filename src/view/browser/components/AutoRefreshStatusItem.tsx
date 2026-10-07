@@ -5,7 +5,6 @@ import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-prio
 import { StatusBarItem, StatusBarMode } from "src/view/browser/components/StatusBar";
 import type { IdleStopTimeoutOption } from "src/view/browser/hooks/auto-refresh-config";
 import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/view/browser/hooks/auto-refresh-config";
-import { tabActions } from "src/view/browser/hooks/tab-store-actions";
 import { useAutoNextThreadSetting } from "src/view/browser/hooks/use-auto-next-thread-setting";
 import {
   MAX_BOARD_INTERVAL_SEC,
@@ -17,7 +16,11 @@ import {
 import { useAutoScrollState } from "src/view/browser/hooks/use-auto-scroll-state";
 import { usePopupAutoScrollPauseSetting } from "src/view/browser/hooks/use-popup-auto-scroll-pause-setting";
 import { useTabStore } from "src/view/browser/hooks/use-tab-store";
-import type { Tab } from "src/view/browser/types";
+import {
+  normalizeThreadDisplayMode,
+  type ThreadDisplayMode,
+  useThreadDisplayModeSetting,
+} from "src/view/browser/hooks/use-thread-display-mode-setting";
 import type { AutoNextThreadMode } from "src/view/browser/utils/next-thread-search";
 
 // -----------------------------------------------------------------------
@@ -25,8 +28,8 @@ import type { AutoNextThreadMode } from "src/view/browser/utils/next-thread-sear
 // -----------------------------------------------------------------------
 interface ThreadAutoRefreshPanelContentProps {
   displayModeId: string;
-  displayMode: NonNullable<Tab["threadDisplayMode"]>;
-  onDisplayModeChange: (mode: NonNullable<Tab["threadDisplayMode"]>) => void;
+  displayMode: ThreadDisplayMode;
+  onDisplayModeChange: (mode: ThreadDisplayMode) => void;
   isEnabled: boolean;
   isOnThread: boolean;
   isAutoNextThreadEnabled: boolean;
@@ -113,9 +116,7 @@ const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps
           id={displayModeId}
           className="mini-window__select"
           value={displayMode}
-          onChange={(event) =>
-            onDisplayModeChange(event.target.value === "live-chat" ? "live-chat" : "normal")
-          }
+          onChange={(event) => onDisplayModeChange(normalizeThreadDisplayMode(event.target.value))}
         >
           <option value="normal">通常</option>
           <option value="live-chat">ライブチャット風</option>
@@ -260,7 +261,8 @@ const ThreadListAutoRefreshPanelContent: React.FC<ThreadListAutoRefreshPanelCont
 // ステータスバーアイテム本体
 // -----------------------------------------------------------------------
 export const AutoRefreshStatusItem: React.FC = () => {
-  const { viewTab, dispatch } = useTabStore();
+  const { viewTab } = useTabStore();
+  const { mode: displayMode, setMode: setDisplayMode } = useThreadDisplayModeSetting();
   const {
     panelKind,
     isOnThread,
@@ -393,8 +395,8 @@ export const AutoRefreshStatusItem: React.FC = () => {
             <ThreadAutoRefreshPanelContent
               // 2ペインで同時にパネルを開いても、ラベルが別タブの選択欄へ結び付かないようにする。
               displayModeId={`thread-display-mode-${viewTab?.id ?? "current"}`}
-              displayMode={viewTab?.threadDisplayMode ?? "normal"}
-              onDisplayModeChange={(mode) => dispatch(tabActions.setThreadDisplayMode(mode))}
+              displayMode={displayMode}
+              onDisplayModeChange={setDisplayMode}
               isEnabled={isEnabled}
               isOnThread={isOnThread}
               isAutoNextThreadEnabled={isAutoNextThreadEnabled}
