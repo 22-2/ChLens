@@ -1,3 +1,5 @@
+import { container } from "src/service-container/index";
+
 /**
 @class ImageReplaceDat
 @static
@@ -29,7 +31,7 @@ const _setupReg = function (dat) {
     try {
       d.baseUrlReg = new RegExp(d.baseUrl, "i");
     } catch {
-      app.message.send("notify", {
+      container.message.send("notify", {
         message: `\
 ImageViewURLReplace.datの一致URLの正規表現(${d.baseUrl})を読み込むのに失敗しました
 この行は無効化されます\
@@ -44,18 +46,18 @@ ImageViewURLReplace.datの一致URLの正規表現(${d.baseUrl})を読み込む�
 const _config = {
   get() {
     // 設定未保存時 (null) は従来の JSON.parse(null) と同じく null を返す。
-    return JSON.parse(app.config.get(_CONFIG_NAME) ?? "null");
+    return JSON.parse(container.config.get(_CONFIG_NAME) ?? "null");
   },
   /** @param {unknown} str */
   set(str) {
-    app.config.set(_CONFIG_NAME, JSON.stringify(str));
+    container.config.set(_CONFIG_NAME, JSON.stringify(str));
   },
   getString() {
-    return app.config.get(_CONFIG_STRING_NAME);
+    return container.config.get(_CONFIG_STRING_NAME);
   },
   /** @param {string} str */
   setString(str) {
-    app.config.set(_CONFIG_STRING_NAME, str);
+    container.config.set(_CONFIG_STRING_NAME, str);
   },
 };
 
@@ -65,7 +67,7 @@ const _config = {
 */
 export var get = function () {
   if (_dat == null) {
-    if (app.config.get(_CONFIG_NAME) === "") {
+    if (container.config.get(_CONFIG_NAME) === "") {
       // 設定文字列も未保存 (null) の場合は空文字として「エントリなし」で初期化する。
       set(_config.getString() ?? "");
     }

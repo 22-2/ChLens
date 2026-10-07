@@ -1,12 +1,15 @@
 import { ChURL } from "packages/ch-lib/src/index";
+import Callbacks from "src/app/Callbacks";
+import { log } from "src/app/Log";
+import { deepCopy } from "src/app/Util";
 import { Entry, newerEntry, SyncableEntryList } from "src/core/BookmarkEntryList";
 import browser from "webextension-polyfill";
 
 export default class BrowserBookmarkEntryList extends SyncableEntryList {
   private rootNodeId = "";
   private readonly nodeIdStore = new Map<string, string>();
-  readonly ready = new app.Callbacks();
-  readonly needReconfigureRootNodeId = new app.Callbacks({ persistent: true });
+  readonly ready = new Callbacks();
+  readonly needReconfigureRootNodeId = new Callbacks({ persistent: true });
 
   static entryToURL(entry: Entry): string {
     const url = new ChURL(entry.url);
@@ -185,10 +188,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     // ブラウザのブックマークAPIが存在しない環境（Tauri等）では
     // ウォッチャーを起動せず、ブックマーク同期はスキップする。
     if (typeof browser === "undefined" || typeof browser.bookmarks === "undefined") {
-      app.log(
-        "warn",
-        "ブラウザのブックマークAPIが利用できません。ブックマーク同期をスキップします。",
-      );
+      log("warn", "ブラウザのブックマークAPIが利用できません。ブックマーク同期をスキップします。");
       // 初期化完了を通知して待機している箇所が進めるようにする
       if (!this.ready.wasCalled) this.ready.call();
       this.needReconfigureRootNodeId.call();
@@ -277,8 +277,9 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
 
       return true;
     } catch (err) {
-      app.log(err);
-      app.log("warn", "ブラウザのブックマークからの読み込みに失敗しました。");
+      // 変更理由: 以前は log(err) とエラーオブジェクトをログレベル引数に渡しており、
+      // 「level が不正」という別のエラーに化けて原因の詳細が失われていたため、本文に添える。
+      log("warn", "ブラウザのブックマークからの読み込みに失敗しました。", err);
       void this.validateRootNodeSettings();
 
       return false;
@@ -292,7 +293,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
       title: entry.title,
     });
     if (!res) {
-      app.log("error", "ブラウザのブックマークへの追加に失敗しました");
+      log("error", "ブラウザのブックマークへの追加に失敗しました");
       void this.validateRootNodeSettings();
     }
 
@@ -323,7 +324,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     const res2 = await browser.bookmarks.update(id, changes as { title?: string; url?: string });
     if (res2) return true;
 
-    app.log("error", "ブラウザのブックマーク更新に失敗しました");
+    log("error", "ブラウザのブックマーク更新に失敗しました");
     void this.validateRootNodeSettings();
     return false;
   }
@@ -361,7 +362,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   }
 
   async add(entry: Entry, createBrowserBookmark = true): Promise<boolean> {
-    entry = app.deepCopy(entry);
+    entry = deepCopy(entry);
 
     if (!super.add(entry)) return false;
 
@@ -372,7 +373,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   }
 
   async update(entry: Entry, updateBrowserBookmark = true): Promise<boolean> {
-    entry = app.deepCopy(entry);
+    entry = deepCopy(entry);
 
     if (!super.update(entry)) return false;
 

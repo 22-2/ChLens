@@ -1,4 +1,7 @@
 import { ChURL, replaceBoardUrlServer } from "packages/ch-lib/src/index";
+import Callbacks from "src/app/Callbacks";
+import { deepCopy } from "src/app/Util";
+import { isNewerReadState } from "src/core/read-state-compare";
 import { fix as fixUrl } from "src/core/URL";
 
 export interface ReadState {
@@ -27,7 +30,7 @@ export function newerEntry(a: Entry, b: Entry): Entry | null {
     return a.resCount > b.resCount ? a : b;
   }
 
-  return app.util.isNewerReadState(a.readState, b.readState) ? b : a;
+  return isNewerReadState(a.readState, b.readState) ? b : a;
 }
 
 export class EntryList {
@@ -37,7 +40,7 @@ export class EntryList {
   async add(entry: Entry): Promise<boolean> {
     if (this.get(entry.url)) return false;
 
-    entry = app.deepCopy(entry);
+    entry = deepCopy(entry);
 
     this.cache.set(entry.url, entry);
 
@@ -54,7 +57,7 @@ export class EntryList {
   async update(entry: Entry): Promise<boolean> {
     if (!this.get(entry.url)) return false;
 
-    this.cache.set(entry.url, app.deepCopy(entry));
+    this.cache.set(entry.url, deepCopy(entry));
     return true;
   }
 
@@ -126,7 +129,7 @@ export class EntryList {
   get(url: string): Entry | null {
     url = fixUrl(url);
 
-    return this.cache.has(url) ? app.deepCopy(this.cache.get(url)) : null;
+    return this.cache.has(url) ? deepCopy(this.cache.get(url)) : null;
   }
 
   getAll(): Entry[] {
@@ -166,7 +169,7 @@ export interface BookmarkUpdateEvent {
 }
 
 export class SyncableEntryList extends EntryList {
-  readonly onChanged = new app.Callbacks<[BookmarkUpdateEvent]>({
+  readonly onChanged = new Callbacks<[BookmarkUpdateEvent]>({
     persistent: true,
   });
   private readonly observerForSync: (e: BookmarkUpdateEvent) => void;
@@ -184,7 +187,7 @@ export class SyncableEntryList extends EntryList {
 
     this.onChanged.call({
       type: "ADD",
-      entry: app.deepCopy(entry),
+      entry: deepCopy(entry),
     });
     return true;
   }
@@ -201,14 +204,14 @@ export class SyncableEntryList extends EntryList {
     if (before.title !== entry.title) {
       this.onChanged.call({
         type: "TITLE",
-        entry: app.deepCopy(entry),
+        entry: deepCopy(entry),
       });
     }
 
     if (before.resCount !== entry.resCount) {
       this.onChanged.call({
         type: "RES_COUNT",
-        entry: app.deepCopy(entry),
+        entry: deepCopy(entry),
       });
     }
 
@@ -224,14 +227,14 @@ export class SyncableEntryList extends EntryList {
     ) {
       this.onChanged.call({
         type: "READ_STATE",
-        entry: app.deepCopy(entry),
+        entry: deepCopy(entry),
       });
     }
 
     if (before.expired !== entry.expired) {
       this.onChanged.call({
         type: "EXPIRED",
-        entry: app.deepCopy(entry),
+        entry: deepCopy(entry),
       });
     }
     return true;

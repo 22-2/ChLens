@@ -30,7 +30,7 @@ export var Anchor = {
       segments: [],
     };
 
-    str = app.replaceAll(str, "\u30fc", "-");
+    str = str.replaceAll("\u30fc", "-");
     str = str.replace(Anchor.reg._FW_NUMBER, ($0) => String.fromCharCode($0.charCodeAt(0) - 65248));
 
     if (!/^(?:&gt;|＞){0,2}([\d]+(?:-\d+)?(?:\s*[,、]\s*\d+(?:-\d+)?)*)$/.test(str)) {
@@ -158,7 +158,7 @@ export var chServerMoveDetect = async function (oldBoardUrl, html) {
   }
 
   //移転を検出した場合は移転検出メッセージを送出
-  app.message.send("detected_ch_server_move", {
+  container.message.send("detected_ch_server_move", {
     before: normalizedOldBoardUrl.href,
     after: newBoardUrl.href,
   });
@@ -273,7 +273,7 @@ export var normalize = function (str) {
     // カタカナをひらがなに変換
     .replace(kataHiraReg, ($0) => String.fromCharCode($0.charCodeAt(0) - 96));
   // 全角スペース/半角スペースを削除
-  str = app.replaceAll(app.replaceAll(str, "\u0020", ""), "\u3000", "");
+  str = str.replaceAll("\u0020", "").replaceAll("\u3000", "");
   // 大文字を小文字に変換
   return str.toLowerCase();
 };
@@ -289,7 +289,7 @@ const titleReg =
 export var removeNeedlessFromTitle = function (title) {
   const title2 = title.replace(titleReg, "");
   title = title2 === "" ? title : title2;
-  return app.replaceAll(app.replaceAll(title, "<mark>", ""), "</mark>", "");
+  return title.replaceAll("<mark>", "").replaceAll("</mark>", "");
 };
 
 /** @param {Promise<unknown>} promise */
@@ -362,50 +362,6 @@ export var stringToDate = function (string) {
   return null;
 };
 
-/**
- * IReadState (offset?: number) と BookmarkEntryList.ReadState (offset?: number | null) の
- * 両方を受け取れるよう、比較に使うフィールドだけの構造的な型で宣言する。
- * @typedef {{ received: number, read: number, last: number, offset?: number | null, date?: number | null }} ComparableReadState
- * @param {ComparableReadState | null | undefined} a
- * @param {ComparableReadState | null | undefined} b
- */
-export var isNewerReadState = function (a, b) {
-  if (!b) {
-    return false;
-  }
-  if (!a) {
-    return true;
-  }
-
-  if (a.received !== b.received) {
-    return a.received < b.received;
-  }
-  if (a.read !== b.read) {
-    return a.read < b.read;
-  }
-  if (a.date && b.date) {
-    return a.date < b.date;
-  } else if (a.date) {
-    return false;
-  } else if (b.date) {
-    return true;
-  }
-  if (a.last !== b.last) {
-    return true;
-  }
-  if (a.offset !== b.offset) {
-    return true;
-  }
-
-  return false;
-};
-
-/**
- * @template T, R
- * @param {T | null | undefined} value
- * @param {(value: T) => R} transform
- * @returns {R | undefined}
- */
-function __guard__(value, transform) {
-  return typeof value !== "undefined" && value !== null ? transform(value) : undefined;
-}
+// 変更理由: 既読状態の比較は依存の少ない read-state-compare.ts へ移した。
+// 既存の `app.util.isNewerReadState` と jsutil 経由の呼び出し互換のため再エクスポートする。
+export { isNewerReadState } from "src/core/read-state-compare.ts";

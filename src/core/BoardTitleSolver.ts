@@ -4,6 +4,7 @@ import {
   formatBoardTitleForUrl,
   resolveBoardTitle,
 } from "packages/ch-lib/src/index";
+import { defer } from "src/app/Defer";
 import { getBoardUrlKey } from "src/core/BoardUrlNormalizer";
 import { Request } from "src/core/HTTP";
 import { container } from "src/service-container/index";
@@ -67,8 +68,8 @@ let _bbsmenuPromise: Promise<void> | null = null;
 const _generateBBSMenu = ({ status, menu, message }: IBBSMenuResult): void => {
   if (status === "error") {
     void (async () => {
-      await app.defer();
-      app.message.send("notify", {
+      await defer();
+      container.message.send("notify", {
         message,
         background_color: "red",
       });

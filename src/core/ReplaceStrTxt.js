@@ -1,4 +1,5 @@
 import { ReplaceStrParser } from "packages/ch-lib/src/index";
+import { container } from "src/service-container/index";
 
 /** @type {import("packages/ch-lib/src/index").ReplaceStrRule[] | null} */
 let _replaceTable = null;
@@ -8,18 +9,18 @@ const _CONFIG_STRING_NAME = "replace_str_txt";
 const _config = {
   get() {
     // 設定未保存時 (null) は JSON.parse に空オブジェクト文字列を与えるのと同じ挙動にする。
-    return JSON.parse(app.config.get(_CONFIG_NAME) ?? "null");
+    return JSON.parse(container.config.get(_CONFIG_NAME) ?? "null");
   },
   /** @param {unknown} str */
   set(str) {
-    app.config.set(_CONFIG_NAME, JSON.stringify(str));
+    container.config.set(_CONFIG_NAME, JSON.stringify(str));
   },
   getString() {
-    return app.config.get(_CONFIG_STRING_NAME);
+    return container.config.get(_CONFIG_STRING_NAME);
   },
   /** @param {string} str */
   setString(str) {
-    app.config.set(_CONFIG_STRING_NAME, str);
+    container.config.set(_CONFIG_STRING_NAME, str);
   },
 };
 

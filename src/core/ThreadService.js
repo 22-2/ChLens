@@ -3,7 +3,6 @@ import { replace as replaceStrTxt } from "src/core/ReplaceStrTxt.js";
 import Thread from "src/core/Thread.js";
 import { evaluateThreadNg } from "src/core/ThreadNgEvaluator";
 import { toViewRes } from "src/core/to-view-res";
-import { container } from "src/service-container/index";
 
 /**
  * @typedef {import("../service-container/interfaces").IThreadService} IThreadService
