@@ -62,8 +62,11 @@ test("NG内の置換タブから先頭のBEアイコンを削除し、本文と�
   await panel.getByRole("button", { name: /^NG/ }).click();
   await panel.getByRole("tab", { name: "文字列置換", exact: true }).click();
   const editor = panel.getByRole("textbox", { name: "置換ルール", exact: true });
-  await expect(editor).toBeVisible();
-  await editor.click();
+  // MonacoのNative EditContextは空の入力要素が0サイズになるため、実際の編集面をクリックする。
+  const editingSurface = panel.locator(".monaco-editor .view-lines");
+  await expect(editingSurface).toBeVisible();
+  await editingSurface.click({ position: { x: 10, y: 10 } });
+  await expect(editor).toBeFocused();
   await page.keyboard.insertText("remove body line first:\n  equals bare");
   await expect(panel.getByText("置換ルールを保存できません", { exact: true })).toBeVisible();
   await expect
@@ -80,7 +83,9 @@ test("NG内の置換タブから先頭のBEアイコンを削除し、本文と�
   await expect(panel.locator(".dsl-editor__snippet")).toHaveCount(2);
   await page.screenshot({ path: testInfo.outputPath("replacement-settings.png"), fullPage: true });
   await panel.getByRole("tab", { name: "NGルール", exact: true }).click();
-  await expect(panel.getByRole("textbox", { name: "NGルール", exact: true })).toBeVisible();
+  await expect(editingSurface).toBeVisible();
+  await editingSurface.click({ position: { x: 10, y: 10 } });
+  await expect(panel.getByRole("textbox", { name: "NGルール", exact: true })).toBeFocused();
   await panel.getByRole("tab", { name: "文字列置換", exact: true }).click();
   await expect(panel.locator(".view-lines")).toContainText("remove body line first:");
   await page.reload();
