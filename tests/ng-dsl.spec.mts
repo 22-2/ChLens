@@ -87,6 +87,8 @@ hide:
   await expect(third).toBeVisible();
 
   // 同じルール群をスレ一覧で評価し、titleとレス数のANDで色・ラベルを付ける。
+  // URLバーの開閉状態は再読み込みで閉じるため、移動前に開き直す。
+  await page.getByTitle("URLバーを表示", { exact: true }).click();
   await urlInput.fill(localBoard.boardUrl);
   await urlInput.press("Enter");
   await expect(panel.getByText("ローカルテストスレッド", { exact: true })).toBeVisible();
