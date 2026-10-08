@@ -7,8 +7,10 @@ import type { SettingsPageUiState } from "src/view/browser/pages/settings/settin
 import { createHomeTab } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { configReady } = vi.hoisted(() => ({
+const { configReady, configSet, toastError } = vi.hoisted(() => ({
   configReady: vi.fn((callback: () => void) => callback()),
+  configSet: vi.fn(async () => {}),
+  toastError: vi.fn(),
 }));
 
 vi.mock("src/app/platform", () => ({
@@ -23,7 +25,10 @@ vi.mock("webextension-polyfill", () => ({
   default: { runtime: { onMessage: { addListener: vi.fn(), removeListener: vi.fn() } } },
 }));
 vi.mock("src/service-container/index", () => ({
-  container: { config: { get: () => null, ready: configReady } },
+  container: {
+    config: { get: () => null, ready: configReady, set: configSet },
+    toast: { error: toastError },
+  },
 }));
 vi.mock("src/view/browser/hooks/use-media-query", () => ({ useMediaQuery: () => false }));
 vi.mock("src/features/ng/ui/NGEditor", () => ({
@@ -90,6 +95,8 @@ function changeNgUiState() {
 
 describe("設定画面のタブ単位の表示状態", () => {
   beforeEach(() => {
+    configSet.mockClear();
+    toastError.mockClear();
     configReady.mockImplementation((callback: () => void) => callback());
     const values = new Map<string, string>();
     const storage: Storage = {
@@ -131,7 +138,31 @@ describe("設定画面のタブ単位の表示状態", () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("置換ルールの編集中は診断だけを表示し、修正後に自動保存する", async () => {
+    await renderViewer();
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: /^その他/ }));
+    fireEvent.change(screen.getByLabelText("置換ルール"), {
+      target: { value: 'replace body:\n  from "a"' },
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    expect(screen.getByText("置換ルールを保存できません")).toBeInTheDocument();
+    expect(configSet).not.toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
+    const source = 'replace body:\n  from "a"\n  to "b"';
+    fireEvent.change(screen.getByLabelText("置換ルール"), { target: { value: source } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400);
+    });
+    expect(screen.queryByText("置換ルールを保存できません")).toBeNull();
+    expect(configSet).toHaveBeenCalledWith("replace_str_txt", source);
+    expect(toastError).not.toHaveBeenCalled();
   });
 
   it("Chrome側の再読み込みで選択カテゴリ・NGの展開状態・スクロール位置を復元する", async () => {

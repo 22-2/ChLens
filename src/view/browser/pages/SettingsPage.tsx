@@ -1,3 +1,4 @@
+import { parseReplacementDsl } from "@chlen/chlib";
 import { AlertTriangle, ChevronDown, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -6,6 +7,7 @@ import {
   NGDslHelpSnippet,
   NGEditor,
 } from "src/features/ng/ui/NGEditor";
+import { ReplacementEditor } from "src/features/replacement/ui/ReplacementEditor";
 import { useTabViewState } from "src/features/tabs/browser/use-tab-store";
 import { container } from "src/service-container/index";
 import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
@@ -211,6 +213,15 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
       const attemptId = ++saveAttemptRef.current;
       setAutoSaveError(null);
 
+      // 入力途中の構文エラーはエディタ内に表示し、自動保存失敗の通知を繰り返さない。
+      if (
+        typeof sectionFormData.replace_str_txt === "string" &&
+        parseReplacementDsl(sectionFormData.replace_str_txt).diagnostics.length > 0
+      ) {
+        setSavingSectionId(null);
+        return;
+      }
+
       // 変更理由: キー入力ごとの同期書き込みを避け、設定保存の体感速度を維持する。
       autoSaveTimerRef.current = window.setTimeout(() => {
         autoSaveTimerRef.current = null;
@@ -350,6 +361,16 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
             value={toStringValue(value)}
             options={field.options}
             onValueChange={(nextValue) => updateFieldValue(sectionId, field.key, nextValue)}
+          />
+        );
+      }
+
+      if (field.widget === "replacement_editor") {
+        return (
+          <ReplacementEditor
+            key={field.key}
+            value={toStringValue(value)}
+            onChange={(nextValue) => updateFieldValue(sectionId, field.key, nextValue)}
           />
         );
       }

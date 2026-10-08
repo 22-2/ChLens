@@ -1,10 +1,13 @@
 // @vitest-environment node
-import { describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
+const { saveConfig } = vi.hoisted(() => ({ saveConfig: vi.fn() }));
 
 vi.mock("src/service-container/index", () => ({
   container: {
     config: {
       get: () => null,
+      set: saveConfig,
     },
   },
 }));
@@ -19,7 +22,28 @@ import {
   DEFAULT_CONFIG,
 } from "src/app/config-defaults";
 
-import { getSettingsSections, readAllSettings } from "./settings-sections";
+import { getSettingsSections, readAllSettings, saveSectionFormData } from "./settings-sections";
+
+describe("置換設定のフォーム保存", () => {
+  beforeEach(() => saveConfig.mockClear());
+
+  it("不正なDSLを永続化せず、位置付きのエラーを返す", async () => {
+    const section = getSettingsSections(false).find((candidate) => candidate.id === "other")!;
+    await expect(
+      saveSectionFormData(section, { replace_str_txt: 'replace body:\n  from "a"\n  to bare' }),
+    ).rejects.toThrow("3行3列");
+    expect(saveConfig).not.toHaveBeenCalled();
+  });
+
+  it("有効なDSLを文字列として一度だけ保存する", async () => {
+    const section = getSettingsSections(false).find((candidate) => candidate.id === "other")!;
+    const source = 'replace body:\n  from "a"\n  to "b"';
+    await saveSectionFormData(section, { replace_str_txt: source });
+    expect(saveConfig.mock.calls.filter(([key]) => key === "replace_str_txt")).toEqual([
+      ["replace_str_txt", source],
+    ]);
+  });
+});
 
 describe("設定セクションの実行環境フィルター", () => {
   it("設定画面に表示する全項目へ集約した既定値を用意する", () => {

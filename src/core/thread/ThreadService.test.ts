@@ -19,7 +19,7 @@ vi.mock("src/service-container/index", () => ({
   },
 }));
 
-// 置換設定はグローバルのappを参照するため、テストでは入力をそのまま返す既定動作に差し替える。
+// 設定キャッシュの状態に依存せず処理順を検証するため、置換器を差し替える。
 vi.mock("src/core/thread/ReplaceStrTxt", () => ({
   replace: mocks.replaceStrTxt,
 }));
@@ -239,6 +239,37 @@ describe("スレッドサービス", () => {
 
     expect(result.res[0]?.id).toBe("abc");
     expect((result.res[0] as { message?: string }).message).toBe("置換後");
+  });
+
+  it("置換DSLの結果からID・アンカーを解析し、その後にNG判定する", async () => {
+    const { createReplacementEngine, parseReplacementDsl } = await import("@chlen/chlib");
+    const parsed = parseReplacementDsl(
+      'replace date:\n  from "IDX:"\n  to "ID:"\nreplace body:\n  from "返信先"\n  to "&gt;&gt;1"\n  when title equals "title"',
+    );
+    expect(parsed.diagnostics).toEqual([]);
+    const engine = createReplacementEngine(parsed.rules);
+    mocks.replaceStrTxt.mockImplementation(engine.apply);
+    mocks.isNGThread.mockImplementation((res: { anchorCount?: number }) =>
+      res.anchorCount === 1 ? { type: "置換後NG" } : null,
+    );
+    const { default: threadService } = await import("src/core/thread/ThreadService");
+    const service = threadService as unknown as ThreadServiceLike;
+    const result = service._formatResult({
+      title: "title",
+      url: { url: { href: "https://example.com/test/read.cgi/board/1/" } },
+      res: [
+        { name: "", mail: "", message: "本文", other: "" },
+        { name: "", mail: "", message: "返信先", other: "2026/08/27(木) 12:00:00.00 IDX:abc" },
+      ],
+    });
+    expect(result.res[1]?.id).toBe("abc");
+    expect(result.res[1]?.ng).toEqual({ type: "置換後NG" });
+    expect(mocks.isNGThread).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ id: "abc", anchorCount: 1, message: "&gt;&gt;1" }),
+      "title",
+      "https://example.com/test/read.cgi/board/1/",
+    );
   });
 
   it("設定で有効な自動NGを現行の取得結果へ反映する", async () => {

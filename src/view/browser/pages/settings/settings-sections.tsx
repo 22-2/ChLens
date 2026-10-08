@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { isTauriRuntime } from "src/app/platform/runtime";
+import { set as setReplacementDsl } from "src/core/thread/ReplaceStrTxt";
 import { container } from "src/service-container/index";
 import {
   buildFieldSchema,
@@ -431,6 +432,20 @@ const ALL_SETTINGS_SECTIONS = [
       },
       {
         kind: "divider",
+        id: "replacement",
+        title: "レスの文字列置換",
+      },
+      {
+        kind: "string",
+        key: "replace_str_txt",
+        title: "置換ルール",
+        description:
+          "replace body: の下に from と to をインデントして書きます。保存後に読み込むレスへ順番に適用します。",
+        widget: "replacement_editor",
+        rows: 12,
+      },
+      {
+        kind: "divider",
         id: "debug",
         title: "デバッグ",
       },
@@ -520,9 +535,21 @@ export async function saveSectionFormData(
   section: SettingsSectionDefinition,
   formData: SettingsSectionFormData,
 ): Promise<void> {
+  // 置換設定は通常のconfig.setを通す前に検証し、不正な文字列を永続化しない。
+  if (section.fields.some((field) => "key" in field && field.key === "replace_str_txt")) {
+    const result = await setReplacementDsl(String(formData.replace_str_txt ?? ""));
+    if (result.diagnostics.length > 0) {
+      throw new Error(
+        result.diagnostics
+          .map((diagnostic) => `${diagnostic.line}行${diagnostic.column}列: ${diagnostic.message}`)
+          .join("\n"),
+      );
+    }
+  }
   await Promise.all(
     section.fields
       .filter(isSettingsFieldItem)
+      .filter((field) => field.key !== "replace_str_txt")
       .map((field) =>
         Promise.resolve(
           container.config.set(field.key, writeFieldValue(field, formData[field.key])),

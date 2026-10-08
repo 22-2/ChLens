@@ -169,7 +169,7 @@ export type ParserTracerEvent
       readonly result: unknown;
     };
 
-export type StartRuleNames = "Document" | "Scalar" | "OptionList";
+export type StartRuleNames = "Document" | "Scalar" | "OptionList" | "ReplacementDocument";
 export interface ParseOptions<T extends StartRuleNames = "Document"> {
   /**
    * String or object that will be attached to the each `LocationRange` object
@@ -212,7 +212,12 @@ declare function ParseFunction<Options extends ParseOptions<"OptionList">>(
   options?: Options,
 ): string[];
 
+declare function ParseFunction<Options extends ParseOptions<"ReplacementDocument">>(
+  input: string,
+  options?: Options,
+): import("./dsl-ast").ReplacementDslLine[];
+
 declare function ParseFunction<Options extends ParseOptions<StartRuleNames>>(
   input: string,
   options?: Options,
-): import("./dsl-ast").DslLine[] | import("./dsl-ast").DslValue | string[];
+): import("./dsl-ast").DslLine[] | import("./dsl-ast").DslValue | string[] | import("./dsl-ast").ReplacementDslLine[];
