@@ -91,6 +91,8 @@ export interface SettingsPageUiState {
   // 再読み込みと別カテゴリへの明示的なリンク遷移を区別するため、直前のリンク先を残す。
   linkedSectionId?: string;
   mainScrollTop?: number;
+  ngSettingsTab?: "ng" | "replacement";
+  replacementExamplesOpen?: boolean;
   ngExamplesOpen?: boolean;
   ngAdvancedOpen?: boolean;
 }

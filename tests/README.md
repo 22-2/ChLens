@@ -21,4 +21,11 @@ SETTING.TXT、subject.txt、datをShift_JISで配信します。レス追加も�
 
 現在は拡張機能の起動、ホーム・設定、スレ一覧からの閲覧、レス更新と重複防止、
 セッション復元、閲覧履歴、NG設定の永続化、スレッド自動更新のON・OFFを検証します。
+`replacement.spec.mts` ではNG内の文字列置換タブ、構文診断・保存・状態復元、
+BEアイコン行の削除とサムネイル非表示、対象外の本文・画像の維持も検証します。
 書き込み、read.cgi形式、差分206応答、Firefox・Tauriはまだ対象外です。
+
+既存のChromiumを使う場合は `CHLENS_E2E_CHROMIUM_PATH` に実行ファイルを指定できます。
+実際のDATで置換を再現する場合は `CHLENS_E2E_DAT_PATH` にShift_JISのDATファイルを指定し、
+`pnpm exec playwright test tests/replacement.spec.mts` を実行します。DATはローカルのテストサーバーで配信し、
+画像はダミー応答にするため、元の掲示板へのアクセスは不要です。DATの内容をリポジトリへ保存する必要もありません。

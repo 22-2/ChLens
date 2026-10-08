@@ -3,6 +3,30 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { ReplacementEditor } from "./ReplacementEditor";
 
+vi.mock("@monaco-editor/react", () => ({
+  default: ({
+    value,
+    onChange,
+    options,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    options: { ariaLabel: string };
+  }) => (
+    <textarea
+      aria-label={options.ariaLabel}
+      value={value}
+      onChange={(event) => onChange(event.currentTarget.value)}
+    />
+  ),
+  loader: { config: vi.fn() },
+  useMonaco: () => null,
+}));
+vi.mock("src/view/browser/hooks/use-theme", () => ({ useTheme: () => "light" }));
+vi.mock("src/app/platform", () => ({
+  platform: { window: { getAssetUrl: (path: string) => path } },
+}));
+
 afterEach(cleanup);
 
 describe("置換ルールの編集と診断", () => {

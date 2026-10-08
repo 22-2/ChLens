@@ -44,6 +44,27 @@ vi.mock("src/view/browser/pages/settings/use-settings-maintenance", () => ({
   useSettingsMaintenanceActions: () => ({}),
 }));
 
+vi.mock("@monaco-editor/react", () => ({
+  default: ({
+    value,
+    onChange,
+    options,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    options: { ariaLabel: string };
+  }) => (
+    <textarea
+      aria-label={options.ariaLabel}
+      value={value}
+      onChange={(event) => onChange(event.currentTarget.value)}
+    />
+  ),
+  loader: { config: vi.fn() },
+  useMonaco: () => null,
+}));
+vi.mock("src/view/browser/hooks/use-theme", () => ({ useTheme: () => "light" }));
+
 const SESSION_KEY = "chlens_browser_session";
 const settingsPage = { type: "settings" as const, title: "設定", sectionId: "general" };
 
@@ -87,7 +108,7 @@ function scrollViewport(): HTMLElement {
 }
 
 function changeNgUiState() {
-  fireEvent.click(screen.getByRole("button", { name: /^NG\s*NGワード/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^NG/ }));
   fireEvent.click(screen.getByRole("button", { name: "NG記法例" }));
   fireEvent.click(screen.getByRole("button", { name: "高度なNG設定" }));
   fireEvent.scroll(scrollViewport(), { target: { scrollTop: 420 } });
@@ -145,7 +166,8 @@ describe("設定画面のタブ単位の表示状態", () => {
   it("置換ルールの編集中は診断だけを表示し、修正後に自動保存する", async () => {
     await renderViewer();
     vi.useFakeTimers();
-    fireEvent.click(screen.getByRole("button", { name: /^その他/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^NG/ }));
+    fireEvent.click(screen.getByRole("tab", { name: "文字列置換" }));
     fireEvent.change(screen.getByLabelText("置換ルール"), {
       target: { value: 'replace body:\n  from "a"' },
     });
@@ -163,6 +185,33 @@ describe("設定画面のタブ単位の表示状態", () => {
     expect(screen.queryByText("置換ルールを保存できません")).toBeNull();
     expect(configSet).toHaveBeenCalledWith("replace_str_txt", source);
     expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("NG内のタブをキー操作で切り替え、置換タブと記法例を再読み込み後も復元する", async () => {
+    await renderViewer();
+    fireEvent.click(screen.getByRole("button", { name: /^NG/ }));
+    const ngTab = screen.getByRole("tab", { name: "NGルール" });
+    ngTab.focus();
+    fireEvent.keyDown(ngTab, { key: "ArrowRight" });
+    const replacementTab = screen.getByRole("tab", { name: "文字列置換" });
+    expect(replacementTab).toHaveFocus();
+    expect(replacementTab).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(screen.getByRole("button", { name: "置換記法例" }));
+    expect(settingsUiState()).toMatchObject({
+      ngSettingsTab: "replacement",
+      replacementExamplesOpen: true,
+    });
+    cleanup();
+    await renderViewer();
+    expect(screen.getByRole("tab", { name: "文字列置換" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "置換記法例" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByRole("tabpanel", { name: "文字列置換" })).toBeInTheDocument();
   });
 
   it("Chrome側の再読み込みで選択カテゴリ・NGの展開状態・スクロール位置を復元する", async () => {
@@ -216,7 +265,7 @@ describe("設定画面のタブ単位の表示状態", () => {
       });
       expect(screen.getByRole("heading", { name: "一般", level: 2 })).toBeInTheDocument();
       expect(scrollViewport().scrollTop).toBe(0);
-      fireEvent.click(screen.getByRole("button", { name: /^NG\s*NGワード/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^NG/ }));
       expect(screen.getByRole("button", { name: "NG記法例" })).toHaveAttribute(
         "aria-expanded",
         "false",

@@ -1,6 +1,5 @@
-import Editor, { loader, useMonaco } from "@monaco-editor/react";
-import React, { useEffect, useMemo } from "react";
-import { platform } from "src/app/platform";
+import { validateRuleDsl } from "@chlen/chlib";
+import { useMemo } from "react";
 import { NG_DSL_LANGUAGE_ID, RULE_DSL_LANGUAGE_DEFINITION } from "src/core/ng/ngDsl";
 import {
   RULE_ACTION_CATALOG,
@@ -8,70 +7,10 @@ import {
   RULE_TARGET_CATALOG,
 } from "src/core/ng/rules/catalog";
 import { ensureNgDslLanguage } from "src/features/ng/ui/ngDslMonaco";
-import { useTheme } from "src/view/browser/hooks/use-theme";
-
-type MonacoEnvironmentLike = {
-  getWorker?: (moduleId: string, label: string) => Worker;
-  getWorkerUrl?: (moduleId: string, label: string) => string;
-  [key: string]: unknown;
-};
-
-// NGEditor.tsx 内の定数を修正
-const workerMap: Record<string, string> = {
-  json: "json.worker.js",
-  css: "css.worker.js",
-  scss: "css.worker.js",
-  less: "css.worker.js",
-  html: "html.worker.js",
-  handlebars: "html.worker.js",
-  razor: "html.worker.js",
-  typescript: "ts.worker.js",
-  javascript: "ts.worker.js",
-};
-
-// パス解決を絶対パスにするっす
-const resolveWorkerUrl = (label: string): string => {
-  const file = workerMap[label] ?? "editor.worker.js";
-  const rawUrl = platform.window.getAssetUrl(`lib/monaco/vs/assets/${file}`);
-  // 先頭に / がなければ付与して絶対パスにするっす
-  return rawUrl.startsWith("/") ? rawUrl : "/" + rawUrl;
-};
-
-// loader.config も絶対パスにするっす
-loader.config({
-  paths: {
-    vs: "/lib/monaco/vs", // 直接指定するのが一番確実っす
-  },
-});
-
-const configureMonacoEnvironment = (): void => {
-  const globalScope = globalThis as typeof globalThis & {
-    MonacoEnvironment?: MonacoEnvironmentLike;
-  };
-
-  globalScope.MonacoEnvironment = {
-    ...globalScope.MonacoEnvironment,
-    getWorker: (_moduleId: string, label: string) => {
-      const url = resolveWorkerUrl(label);
-      // 同期的に Worker を返すために Blob ラッパーを使用
-      const blob = new Blob([`importScripts("${url}")`], {
-        type: "application/javascript",
-      });
-      return new Worker(URL.createObjectURL(blob), {
-        name: `monaco-${label || "editor"}`,
-      });
-    },
-  };
-};
-
-configureMonacoEnvironment();
-
-function resolveMonacoTheme(theme: "light" | "dark"): "vs" | "vs-dark" {
-  return theme === "dark" ? "vs-dark" : "vs";
-}
+import { DslEditor, DslHelpSnippet, type DslSnippetToken } from "src/view/browser/ui/DslEditor";
 
 export interface NGEditorProps {
-  value: string; // DSL string
+  value: string; // DSL文字列
   onChange: (value: string) => void;
 }
 
@@ -128,16 +67,10 @@ hide body regex:
 
 interface NGDslHelpSnippetProps {
   code: string;
-  minHeight?: number;
 }
 
-// monacoの副作用を防ぐため、記述例の表示はEditorコンポーネントを使わずに自前で実装する
-type NgDslTokenType = "plain" | "comment" | "string" | "rule" | "param" | "color";
-
-interface NgDslToken {
-  type: NgDslTokenType;
-  text: string;
-}
+// Monacoの副作用を防ぐため、記述例の表示はEditorコンポーネントを使わずに自前で実装する
+type NgDslToken = DslSnippetToken;
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -201,146 +134,20 @@ function tokenizeNgDslLine(line: string): NgDslToken[] {
   return tokens;
 }
 
-function getTokenColor(type: NgDslTokenType, dark: boolean): string {
-  switch (type) {
-    case "comment":
-      return dark ? "#9aa0a6" : "#5f6368";
-    case "string":
-      return dark ? "#81c995" : "#0b8043";
-    case "rule":
-      return dark ? "#8ab4f8" : "#1967d2";
-    case "param":
-      return dark ? "#fdd663" : "#b06000";
-    case "color":
-      return dark ? "#f28b82" : "#c5221f";
-    default:
-      return dark ? "#e8eaed" : "#202124";
-  }
+export function NGDslHelpSnippet({ code }: NGDslHelpSnippetProps) {
+  return <DslHelpSnippet code={code} tokenize={tokenizeNgDslLine} />;
 }
 
-export const NGDslHelpSnippet: React.FC<NGDslHelpSnippetProps> = ({ code, minHeight = 120 }) => {
-  const theme = useTheme();
-  const dark = theme === "dark";
-
-  const snippetHeight = useMemo(() => {
-    const lineCount = code.split("\n").length;
-    const estimated = lineCount * 20 + 20;
-    return `${Math.max(minHeight, Math.min(360, estimated))}px`;
-  }, [code, minHeight]);
-
-  const preStyle = useMemo<React.CSSProperties>(() => {
-    return {
-      height: snippetHeight,
-      overflow: "auto",
-      margin: 0,
-      padding: "10px 12px",
-      borderRadius: "6px",
-      border: dark ? "1px solid #3c4043" : "1px solid #dadce0",
-      background: dark ? "#202124" : "#f8f9fa",
-      color: dark ? "#e8eaed" : "#202124",
-      fontSize: "12px",
-      lineHeight: 1.6,
-      whiteSpace: "pre",
-      fontFamily:
-        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace",
-    };
-  }, [dark, snippetHeight]);
-
-  const highlightedLines = useMemo(
-    () => code.split("\n").map((line) => tokenizeNgDslLine(line)),
-    [code],
-  );
-
+export function NGEditor({ value, onChange }: NGEditorProps) {
+  const parsed = useMemo(() => validateRuleDsl(value), [value]);
   return (
-    <pre className="ng-editor__help-code-editor" style={preStyle}>
-      {highlightedLines.map((lineTokens, lineIndex) => (
-        <div key={`ng-dsl-line-${lineIndex}`}>
-          {lineTokens.map((token, tokenIndex) => (
-            <span
-              key={`ng-dsl-token-${lineIndex}-${tokenIndex}`}
-              style={{ color: getTokenColor(token.type, dark) }}
-            >
-              {token.text || (tokenIndex === 0 ? " " : "")}
-            </span>
-          ))}
-        </div>
-      ))}
-    </pre>
+    <DslEditor
+      value={value}
+      onChange={onChange}
+      label="NGルール"
+      languageId={NG_DSL_LANGUAGE_ID}
+      registerLanguage={ensureNgDslLanguage}
+      diagnostics={parsed.diagnostics}
+    />
   );
-};
-
-export const NGEditor: React.FC<NGEditorProps> = ({ value, onChange }) => {
-  const monaco = useMonaco();
-  const theme = useTheme();
-  const monacoTheme = resolveMonacoTheme(theme);
-
-  useEffect(() => {
-    // editor.main.js 側でMonacoEnvironmentが上書きされるケースがあるため、mount後にも再適用する
-    configureMonacoEnvironment();
-    if (monaco) {
-      ensureNgDslLanguage(monaco);
-      monaco.editor.setTheme(monacoTheme);
-    }
-  }, [monaco, monacoTheme]);
-
-  const handleEditorChange = (newValue: string | undefined) => {
-    if (newValue === undefined) return;
-    onChange(newValue);
-  };
-
-  return (
-    <div className="ng-editor">
-      <div
-        style={{
-          height: "500px",
-          border: "1px solid var(--border-color, #ccc)",
-          borderRadius: "4px",
-          overflow: "hidden",
-        }}
-      >
-        <Editor
-          height="100%"
-          defaultLanguage={NG_DSL_LANGUAGE_ID}
-          value={value}
-          onChange={handleEditorChange}
-          beforeMount={(beforeMountMonaco) => {
-            configureMonacoEnvironment();
-            ensureNgDslLanguage(beforeMountMonaco);
-            // Editor インスタンス作成前にテーマを固定しておく（再生成時のフラッシュ対策）
-            try {
-              beforeMountMonaco.editor.setTheme(monacoTheme);
-            } catch (e) {
-              // 万が一 monaco.editor が使えない環境でも安全に処理を続行する
-              // ここは副作用であり、失敗しても動作に致命的な影響は与えない
-
-              console.warn("Failed to set monaco theme in beforeMount", e);
-            }
-          }}
-          onMount={(editor, mountedMonaco) => {
-            // エディタがマウントされるタイミングでもテーマを再適用する
-            try {
-              mountedMonaco.editor.setTheme(monacoTheme);
-            } catch (e) {
-              console.warn("Failed to set monaco theme on mount", e);
-            }
-          }}
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
-            formatOnPaste: false,
-            formatOnType: false,
-            automaticLayout: true,
-            tabSize: 2,
-            scrollBeyondLastLine: false,
-            quickSuggestions: {
-              other: true,
-              comments: false,
-              strings: true,
-            },
-            suggestOnTriggerCharacters: true,
-          }}
-        />
-      </div>
-    </div>
-  );
-};
+}

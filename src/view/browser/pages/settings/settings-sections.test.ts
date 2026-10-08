@@ -28,7 +28,7 @@ describe("置換設定のフォーム保存", () => {
   beforeEach(() => saveConfig.mockClear());
 
   it("不正なDSLを永続化せず、位置付きのエラーを返す", async () => {
-    const section = getSettingsSections(false).find((candidate) => candidate.id === "other")!;
+    const section = getSettingsSections(false).find((candidate) => candidate.id === "ng")!;
     await expect(
       saveSectionFormData(section, { replace_str_txt: 'replace body:\n  from "a"\n  to bare' }),
     ).rejects.toThrow("3行3列");
@@ -36,7 +36,7 @@ describe("置換設定のフォーム保存", () => {
   });
 
   it("有効なDSLを文字列として一度だけ保存する", async () => {
-    const section = getSettingsSections(false).find((candidate) => candidate.id === "other")!;
+    const section = getSettingsSections(false).find((candidate) => candidate.id === "ng")!;
     const source = 'replace body:\n  from "a"\n  to "b"';
     await saveSectionFormData(section, { replace_str_txt: source });
     expect(saveConfig.mock.calls.filter(([key]) => key === "replace_str_txt")).toEqual([

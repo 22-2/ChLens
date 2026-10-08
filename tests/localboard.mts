@@ -45,6 +45,10 @@ export async function startLocalBoard() {
     boardUrl: `${origin}/local/`,
     threadUrl: `${origin}/test/read.cgi/local/1000000001/`,
     requests,
+    setDat(source: string) {
+      // 添付DATの再現でも、外部掲示板へ通信せず同じ文字コード・取得経路を通す。
+      posts.splice(0, posts.length, ...source.trimEnd().split(/\r?\n/u));
+    },
     appendPost() {
       posts.push(
         "追加住民<>sage<>2026/10/02(金) 12:02:00 ID:local003<>更新で追加された日本語レス<>",

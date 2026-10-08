@@ -1,3 +1,4 @@
+import { validateRuleDsl } from "@chlen/chlib";
 import {
   Archive,
   Eye,
@@ -335,16 +336,24 @@ const ALL_SETTINGS_SECTIONS = [
   defineSection(
     "ng",
     "NG",
-    "NGワードと非表示関連の設定をまとめています。",
+    "レスやスレッドのNGルールと、表示する文字列の置換を設定します。",
     <ShieldAlert size={20} />,
     [
       {
         kind: "string",
         key: "ngwords",
-        title: "NGワード一覧",
+        title: "NGルール",
         description:
           "「動作 対象 contains:」の次の行から、条件をインデントして書きます。書き方は下の「NG記法例」を参照してください。",
         widget: "ng_editor",
+      },
+      {
+        kind: "string",
+        key: "replace_str_txt",
+        title: "置換ルール",
+        description:
+          "名前・メール・日付欄・本文の文字列を置換したり、不要な行を削除します。保存後に読み込むレスへ適用します。",
+        widget: "replacement_editor",
       },
       {
         kind: "divider",
@@ -429,20 +438,6 @@ const ALL_SETTINGS_SECTIONS = [
         title: "URL一覧",
         widget: "textarea",
         rows: 6,
-      },
-      {
-        kind: "divider",
-        id: "replacement",
-        title: "レスの文字列置換",
-      },
-      {
-        kind: "string",
-        key: "replace_str_txt",
-        title: "置換ルール",
-        description:
-          "replace body: の下に from と to をインデントして書きます。保存後に読み込むレスへ順番に適用します。",
-        widget: "replacement_editor",
-        rows: 12,
       },
       {
         kind: "divider",
@@ -535,6 +530,15 @@ export async function saveSectionFormData(
   section: SettingsSectionDefinition,
   formData: SettingsSectionFormData,
 ): Promise<void> {
+  if (typeof formData.ngwords === "string") {
+    const parsed = validateRuleDsl(formData.ngwords);
+    if (parsed.diagnostics.length > 0)
+      throw new Error(
+        parsed.diagnostics
+          .map(({ line, column, message }) => `${line}行${column}列: ${message}`)
+          .join("\n"),
+      );
+  }
   // 置換設定は通常のconfig.setを通す前に検証し、不正な文字列を永続化しない。
   if (section.fields.some((field) => "key" in field && field.key === "replace_str_txt")) {
     const result = await setReplacementDsl(String(formData.replace_str_txt ?? ""));

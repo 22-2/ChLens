@@ -1,3 +1,5 @@
+import { normalizeMessageImageTags } from "../parser/MessageParser";
+import { normalizeObfuscatedUrl } from "../url/text";
 import type { ReplacementRule, ReplacementTarget } from "./model";
 
 const TARGET_FIELDS = {
@@ -12,12 +14,21 @@ export function escapeReplacementPattern(source: string): string {
   return source.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
 }
 
-function removeLines(value: string, source: string, firstOnly: boolean): string {
+function removeLines(value: string, source: string, firstOnly: boolean, protocol: string): string {
   const lines = value.split(/(\r\n|\n|<br\s*\/?\s*>)/giu);
   // 区切りを保持し、削除する行の直後（末尾なら直前）の区切りだけを取り除く。
   // 後ろから処理すると連続する削除対象でも残る行の区切りを壊さない。
   for (let index = firstOnly ? 0 : lines.length - 1; index >= 0; index -= 2) {
-    if (lines[index] !== source) continue;
+    // DATは行端の空白とimgタグを保持するため、表示上の画像URLでも指定できるようにする。
+    // 残す行は元のHTMLのまま保ち、削除した画像は後続のサムネイル抽出にも渡さない。
+    const line = lines[index].trim();
+    const imageUrl = normalizeMessageImageTags(line, protocol).trim();
+    if (
+      lines[index] !== source &&
+      line !== source &&
+      normalizeObfuscatedUrl(imageUrl, protocol) !== source
+    )
+      continue;
     if (index + 1 < lines.length) lines.splice(index, 2);
     else if (index > 0) lines.splice(index - 1, 2);
     else lines.splice(index, 1);
@@ -47,6 +58,7 @@ export function createReplacementEngine(rules: readonly ReplacementRule[]) {
   return {
     apply<T extends ReplacementTarget>(this: void, url: string, title: string, target: T): T {
       const result = { ...target };
+      const protocol = /^https?:/iu.exec(url)?.[0] ?? "https:";
       for (const { rule, pattern, conditions } of compiled) {
         if (
           !conditions.every((condition) => {
@@ -68,6 +80,7 @@ export function createReplacementEngine(rules: readonly ReplacementRule[]) {
               result[field],
               rule.matcher.source,
               rule.firstOnly ?? false,
+              protocol,
             );
           } else {
             // yのみの正規表現も次の項目・レスへ検索位置を持ち越さないようにする。

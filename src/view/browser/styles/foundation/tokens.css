@@ -12,6 +12,8 @@
  */
 
 :root {
+  --ref-rule-editor-height: 500px;
+  --ref-rule-example-max-height: 360px;
   /* 変更理由: 独立した議論判定画像でも参考カードの寸法と書体を共有トークンから参照する。 */
   --ref-debate-card-width: 1024px;
   --ref-debate-id-width: 125px;
@@ -228,6 +230,8 @@
   --ref-z-gesture-label: 50001;
 
   /* Theme-independent system scales. */
+  --sys-rule-editor-height: var(--ref-rule-editor-height);
+  --sys-rule-example-max-height: var(--ref-rule-example-max-height);
   --sys-space-0: var(--ref-space-0);
   --sys-toast-width: var(--ref-toast-width);
   /* 変更理由: 書き込み欄の高さを本文に残しつつ、投稿画像を見分けられるサイズに揃える。 */

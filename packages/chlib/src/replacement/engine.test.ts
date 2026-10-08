@@ -89,6 +89,34 @@ replace body:
     expect(engine.apply("https://example.com/other", "", response).message).toBe(response.message);
   });
 
+  it.each([
+    " https://example.com/ico/001.gif <br> 本文 ",
+    " sssp://example.com/ico/001.gif <br> 本文 ",
+    ' <img src="https://example.com/ico/001.gif"> <br> 本文 ',
+    ' <img src="//example.com/ico/001.gif" alt="アイコン"> <br> 本文 ',
+  ])("DATの空白や画像タグを含む先頭行を表示URLで削除する: %s", (message) => {
+    const engine = makeEngine(
+      'remove body line first:\n  equals "https://example.com/ico/001.gif"',
+    );
+    expect(engine.apply("https://example.com/thread/", "", { ...target, message }).message).toBe(
+      " 本文 ",
+    );
+  });
+
+  it("画像と本文が同じ行にある場合や先頭以外の画像を誤って削除しない", () => {
+    const engine = makeEngine(
+      'remove body line first:\n  equals "https://example.com/ico/001.gif"',
+    );
+    for (const message of [
+      ' <img src="https://example.com/ico/001.gif"> 説明<br>本文',
+      '本文<br> <img src="https://example.com/ico/001.gif"> ',
+    ]) {
+      expect(engine.apply("https://example.com/thread/", "", { ...target, message }).message).toBe(
+        message,
+      );
+    }
+  });
+
   it("URLとタイトルの肯定・否定条件をANDで評価する", () => {
     const engine = makeEngine(
       'replace body:\n  from "a"\n  to "b"\n  when url contains "example.com"\n  when title regex "^実況"\n  unless title equals "実況除外"',
