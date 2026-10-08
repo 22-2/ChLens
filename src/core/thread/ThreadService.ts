@@ -1,4 +1,4 @@
-import { type ReplaceStrTarget, toCanonicalThread } from "packages/chlib/src/index";
+import { toCanonicalThread } from "packages/chlib/src/index";
 import type { ThreadRes } from "packages/chlib/src/parser/ThreadParser";
 import { evaluateThreadNg } from "src/core/ng/ThreadNgEvaluator";
 import { replace as replaceStrTxt } from "src/core/thread/ReplaceStrTxt";
@@ -120,9 +120,7 @@ class ThreadServiceImpl implements IThreadService {
     // 変更理由: 旧経路の置換適用がThreadModelと共に使われなくなり、置換設定が無効化されていたため。
     const replacedRes = (thread.res ?? []).map((response: ThreadRes) => ({
       ...response,
-      // ThreadRes は文字列レス本文を持つ一方、置換器の辞書型 index signature を宣言していない。
-      // 実際に置換対象となる各本文フィールドはstringなので、この境界でのみ旧JSDoc型へ合わせる。
-      ...replaceStrTxt(url, title, response as ReplaceStrTarget),
+      ...replaceStrTxt(url, title, response),
     }));
     const canonicalThread = toCanonicalThread({
       title: thread.title || undefined,

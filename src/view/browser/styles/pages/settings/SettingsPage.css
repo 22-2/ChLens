@@ -653,3 +653,27 @@
     padding: var(--sys-space-8);
   }
 }
+
+.settings-page__rule-tabs {
+  display: flex;
+  gap: var(--sys-space-6);
+  border-bottom: 1px solid var(--sys-color-border);
+}
+.settings-page__rule-tabs [role="tab"] {
+  padding: var(--sys-space-5) var(--sys-space-6);
+  border: 0;
+  border-bottom: var(--sys-space-1) solid transparent;
+  background: transparent;
+  color: var(--sys-color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.settings-page__rule-tabs [aria-selected="true"] {
+  border-bottom-color: var(--sys-color-accent);
+  color: var(--sys-color-accent);
+  font-weight: 600;
+}
+.settings-page__rule-tabs [role="tab"]:focus-visible {
+  outline: var(--sys-space-1) solid var(--sys-color-accent);
+  outline-offset: var(--sys-space-1);
+}

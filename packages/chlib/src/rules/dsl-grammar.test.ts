@@ -16,7 +16,7 @@ describe("ルールDSLのPeggy文法", () => {
     const generated = peggy.generate(readSibling("dsl.peggy"), {
       output: "source",
       format: "es",
-      allowedStartRules: ["Document", "Scalar", "OptionList"],
+      allowedStartRules: ["Document", "Scalar", "OptionList", "ReplacementDocument"],
       grammarSource: "src/rules/dsl.peggy",
     });
     expect(generated).toBe(readSibling("dsl-grammar.js"));

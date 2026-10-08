@@ -1,51 +1,58 @@
 import {
-  ReplaceStrParser,
-  type ReplaceStrRule,
-  type ReplaceStrTarget,
-} from "packages/chlib/src/index";
+  createReplacementEngine,
+  parseReplacementDsl,
+  type ReplacementDslParseResult,
+  type ReplacementRule,
+  type ReplacementTarget,
+} from "@chlen/chlib";
 import { container } from "src/service-container/index";
 
-let _replaceTable: ReplaceStrRule[] | null = null;
-const _CONFIG_NAME = "replace_str_txt_obj";
-const _CONFIG_STRING_NAME = "replace_str_txt";
+const CONFIG_NAME = "replace_str_txt";
+let cachedSource: string | null = null;
+let rules: readonly ReplacementRule[] = [];
+let engine = createReplacementEngine(rules);
 
-const _config = {
-  get(): unknown {
-    // 設定未保存時 (null) は JSON.parse に空オブジェクト文字列を与えるのと同じ挙動にする。
-    return JSON.parse(container.config.get(_CONFIG_NAME) ?? "null") as unknown;
-  },
-  set(value: unknown): void {
-    void container.config.set(_CONFIG_NAME, JSON.stringify(value));
-  },
-  getString(): string | null {
-    return container.config.get(_CONFIG_STRING_NAME);
-  },
-  setString(value: string): void {
-    void container.config.set(_CONFIG_STRING_NAME, value);
-  },
-};
-
-export function get(): ReplaceStrRule[] {
-  if (_replaceTable == null) {
-    // 設定未保存時は空文字としてパースし、従来どおり「ルールなし」にする。
-    _replaceTable = ReplaceStrParser.parse(_config.getString() ?? "");
+export function get(): readonly ReplacementRule[] {
+  const source = container.config.get(CONFIG_NAME) ?? "";
+  // 設定フォーム・インポート・別ウィンドウからの更新も、保存文字列の変化で検出する。
+  if (source !== cachedSource) {
+    const parsed = parseReplacementDsl(source);
+    cachedSource = source;
+    if (parsed.diagnostics.length > 0) {
+      console.error(
+        "[ReplaceStrTxt] 置換設定が不正です。直前の有効な設定を維持します",
+        parsed.diagnostics,
+      );
+    } else {
+      rules = parsed.rules;
+      engine = createReplacementEngine(rules);
+    }
   }
-  return _replaceTable;
+  return rules;
 }
 
-export function set(value: string): void {
-  _replaceTable = ReplaceStrParser.parse(value);
-  _config.set(
-    _replaceTable.map((rule) => {
-      // beforeReg は実行時に生成する正規表現なので、設定へは保存しない。
-      const serializedRule = { ...rule };
-      delete serializedRule.beforeReg;
-      return serializedRule;
-    }),
-  );
-  _config.setString(value);
+/** 不正な編集は保存しない。永続化に成功してから実行用キャッシュを更新する。 */
+export async function set(value: string): Promise<ReplacementDslParseResult> {
+  const parsed = parseReplacementDsl(value);
+  if (parsed.diagnostics.length > 0) return parsed;
+  try {
+    await container.config.set(CONFIG_NAME, value);
+  } catch (error) {
+    console.error("[ReplaceStrTxt] 置換設定の保存に失敗しました", error);
+    throw error;
+  }
+  cachedSource = value;
+  rules = parsed.rules;
+  engine = createReplacementEngine(rules);
+  return parsed;
 }
 
-export function replace(url: string, title: string, response: ReplaceStrTarget): ReplaceStrTarget {
-  return ReplaceStrParser.replace(url, title, response, get());
+export function replace<T extends ReplacementTarget>(url: string, title: string, response: T): T {
+  get();
+  try {
+    return engine.apply(url, title, response);
+  } catch (error) {
+    console.error("[ReplaceStrTxt] レスへの置換適用に失敗しました", { url, title, error });
+    throw error;
+  }
 }

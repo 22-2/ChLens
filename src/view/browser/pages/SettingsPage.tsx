@@ -1,3 +1,4 @@
+import { parseReplacementDsl, validateRuleDsl } from "@chlen/chlib";
 import { AlertTriangle, ChevronDown, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -6,6 +7,12 @@ import {
   NGDslHelpSnippet,
   NGEditor,
 } from "src/features/ng/ui/NGEditor";
+import {
+  REPLACEMENT_DSL_EXAMPLE,
+  REPLACEMENT_LINE_EXAMPLE,
+  ReplacementDslHelpSnippet,
+  ReplacementEditor,
+} from "src/features/replacement/ui/ReplacementEditor";
 import { useTabViewState } from "src/features/tabs/browser/use-tab-store";
 import { container } from "src/service-container/index";
 import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
@@ -94,6 +101,12 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
   const [savingSectionId, setSavingSectionId] = useState<SettingsSectionId | null>(null);
   const [autoSaveError, setAutoSaveError] = useState<string | null>(null);
   const [isNgExamplesOpen, setIsNgExamplesOpen] = useState(initialUiState.ngExamplesOpen === true);
+  const [ngSettingsTab, setNgSettingsTab] = useState<"ng" | "replacement">(
+    initialUiState.ngSettingsTab === "replacement" ? "replacement" : "ng",
+  );
+  const [isReplacementExamplesOpen, setIsReplacementExamplesOpen] = useState(
+    initialUiState.replacementExamplesOpen === true,
+  );
   const [isNgAdvancedOpen, setIsNgAdvancedOpen] = useState(initialUiState.ngAdvancedOpen === true);
   const [isCompactMenuOpen, setIsCompactMenuOpen] = useState(false);
   const autoSaveTimerRef = useRef<number | null>(null);
@@ -153,12 +166,22 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
         mainScrollTop: scrollTop,
         ngExamplesOpen: isNgExamplesOpen,
         ngAdvancedOpen: isNgAdvancedOpen,
+        ...(ngSettingsTab === "replacement" ? { ngSettingsTab } : {}),
+        ...(isReplacementExamplesOpen ? { replacementExamplesOpen: true } : {}),
       };
 
       restoredScrollTopRef.current = scrollTop;
       updateViewState({ settingsPage: nextState });
     },
-    [activeSectionId, isNgAdvancedOpen, isNgExamplesOpen, page.sectionId, updateViewState],
+    [
+      activeSectionId,
+      isNgAdvancedOpen,
+      isNgExamplesOpen,
+      ngSettingsTab,
+      isReplacementExamplesOpen,
+      page.sectionId,
+      updateViewState,
+    ],
   );
 
   const loadSettings = useCallback(() => {
@@ -210,6 +233,23 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
       // 保存中に次の入力が入った場合、古い失敗結果が修正後の画面へ戻らないようにする。
       const attemptId = ++saveAttemptRef.current;
       setAutoSaveError(null);
+
+      // 入力途中の構文エラーはエディタ内に表示し、自動保存失敗の通知を繰り返さない。
+      if (
+        typeof sectionFormData.replace_str_txt === "string" &&
+        parseReplacementDsl(sectionFormData.replace_str_txt).diagnostics.length > 0
+      ) {
+        setSavingSectionId(null);
+        return;
+      }
+
+      if (
+        typeof sectionFormData.ngwords === "string" &&
+        validateRuleDsl(sectionFormData.ngwords).diagnostics.length > 0
+      ) {
+        setSavingSectionId(null);
+        return;
+      }
 
       // 変更理由: キー入力ごとの同期書き込みを避け、設定保存の体感速度を維持する。
       autoSaveTimerRef.current = window.setTimeout(() => {
@@ -354,6 +394,19 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
         );
       }
 
+      if (field.widget === "replacement_editor") {
+        return (
+          <div key={field.key} className="settings-page__ng-field">
+            <h3 className="settings-page__ng-field-title">{field.title}</h3>
+            <p className="settings-page__ng-field-description">{field.description}</p>
+            <ReplacementEditor
+              value={toStringValue(value)}
+              onChange={(nextValue) => updateFieldValue(sectionId, field.key, nextValue)}
+            />
+          </div>
+        );
+      }
+
       if (field.widget === "textarea") {
         return (
           <TextareaField
@@ -475,7 +528,9 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
     return activeSection.fields.filter(
       (item) =>
         isSettingsDividerItem(item) ||
-        (isSettingsFieldItem(item) && !NG_PRIMARY_FIELD_KEYS.has(item.key)),
+        (isSettingsFieldItem(item) &&
+          !NG_PRIMARY_FIELD_KEYS.has(item.key) &&
+          item.key !== "replace_str_txt"),
     );
   }, [activeSection]);
 
@@ -672,59 +727,156 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
 
               {activeSection.id === "ng" && (
                 <div className="settings-page__section-stack settings-page__section-stack--ng">
-                  {renderSectionItems("ng", ngPrimarySectionItems)}
-
-                  <Button
-                    className="settings-page__toggle"
-                    variant="subtle"
-                    aria-expanded={isNgExamplesOpen}
-                    onClick={() => setIsNgExamplesOpen((prev) => !prev)}
+                  <div
+                    className="settings-page__rule-tabs"
+                    role="tablist"
+                    aria-label="NGと文字列置換"
                   >
-                    <ChevronDown
-                      size={16}
-                      className={`settings-page__toggle-icon${
-                        isNgExamplesOpen ? " settings-page__toggle-icon--open" : ""
-                      }`}
-                      aria-hidden="true"
-                    />
-                    NG記法例
-                  </Button>
+                    {(["ng", "replacement"] as const).map((tab, index, tabs) => (
+                      <button
+                        key={tab}
+                        id={`rule-tab-${tabId}-${tab}`}
+                        role="tab"
+                        type="button"
+                        aria-selected={ngSettingsTab === tab}
+                        aria-controls={`rule-panel-${tabId}-${tab}`}
+                        tabIndex={ngSettingsTab === tab ? 0 : -1}
+                        onClick={() => setNgSettingsTab(tab)}
+                        onKeyDown={(event) => {
+                          const next =
+                            event.key === "ArrowRight"
+                              ? tabs[(index + 1) % tabs.length]
+                              : event.key === "ArrowLeft"
+                                ? tabs[(index + tabs.length - 1) % tabs.length]
+                                : event.key === "Home"
+                                  ? tabs[0]
+                                  : event.key === "End"
+                                    ? tabs[tabs.length - 1]
+                                    : null;
+                          if (next) {
+                            event.preventDefault();
+                            setNgSettingsTab(next);
+                            document.getElementById(`rule-tab-${tabId}-${next}`)?.focus();
+                          }
+                        }}
+                      >
+                        {tab === "ng" ? "NGルール" : "文字列置換"}
+                      </button>
+                    ))}
+                  </div>
+                  {ngSettingsTab === "ng" ? (
+                    <div
+                      role="tabpanel"
+                      id={`rule-panel-${tabId}-ng`}
+                      aria-labelledby={`rule-tab-${tabId}-ng`}
+                      className="settings-page__section-stack--nested"
+                    >
+                      {renderSectionItems("ng", ngPrimarySectionItems)}
 
-                  {isNgExamplesOpen && (
-                    <Surface as="section" tone="muted" variant="flat">
-                      <SurfaceHeader>
-                        <SurfaceDescription>
-                          よく使う例をそのままコピーして調整できます。
-                        </SurfaceDescription>
-                      </SurfaceHeader>
-                      <SurfaceBody>
-                        <h3 className="settings-page__help-label">基本</h3>
-                        <NGDslHelpSnippet code={NG_DSL_EXAMPLE} minHeight={140} />
-                        <h3 className="settings-page__help-label">複数行</h3>
-                        <NGDslHelpSnippet code={NG_DSL_MULTILINE_EXAMPLE} minHeight={180} />
-                      </SurfaceBody>
-                    </Surface>
-                  )}
+                      <Button
+                        className="settings-page__toggle"
+                        variant="subtle"
+                        aria-expanded={isNgExamplesOpen}
+                        onClick={() => setIsNgExamplesOpen((prev) => !prev)}
+                      >
+                        <ChevronDown
+                          size={16}
+                          className={`settings-page__toggle-icon${
+                            isNgExamplesOpen ? " settings-page__toggle-icon--open" : ""
+                          }`}
+                          aria-hidden="true"
+                        />
+                        NG記法例
+                      </Button>
 
-                  <Button
-                    className="settings-page__toggle"
-                    variant="subtle"
-                    aria-expanded={isNgAdvancedOpen}
-                    onClick={() => setIsNgAdvancedOpen((prev) => !prev)}
-                  >
-                    <ChevronDown
-                      size={16}
-                      className={`settings-page__toggle-icon${
-                        isNgAdvancedOpen ? " settings-page__toggle-icon--open" : ""
-                      }`}
-                      aria-hidden="true"
-                    />
-                    高度なNG設定
-                  </Button>
+                      {isNgExamplesOpen && (
+                        <Surface as="section" tone="muted" variant="flat">
+                          <SurfaceHeader>
+                            <SurfaceDescription>
+                              よく使う例をそのままコピーして調整できます。
+                            </SurfaceDescription>
+                          </SurfaceHeader>
+                          <SurfaceBody>
+                            <h3 className="settings-page__help-label">基本</h3>
+                            <NGDslHelpSnippet code={NG_DSL_EXAMPLE} />
+                            <h3 className="settings-page__help-label">複数行</h3>
+                            <NGDslHelpSnippet code={NG_DSL_MULTILINE_EXAMPLE} />
+                          </SurfaceBody>
+                        </Surface>
+                      )}
 
-                  {isNgAdvancedOpen && (
-                    <div className="settings-page__section-stack--nested">
-                      {renderSectionItems("ng", ngAdvancedSectionItems)}
+                      <Button
+                        className="settings-page__toggle"
+                        variant="subtle"
+                        aria-expanded={isNgAdvancedOpen}
+                        onClick={() => setIsNgAdvancedOpen((prev) => !prev)}
+                      >
+                        <ChevronDown
+                          size={16}
+                          className={`settings-page__toggle-icon${
+                            isNgAdvancedOpen ? " settings-page__toggle-icon--open" : ""
+                          }`}
+                          aria-hidden="true"
+                        />
+                        高度なNG設定
+                      </Button>
+
+                      {isNgAdvancedOpen && (
+                        <div className="settings-page__section-stack--nested">
+                          {renderSectionItems("ng", ngAdvancedSectionItems)}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      role="tabpanel"
+                      id={`rule-panel-${tabId}-replacement`}
+                      aria-labelledby={`rule-tab-${tabId}-replacement`}
+                      className="settings-page__section-stack--nested"
+                    >
+                      {renderSectionItems(
+                        "ng",
+                        activeSection.fields.filter(
+                          (item) => isSettingsFieldItem(item) && item.key === "replace_str_txt",
+                        ),
+                      )}
+                      <Button
+                        className="settings-page__toggle"
+                        variant="subtle"
+                        aria-expanded={isReplacementExamplesOpen}
+                        onClick={() => setIsReplacementExamplesOpen((prev) => !prev)}
+                      >
+                        <ChevronDown
+                          size={16}
+                          className={`settings-page__toggle-icon${isReplacementExamplesOpen ? " settings-page__toggle-icon--open" : ""}`}
+                          aria-hidden="true"
+                        />
+                        置換記法例
+                      </Button>
+                      {isReplacementExamplesOpen && (
+                        <Surface as="section" tone="muted" variant="flat">
+                          <SurfaceHeader>
+                            <SurfaceDescription>
+                              よく使う例をそのままコピーして調整できます。
+                            </SurfaceDescription>
+                          </SurfaceHeader>
+                          <SurfaceBody>
+                            <h3 className="settings-page__help-label">基本・正規表現</h3>
+                            <ReplacementDslHelpSnippet code={REPLACEMENT_DSL_EXAMPLE} />
+                            <h3 className="settings-page__help-label">行削除・適用条件</h3>
+                            <ReplacementDslHelpSnippet code={REPLACEMENT_LINE_EXAMPLE} />
+                            <p className="ng-editor__help-note">
+                              既定では大文字小文字を区別してすべて置換します。flags=i
+                              は大小文字を無視して最初の一致、flags=gi
+                              はすべての一致を置換します。to "" で空文字に置換できます。
+                            </p>
+                            <p className="ng-editor__help-note">
+                              remove body line first は先頭行だけを判定し、first
+                              を省略すると一致する行をすべて削除します。行端の空白と画像タグ、BEアイコンのsssp://表記を考慮します。削除した画像はサムネイルにも表示しません。
+                            </p>
+                          </SurfaceBody>
+                        </Surface>
+                      )}
                     </div>
                   )}
                 </div>

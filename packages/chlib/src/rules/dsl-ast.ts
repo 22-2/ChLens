@@ -19,3 +19,22 @@ export type DslLine =
   | { readonly type: "value"; readonly line: number; readonly value: DslValue }
   | ({ readonly type: "and-header"; readonly line: number } & DslHeaderTail)
   | ({ readonly type: "header"; readonly line: number; readonly action: string } & DslHeaderTail);
+
+export type ReplacementDslLine =
+  | Exclude<DslLine, { readonly type: "value" }>
+  | {
+      readonly type: "replacement-field";
+      readonly line: number;
+      readonly column: number;
+      readonly keyword: string;
+      readonly value: DslValue;
+    }
+  | {
+      readonly type: "replacement-condition";
+      readonly line: number;
+      readonly column: number;
+      readonly keyword: "when" | "unless";
+      readonly field: string;
+      readonly operator: string;
+      readonly value: DslValue;
+    };

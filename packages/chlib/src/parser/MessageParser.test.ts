@@ -4,6 +4,16 @@ import { describe, expect, it } from "vite-plus/test";
 import { parseMessage } from "../parser/MessageParser";
 
 describe("MessageParser", () => {
+  it("BEアイコンのsssp URLをhttpsリンクへ変換する", () => {
+    expect(parseMessage("sssp://example.com/ico/001.gif", { protocol: "http:" })).toEqual([
+      {
+        type: "url",
+        value: "sssp://example.com/ico/001.gif",
+        href: "https://example.com/ico/001.gif",
+      },
+    ]);
+  });
+
   it("parses anchors, IDs, and URLs into semantic tokens", () => {
     const tokens = parseMessage(">>3 id:abc https://example.com/page", {
       protocol: "https:",

@@ -95,3 +95,44 @@
   font-size: var(--sys-font-size-sm);
   color: var(--sys-color-text-muted);
 }
+
+/* NGと文字列置換に共通の編集面・記法例。左右の余白も同じにする。 */
+.dsl-editor {
+  display: grid;
+  gap: var(--sys-space-6);
+}
+.dsl-editor__surface {
+  height: var(--sys-rule-editor-height);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  overflow: hidden;
+}
+.dsl-editor__snippet {
+  margin: 0;
+  max-height: var(--sys-rule-example-max-height);
+  overflow: auto;
+  padding: var(--sys-space-5) var(--sys-space-6);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text);
+  font-family: var(--sys-font-family-mono);
+  font-size: var(--sys-font-size-sm);
+  line-height: 1.6;
+  white-space: pre;
+}
+.dsl-editor__token--comment {
+  color: var(--sys-color-text-muted);
+}
+.dsl-editor__token--rule {
+  color: var(--sys-color-accent);
+}
+.dsl-editor__token--string {
+  color: var(--sys-color-success);
+}
+.dsl-editor__token--param {
+  color: var(--sys-color-warning);
+}
+.dsl-editor__token--color {
+  color: var(--sys-color-error);
+}

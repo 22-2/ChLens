@@ -18,7 +18,7 @@ export type SettingsSupplementaryPanelId =
   | "dataManagement"
   | "siteBoardSettings";
 
-export type SettingsFormWidget = "radio" | "textarea" | "ng_editor";
+export type SettingsFormWidget = "radio" | "textarea" | "ng_editor" | "replacement_editor";
 export type SettingsFormValue = boolean | number | string | undefined;
 export type SettingsSectionFormData = Record<string, SettingsFormValue>;
 export type SettingsFormState = Record<SettingsSectionId, SettingsSectionFormData>;
@@ -91,6 +91,8 @@ export interface SettingsPageUiState {
   // 再読み込みと別カテゴリへの明示的なリンク遷移を区別するため、直前のリンク先を残す。
   linkedSectionId?: string;
   mainScrollTop?: number;
+  ngSettingsTab?: "ng" | "replacement";
+  replacementExamplesOpen?: boolean;
   ngExamplesOpen?: boolean;
   ngAdvancedOpen?: boolean;
 }

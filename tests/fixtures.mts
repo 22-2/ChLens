@@ -27,6 +27,8 @@ export const test = base.extend<{
     const pathToExtension = path.join(__dirname, "../debug/chrome");
     const context = await chromium.launchPersistentContext("", {
       channel: "chromium",
+      // 既存のChromiumを使う環境でも、ブラウザの追加ダウンロードなしで検証できるようにする。
+      executablePath: process.env.CHLENS_E2E_CHROMIUM_PATH,
       args: [
         `--disable-extensions-except=${pathToExtension}`,
         `--load-extension=${pathToExtension}`,

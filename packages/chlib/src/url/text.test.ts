@@ -4,6 +4,12 @@ import { describe, expect, it } from "vite-plus/test";
 import { normalizeObfuscatedUrl, URL_LIKE_PATTERN } from "./text";
 
 describe("URL本文の補助関数", () => {
+  it("BEアイコンのssspスキームをhttpsの画像URLとして扱う", () => {
+    const url = "sssp://example.com/ico/001.gif";
+    expect(url.match(URL_LIKE_PATTERN)).toEqual([url]);
+    expect(normalizeObfuscatedUrl(url, "http:")).toBe("https://example.com/ico/001.gif");
+  });
+
   it("スキームのないURLを既定のhttpsで正規化する", () => {
     expect(normalizeObfuscatedUrl("://example.com/path")).toBe("https://example.com/path");
   });

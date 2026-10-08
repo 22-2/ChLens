@@ -40,7 +40,8 @@ const trimLinkTrailingPunctuation = (rawUrl: string): string => {
   return url;
 };
 
-function normalizeImageTags(message: string, protocol: string): string {
+/** 画像タグを表示時と置換判定で同じURL表現に揃える。 */
+export function normalizeMessageImageTags(message: string, protocol: string): string {
   return (
     message
       .replace(
@@ -198,7 +199,7 @@ function isAnchorEndTag(tag: string): boolean {
  */
 export function parseMessage(message: string, options: MessageParserOptions): MessageToken[] {
   const tokens: MessageToken[] = [];
-  const normalizedMessage = normalizeImageTags(message, options.protocol);
+  const normalizedMessage = normalizeMessageImageTags(message, options.protocol);
   let insideAnchor = false;
 
   for (const part of normalizedMessage.split(/(<[^>]+>)/)) {

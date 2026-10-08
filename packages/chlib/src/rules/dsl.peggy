@@ -88,6 +88,38 @@ Scalar
 OptionList
   = items:(Ws+ { return null; } / Token)* !. { return items.filter((item) => item !== null); }
 
+// ---- 置換DSL ----
+// NGとは別の入口を持たせ、既存の見出し・空白・コメントの文法を共用する。
+ReplacementDocument
+  = first:ReplacementLine rest:("\n" @ReplacementLine)* { return [first, ...rest]; }
+
+ReplacementLine
+  = BlankLine
+  / CommentLine
+  / &Ws LeadIn content:(ReplacementConditionLine / ReplacementFieldLine) { return content; }
+  / TopLevelLine
+
+ReplacementConditionLine
+  = keyword:("when" / "unless") Ws+ field:$NonWs+ Ws+ operator:$NonWs+ Ws+ value:ReplacementValue Ws* LineEnd {
+      return { type: "replacement-condition", line: location().start.line, column: location().start.column, keyword, field, operator, value };
+    }
+
+ReplacementFieldLine
+  = keyword:$NonWs+ value:(Ws+ @ReplacementValue)? Ws* LineEnd {
+      return { type: "replacement-field", line: location().start.line, column: location().start.column, keyword, value: value ?? { kind: "bare", text: "" } };
+    }
+
+ReplacementValue
+  = quoted:ReplacementQuoted Ws* rest:$Body? { return { kind: "quoted", value: quoted, rest: rest ?? "" }; }
+  / ["'] Body? { return { kind: "unclosed" }; }
+  / text:$Body { return { kind: "bare", text }; }
+
+// \d等はそのまま保持する。末尾のバックスラッシュや引用符も往復できるよう、
+// 置換DSLではバックスラッシュ自身と区切り引用符だけをエスケープとして扱う。
+ReplacementQuoted
+  = '"' chars:('\\\\' { return '\\'; } / '\\"' { return '"'; } / '\\' !('"' / '\\') { return '\\'; } / [^"\\\n])* '"' { return chars.join(""); }
+  / "'" chars:('\\\\' { return '\\'; } / "\\'" { return "'"; } / '\\' !("'" / '\\') { return '\\'; } / [^'\\\n])* "'" { return chars.join(""); }
+
 Token
   = $TokenPart+
 

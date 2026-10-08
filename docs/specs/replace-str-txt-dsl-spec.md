@@ -1,100 +1,40 @@
-# ReplaceStrTxt 置換DSL仕様案
+# ReplaceStrTxt 置換DSL仕様
 
-Status: Draft
+Status: Implemented
 
 ## 1. 目的
 
-レスの名前・メール欄・日付欄・本文に対する文字列置換を、手作業で編集しやすい設定として提供する。
+レスの名前・メール欄・日付欄・本文を、手作業で編集できるブロック形式のルールで置換する。
+単純な文字列置換、正規表現のキャプチャを使ったURLラッパーの除去、先頭行の削除、URL・タイトルによる適用範囲の限定を扱う。
 
-主な利用例は次のとおり。
-
-- 本文先頭に混入する `https://img.5ch.io/ico/001.gif` の行を削除する。
-- `http://jump5.ch/?<URL>` のラッパーを取り除き、内側のURLだけを表示する。
-- 特定の板・スレッドだけに置換を適用する。
-- 単純な文字列置換と正規表現置換を使い分ける。
-
-## 2. 現行仕様
-
-現行実装は次のファイルに分散している。
-
-- `src/core/ReplaceStrTxt.js`: 設定・キャッシュ・アプリケーションとの接続
-- `packages/chlib/src/parser/ReplaceStrParser.ts`: 旧形式のパースと置換実行
-- `src/core/ThreadService.js`: スレ取得結果の整形時にID・Slip抽出より前へ適用
-
-スレ取得結果の整形時にレスへ置換が適用され、その後にメタデータ解析・アンカー解析・NG判定が行われる。
-
-### 2.1 旧形式
-
-1行1ルールのタブ区切り形式である。
+基本形は方式を省略した次の形とする。
 
 ```text
-[<方式>]置換前<TAB>置換後<TAB>対象<TAB><URL条件>URLまたはタイトル
+replace body:
+  from "ｗｗｗ"
+  to "（笑）"
 ```
 
-例:
+旧タブ区切り形式との互換は提供しない。旧形式のパーサー・型・テスト・`replace_str_txt_obj` の既定値を削除し、形式判定や移行用の設定キーも設けない。
 
-```text
-名無し<TAB>匿名<TAB>name
-<rx>ID:([A-Za-z0-9]+)<TAB>ID:伏せ字<TAB>msg
-荒らし<TAB>[削除済み]<TAB>msg<TAB><0>example.com
-```
+## 2. 現行コードとの接続
 
-対象は次のとおり。
+- `packages/chlib/src/replacement/model.ts`: 構文に依存しないルールと条件の型
+- `packages/chlib/src/replacement/dsl.ts`: 解析・意味検証・診断・整形
+- `packages/chlib/src/replacement/engine.ts`: 正規表現のコンパイルと置換実行
+- `packages/chlib/src/rules/dsl.peggy`: NG DSLと共通の文法。置換専用入口 `ReplacementDocument` を追加
+- `src/core/thread/ReplaceStrTxt.ts`: 設定保存・文字列の変更検出・実行用キャッシュ
+- `src/core/thread/ThreadService.ts`: 取得結果の整形時に置換を適用
+- `src/features/replacement/ui/ReplacementEditor.tsx`: 設定画面の入力・診断・記法例
 
-| 値     | 対象                  |
-| ------ | --------------------- |
-| `name` | 名前                  |
-| `mail` | メール欄              |
-| `date` | 日付などの `other` 欄 |
-| `msg`  | 本文                  |
-| `all`  | 上記4項目すべて       |
+既存のPeggyを再利用し、見出し・空白・コメント・オプションのトークン化を共通化する。
+NG DSLの `Document` / `Scalar` / `OptionList` の挙動は変更しない。
+文法を変更したら `pnpm --filter @chlen/chlib run generate:dsl` でパーサーと型定義を再生成する。
 
-方式は次のとおり。
+スレ取得結果の整形時に、表示加工前のレスへ置換を適用する。その後にID・Slip等のメタデータ抽出、アンカー解析、NG判定、表示用のHTML加工を行う。
+保存済みルールは次に読み込むレスへ適用する。既に描画したレスの即時再描画は行わない。
 
-| 方式        | 意味                                                           |
-| ----------- | -------------------------------------------------------------- |
-| 省略 / `ex` | リテラル置換。現行実装では大文字小文字を無視                   |
-| `rx`        | 正規表現。`g` フラグ                                           |
-| `rx2`       | 正規表現。`ig` フラグ                                          |
-| `ex2`       | 実行分岐は存在するが、現行パーサーでは未知方式として除外される |
-
-URL条件の番号は次のとおり。
-
-| 番号  | 条件                                    |
-| ----- | --------------------------------------- |
-| `<0>` | URLまたはタイトルに含む                 |
-| `<1>` | URLまたはタイトルに含まない             |
-| `<2>` | URLまたはタイトルと完全一致             |
-| `<3>` | URLまたはタイトルと完全一致しない       |
-| `<4>` | URLまたはタイトルが正規表現に一致       |
-| `<5>` | URLまたはタイトルが正規表現に一致しない |
-
-### 2.2 現行形式の制限
-
-- 区切りがタブなので、人間が編集すると壊れやすい。
-- URL条件の `<0>`〜`<5>` が分かりにくい。
-- 本文の「行」が改行文字なのか `<br>` なのかをDSLが表現できない。
-- パーサーの正規表現が置換後文字列を必須としているため、空文字への置換を直接記述できない。
-- 不正な正規表現を含むルールは、現在は診断を返さず除外される。
-- `ReplaceStrParser` がパースと実行を兼ねている。
-- 起動時は `replace_str_txt_obj` ではなく `replace_str_txt` を再パースしている。
-
-## 3. 新DSLの方針
-
-新DSLは、既存NG DSLと同じブロック形式を採用する。
-
-- 区切りは空白とインデントを基本にする。
-- 値は引用符で囲む。
-- 正規表現のバックスラッシュは保持する。
-- 行番号・列番号付きの診断を返す。
-- 置換ルールと実行エンジンを構文から分離する。
-- 旧形式は互換用パーサーとして残す。
-
-新DSLから旧形式の文字列へ変換して既存パーサーへ渡す方式は採用しない。旧形式の制約が新DSLへ漏れ、行削除や空文字置換を表現できなくなるためである。
-
-## 4. 新DSL構文
-
-置換の基本形は次のとおり。方式は省略可能で、省略時は `literal` とする。
+## 3. 文字列置換
 
 ```text
 replace <対象> [literal|regex] [flags=<フラグ>]:
@@ -102,221 +42,147 @@ replace <対象> [literal|regex] [flags=<フラグ>]:
   to "置換後"
 ```
 
-### 4.1 通常の文字列置換
+| 対象 | レスのフィールド |
+| --- | --- |
+| `name` | `name`（名前） |
+| `mail` | `mail`（メール） |
+| `date` | `other`（日付・ID等の欄） |
+| `body` | `message`（本文） |
+| `all` | 上記4項目すべて |
+
+方式の省略時は `literal` とする。整形時も `literal` は省略する。
+リテラル置換は大文字小文字を区別し、正規表現の記号や置換後の `$1` / `$&` を通常の文字として扱う。
+空の `from` はリテラルではエラーとする。`to ""` は空文字への置換として許可する。
 
 ```text
-replace body literal:
-  from "ｗｗｗ"
-  to "（笑）"
-```
-
-`literal` の既定値は大文字小文字を区別する。無視する場合は `flags=i` を指定する。
-
-```text
-replace name literal flags=i:
-  from "名無し"
+replace name flags=gi:
+  from "anonymous"
   to "匿名"
 ```
 
-### 4.2 正規表現置換
+`flags` の省略時は `g`（すべての一致を置換）。明示した場合はそのフラグをそのまま使う。
+リテラルでは `g` / `i` / `gi` / `ig` を許可し、`i` 単独なら大小文字を無視して最初の一致だけ置換する。
 
 ```text
 replace body regex:
-  from "ID:([A-Za-z0-9]+)"
-  to "ID:伏せ字"
-```
-
-正規表現の置換後文字列では `$1` などのキャプチャ参照を利用できる。
-
-```text
-replace body regex:
-  from "http://jump5\.ch\?(https?://[^<>\s]+)"
+  from "wrapper:(https?://[^<>\s]+)"
   to "$1"
 ```
 
-### 4.3 行削除
+正規表現ではJavaScriptの正規表現・置換文字列の規則を使う。`$1` 等のキャプチャ参照を利用できる。
+フラグはJavaScriptの `RegExp` が受け付けるものを許可し、重複・未知のフラグ・`u` と `v` の併用等は診断する。
 
-行削除は空文字置換の省略形ではなく、独立した操作として扱う。
+## 4. 引用符・インデント・コメント
+
+見出しは行頭に置き、末尾に `:` を付ける。本文の `from` / `to` / `equals` / `when` / `unless` は空白またはタブでインデントする。
+値は一重または二重引用符で囲む。引用符の後に余分な文字は許可しない。
+
+値はJSON文字列として解釈しない。`\d` / `\s` / `\.` 等のバックスラッシュは保持する。
+区切り引用符を含めたい場合はバックスラッシュで逃がす。`\\` は1つのバックスラッシュへ変換する。
+そのため正規表現へ2つの連続するバックスラッシュを渡したい場合は4つ書く。
+`\n` / `\t` は改行・タブへ展開せず、そのままの文字列として扱う（regexでは正規表現エンジンが解釈する）。
+実際の改行を値の中に直接書く複数行の値は扱わない。
+
+空行と、行頭（インデント後でも可）が `//` / `#` / `/*` / `*` の行は読み飛ばす。
+コメントは行単位であり、行末コメントや複数行コメントの構文は設けない。
+
+## 5. 行削除
 
 ```text
 remove body line first:
-  equals "https://img.5ch.io/ico/001.gif"
+  equals "消したい先頭行"
 ```
 
-これは本文を論理行へ分割し、先頭行が指定文字列と一致した場合に、その行と行区切りを削除する。
+`first` を付けると本文の先頭行だけを判定する。最初に一致した行を探す指定ではない。
+省略した `remove body line:` は、指定した文字列に一致する論理行をすべて削除する。
+対象は `body` のみ。行削除に正規表現・フラグ・`from` / `to` は指定できない。
+`equals ""` は空行の削除として許可する。
 
-### 4.4 適用条件
+論理行区切りは `\r\n` / `\n` / `<br>` / `<br/>` / `<br />` とし、HTMLのタグは大小文字を無視する。
+削除対象の行と直後の区切り（末尾行なら直前の区切り）を削除する。
+連続する削除対象や中間行・末尾行でも不要な空行を残さず、残る行の区切り表記や元からある空行は維持する。
 
-URLとタイトルを別々の条件として記述する。
+DATが持つ行端の空白は比較時に取り除く。画像だけの行は、表示時と同じ画像タグ・URLの正規化をして比較する。
+BEアイコンの `sssp://example.com/ico/001.gif` は `https://example.com/ico/001.gif` で指定できる。
+URLと本文が同じ行にある場合は、画像URLだけの指定では削除しない。
+削除・置換した本文からサムネイルを抽出するため、取り除いた画像のサムネイルも表示しない。
+
+## 6. 適用条件
 
 ```text
 replace body:
   from "荒らし"
   to "[削除済み]"
   when url contains "example.com"
+  when title regex "^実況"
+  unless title equals "実況除外"
 ```
 
-```text
-replace body regex:
-  from "実況"
-  to ""
-  when title contains "実況"
-```
+`replace` と `remove` の両方に条件を指定できる。
 
-複数の `when` はAND条件とする。否定条件は `unless` で表現する。
+| 指定 | 意味 |
+| --- | --- |
+| `when` | 条件に一致する場合に適用 |
+| `unless` | 条件に一致しない場合に適用 |
+| `url` | スレッドURLを判定 |
+| `title` | スレッドタイトルを判定 |
+| `contains` | 文字列を含む |
+| `equals` | 文字列と完全一致 |
+| `regex` | JavaScript正規表現に一致（フラグなし） |
 
-```text
-replace body:
-  from "sage"
-  to ""
-  unless url contains "example.com"
-```
+複数条件はすべてANDで結合する。URLとタイトルは別々に判定し、文字列条件は大小文字を区別する。
+ルールは記述順に適用し、前の置換結果を次の入力とする。URLとタイトルはレスへの置換によって変化しない。
 
-## 5. 意味モデル
+## 7. 意味モデルと公開API
 
-DSLは、次のような構文非依存のルールへ変換してから実行する。
+`ReplacementRule` は `replace`（`unit: "text"`、必須の置換後文字列）または `remove`（`unit: "line"`、`target: "body"`）を表す判別共用体とする。
+型・解析・整形・エンジンは `@chlen/chlib` から公開する。
 
 ```ts
-interface ReplacementRule {
-  readonly operation: "replace" | "remove";
-  readonly unit: "text" | "line";
-  readonly target: "name" | "mail" | "date" | "body" | "all";
-  readonly matcher:
-    | {
-        readonly kind: "literal";
-        readonly source: string;
-        readonly flags?: string;
-      }
-    | {
-        readonly kind: "regex";
-        readonly source: string;
-        readonly flags: string;
-      };
-  readonly replacement?: string;
-  readonly conditions: readonly ReplacementCondition[];
-  readonly firstOnly?: boolean;
-}
-
-interface ReplacementCondition {
-  readonly field: "url" | "title";
-  readonly operator: "contains" | "equals" | "regex";
-  readonly value: string;
-  readonly negate?: boolean;
-}
+parseReplacementDsl(source): ReplacementDslParseResult
+formatReplacementDsl(rules): string
+createReplacementEngine(rules).apply(url, title, response): response
 ```
 
-ルールは記述順に適用する。前のルールによる置換結果を、後のルールが入力として受け取る。
+解析結果は `recognized` / `rules` / `diagnostics` を持つ。
+`recognized` は `replace` / `remove` の見出しを認識した場合に真となる。
+空文字・コメントだけの設定は診断なしのルール0件とし、`recognized` は偽となる。
 
-`remove` は内部的には空文字への置換として実行できるが、ユーザー向けDSLでは意図を明確にするため独立した操作として保持する。
+エンジンは正規表現を設定変更時にコンパイルして再利用する。
+入力レスを変更せず、追加のメタデータも維持したコピーを返す。
 
-## 6. 本文の論理行
+## 8. 設定・保存・エラー処理
 
-本文はBBSごとに改行表現が異なるため、`line` 操作では次を論理行区切りとして扱う。
+「設定 → NG → 文字列置換」で編集する。NGセクション上部の「NGルール」「文字列置換」タブで切り替える。
+両方に共通のMonacoエディタ、行番号・列番号・理由付きの診断、同じ見た目の記法例を使う。
+タブと記法例の開閉状態は再読み込み後も保持する。
+`replace_str_txt` にDSL文字列だけを保存し、正規表現オブジェクトやルール配列は永続化しない。
 
-- `\r\n`
-- `\n`
-- `<br>`
-- `<br/>`
-- `<br />`
+次を保存前に検出する。
 
-行削除時は、削除対象の内容と隣接する行区切りをまとめて処理し、先頭行・中間行・末尾行で空行が不必要に残らないようにする。
+- 未知の操作・対象・オプション・条件演算子
+- `from` / `to` / `equals` の不足・重複
+- 値の引用符の不足・未閉鎖・値の後の余分な指定
+- 不正な正規表現・フラグ
+- 行操作の不正な対象・オプション
+- 条件の対象・演算子・値の不足
 
-置換対象は、既存のリンク化や表示用HTML変換より前の `res.message` とする。これにより、`jump5.ch` のラッパー除去後に通常URLとしてリンク化できる。
+エラーがあれば `rules` を空にし、設定全体を保存・適用しない。UIの編集途中の文字列は保持し、直前の有効な保存済みルールを使う。
+インポート等で保存文字列が変わった場合も再解析する。不正な保存文字列はログへ診断を出し、そのウィンドウで最後に読み込めた有効なルールを維持する。
+起動時から設定が不正な場合はルールなしで動作する。
+文法の予期しない解析例外、保存失敗、実行時の予期しない例外は詳細をログへ出して再送出する。
 
-## 7. 実装構成
+## 9. 検証観点
 
-```text
-packages/chlib/src/replacement/
-├── model.ts       # ReplacementRuleなどの型
-├── dsl.ts         # 新DSLのparse・format・診断
-├── legacy.ts      # 旧ReplaceStr.txtの読み込み
-├── engine.ts      # ルールの適用
-└── index.ts
-```
-
-`src/core/ReplaceStrTxt.js` は設定保存・キャッシュ・アプリケーションとの接続だけを担当する。
-
-```text
-旧ReplaceStr.txt ── legacy parser ─┐
-                                  ├─ ReplacementRule[] ─ engine ─ レス
-新しいDSL ─────── DSL parser ─────┘
-```
-
-`packages/chlib` に置く理由は、置換のモデル・パーサー・実行エンジンをChrome、Firefox、Tauriで共通利用できるためである。
-
-## 8. 旧形式との互換
-
-旧形式は次のように新しい意味モデルへ変換する。
-
-| 旧形式       | 新形式                  |
-| ------------ | ----------------------- |
-| `ex`         | `literal` + `flags=i`   |
-| `rx`         | `regex` + `flags=g`     |
-| `rx2`        | `regex` + `flags=ig`    |
-| `name`       | `name`                  |
-| `mail`       | `mail`                  |
-| `date`       | `date`                  |
-| `msg`        | `body`                  |
-| `all`        | `all`                   |
-| `<0>`〜`<5>` | URL/titleの明示的な条件 |
-
-旧形式の設定は読み込み可能にする。新形式で保存した後に、旧形式へ戻す必要はない。
-
-設定形式の判定には、次のいずれかを用いる。
-
-- `replace_str_txt_format` に `legacy` / `dsl-v2` を保存する。
-- 形式キーがない場合は旧形式として扱う。
-
-`replace_str_txt_obj` は実行用キャッシュとしては廃止し、正規表現オブジェクトを永続化しない。
-
-## 9. エラー処理
-
-パース結果は次の形で返す。
-
-```ts
-interface ReplacementDslParseResult {
-  readonly recognized: boolean;
-  readonly rules: readonly ReplacementRule[];
-  readonly diagnostics: readonly {
-    readonly line: number;
-    readonly column: number;
-    readonly message: string;
-  }[];
-}
-```
-
-次のエラーは保存前に検出する。
-
-- 未知の操作・対象・オプション
-- `from` / `to` / `equals` の不足
-- 不正な正規表現
-- 不正な正規表現フラグ
-- `line` 操作に対応しない対象の指定
-- 条件の値不足
-
-エラーを含む設定は適用せず、行番号・列番号・理由をUIへ返す。実行時に予期しないエラーが発生した場合はログへ出力する。
-
-## 10. テスト観点
-
-- リテラル置換、大小文字オプション
-- 正規表現置換と `$1` などのキャプチャ参照
-- `name` / `mail` / `date` / `body` / `all`
-- URL条件とタイトル条件、否定条件、複数条件
-- `\n` と `<br>` の先頭行削除
-- 中間行・末尾行の削除
-- `to ""` による空文字置換
-- 旧形式から新しい意味モデルへの変換
-- 新DSLのparse/formatのラウンドトリップ
-- 不正入力の診断内容
-- 置換後にURLリンク化・アンカー解析・NG判定が行われること
-
-## 11. 実装順
-
-1. `ReplacementRule` と条件の型を追加する。
-2. 旧形式を意味モデルへ変換する `legacy.ts` を追加する。
-3. 置換処理を `engine.ts` へ移す。
-4. `line` 操作と空文字置換を実装する。
-5. 新DSLのパーサーと診断を実装する。
-6. `src/core/ReplaceStrTxt.js` の設定・キャッシュ処理を新エンジンへ接続する。
-7. 設定画面に入力欄、検証結果、旧形式からの変換導線を追加する。
-8. 既存の旧形式テストと新DSLテストを追加する。
+- 方式省略・明示、対象フィールド、記述順、大小文字と置換回数
+- 正規表現・キャプチャ参照・空文字置換
+- リテラルの記号・`$1` 等を通常文字として扱うこと
+- URL／タイトル条件、否定・AND条件
+- 各論理行区切りでの先頭・中間・末尾・連続行削除
+- 引用符・バックスラッシュを含むparse/formatの往復
+- 複数エラーの位置付き診断、部分適用の禁止、旧形式の拒否
+- 保存前検証、設定変更時のキャッシュ更新、不正な更新時の有効ルール維持
+- ID等のメタデータ抽出・NG判定より前への置換適用
+- 既存NG DSLの挙動とPeggy生成物の一致
+- BEアイコン・行端空白・画像タグを含む行削除と、残る本文・画像の維持
+- E2EでNG内のタブ、編集中の保存抑止、有効ルールの保存、再読み込み、本文とサムネイルへの反映

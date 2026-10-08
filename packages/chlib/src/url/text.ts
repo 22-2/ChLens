@@ -10,6 +10,8 @@ const OBFUSCATED_PROTOCOLS: Readonly<Record<string, string>> = {
   tps: "https:",
   ttp: "http:",
   ttps: "https:",
+  // BEアイコンのDAT表記は独自スキームを使うため、リンク・置換・サムネイルで揃える。
+  sssp: "https:",
 };
 
 // 掲示板では自動リンク化を避けるため、URLの先頭を削った表記が使われることがある。
@@ -21,7 +23,7 @@ const OBFUSCATED_PROTOCOLS: Readonly<Record<string, string>> = {
 // スキームを省いたホスト名形式（例: images.example.com/path.jpg）も画像転載で頻出するため、
 // 文頭または空白の後にあるドメイン名をURLとして拾い、正規化時にhttps://を補う。
 export const URL_LIKE_PATTERN =
-  /(?:https?:\/\/|https?:\/(?!\/)|(?:p|ps|s|tp|tps|ttp|ttps):\/\/|(?<![A-Za-z0-9+./:@-]):\/\/)[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+|(?<![A-Za-z0-9+./:@-])(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}(?::\d+)?(?:[/?#][A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+)?/gi;
+  /(?:https?:\/\/|https?:\/(?!\/)|(?:p|ps|s|tp|tps|ttp|ttps|sssp):\/\/|(?<![A-Za-z0-9+./:@-]):\/\/)[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+|(?<![A-Za-z0-9+./:@-])(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}(?::\d+)?(?:[/?#][A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+)?/gi;
 
 const HOST_ONLY_URL_PATTERN =
   /^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}(?::\d+)?(?:[/?#].*)?$/i;
@@ -44,7 +46,7 @@ export function normalizeObfuscatedUrl(rawUrl: string, fallbackProtocol?: string
     return `${singleSlashMatch[1]}://${rawUrl.slice(singleSlashMatch[0].length)}`;
   }
 
-  const match = rawUrl.match(/^(https?):\/\/|^(p|ps|s|tp|tps|ttp|ttps):\/\//i);
+  const match = rawUrl.match(/^(https?):\/\/|^(p|ps|s|tp|tps|ttp|ttps|sssp):\/\//i);
   const obfuscatedProtocol = match?.[2]?.toLowerCase();
   const restoredProtocol = obfuscatedProtocol ? OBFUSCATED_PROTOCOLS[obfuscatedProtocol] : null;
   if (!match || !restoredProtocol) return rawUrl;
