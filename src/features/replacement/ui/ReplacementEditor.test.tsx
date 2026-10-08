@@ -24,12 +24,30 @@ vi.mock("@monaco-editor/react", () => ({
 }));
 vi.mock("src/view/browser/hooks/use-theme", () => ({ useTheme: () => "light" }));
 vi.mock("src/app/platform", () => ({
-  platform: { window: { getAssetUrl: (path: string) => path } },
+  platform: { window: { getAssetUrl: (path: string) => `chrome-extension://test${path}` } },
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 describe("置換ルールの編集と診断", () => {
+  it("Monacoワーカーは拡張機能の絶対URLで直接起動する", async () => {
+    const worker = vi.fn(function Worker() {});
+    vi.stubGlobal("Worker", worker);
+    const environment = (
+      globalThis as typeof globalThis & {
+        MonacoEnvironment: { getWorker: (moduleId: string, label: string) => Worker };
+      }
+    ).MonacoEnvironment;
+    await environment.getWorker("", "editor");
+    expect(worker).toHaveBeenCalledWith(
+      "chrome-extension://test/lib/monaco/vs/assets/editor.worker.js",
+      { name: "monaco-editor" },
+    );
+  });
+
   it("位置付き診断を表示し、修正すると診断を消す", () => {
     const onChange = vi.fn();
     const { rerender } = render(

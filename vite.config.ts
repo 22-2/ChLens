@@ -229,7 +229,8 @@ function staticCopyPlugin(
         const files = await fs.readdir(assetsDir);
         for (const file of files) {
           // 例: json.worker-DKiEKt88.js -> json.worker.js に変換
-          const match = file.match(/^(.+?\.worker)-[a-zA-Z0-9]+\.js$/);
+          // MonacoのハッシュはURL用Base64なので、英数字以外にハイフンと下線も含む。
+          const match = file.match(/^(.+?\.worker)-[a-zA-Z0-9_-]+\.js$/);
           if (match) {
             await fs.copy(path.join(assetsDir, file), path.join(assetsDir, `${match[1]}.js`), {
               overwrite: true,

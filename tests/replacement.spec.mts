@@ -76,7 +76,10 @@ test("NG内の置換タブから先頭のBEアイコンを削除し、本文と�
   await page.keyboard.press("ControlOrMeta+A");
   await page.keyboard.insertText(rule);
   await expect
-    .poll(() => page.evaluate(() => localStorage.getItem("config_replace_str_txt")))
+    // Monacoの改行コードはOS・モデルによってCRLFになるため、DSLの内容を揃えて比較する。
+    .poll(() =>
+      page.evaluate(() => localStorage.getItem("config_replace_str_txt")?.replace(/\r\n/gu, "\n")),
+    )
     .toBe(rule);
   await expect(panel.getByText("置換ルールを保存できません", { exact: true })).toHaveCount(0);
   await panel.getByRole("button", { name: "置換記法例", exact: true }).click();

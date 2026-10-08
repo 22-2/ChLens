@@ -24,12 +24,10 @@ const workerMap: Record<string, string> = {
   javascript: "ts.worker.js",
 };
 
-// パス解決を絶対パスにするっす
+// 拡張機能・Tauriの絶対URLをそのまま使い、表示ページの階層に依存させない。
 const resolveWorkerUrl = (label: string): string => {
   const file = workerMap[label] ?? "editor.worker.js";
-  const rawUrl = platform.window.getAssetUrl(`lib/monaco/vs/assets/${file}`);
-  // 先頭に / がなければ付与して絶対パスにするっす
-  return rawUrl.startsWith("/") ? rawUrl : "/" + rawUrl;
+  return platform.window.getAssetUrl(`/lib/monaco/vs/assets/${file}`);
 };
 
 // loader.config も絶対パスにするっす
@@ -48,11 +46,8 @@ const configureMonacoEnvironment = (): void => {
     ...globalScope.MonacoEnvironment,
     getWorker: (_moduleId: string, label: string) => {
       const url = resolveWorkerUrl(label);
-      // 同期的に Worker を返すために Blob ラッパーを使用
-      const blob = new Blob([`importScripts("${url}")`], {
-        type: "application/javascript",
-      });
-      return new Worker(URL.createObjectURL(blob), {
+      // 同一オリジンのローカル資産なら、拡張機能のCSPでも許可される通常のWorkerを使える。
+      return new Worker(url, {
         name: `monaco-${label || "editor"}`,
       });
     },
