@@ -50,7 +50,7 @@ describe("useThreadTitleNgDialog", () => {
     });
 
     expect(addNgRuleMock).toHaveBeenCalledWith(
-      expect.stringContaining("hide title contains:\n  編集後のタイトル"),
+      expect.stringContaining('hide:\n  when title contains "編集後のタイトル"'),
     );
     expect(toastInfoMock).toHaveBeenCalledWith("スレタイをNGに追加しました: 編集後のタイトル");
     expect(result.current.thread).toBeNull();

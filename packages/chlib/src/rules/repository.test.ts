@@ -7,7 +7,7 @@ describe("rule repository port", () => {
     const repository = new MemoryRuleRepository();
 
     expect(repository.load()).toBeNull();
-    repository.save("hide body contains:\n  shared");
-    expect(repository.load()).toBe("hide body contains:\n  shared");
+    repository.save('hide:\n  when body contains "shared"');
+    expect(repository.load()).toBe('hide:\n  when body contains "shared"');
   });
 });

@@ -46,15 +46,11 @@ export const RULE_ACTION_CATALOG: readonly RuleCatalogEntry<RuleAction>[] = [
     // soft-ngは「クリックで表示」の表示方式名なので、同じ意味を持つcollapseの別名にする。
     aliases: ["soft-ng"],
     description:
-      "一致したレスを折りたたみ、クリックで表示できるようにします。表示方式の設定より優先します。",
+      "スレ一覧では末尾のグループに、レスではその場に折りたたみます。クリックで表示できます。",
   },
   {
     name: "highlight",
     description: "一致した対象を強調します。",
-  },
-  {
-    name: "demote",
-    description: "一致した対象を一覧の末尾へ移動し、目立たなくします。",
   },
   { name: "warn", description: "一致した対象に警告を表示します。" },
 ];
@@ -207,7 +203,7 @@ export function getRuleTargetDefinition(target: RuleTarget): RuleTargetDefinitio
 
 /** 現在UIまで実装済みの組み合わせ。warnは将来拡張用の予約語として保持する。 */
 export function isRuleCombinationSupported(action: RuleAction, target: RuleTarget): boolean {
-  // collapseはレス表示の折りたたみなので、レスで判定できる対象だけに限る。
-  if (action === "collapse") return getRuleTargetDefinition(target).allowedOnThread;
-  return action === "hide" || action === "demote" || (action === "highlight" && target === "title");
+  return (
+    action === "hide" || action === "collapse" || (action === "highlight" && target === "title")
+  );
 }

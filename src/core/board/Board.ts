@@ -306,12 +306,12 @@ class="open_in_rcrx">${container.util.escapeHtml(newBoardUrl)}
 
     return threads.map((thread: BoardThread) => {
       const ngResult = container.ng.isNGBoard(thread.title, url.url.href, thread.resCount);
-      // 変更理由: hide / demote / highlight を型名の推測ではなくDSL actionで分離する。
+      // 変更理由: hide / collapse / highlight を型名の推測ではなくDSL actionで分離する。
       const highlight =
         ngResult?.action === "highlight" ||
         ngResult?.type === "HighlightTitle" ||
         ngResult?.type === "RegExpHighlightTitle";
-      const demoted = ngResult?.action === "demote";
+      const demoted = ngResult?.action === "collapse";
 
       return {
         ...thread,

@@ -41,7 +41,7 @@ export interface ResponseRuleContext extends RuleMatchContext {
   readonly mail: string;
 }
 
-export const BOARD_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "highlight", "demote"]);
+export const BOARD_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "highlight", "collapse"]);
 export const BOARD_RULE_TARGETS = new Set<RuleTarget>(["all", "title", "url", "res-count"]);
 export const RESPONSE_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "collapse"]);
 export const RESPONSE_RULE_TARGETS = new Set<RuleTarget>([
@@ -128,23 +128,42 @@ export function matchRules(
     const conditions = getRuleConditions(rule);
     if (conditions.some(({ target }) => !allowedTargets.has(target))) continue;
 
-    // 同じ条件内のmatcherはOR、条件同士はANDとすることで、既存の複数候補を維持しながら
-    // 「タイトルに一致し、かつレス数も閾値以上」のような複合ルールを評価できる。
+    // 一覧はOR、when/unless同士はAND。unlessは一覧全体を否定する。
     let primaryMatcher: RuleMatcher | null = null;
     let matchesAllConditions = true;
     for (const condition of conditions) {
       const value = getTargetValue(condition.target, context);
+      // 値が不明な対象は否定しても成立させない（IDのないレス等を誤って隠さない）。
+      if (value == null) {
+        matchesAllConditions = false;
+        break;
+      }
       const definition = getRuleTargetDefinition(condition.target);
       const matchedMatcher = condition.matchers.find((matcher) =>
-        matchesMatcher(matcher, definition.comparison, value, onRegexError),
+        matchesMatcher(
+          matcher,
+          condition.comparison === ">" ? "greater-than" : definition.comparison,
+          value,
+          onRegexError,
+        ),
       );
-      if (!matchedMatcher) {
+      // 構文検証を経ないRuleでも、不正な正規表現の失敗をunlessで反転させない。
+      const invalidRegex = condition.matchers.some(
+        (matcher) =>
+          matcher.kind === "regex" &&
+          regexCache.get(`${matcher.flags ?? "i"}\0${matcher.source}`) === null,
+      );
+      if (condition.negate && invalidRegex) {
+        matchesAllConditions = false;
+        break;
+      }
+      if (condition.negate ? matchedMatcher != null : matchedMatcher == null) {
         matchesAllConditions = false;
         break;
       }
       // 結果種別は主条件（従来のtarget）から決め、数値などの補助条件が
       // highlightの表示種別を上書きしないようにする。
-      primaryMatcher ??= matchedMatcher;
+      primaryMatcher ??= matchedMatcher ?? condition.matchers[0];
     }
     if (!matchesAllConditions || !primaryMatcher) continue;
 
@@ -195,7 +214,20 @@ export function evaluateResponseRules(
   context: ResponseRuleContext,
   onRegexError?: (source: string, error: unknown) => void,
 ): RuleMatchResult | null {
-  return matchRules(rules, context, RESPONSE_RULE_ACTIONS, RESPONSE_RULE_TARGETS, onRegexError);
+  // 一覧用のcollapseで、スレを開いたときに全レスまで折りたたまない。
+  // 本文・IDなどレス固有の条件を含むcollapseだけをレスへ適用する。
+  const responseRules = rules.filter(
+    (rule) =>
+      rule.action !== "collapse" ||
+      getRuleConditions(rule).some(({ target }) => !THREAD_LIST_RULE_TARGETS.has(target)),
+  );
+  return matchRules(
+    responseRules,
+    context,
+    RESPONSE_RULE_ACTIONS,
+    RESPONSE_RULE_TARGETS,
+    onRegexError,
+  );
 }
 
 export function clearRuleRegexCache(): void {

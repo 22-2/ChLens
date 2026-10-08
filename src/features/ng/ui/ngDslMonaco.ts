@@ -7,7 +7,6 @@ import {
 import type * as Monaco from "monaco-editor";
 
 type MonacoNamespace = typeof Monaco;
-let ngDslRegistered = false;
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -23,12 +22,21 @@ function createRange(model: Monaco.editor.ITextModel, position: Monaco.Position)
   };
 }
 
+function createCommandRange(
+  model: Monaco.editor.ITextModel,
+  position: Monaco.Position,
+): Monaco.IRange {
+  // 候補は条件・設定の行全体を含むため、入力済みのwhenや対象もまとめて置き換える。
+  const indent = /^\s*/u.exec(model.getLineContent(position.lineNumber))?.[0].length ?? 0;
+  return { ...createRange(model, position), startColumn: indent + 1 };
+}
+
 function createHeaderSuggestions(
   monaco: MonacoNamespace,
   model: Monaco.editor.ITextModel,
   position: Monaco.Position,
 ): Monaco.languages.CompletionItem[] {
-  const range = createRange(model, position);
+  const range = createCommandRange(model, position);
   return RULE_DSL_COMPLETION_CANDIDATES.filter(({ category }) => category === "header").map(
     (candidate) => toCompletionItem(monaco, candidate, range),
   );
@@ -39,7 +47,7 @@ function createOptionSuggestions(
   model: Monaco.editor.ITextModel,
   position: Monaco.Position,
 ): Monaco.languages.CompletionItem[] {
-  const range = createRange(model, position);
+  const range = createCommandRange(model, position);
   return RULE_DSL_COMPLETION_CANDIDATES.filter(({ category }) => category === "option").map(
     (candidate) => toCompletionItem(monaco, candidate, range),
   );
@@ -82,8 +90,7 @@ function toCompletionItem(
 }
 
 export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
-  if (ngDslRegistered) return;
-  ngDslRegistered = true;
+  if (monaco.languages.getLanguages().some(({ id }) => id === NG_DSL_LANGUAGE_ID)) return;
   monaco.languages.register({ id: NG_DSL_LANGUAGE_ID });
 
   const actionPattern = RULE_DSL_LANGUAGE_DEFINITION.actions
@@ -108,19 +115,19 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   monaco.languages.setMonarchTokensProvider(NG_DSL_LANGUAGE_ID, {
     tokenizer: {
       root: [
+        [/"(?:[^"\\]|\\.)*"/, "string"],
+        [/'(?:[^'\\]|\\.)*'/, "string"],
         [/\/\*/, "comment", "@blockComment"],
         [/^\s*\/\/.*$/, "comment"],
         [/^\s*#.*$/, "comment"],
         [new RegExp(`^\\s*(?:${actionPattern}|${operatorPattern})\\b`), "keyword"],
         [new RegExp(`\\b(?:${targetPattern})\\b`), "type.identifier"],
         [new RegExp(`\\b(?:${matcherPattern})\\b`), "type.identifier"],
-        [new RegExp(`\\b(?:${optionPattern})\\b(?=\\s*=)`), "attribute.name"],
+        [new RegExp(`\\b(?:${optionPattern})\\b`), "attribute.name"],
         [new RegExp(`\\b(?:${colorPattern})\\b`), "string"],
         [/#(?:[0-9a-fA-F]{6})\b/, "number.hex"],
         [/>=?/, "operator"],
         [/:|=/, "delimiter"],
-        [/"(?:[^"\\]|\\.)*"/, "string"],
-        [/'(?:[^'\\]|\\.)*'/, "string"],
       ],
       blockComment: [
         [/[^/*]/, "comment"],
@@ -135,23 +142,25 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
     autoClosingPairs: [
       { open: '"', close: '"' },
       { open: "'", close: "'" },
-      { open: "[", close: "]" },
     ],
     surroundingPairs: [
       { open: '"', close: '"' },
       { open: "'", close: "'" },
-      { open: "[", close: "]" },
     ],
+    indentationRules: {
+      increaseIndentPattern: /:\s*$/u,
+      decreaseIndentPattern: /^(?:hide|collapse|highlight):/u,
+    },
   });
 
   monaco.languages.registerCompletionItemProvider(NG_DSL_LANGUAGE_ID, {
-    triggerCharacters: [" ", "=", ">", "[", '"', "'"],
+    triggerCharacters: [" ", ">", '"', "'"],
     provideCompletionItems(model, position) {
       const line = model.getLineContent(position.lineNumber).slice(0, position.column - 1);
-      if (/\bcolor\s*=\s*[#\w-]*$/iu.test(line)) {
+      if (/^\s+color\s+[#\w-]*$/iu.test(line)) {
         return { suggestions: createColorSuggestions(monaco, model, position) };
       }
-      if (/\b(?:sites|label|disabled)\s*=\s*[^\s]*$/iu.test(line)) {
+      if (/^\s+(?:sites|label|disabled)\b/iu.test(line)) {
         return { suggestions: createOptionSuggestions(monaco, model, position) };
       }
       if (!/^\s/u.test(line)) {
@@ -159,8 +168,17 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
       }
       return {
         suggestions: RULE_DSL_COMPLETION_CANDIDATES.filter(
-          ({ category }) => category === "regex-value",
-        ).map((candidate) => toCompletionItem(monaco, candidate, createRange(model, position))),
+          ({ category }) =>
+            category === "condition" || category === "option" || category === "regex-value",
+        ).map((candidate) =>
+          toCompletionItem(
+            monaco,
+            candidate,
+            candidate.category === "regex-value"
+              ? createRange(model, position)
+              : createCommandRange(model, position),
+          ),
+        ),
       };
     },
   });

@@ -27,11 +27,14 @@ describe("NG Rule service", () => {
   it("loads only the block DSL and applies title/body rules", async () => {
     configStore.set(
       "ngwords",
-      `highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
-  注目
+      `highlight:
+  color blue
+  label "注目"
+  sites "bbs.eddibb.cc"
+  when title contains "注目"
 
-hide body regex:
-  "(imgur\\.com/.+?){15}"`,
+hide:
+  when body regex "(imgur\\\\.com/.+?){15}"`,
     );
     const { get, invalidateCache, isNGBoard, isNGThread } = await import("src/core/ng/NG");
     invalidateCache();
@@ -54,7 +57,8 @@ hide body regex:
       ),
     ).toMatchObject({
       type: "RegExpBody",
-      ruleDescription: `hide body regex:\n  "(imgur\\.com/.+?){15}"`,
+      ruleDescription: `hide:
+  when body regex "(imgur\\\\.com/.+?){15}"`,
     });
   });
 
@@ -63,13 +67,17 @@ hide body regex:
     await expect(set("Body(value=荒らし)")).rejects.toThrow("新しいブロックDSL");
   });
 
-  it("distinguishes demoted board threads from hidden board threads", async () => {
+  it("スレ一覧の折りたたみを完全非表示と区別する", async () => {
     const { apply, invalidateCache, isNGBoard } = await import("src/core/ng/NG");
     invalidateCache();
-    apply(`demote title contains:\n  薄くする\n\nhide title contains:\n  隠す`);
+    apply(`collapse:
+  when title contains "薄くする"
+
+hide:
+  when title contains "隠す"`);
 
     expect(isNGBoard("薄くするスレ", "https://example.com/board/", 1)).toMatchObject({
-      action: "demote",
+      action: "collapse",
     });
     expect(isNGBoard("隠すスレ", "https://example.com/board/", 1)).toMatchObject({
       action: "hide",
@@ -79,24 +87,26 @@ hide body regex:
   it("タイトルとレス数の条件を組み合わせて板のハイライトを適用する", async () => {
     const { apply, invalidateCache, isNGBoard } = await import("src/core/ng/NG");
     invalidateCache();
-    apply(`highlight title contains color=red:
-  注目
-and res-count >= 100:`);
+    apply(`highlight:
+  color red
+  when title contains "注目"
+  when res-count >= 100`);
 
     expect(isNGBoard("注目スレ", "https://example.com/board/", 99)).toBeNull();
     expect(isNGBoard("通常スレ", "https://example.com/board/", 100)).toBeNull();
     expect(isNGBoard("注目スレ", "https://example.com/board/", 100)).toMatchObject({
       type: "HighlightTitle",
-      ruleDescription: `highlight title contains color=red:
-  注目
-and res-count >= 100:`,
+      ruleDescription: `highlight:
+  color red
+  when title contains "注目"
+  when res-count >= 100`,
     });
   });
 
   it("applies a stored DSL without writing it back", async () => {
     const { apply, get, invalidateCache } = await import("src/core/ng/NG");
     invalidateCache();
-    apply("hide body contains:\n  保存済み");
+    apply('hide:\n  when body contains "保存済み"');
 
     expect(configStore.has("ngwords")).toBe(false);
     expect(get()).toEqual([
@@ -111,7 +121,7 @@ and res-count >= 100:`,
   it("matches anchor-count from the response body", async () => {
     const { apply, invalidateCache, isNGThread } = await import("src/core/ng/NG");
     invalidateCache();
-    apply("hide anchor-count >= 2:");
+    apply("hide:\n  when anchor-count >= 2");
 
     expect(
       isNGThread(
@@ -132,7 +142,7 @@ and res-count >= 100:`,
     // NG判定全体を止めないことを保証する。
     const { apply, get, invalidateCache, validate } = await import("src/core/ng/NG");
     invalidateCache();
-    const source = "hard-ng body contains:\n  荒らし";
+    const source = 'hide:\n  when body contains "荒らし"';
     expect(() => validate(source)).not.toThrow();
     apply(source);
     expect(get()).toEqual([expect.objectContaining({ action: "hide", target: "body" })]);

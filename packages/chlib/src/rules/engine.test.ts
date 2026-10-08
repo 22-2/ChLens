@@ -271,11 +271,11 @@ describe("rule engine", () => {
 });
 
 describe("collapseルール", () => {
-  it("レスの判定ではcollapseルールを評価し、スレ一覧では評価しない", () => {
+  it("本文のcollapseはレスを折りたたみ、スレ一覧には適用しない", () => {
     const rules: Rule[] = [
       {
         action: "collapse",
-        target: "all",
+        target: "body",
         enabled: true,
         matchers: [{ kind: "contains", value: "宣伝" }],
       },
@@ -292,5 +292,118 @@ describe("collapseルール", () => {
       })?.rule.action,
     ).toBe("collapse");
     expect(evaluateBoardRules(rules, { title: "宣伝です", url: "", resCount: 1 })).toBeNull();
+  });
+
+  it("タイトルのcollapseはスレ一覧を折りたたみ、開いたスレのレスには適用しない", () => {
+    const rules: Rule[] = [
+      {
+        action: "collapse",
+        target: "title",
+        enabled: true,
+        matchers: [{ kind: "contains", value: "定期" }],
+      },
+    ];
+    expect(
+      evaluateBoardRules(rules, { title: "定期スレ", url: "", resCount: 1 })?.rule.action,
+    ).toBe("collapse");
+    expect(
+      evaluateResponseRules(rules, {
+        all: "本文",
+        title: "定期スレ",
+        body: "本文",
+        name: "",
+        mail: "",
+        url: "",
+      }),
+    ).toBeNull();
+    // タイトルで対象を絞り、IDの条件も指定した場合はレスの折りたたみになる。
+    const scoped = [
+      {
+        ...rules[0],
+        conditions: [
+          { target: "id" as const, matchers: [{ kind: "contains" as const, value: "sample001" }] },
+        ],
+      },
+    ];
+    expect(
+      evaluateResponseRules(scoped, {
+        all: "本文",
+        title: "定期スレ",
+        body: "本文",
+        id: "sample001",
+        name: "",
+        mail: "",
+        url: "",
+      })?.rule.action,
+    ).toBe("collapse");
+  });
+});
+
+describe("when/unlessの評価", () => {
+  const context = {
+    url: "https://example.com/local/",
+    title: "注目",
+    body: "対象",
+    all: "対象",
+    name: "名無し",
+    mail: "",
+    id: "normal",
+  };
+  const bodyRule: Rule = {
+    action: "hide",
+    target: "body",
+    enabled: true,
+    matchers: [{ kind: "contains", value: "対象" }],
+    conditions: [
+      {
+        target: "id",
+        negate: true,
+        matchers: [
+          { kind: "contains", value: "許可A" },
+          { kind: "contains", value: "許可B" },
+        ],
+      },
+    ],
+  };
+  it("unlessは一覧のOR全体を否定し、他の条件とANDで結合する", () => {
+    expect(evaluateResponseRules([bodyRule], context)).not.toBeNull();
+    for (const id of ["許可A", "許可B"])
+      expect(evaluateResponseRules([bodyRule], { ...context, id })).toBeNull();
+    expect(evaluateResponseRules([bodyRule], { ...context, body: "通常" })).toBeNull();
+  });
+  it("取得できない値や無効な正規表現をunlessで一致へ反転させない", () => {
+    expect(evaluateResponseRules([bodyRule], { ...context, id: null })).toBeNull();
+    const onError = vi.fn();
+    const invalidRule: Rule = {
+      ...bodyRule,
+      conditions: [{ target: "id", negate: true, matchers: [{ kind: "regex", source: "[" }] }],
+    };
+    expect(evaluateResponseRules([invalidRule], context, onError)).toBeNull();
+  });
+  it("先頭がunlessでも全候補不一致のときだけ一致する", () => {
+    const rule: Rule = { ...bodyRule, negate: true, conditions: undefined };
+    expect(evaluateResponseRules([rule], context)).toBeNull();
+    expect(evaluateResponseRules([rule], { ...context, body: "通常" })?.rule).toBe(rule);
+  });
+  it("数値比較の境界と除外条件をハイライトでも評価する", () => {
+    const rule: Rule = {
+      action: "highlight",
+      target: "title",
+      enabled: true,
+      presentation: { color: "blue", label: "注目" },
+      matchers: [{ kind: "contains", value: "注目" }],
+      conditions: [
+        { target: "res-count", comparison: ">", matchers: [{ kind: "contains", value: "10" }] },
+        { target: "title", negate: true, matchers: [{ kind: "contains", value: "除外" }] },
+      ],
+    };
+    expect(evaluateBoardRules([rule], { ...context, resCount: 10 })).toBeNull();
+    expect(evaluateBoardRules([rule], { ...context, resCount: 11 })).toMatchObject({
+      type: "HighlightTitle",
+      params: { bgColor: "blue", label: "注目" },
+    });
+    expect(
+      evaluateBoardRules([rule], { ...context, title: "注目・除外", resCount: 11 }),
+    ).toBeNull();
   });
 });

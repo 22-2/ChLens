@@ -144,6 +144,8 @@ export function DslEditor({
             fontSize: 14,
             formatOnPaste: false,
             formatOnType: false,
+            // DSLの段数は自分で決める。Enterは現在の深さだけ引き継ぎ、貼り付けを再インデントしない。
+            autoIndent: "keep",
             automaticLayout: true,
             tabSize: 2,
             insertSpaces: true,

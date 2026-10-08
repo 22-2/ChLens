@@ -1,12 +1,7 @@
 import { parseReplacementDsl, validateRuleDsl } from "@chlen/chlib";
 import { AlertTriangle, ChevronDown, RefreshCw } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  NG_DSL_EXAMPLE,
-  NG_DSL_MULTILINE_EXAMPLE,
-  NGDslHelpSnippet,
-  NGEditor,
-} from "src/features/ng/ui/NGEditor";
+import { NG_DSL_EXAMPLES, NGDslHelpSnippet, NGEditor } from "src/features/ng/ui/NGEditor";
 import {
   REPLACEMENT_DSL_EXAMPLE,
   REPLACEMENT_LINE_EXAMPLE,
@@ -797,10 +792,16 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
                             </SurfaceDescription>
                           </SurfaceHeader>
                           <SurfaceBody>
-                            <h3 className="settings-page__help-label">基本</h3>
-                            <NGDslHelpSnippet code={NG_DSL_EXAMPLE} />
-                            <h3 className="settings-page__help-label">複数行</h3>
-                            <NGDslHelpSnippet code={NG_DSL_MULTILINE_EXAMPLE} />
+                            {NG_DSL_EXAMPLES.map((example) => (
+                              <section
+                                key={example.title}
+                                className="settings-page__section-stack--nested"
+                              >
+                                <h3 className="settings-page__help-label">{example.title}</h3>
+                                <SurfaceDescription>{example.description}</SurfaceDescription>
+                                <NGDslHelpSnippet code={example.code} />
+                              </section>
+                            ))}
                           </SurfaceBody>
                         </Surface>
                       )}

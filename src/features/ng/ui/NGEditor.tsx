@@ -14,56 +14,70 @@ export interface NGEditorProps {
   onChange: (value: string) => void;
 }
 
-export const NG_DSL_EXAMPLE = `// 動作＋対象＋条件種別の見出しに、値をインデントして記述します
-hide body contains:
-  荒らし
-  spam
+/** 例を目的別に分け、最初から正規表現やサイト指定を覚えなくても使えるようにする。 */
+export const NG_DSL_EXAMPLES = [
+  {
+    title: "本文の言葉で非表示にする",
+    description:
+      "hideは非表示、whenは「当てはまる場合」、bodyは本文、containsは「含む」です。文字列は引用符で囲み、条件行は半角スペース2つで下げます。",
+    code: `hide:
+  when body contains "宣伝"`,
+  },
+  {
+    title: "複数のIDをまとめて指定する",
+    description:
+      "contains:の次の行からIDを1つずつ引用符で囲み、さらに半角スペース2つ下げます。どれか1つのIDを含むレスが対象です。IDは実際のものに置き換えてください。",
+    code: `hide:
+  when id contains:
+    "sample001"
+    "sample002"
+    "sample003"`,
+  },
+  {
+    title: "本文の条件に例外を付ける",
+    description:
+      "「宣伝」を含むレスを非表示にしますが、IDにsample001を含むレスは残します。unlessは「当てはまる場合は除外する」です。",
+    code: `hide:
+  when body contains "宣伝"
+  unless id contains "sample001"`,
+  },
+  {
+    title: "unlessだけで書く",
+    description:
+      "whenなしでも使えます。この例は「保存用」を含まない本文のレスをすべて非表示にします。一部の対象だけに絞る条件ではないので、広い範囲に適用される点に注意してください。複数の値を並べる場合は、どれにも一致しない対象に適用します。IDなど判定する値がない場合は適用しません。",
+    code: `hide:
+  unless body contains "保存用"`,
+  },
+  {
+    title: "非表示にせず折りたたむ",
+    description:
+      "collapseはクリックで表示できるように折りたたみます。タイトル条件はスレ一覧の末尾のグループへ、本文やIDの条件はレスをその場で折りたたみます。",
+    code: `collapse:
+  when title contains "定期スレ"
 
-hide id contains:
-  abc123
-
-// スレ一覧の末尾へ薄く表示し、divider内へ折りたたみます
-demote title contains:
-  勢いのない定期スレ
-
-hide url regex:
-  "https?://(?:x|twitter)\\.com/.+"
-
-// 名前欄・メール欄・SLIPも対象にできます
-hide name contains:
-  名無しの荒らし
-
-hide slip contains:
-  ワッチョイ
-
-// 数値条件は「対象 >= 数値:」で書きます
-hide reply-count >= 5:
-
-hide anchor-count >= 3:
-
-// hideの消し方は「NGレスの表示方式」設定に従います
-// collapseは設定にかかわらず折りたたみ、クリックで表示できます
-// （hard-ngはhide、soft-ngはcollapseの別名です）
-collapse body contains:
-  宣伝
-
-// ルールを一時的に止めるときはdisabled=trueを付けます
-hide title contains disabled=true:
-  雑談`;
-
-export const NG_DSL_MULTILINE_EXAMPLE = `// 同じブロックの条件はORで判定します
-highlight title contains color=red label=注目 sites=[eddibb.cc 5ch.io]:
-  google
-  ぐーぐる
-  microsoft
-
-// 「注目」を含み、かつレス数が100以上のスレッドだけをハイライトします
-highlight title contains color=red label=注目:
-  注目
-and res-count >= 100:
-
-hide body regex:
-  "(imgur\\.com/.+?){15}"`;
+collapse:
+  when body contains "宣伝"`,
+  },
+  {
+    title: "複数の条件を満たすスレを強調する",
+    description:
+      "タイトルに「実況」を含み、レス数が10以上のスレを青色で強調します。条件を複数書くと、すべて満たす場合に適用します。colorは色、labelはスレ一覧に表示する名前です。",
+    code: `highlight:
+  color blue
+  label "注目"
+  when title contains "実況"
+  when res-count >= 10`,
+  },
+  {
+    title: "サイト指定・一時無効化・正規表現",
+    description:
+      "sitesで適用先を絞れます。example.comは架空のサイトなので実際のサイトへ変更してください。disabled trueはルールを一時的に無効にします。regexは正規表現で、例では「宣伝」を3回以上繰り返す本文に一致します。",
+    code: `hide:
+  sites "example.com"
+  disabled true
+  when body regex "(宣伝){3,}"`,
+  },
+] as const;
 
 interface NGDslHelpSnippetProps {
   code: string;
@@ -89,7 +103,7 @@ const optionPattern = RULE_OPTION_CATALOG.flatMap((entry) => [entry.name, ...(en
   .join("|");
 
 const NG_DSL_TOKEN_REGEX = new RegExp(
-  `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\/\\/.*$|^\\s*#.*$)|(\\b(?:${actionPattern}|${operatorPattern})\\b)|(\\b(?:${targetPattern})\\b)|(\\b(?:${matcherPattern})\\b)|(\\b(?:${optionPattern})\\b(?=\\s*=))|(#[0-9a-fA-F]{3,8}\\b)`,
+  `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\/\\/.*$|^\\s*#.*$)|(\\b(?:${actionPattern}|${operatorPattern})\\b)|(\\b(?:${targetPattern})\\b)|(\\b(?:${matcherPattern})\\b)|(^\\s*(?:${optionPattern})\\b)|(#[0-9a-fA-F]{3,8}\\b)`,
   "g",
 );
 

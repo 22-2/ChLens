@@ -344,7 +344,7 @@ const ALL_SETTINGS_SECTIONS = [
         key: "ngwords",
         title: "NGルール",
         description:
-          "「動作 対象 contains:」の次の行から、条件をインデントして書きます。書き方は下の「NG記法例」を参照してください。",
+          "「hide:」などの動作の下にwhen/unless条件を書きます。一覧はOR、複数の条件はANDです。書き方は下の「NG記法例」を参照してください。",
         widget: "ng_editor",
       },
       {
@@ -560,6 +560,8 @@ export async function saveSectionFormData(
         ),
       ),
   );
+  // config.setによる判定キャッシュの更新後に通知し、開いた一覧・レスにも編集結果を反映する。
+  if (section.id === "ng") container.message.send("ng_changed");
 }
 
 export function readBBSMenuUrlsForCheck(raw: string): string[] {

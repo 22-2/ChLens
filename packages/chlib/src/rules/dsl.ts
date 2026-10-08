@@ -1,12 +1,10 @@
 import {
   getRuleTargetDefinition,
-  isRuleCombinationSupported,
   normalizeRuleAction,
-  normalizeRuleOption,
   normalizeRuleTarget,
   RULE_ACTION_CATALOG,
 } from "./catalog";
-import type { DslValue } from "./dsl-ast";
+import type { DslLine, DslValue } from "./dsl-ast";
 import { parse as parseGrammar } from "./dsl-grammar.js";
 import {
   RESPONSE_RULE_ACTIONS,
@@ -14,671 +12,337 @@ import {
   THREAD_LIST_RULE_ACTIONS,
   THREAD_LIST_RULE_TARGETS,
 } from "./engine";
-import {
-  getRuleConditions,
-  type Rule,
-  type RuleCondition,
-  type RuleMatcher,
-  type RuleTarget,
-} from "./model";
+import { getRuleConditions, type Rule, type RuleCondition, type RuleMatcher } from "./model";
 
 export interface RuleDslDiagnostic {
   readonly line: number;
   readonly column: number;
   readonly message: string;
 }
-
 export interface RuleDslParseResult {
   readonly recognized: boolean;
   readonly rules: readonly Rule[];
   readonly diagnostics: readonly RuleDslDiagnostic[];
 }
+type ContentLine = Exclude<DslLine, { type: "blank" | "comment" }>;
+interface ConditionDraft {
+  target: RuleCondition["target"];
+  negate?: boolean;
+  comparison?: ">" | ">=";
+  kind: "contains" | "regex";
+  matchers: RuleMatcher[];
+  node: ContentLine;
+}
+interface RuleDraft {
+  action: Rule["action"];
+  enabled: boolean;
+  properties: Set<string>;
+  sites: string[];
+  color?: string;
+  label?: string;
+  conditions: ConditionDraft[];
+  node: ContentLine;
+  indent?: number;
+  invalid: boolean;
+}
 
-// 未対応の動作を指摘する際は、入力可能な候補を添えて修正先を示す。
-const AVAILABLE_ACTIONS_HINT = RULE_ACTION_CATALOG.map((entry) => entry.name).join("、");
-type BlockMatcherKind = "contains" | "regex";
-type RuleHeaderMatcherKind = BlockMatcherKind | "comparison";
+/** 引用符・バックスラッシュ・改行等を逃がし、1行の値として往復できるようにする。 */
+export function quoteRuleDslValue(value: string): string {
+  return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", "\\n").replaceAll("\r", "\\r").replaceAll("\t", "\\t")}"`;
+}
+function quoted(value: DslValue | null): string | null {
+  return value?.kind === "quoted" && !value.rest ? value.value : null;
+}
 
-/**
- * 構文解析はdsl.peggyから生成したパーサーに任せる。
- * 文法は全行を必ずいずれかの行ノードへ一致させるため、通常の入力では例外にならない。
- * それでも例外が出た場合は文法自体の不具合なので、握りつぶさず詳細を残して再送出する。
- */
-function parseWithGrammar<T>(run: () => T, input: string, startRule: string): T {
+/** 動作だけの見出しを持つwhen/unless形式。旧見出し・トップレベルandは受け付けない。 */
+export function parseRuleDsl(source: string): RuleDslParseResult {
+  let nodes: DslLine[];
   try {
-    return run();
+    nodes = parseGrammar(source.replace(/\r\n?/gu, "\n"));
   } catch (error) {
-    console.error(`[ruleDsl] 文法での解析に失敗しました (startRule=${startRule})`, {
-      input,
-      error,
-    });
+    console.error("[ruleDsl] NG文法での解析に失敗しました", { error });
     throw error;
   }
-}
-
-/** 単独の値を解釈する。引用符付きなら中身、閉じていない・余分な文字がある場合はnull。 */
-function toPlainValue(value: DslValue): string | null {
-  switch (value.kind) {
-    case "bare":
-      return value.text;
-    case "quoted":
-      return value.rest ? null : value.value;
-    case "unclosed":
-      return null;
-  }
-}
-
-function parseDslValue(source: string): string | null {
-  return toPlainValue(
-    parseWithGrammar(() => parseGrammar(source, { startRule: "Scalar" }), source, "Scalar"),
-  );
-}
-
-function tokenizeOptions(source: string): string[] {
-  return parseWithGrammar(
-    () => parseGrammar(source, { startRule: "OptionList" }),
-    source,
-    "OptionList",
-  );
-}
-
-function unquote(value: string): string {
-  return parseDslValue(value) ?? value.trim();
-}
-
-function parseSites(value: string): string[] {
-  const unwrapped = value.startsWith("[") && value.endsWith("]") ? value.slice(1, -1) : value;
-  return tokenizeOptions(unwrapped.replace(/,/gu, " ")).map(unquote).filter(Boolean);
-}
-
-/**
- * ルールを判定できる画面（スレ一覧・レス）ごとの動作と対象。
- * engineはルールの全条件の対象が同じ画面で判定できない場合に黙って読み飛ばすため、
- * DSL側で同じ基準を使い、決して一致しないAND条件を入力時点で弾く。
- */
-const RULE_EVALUATION_SCOPES = [
-  { name: "スレ一覧", actions: THREAD_LIST_RULE_ACTIONS, targets: THREAD_LIST_RULE_TARGETS },
-  { name: "レス", actions: RESPONSE_RULE_ACTIONS, targets: RESPONSE_RULE_TARGETS },
-] as const;
-
-function getEvaluationScopes(
-  action: Rule["action"],
-  targets: readonly RuleTarget[],
-): (typeof RULE_EVALUATION_SCOPES)[number][] {
-  return RULE_EVALUATION_SCOPES.filter(
-    (scope) => scope.actions.has(action) && targets.every((target) => scope.targets.has(target)),
-  );
-}
-
-function getComparisonOperator(target: RuleTarget): ">" | ">=" | null {
-  switch (getRuleTargetDefinition(target).comparison) {
-    case "greater-than":
-      return ">";
-    case "greater-than-or-equal":
-      return ">=";
-    default:
-      return null;
-  }
-}
-
-function parseRegexMatcherValue(
-  value: DslValue,
-  defaultFlags?: string,
-): { matcher: RuleMatcher; valid: true } | { valid: false } {
-  if (value.kind !== "quoted") return { valid: false };
-  let flags = defaultFlags;
-  if (value.rest) {
-    const flagsMatch = /^flags=(\S+)$/u.exec(value.rest);
-    if (!flagsMatch) return { valid: false };
-    flags = flagsMatch[1];
-  }
-  return {
-    valid: true,
-    matcher: { kind: "regex", source: value.value, ...(flags ? { flags } : {}) },
-  };
-}
-
-interface ParsedConditionHeader {
-  readonly target: RuleTarget;
-  readonly options: ReadonlyMap<string, string>;
-  readonly matcherKind: RuleHeaderMatcherKind | null;
-  readonly comparisonOperator: ">" | ">=" | null;
-  readonly inlineValue: string | null;
-  readonly regexFlags?: string;
-  readonly hasError: boolean;
-}
-
-function parseConditionHeader(
-  action: Rule["action"],
-  targetToken: string,
-  optionsSource: string,
-  line: number,
-  diagnostics: RuleDslDiagnostic[],
-  isAdditionalCondition: boolean,
-): ParsedConditionHeader | null {
-  const target = normalizeRuleTarget(targetToken);
-  if (!target) {
-    diagnostics.push({
-      line,
-      column: 1,
-      message: `未対応の対象です: ${targetToken}`,
-    });
-    return null;
-  }
-
-  let headerHasError = false;
-  // AND側のtargetは表示種別を決める主条件ではなく成立条件なので、主条件だけにある
-  // highlightの表示対象制限をここでは適用しない。
-  if (!isAdditionalCondition && !isRuleCombinationSupported(action, target)) {
-    headerHasError = true;
-    diagnostics.push({
-      line,
-      column: 1,
-      message: `まだ実行できない動作と対象の組み合わせです: ${action} ${target}`,
-    });
-  }
-
-  const headerTokens = tokenizeOptions(optionsSource);
-  const options = new Map<string, string>();
-  let parsedMatcherKind: RuleHeaderMatcherKind | null = null;
-  let comparisonOperator: ">" | ">=" | null = null;
-  let inlineValue: string | null = null;
-  let parsedRegexFlags: string | undefined;
-
-  for (let tokenIndex = 0; tokenIndex < headerTokens.length; tokenIndex += 1) {
-    const token = headerTokens[tokenIndex].replace(/:$/u, "");
-    const normalizedToken = token.toLowerCase();
-    if (normalizedToken === "contains" || normalizedToken === "regex") {
-      if (parsedMatcherKind != null) {
-        headerHasError = true;
-        diagnostics.push({
-          line,
-          column: 1,
-          message: "条件種別を複数指定することはできません。",
-        });
-      } else {
-        parsedMatcherKind = normalizedToken;
-      }
-      continue;
-    }
-    if (token === ">" || token === ">=") {
-      if (parsedMatcherKind != null || comparisonOperator != null) {
-        headerHasError = true;
-        diagnostics.push({
-          line,
-          column: 1,
-          message: "条件種別を複数指定することはできません。",
-        });
-        continue;
-      }
-      parsedMatcherKind = "comparison";
-      comparisonOperator = token;
-      const valueToken = headerTokens[tokenIndex + 1];
-      if (valueToken == null || valueToken.includes("=")) {
-        headerHasError = true;
-        diagnostics.push({
-          line,
-          column: 1,
-          message: `比較条件の値がありません: ${token}`,
-        });
-      } else {
-        inlineValue = parseDslValue(valueToken);
-        if (inlineValue == null) {
-          headerHasError = true;
-          diagnostics.push({
-            line,
-            column: 1,
-            message: `比較条件の値が不正です: ${valueToken}`,
-          });
-        }
-        tokenIndex += 1;
-      }
-      continue;
-    }
-
-    const assignment = token.indexOf("=");
-    if (assignment > 0) {
-      const optionName = token.slice(0, assignment);
-      const optionValue = unquote(token.slice(assignment + 1));
-      if (optionName.toLowerCase() === "flags") {
-        parsedRegexFlags = optionValue;
-        continue;
-      }
-      const option = normalizeRuleOption(optionName);
-      if (!option) {
-        headerHasError = true;
-        diagnostics.push({
-          line,
-          column: 1,
-          message: `未対応のオプションです: ${optionName}`,
-        });
-        continue;
-      }
-      options.set(option, optionValue);
-      continue;
-    }
-
-    headerHasError = true;
-    diagnostics.push({
-      line,
-      column: 1,
-      message: `不正な条件指定です: ${token}`,
-    });
-  }
-
-  if (parsedMatcherKind == null) {
-    headerHasError = true;
-    diagnostics.push({
-      line,
-      column: 1,
-      message: "条件種別または比較演算子が必要です。",
-    });
-  }
-
-  const definition = getRuleTargetDefinition(target);
-  if (parsedMatcherKind === "comparison") {
-    const expectedOperator = getComparisonOperator(target);
-    if (expectedOperator == null) {
-      headerHasError = true;
-      diagnostics.push({
-        line,
-        column: 1,
-        message: `${target} は比較条件に対応していません。`,
-      });
-    } else if (comparisonOperator !== expectedOperator) {
-      headerHasError = true;
-      diagnostics.push({
-        line,
-        column: 1,
-        message: `${target} の比較演算子は ${expectedOperator} です。`,
-      });
-    }
-    if (inlineValue == null || !Number.isFinite(Number(inlineValue))) {
-      headerHasError = true;
-      diagnostics.push({
-        line,
-        column: 1,
-        message: `比較条件の値が数値ではありません: ${inlineValue ?? ""}`,
-      });
-    }
-    if (parsedRegexFlags != null) {
-      headerHasError = true;
-      diagnostics.push({
-        line,
-        column: 1,
-        message: "比較条件に flags は指定できません。",
-      });
-    }
-  } else {
-    if (definition.comparison !== "contains" && definition.comparison !== "url-contains") {
-      headerHasError = true;
-      diagnostics.push({
-        line,
-        column: 1,
-        message: `${target} には比較演算子を指定してください。`,
-      });
-    }
-    if (parsedRegexFlags != null && parsedMatcherKind !== "regex") {
-      headerHasError = true;
-      diagnostics.push({
-        line,
-        column: 1,
-        message: "flags は regex 条件でのみ指定できます。",
-      });
-    }
-  }
-
-  if (
-    isAdditionalCondition &&
-    ["sites", "color", "label", "disabled"].some((option) => options.has(option))
-  ) {
-    headerHasError = true;
-    diagnostics.push({
-      line,
-      column: 1,
-      message: "AND条件にはルール全体のオプションを指定できません。",
-    });
-  }
-
-  return {
-    target,
-    options,
-    matcherKind: parsedMatcherKind,
-    comparisonOperator,
-    inlineValue,
-    ...(parsedRegexFlags ? { regexFlags: parsedRegexFlags } : {}),
-    hasError: headerHasError,
-  };
-}
-
-/** 新仕様のブロックDSLだけを認識する。旧形式は意図的に受け付けない。 */
-export function parseRuleDsl(source: string): RuleDslParseResult {
-  const normalizedSource = source.replace(/\r\n?/gu, "\n");
-  const nodes = parseWithGrammar(
-    () => parseGrammar(normalizedSource),
-    normalizedSource,
-    "Document",
-  );
-  const rules: Rule[] = [];
   const diagnostics: RuleDslDiagnostic[] = [];
+  const rules: Rule[] = [];
   let recognized = false;
-  const unknownTopLevelLines: number[] = [];
-  let current: Omit<Rule, "matchers"> | null = null;
-  let matchers: RuleMatcher[] = [];
-  let matcherKind: RuleHeaderMatcherKind | null = null;
-  let regexFlags: string | undefined;
-  let currentHasError = false;
-  let ruleHasError = false;
-  let additionalConditions: RuleCondition[] = [];
-  // AND条件を含め、このルールで指定された対象。同時に判定できるかの検証に使う。
-  let conditionTargets: RuleTarget[] = [];
-
-  const resetState = (): void => {
-    current = null;
-    matchers = [];
-    matcherKind = null;
-    regexFlags = undefined;
-    currentHasError = false;
-    ruleHasError = false;
-    additionalConditions = [];
-    conditionTargets = [];
+  let current: RuleDraft | null = null;
+  let list: ConditionDraft | "sites" | null = null;
+  let listNode: ContentLine | null = null;
+  let listIndent: number | null = null;
+  const error = (node: ContentLine, message: string): void => {
+    diagnostics.push({ line: node.line, column: node.column, message });
+    if (current) current.invalid = true;
   };
-
-  const finishCurrentCondition = (line: number): RuleCondition | null => {
-    if (!current) return null;
-    if (currentHasError) {
-      ruleHasError = true;
-      return null;
+  const addMatcher = (
+    condition: ConditionDraft,
+    value: DslValue | null,
+    node: ContentLine,
+  ): void => {
+    const text = value?.kind === "quoted" ? value.value : null;
+    if (text == null) {
+      error(node, "条件の文字列は引用符で囲んでください。");
+      return;
     }
-    if (matchers.length === 0) {
-      if (current.enabled) {
-        diagnostics.push({ line, column: 1, message: "ルールには1つ以上の条件が必要です。" });
+    if (condition.kind === "contains") {
+      if (value?.kind !== "quoted" || value.rest || !text) {
+        error(node, "containsには空でない引用文字列だけを指定してください。");
+        return;
       }
-      ruleHasError = true;
-      return null;
+      condition.matchers.push({ kind: "contains", value: text });
+      return;
     }
-    return { target: current.target, matchers };
+    const rest = value?.kind === "quoted" ? value.rest : "";
+    const flags = rest ? /^flags=(\S+)$/u.exec(rest)?.[1] : undefined;
+    if (rest && !flags) {
+      error(node, "正規表現の後ろにはflagsだけを指定できます。");
+      return;
+    }
+    try {
+      new RegExp(text, flags ?? "i");
+    } catch (cause) {
+      error(node, `正規表現またはflagsが不正です: ${String(cause)}`);
+      return;
+    }
+    condition.matchers.push({ kind: "regex", source: text, ...(flags ? { flags } : {}) });
   };
-
-  const flush = (line: number): void => {
+  const closeList = (): void => {
+    if (
+      list &&
+      listNode &&
+      (list === "sites" ? current?.sites.length === 0 : list.matchers.length === 0)
+    )
+      error(listNode, "一覧には1つ以上の値が必要です。");
+    list = null;
+    listNode = null;
+    listIndent = null;
+  };
+  const finish = (): void => {
+    closeList();
     if (!current) return;
-    const finalCondition = finishCurrentCondition(line);
-    const conditions = finalCondition
-      ? [...additionalConditions, finalCondition]
-      : additionalConditions;
-    if (!ruleHasError && conditions.length > 0) {
-      const [primaryCondition, ...restConditions] = conditions;
+    if (current.conditions.length === 0 && !current.invalid)
+      error(current.node, "ルールにはwhenまたはunless条件が必要です。");
+    // すべての条件を同時に判定できる画面が存在することを保存前に検証する。
+    const action = current.action;
+    const targets = current.conditions.map((condition) => condition.target);
+    const evaluable = [
+      { actions: THREAD_LIST_RULE_ACTIONS, targets: THREAD_LIST_RULE_TARGETS },
+      { actions: RESPONSE_RULE_ACTIONS, targets: RESPONSE_RULE_TARGETS },
+    ].some(
+      (scope) => scope.actions.has(action) && targets.every((target) => scope.targets.has(target)),
+    );
+    if (targets.length > 0 && !evaluable)
+      error(current.node, "動作とすべての条件を同じ画面で判定できません。");
+    const titleIndex = current.conditions.findIndex((condition) => condition.target === "title");
+    if (action === "highlight" && titleIndex < 0)
+      error(current.node, "highlightにはtitle条件が必要です。");
+    if ((current.color != null || current.label != null) && action !== "highlight")
+      error(current.node, "colorとlabelはhighlightでのみ指定できます。");
+    if (!current.invalid && current.conditions.length > 0) {
+      // highlightの結果種別はtitleから決める。数値条件を先に書いても表示の意味を変えない。
+      const conditions = [...current.conditions];
+      const primary = conditions.splice(action === "highlight" ? titleIndex : 0, 1)[0];
+      const toCondition = (condition: ConditionDraft): RuleCondition => ({
+        target: condition.target,
+        matchers: condition.matchers,
+        ...(condition.negate ? { negate: true } : {}),
+        ...(condition.comparison ? { comparison: condition.comparison } : {}),
+      });
       rules.push({
-        ...current,
-        target: primaryCondition.target,
-        matchers: primaryCondition.matchers,
-        ...(restConditions.length > 0 ? { conditions: restConditions } : {}),
+        action,
+        enabled: current.enabled,
+        ...toCondition(primary),
+        ...(conditions.length ? { conditions: conditions.map(toCondition) } : {}),
+        ...(current.sites.length ? { scope: { sites: current.sites } } : {}),
+        ...(current.color != null || current.label != null
+          ? {
+              presentation: {
+                ...(current.color != null ? { color: current.color } : {}),
+                ...(current.label != null ? { label: current.label } : {}),
+              },
+            }
+          : {}),
       });
     }
-    resetState();
+    current = null;
   };
-
   for (const node of nodes) {
-    // flush等は旧実装と同じく0始まりの行番号を受け取るため、index・lineの両方を用意する。
-    const line = node.line;
-    const index = line - 1;
     if (node.type === "blank" || node.type === "comment") continue;
-
-    if (node.type !== "value") {
-      if (node.type === "and-header") {
-        recognized = true;
-        if (!current) {
-          diagnostics.push({
-            line,
-            column: 1,
-            message: "AND条件は既存のルールの後に指定してください。",
-          });
-          continue;
-        }
-
-        const currentRule: Omit<Rule, "matchers"> = current;
-        const previousCondition = finishCurrentCondition(index);
-        if (previousCondition) additionalConditions.push(previousCondition);
-
-        const parsedHeader = parseConditionHeader(
-          currentRule.action,
-          node.target,
-          node.optionsSource,
-          line,
-          diagnostics,
-          true,
-        );
-        if (!parsedHeader) {
-          currentHasError = true;
-          continue;
-        }
-        current = { ...currentRule, target: parsedHeader.target };
-        matcherKind = parsedHeader.matcherKind;
-        regexFlags = parsedHeader.regexFlags;
-        matchers = [];
-        currentHasError = parsedHeader.hasError;
-
-        // 主条件だけで既に判定できないルールは、AND条件の責任にせず従来どおり扱う。
-        // 判定できていたルールがこのAND条件で判定不能になる場合だけ指摘する。
-        const scopesBefore = getEvaluationScopes(currentRule.action, conditionTargets);
-        conditionTargets = [...conditionTargets, parsedHeader.target];
-        if (
-          scopesBefore.length > 0 &&
-          getEvaluationScopes(currentRule.action, conditionTargets).length === 0
-        ) {
-          currentHasError = true;
-          diagnostics.push({
-            line,
-            column: 1,
-            message: `AND条件の ${parsedHeader.target} は、${conditionTargets
-              .slice(0, -1)
-              .join("・")} と同じ画面（${scopesBefore
-              .map((scope) => scope.name)
-              .join("・")}）で判定できないため、このルールは一致しません。`,
-          });
-        }
-        if (!parsedHeader.hasError && parsedHeader.matcherKind === "comparison") {
-          if (parsedHeader.inlineValue != null) {
-            matchers.push({ kind: "contains", value: parsedHeader.inlineValue });
-          }
-        }
-        continue;
-      }
-
-      if (node.type === "invalid-and") {
-        recognized = true;
-        diagnostics.push({
-          line,
-          column: 1,
-          message: "AND条件の見出しが不正です。",
-        });
-        continue;
-      }
-
-      flush(index);
-      if (node.type === "unknown") {
-        unknownTopLevelLines.push(line);
+    if (node.indent === 0) {
+      finish();
+      if (node.type !== "ng-header") {
+        error(node, "見出しはhide:など動作だけにしてください。旧形式は使用できません。");
         continue;
       }
       recognized = true;
       const action = normalizeRuleAction(node.action);
       if (!action) {
-        diagnostics.push({
-          line,
-          column: 1,
-          // develop側の改善（利用可能な動作ヒント）を維持する。対象の検証はparseConditionHeader側で行うため、ここでは動作のみ判定する。
-          message: `未対応の動作です: ${node.action}（利用可能な動作: ${AVAILABLE_ACTIONS_HINT}）`,
-        });
+        error(
+          node,
+          `未対応の動作です: ${node.action}（利用可能な動作: ${RULE_ACTION_CATALOG.map(({ name }) => name).join("、")}）`,
+        );
         continue;
       }
-
-      const parsedHeader = parseConditionHeader(
-        action,
-        node.target,
-        node.optionsSource,
-        line,
-        diagnostics,
-        false,
-      );
-      if (!parsedHeader) {
-        continue;
-      }
-
-      const sitesValue = parsedHeader.options.get("sites");
-      const color = parsedHeader.options.get("color");
-      const label = parsedHeader.options.get("label");
       current = {
         action,
-        target: parsedHeader.target,
-        enabled: parsedHeader.options.get("disabled") !== "true",
-        ...(sitesValue ? { scope: { sites: parseSites(sitesValue) } } : {}),
-        ...(color || label
-          ? { presentation: { ...(color ? { color } : {}), ...(label ? { label } : {}) } }
-          : {}),
+        enabled: true,
+        properties: new Set(),
+        sites: [],
+        conditions: [],
+        node,
+        invalid: false,
       };
-      matcherKind = parsedHeader.matcherKind;
-      regexFlags = parsedHeader.regexFlags;
-      currentHasError = parsedHeader.hasError;
-      conditionTargets = [parsedHeader.target];
-      matchers = [];
-      if (!parsedHeader.hasError && parsedHeader.matcherKind === "comparison") {
-        if (parsedHeader.inlineValue != null) {
-          matchers.push({ kind: "contains", value: parsedHeader.inlineValue });
-        }
-      }
       continue;
     }
-
-    if (!current || matcherKind == null || currentHasError) continue;
-    if (matcherKind === "comparison") {
-      currentHasError = true;
-      ruleHasError = true;
-      diagnostics.push({
-        line,
-        column: 1,
-        message: "比較条件は見出しと同じ行に指定してください。",
-      });
+    if (!current) {
+      error(node, "条件・設定・一覧は動作の見出し内に記述してください。");
       continue;
     }
-    if (matcherKind === "regex") {
-      const parsed = parseRegexMatcherValue(node.value, regexFlags);
-      if (!parsed.valid) {
-        currentHasError = true;
-        ruleHasError = true;
-        diagnostics.push({
-          line,
-          column: 1,
-          message: "regex の値は引用符で囲んでください。",
-        });
+    current.indent ??= node.indent;
+    if (node.indent > current.indent) {
+      if (!list) {
+        error(node, "一覧の見出しがない位置でインデントされています。");
         continue;
       }
-      matchers.push(parsed.matcher);
+      listIndent ??= node.indent;
+      if (node.indent !== listIndent || node.type !== "ng-value") {
+        error(node, "一覧の値は同じインデントの引用文字列にしてください。");
+        continue;
+      }
+      if (list === "sites") {
+        const site = quoted(node.value);
+        if (!site) error(node, "sitesの値は空でない引用文字列にしてください。");
+        else current.sites.push(site);
+      } else addMatcher(list, node.value, node);
       continue;
     }
-
-    const value = toPlainValue(node.value);
-    if (value == null) {
-      currentHasError = true;
-      ruleHasError = true;
-      diagnostics.push({
-        line,
-        column: 1,
-        message: "contains の値の引用符が閉じていません。",
-      });
+    closeList();
+    if (node.indent !== current.indent) {
+      error(node, "ルール内の条件・設定は同じインデントにしてください。");
       continue;
     }
-    matchers.push({ kind: "contains", value });
-  }
-  flush(nodes.length);
-  if (recognized) {
-    for (const line of unknownTopLevelLines) {
-      diagnostics.push({
-        line,
-        column: 1,
-        message: "不明なルールまたは新構文ではない行です。",
-      });
+    if (node.type === "ng-condition") {
+      const target = normalizeRuleTarget(node.target);
+      if (!target) {
+        error(node, `未対応の対象です: ${node.target}`);
+        continue;
+      }
+      const definition = getRuleTargetDefinition(target);
+      const numeric =
+        definition.comparison === "greater-than" ||
+        definition.comparison === "greater-than-or-equal";
+      const comparison = node.operator === ">" || node.operator === ">=";
+      if (numeric !== comparison) {
+        error(
+          node,
+          numeric
+            ? `${target}には数値比較を指定してください。`
+            : `${target}にはcontainsまたはregexを指定してください。`,
+        );
+        continue;
+      }
+      const condition: ConditionDraft = {
+        target,
+        kind: node.operator === "regex" ? "regex" : "contains",
+        matchers: [],
+        node,
+        ...(node.keyword === "unless" ? { negate: true } : {}),
+        ...(node.operator === ">" ? { comparison: ">" as const } : {}),
+      };
+      current.conditions.push(condition);
+      if (comparison) {
+        const value = node.value?.kind === "bare" ? node.value.text : "";
+        if (!/^\d+$/u.test(value) || !Number.isSafeInteger(Number(value)))
+          error(node, "比較値は0以上の整数にしてください。");
+        else condition.matchers.push({ kind: "contains", value });
+      } else if (node.value == null) {
+        list = condition;
+        listNode = node;
+      } else addMatcher(condition, node.value, node);
+      continue;
+    }
+    if (node.type !== "ng-property") {
+      error(node, "when/unless条件または設定行を指定してください。");
+      continue;
+    }
+    const key = node.keyword;
+    if (!["sites", "color", "label", "disabled"].includes(key)) {
+      error(node, `未対応の設定です: ${key}`);
+      continue;
+    }
+    if (current.properties.has(key)) {
+      error(node, `設定が重複しています: ${key}`);
+      continue;
+    }
+    current.properties.add(key);
+    if (key === "sites") {
+      if (node.value == null) {
+        list = "sites";
+        listNode = node;
+      } else {
+        const site = quoted(node.value);
+        if (!site)
+          error(
+            node,
+            "sitesの値は空でない引用文字列にしてください。複数ならsites:の一覧を使います。",
+          );
+        else current.sites.push(site);
+      }
+    } else if (key === "disabled") {
+      const value = node.value?.kind === "bare" ? node.value.text : "";
+      if (value !== "true" && value !== "false")
+        error(node, "disabledにはtrueまたはfalseを指定してください。");
+      else current.enabled = value === "false";
+    } else if (key === "color") {
+      const color = quoted(node.value) ?? (node.value?.kind === "bare" ? node.value.text : "");
+      if (!/^(?:[A-Za-z]+|#[\da-f]{3}|#[\da-f]{6}|#[\da-f]{8})$/iu.test(color))
+        error(node, "colorには色名または16進カラーコードを指定してください。");
+      else current.color = color;
+    } else {
+      const label = quoted(node.value);
+      if (label == null) error(node, "labelの文字列は引用符で囲んでください。");
+      else current.label = label;
     }
   }
+  finish();
+  diagnostics.sort((a, b) => a.line - b.line || a.column - b.column);
   return { recognized, rules, diagnostics };
 }
 
-function quoteDslValue(value: string): string {
-  return /^[\p{L}\p{N}._#-]+$/u.test(value) ? value : JSON.stringify(value);
-}
-
-/** 正規表現はバックスラッシュを二重化せず、そのまま引用符で囲む。 */
-function quoteRegexDslValue(value: string): string {
-  const quote = value.includes('"') && !value.includes("'") ? "'" : '"';
-  return `${quote}${value.replaceAll(quote, `\\${quote}`)}${quote}`;
-}
-
-function formatOptions(rule: Rule): string {
-  const options: string[] = [];
-  if (rule.presentation?.color) options.push(`color=${quoteDslValue(rule.presentation.color)}`);
-  if (rule.presentation?.label) options.push(`label=${quoteDslValue(rule.presentation.label)}`);
-  if (rule.scope?.sites?.length) {
-    options.push(`sites=[${rule.scope.sites.map(quoteDslValue).join(" ")}]`);
+function formatCondition(condition: RuleCondition): string[] {
+  const prefix = `  ${condition.negate ? "unless" : "when"} ${condition.target}`;
+  if (getRuleTargetDefinition(condition.target).field.endsWith("Count")) {
+    const matcher = condition.matchers[0];
+    return [
+      `${prefix} ${condition.comparison ?? ">="} ${matcher.kind === "contains" ? matcher.value : matcher.source}`,
+    ];
   }
-  if (!rule.enabled) options.push("disabled=true");
-  return options.length ? ` ${options.join(" ")}` : "";
+  const kind = condition.matchers[0].kind;
+  const values = condition.matchers.map((matcher) =>
+    matcher.kind === "regex"
+      ? `${quoteRuleDslValue(matcher.source)}${matcher.flags ? ` flags=${matcher.flags}` : ""}`
+      : quoteRuleDslValue(matcher.value),
+  );
+  return values.length === 1
+    ? [`${prefix} ${kind} ${values[0]}`]
+    : [`${prefix} ${kind}:`, ...values.map((value) => `    ${value}`)];
 }
 
-function getMatcherValue(matcher: RuleMatcher): string {
-  return matcher.kind === "regex" ? matcher.source : matcher.value;
-}
-
-function formatConditionBlocks(
-  condition: RuleCondition,
-  prefix: string,
-  options: string,
-): string[] {
-  const comparisonOperator = getComparisonOperator(condition.target);
-  if (comparisonOperator) {
-    return condition.matchers.map(
-      (matcher) =>
-        `${prefix}${condition.target} ${comparisonOperator} ${quoteDslValue(getMatcherValue(matcher))}${options}:`,
-    );
-  }
-
-  const groups: Array<{ kind: BlockMatcherKind; matchers: RuleMatcher[] }> = [];
-  for (const matcher of condition.matchers) {
-    if (matcher.kind !== "contains" && matcher.kind !== "regex") continue;
-    const last = groups.at(-1);
-    if (last?.kind === matcher.kind) {
-      last.matchers.push(matcher);
-    } else {
-      groups.push({ kind: matcher.kind, matchers: [matcher] });
-    }
-  }
-  if (groups.length === 0) {
-    return [`${prefix}${condition.target} contains${options}:`];
-  }
-  return groups.map(({ kind, matchers }) => {
-    const header = `${prefix}${condition.target} ${kind}${options}:`;
-    const body = matchers.map((matcher) => {
-      if (matcher.kind === "regex") {
-        return `  ${quoteRegexDslValue(matcher.source)}${matcher.flags ? ` flags=${matcher.flags}` : ""}`;
-      }
-      return `  ${quoteDslValue(matcher.value)}`;
-    });
-    return [header, ...body].join("\n");
-  });
-}
-
-/** 内部Ruleから新仕様のユーザー向け表記を生成する。 */
+/** 設定の保存とNG追加では常に同じwhen/unless形式を出力する。 */
 export function formatRuleDsl(rules: readonly Rule[]): string {
   return rules
     .map((rule) => {
-      const conditions = getRuleConditions(rule);
-      const blocks = conditions.flatMap((condition, index) =>
-        formatConditionBlocks(
-          condition,
-          index === 0 ? `${rule.action} ` : "and ",
-          index === 0 ? formatOptions(rule) : "",
-        ),
-      );
-      // AND見出しは同じルールの続きなので、別ルールとの区切りとは異なり改行だけで連結する。
-      return blocks.join(conditions.length > 1 ? "\n" : "\n\n");
+      const lines = [`${rule.action}:`];
+      if (rule.presentation?.color) lines.push(`  color ${rule.presentation.color}`);
+      if (rule.presentation?.label != null)
+        lines.push(`  label ${quoteRuleDslValue(rule.presentation.label)}`);
+      const sites = rule.scope?.sites;
+      if (sites?.length === 1) lines.push(`  sites ${quoteRuleDslValue(sites[0])}`);
+      else if (sites?.length)
+        lines.push("  sites:", ...sites.map((site) => `    ${quoteRuleDslValue(site)}`));
+      if (!rule.enabled) lines.push("  disabled true");
+      lines.push(...getRuleConditions(rule).flatMap(formatCondition));
+      return lines.join("\n");
     })
     .join("\n\n");
 }

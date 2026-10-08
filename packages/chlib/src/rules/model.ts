@@ -1,4 +1,4 @@
-export const RULE_ACTIONS = ["hide", "collapse", "highlight", "demote", "warn"] as const;
+export const RULE_ACTIONS = ["hide", "collapse", "highlight", "warn"] as const;
 export type RuleAction = (typeof RULE_ACTIONS)[number];
 
 export const RULE_TARGETS = [
@@ -32,6 +32,9 @@ export interface RulePresentation {
 export interface RuleCondition {
   readonly target: RuleTarget;
   readonly matchers: readonly RuleMatcher[];
+  /** unlessは条件内のOR全体を否定する。 */
+  readonly negate?: boolean;
+  readonly comparison?: ">" | ">=";
 }
 
 /** DSLの表記方法に依存しない、判定エンジン向けのルール表現。 */
@@ -39,6 +42,8 @@ export interface Rule {
   readonly action: RuleAction;
   readonly target: RuleTarget;
   readonly matchers: readonly RuleMatcher[];
+  readonly negate?: boolean;
+  readonly comparison?: ">" | ">=";
   /** 既存のtarget/matchersに追加して、すべてANDで満たす条件。 */
   readonly conditions?: readonly RuleCondition[];
   readonly scope?: RuleScope;
@@ -48,7 +53,15 @@ export interface Rule {
   readonly name?: string;
 }
 
-/** 旧形式の単一条件と新形式の追加AND条件を同じ順序で評価する。 */
+/** 表示結果の種別を持つ条件も、追加条件と同じANDの一要素として評価する。 */
 export function getRuleConditions(rule: Rule): readonly RuleCondition[] {
-  return [{ target: rule.target, matchers: rule.matchers }, ...(rule.conditions ?? [])];
+  return [
+    {
+      target: rule.target,
+      matchers: rule.matchers,
+      ...(rule.negate ? { negate: true } : {}),
+      ...(rule.comparison ? { comparison: rule.comparison } : {}),
+    },
+    ...(rule.conditions ?? []),
+  ];
 }

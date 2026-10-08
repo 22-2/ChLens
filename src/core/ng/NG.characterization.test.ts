@@ -21,11 +21,13 @@ describe("NG shared evaluator characterization", () => {
   beforeEach(() => configStore.clear());
 
   it("keeps the Chlens adapter result aligned with the shared evaluator", async () => {
-    const source = `highlight title contains color=blue label=注目:
-  注目
+    const source = `highlight:
+  color blue
+  label "注目"
+  when title contains "注目"
 
-hide body regex:
-  "(imgur\\.com/.+?){2}"`;
+hide:
+  when body regex "(imgur\\\\.com/.+?){2}"`;
     const { evaluateBoardRules, evaluateResponseRules, parseRuleDsl } =
       await import("@chlen/chlib");
     const { apply, invalidateCache, isNGBoard, isNGThread } = await import("src/core/ng/NG");

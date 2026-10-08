@@ -5,7 +5,7 @@ import { parseAndValidateRuleDsl, RuleDslValidationError, validateRuleDsl } from
 
 describe("rule DSL validator", () => {
   it("returns parsed rules and a valid flag without a storage dependency", () => {
-    const result = validateRuleDsl("hide body contains:\n  spam");
+    const result = validateRuleDsl('hide:\n  when body contains "spam"');
 
     expect(result.valid).toBe(true);
     expect(result.diagnostics).toEqual([]);
