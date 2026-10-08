@@ -383,6 +383,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       }
 
       const key = event.key.toLowerCase();
+      // Ctrl/Cmd+LはブラウザのURL入力に任せ、アプリはコマンドパレットのショートカットだけを扱う。
       if (event.shiftKey && key === "p") {
         event.preventDefault();
         if (paletteState.opened && paletteState.mode === "command") {
@@ -390,9 +391,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         } else {
           commandPalette.open("command");
         }
-      } else if (!event.shiftKey && key === "l") {
-        event.preventDefault();
-        commandPalette.open("navigation");
       }
     };
 

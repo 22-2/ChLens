@@ -221,7 +221,7 @@ describe("ホームの板項目のミドルクリック", () => {
     },
   );
 
-  it("新しいタブのURL入力リンクはCtrl+Lと同じnavigationモードでomnibarを開く", async () => {
+  it("新しいタブのURL入力リンクはnavigationモードでomnibarを開く", async () => {
     await renderPage(true);
     const { commandPalette, commandPaletteStore } =
       await import("src/view/browser/commands/command-palette-store");

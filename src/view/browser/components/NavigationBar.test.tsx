@@ -385,14 +385,22 @@ describe("NavigationBar", () => {
     });
   });
 
-  it("Ctrl+Lでナビゲーションモードを開く", async () => {
-    render(<NavigationBar />);
-
-    fireEvent.keyDown(window, { key: "l", ctrlKey: true });
-
-    const input = await screen.findByPlaceholderText("URLを入力");
-    expect(input).toHaveFocus();
-  });
+  it.each([{ ctrlKey: true }, { metaKey: true }])(
+    "Ctrl/Cmd+Lを横取りせずomnibarを開かない: %j",
+    (modifier) => {
+      render(<NavigationBar />);
+      const event = new KeyboardEvent("keydown", {
+        key: "l",
+        ...modifier,
+        bubbles: true,
+        cancelable: true,
+      });
+      fireEvent(window, event);
+      expect(event.defaultPrevented).toBe(false);
+      expect(commandPaletteStore.getState().opened).toBe(false);
+      expect(screen.queryByPlaceholderText("URLを入力")).not.toBeInTheDocument();
+    },
+  );
 
   it("認識したURLを『URLを開く』操作として候補に表示する", async () => {
     historyGetMock.mockResolvedValue([]);
