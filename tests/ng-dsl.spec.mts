@@ -52,8 +52,11 @@ hide:
     "対象"
     "宣伝"
   unless id contains "local001"`;
+  // insertTextは「入力」として自動インデントされるため、複数行のルールは貼り付けで検証する。
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.evaluate((text) => navigator.clipboard.writeText(text), rule);
   await page.keyboard.press("ControlOrMeta+A");
-  await page.keyboard.insertText(rule);
+  await page.keyboard.press("ControlOrMeta+V");
   await expect
     .poll(() =>
       page.evaluate(() => localStorage.getItem("config_ngwords")?.replace(/\r\n/gu, "\n")),
@@ -89,4 +92,47 @@ hide:
   await expect(panel.getByText("ローカルテストスレッド", { exact: true })).toBeVisible();
   await expect(panel.getByText("注目（1）", { exact: true })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath("ng-dsl-thread-list.png"), fullPage: true });
+});
+
+test("NG・置換エディタはEnterで現在の深さだけを維持し、段の変更をTabで行える", async ({
+  page,
+  extensionId,
+}) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTitle("メニュー", { exact: true }).click();
+  await page.getByTitle("設定を開く", { exact: true }).click();
+  const panel = page.locator('.content-area__tab-panel[data-active="true"]');
+  await panel.getByRole("button", { name: /^NG/ }).click();
+  const editingSurface = panel.locator(".monaco-editor .view-lines");
+  await editingSurface.click({ position: { x: 10, y: 10 } });
+  await page.keyboard.insertText("hide:");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.insertText("when body contains:");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.insertText('"入力テスト"');
+  await expect
+    .poll(() =>
+      page.evaluate(() => localStorage.getItem("config_ngwords")?.replace(/\r\n/gu, "\n")),
+    )
+    .toBe('hide:\n  when body contains:\n    "入力テスト"');
+
+  await panel.getByRole("tab", { name: "文字列置換", exact: true }).click();
+  await editingSurface.click({ position: { x: 10, y: 10 } });
+  await page.keyboard.insertText("replace body:");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Tab");
+  await page.keyboard.insertText('from "前"');
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Enter");
+  await page.keyboard.insertText('to "後"');
+  await expect
+    .poll(() =>
+      page.evaluate(() => localStorage.getItem("config_replace_str_txt")?.replace(/\r\n/gu, "\n")),
+    )
+    .toBe('replace body:\n  from "前"\n  to "後"');
 });

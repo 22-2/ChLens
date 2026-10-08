@@ -46,7 +46,7 @@ interface RuleDraft {
   invalid: boolean;
 }
 
-/** バックスラッシュ自身と引用符だけを逃がし、正規表現の\d等をそのまま扱う。 */
+/** 引用符・バックスラッシュ・改行等を逃がし、1行の値として往復できるようにする。 */
 export function quoteRuleDslValue(value: string): string {
   return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", "\\n").replaceAll("\r", "\\r").replaceAll("\t", "\\t")}"`;
 }

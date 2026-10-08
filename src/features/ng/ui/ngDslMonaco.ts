@@ -22,12 +22,21 @@ function createRange(model: Monaco.editor.ITextModel, position: Monaco.Position)
   };
 }
 
+function createCommandRange(
+  model: Monaco.editor.ITextModel,
+  position: Monaco.Position,
+): Monaco.IRange {
+  // 候補は条件・設定の行全体を含むため、入力済みのwhenや対象もまとめて置き換える。
+  const indent = /^\s*/u.exec(model.getLineContent(position.lineNumber))?.[0].length ?? 0;
+  return { ...createRange(model, position), startColumn: indent + 1 };
+}
+
 function createHeaderSuggestions(
   monaco: MonacoNamespace,
   model: Monaco.editor.ITextModel,
   position: Monaco.Position,
 ): Monaco.languages.CompletionItem[] {
-  const range = createRange(model, position);
+  const range = createCommandRange(model, position);
   return RULE_DSL_COMPLETION_CANDIDATES.filter(({ category }) => category === "header").map(
     (candidate) => toCompletionItem(monaco, candidate, range),
   );
@@ -38,7 +47,7 @@ function createOptionSuggestions(
   model: Monaco.editor.ITextModel,
   position: Monaco.Position,
 ): Monaco.languages.CompletionItem[] {
-  const range = createRange(model, position);
+  const range = createCommandRange(model, position);
   return RULE_DSL_COMPLETION_CANDIDATES.filter(({ category }) => category === "option").map(
     (candidate) => toCompletionItem(monaco, candidate, range),
   );
@@ -161,7 +170,15 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
         suggestions: RULE_DSL_COMPLETION_CANDIDATES.filter(
           ({ category }) =>
             category === "condition" || category === "option" || category === "regex-value",
-        ).map((candidate) => toCompletionItem(monaco, candidate, createRange(model, position))),
+        ).map((candidate) =>
+          toCompletionItem(
+            monaco,
+            candidate,
+            candidate.category === "regex-value"
+              ? createRange(model, position)
+              : createCommandRange(model, position),
+          ),
+        ),
       };
     },
   });
