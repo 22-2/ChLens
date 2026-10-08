@@ -26,6 +26,7 @@ vi.mock("webextension-polyfill", () => ({
 }));
 vi.mock("src/service-container/index", () => ({
   container: {
+    message: { send: vi.fn() },
     config: { get: () => null, ready: configReady, set: configSet },
     toast: { error: toastError },
   },

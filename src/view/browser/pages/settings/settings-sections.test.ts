@@ -1,10 +1,14 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { saveConfig } = vi.hoisted(() => ({ saveConfig: vi.fn() }));
+const { saveConfig, sendMessage } = vi.hoisted(() => ({
+  saveConfig: vi.fn(),
+  sendMessage: vi.fn(),
+}));
 
 vi.mock("src/service-container/index", () => ({
   container: {
+    message: { send: sendMessage },
     config: {
       get: () => null,
       set: saveConfig,
@@ -42,6 +46,45 @@ describe("置換設定のフォーム保存", () => {
     expect(saveConfig.mock.calls.filter(([key]) => key === "replace_str_txt")).toEqual([
       ["replace_str_txt", source],
     ]);
+  });
+});
+
+describe("NG設定の保存後の再判定通知", () => {
+  beforeEach(() => {
+    saveConfig.mockReset();
+    sendMessage.mockClear();
+  });
+
+  it("全設定の保存が完了してから開いた画面へ変更を通知する", async () => {
+    const section = getSettingsSections(false).find((candidate) => candidate.id === "ng")!;
+    let finishSave!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      finishSave = resolve;
+    });
+    saveConfig.mockImplementation((key) => (key === "ngwords" ? pending : undefined));
+    const saving = saveSectionFormData(section, {
+      ngwords: 'collapse:\n  when title contains "定期"',
+      replace_str_txt: "",
+    });
+    await vi.waitFor(() =>
+      expect(saveConfig).toHaveBeenCalledWith("ngwords", 'collapse:\n  when title contains "定期"'),
+    );
+    expect(sendMessage).not.toHaveBeenCalled();
+    finishSave();
+    await saving;
+    expect(sendMessage).toHaveBeenCalledExactlyOnceWith("ng_changed");
+  });
+
+  it("保存に失敗した場合は変更を通知しない", async () => {
+    const section = getSettingsSections(false).find((candidate) => candidate.id === "ng")!;
+    saveConfig.mockRejectedValue(new Error("保存失敗"));
+    await expect(
+      saveSectionFormData(section, {
+        ngwords: 'hide:\n  when body contains "宣伝"',
+        replace_str_txt: "",
+      }),
+    ).rejects.toThrow("保存失敗");
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 });
 

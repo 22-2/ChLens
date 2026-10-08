@@ -560,6 +560,8 @@ export async function saveSectionFormData(
         ),
       ),
   );
+  // config.setによる判定キャッシュの更新後に通知し、開いた一覧・レスにも編集結果を反映する。
+  if (section.id === "ng") container.message.send("ng_changed");
 }
 
 export function readBBSMenuUrlsForCheck(raw: string): string[] {
