@@ -128,23 +128,42 @@ export function matchRules(
     const conditions = getRuleConditions(rule);
     if (conditions.some(({ target }) => !allowedTargets.has(target))) continue;
 
-    // 同じ条件内のmatcherはOR、条件同士はANDとすることで、既存の複数候補を維持しながら
-    // 「タイトルに一致し、かつレス数も閾値以上」のような複合ルールを評価できる。
+    // 一覧はOR、when/unless同士はAND。unlessは一覧全体を否定する。
     let primaryMatcher: RuleMatcher | null = null;
     let matchesAllConditions = true;
     for (const condition of conditions) {
       const value = getTargetValue(condition.target, context);
+      // 値が不明な対象は否定しても成立させない（IDのないレス等を誤って隠さない）。
+      if (value == null) {
+        matchesAllConditions = false;
+        break;
+      }
       const definition = getRuleTargetDefinition(condition.target);
       const matchedMatcher = condition.matchers.find((matcher) =>
-        matchesMatcher(matcher, definition.comparison, value, onRegexError),
+        matchesMatcher(
+          matcher,
+          condition.comparison === ">" ? "greater-than" : definition.comparison,
+          value,
+          onRegexError,
+        ),
       );
-      if (!matchedMatcher) {
+      // 構文検証を経ないRuleでも、不正な正規表現の失敗をunlessで反転させない。
+      const invalidRegex = condition.matchers.some(
+        (matcher) =>
+          matcher.kind === "regex" &&
+          regexCache.get(`${matcher.flags ?? "i"}\0${matcher.source}`) === null,
+      );
+      if (condition.negate && invalidRegex) {
+        matchesAllConditions = false;
+        break;
+      }
+      if (condition.negate ? matchedMatcher != null : matchedMatcher == null) {
         matchesAllConditions = false;
         break;
       }
       // 結果種別は主条件（従来のtarget）から決め、数値などの補助条件が
       // highlightの表示種別を上書きしないようにする。
-      primaryMatcher ??= matchedMatcher;
+      primaryMatcher ??= matchedMatcher ?? condition.matchers[0];
     }
     if (!matchesAllConditions || !primaryMatcher) continue;
 

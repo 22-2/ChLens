@@ -4,6 +4,7 @@ import {
   RULE_OPTION_CATALOG,
   RULE_TARGET_CATALOG,
 } from "./catalog";
+import { quoteRuleDslValue } from "./dsl";
 
 export const NG_DSL_LANGUAGE_ID = "chlens-ngdsl";
 
@@ -50,12 +51,12 @@ export const RULE_DSL_LANGUAGE_DEFINITION = {
   actions: RULE_ACTION_CATALOG,
   targets: RULE_TARGET_CATALOG,
   options: RULE_OPTION_CATALOG,
-  operators: ["and"] as const,
+  operators: ["when", "unless"] as const,
   matchers: ["contains", "regex"] as const,
   colors: NG_HIGHLIGHT_COLOR_PRESET_ITEMS,
 } as const;
 
-export type RuleDslCompletionCategory = "header" | "option" | "color" | "regex-value";
+export type RuleDslCompletionCategory = "header" | "condition" | "option" | "color" | "regex-value";
 
 export interface RuleDslCompletionCandidate {
   readonly category: RuleDslCompletionCategory;
@@ -65,71 +66,49 @@ export interface RuleDslCompletionCandidate {
   readonly isSnippet?: boolean;
 }
 
-const RULE_DSL_AND_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate[] =
-  RULE_TARGET_CATALOG.flatMap((target) => {
-    const isComparison =
-      target.comparison === "greater-than" || target.comparison === "greater-than-or-equal";
-    if (isComparison) {
-      return [
-        {
-          category: "header" as const,
-          label: `and ${target.name} >=`,
-          detail: `同じルールへ${target.description}のAND条件を追加します。`,
-          insertText: `and ${target.name} ${target.comparison === "greater-than" ? ">" : ">="} \${1:10}:`,
-          isSnippet: true,
-        },
-      ];
-    }
-    return [
-      {
-        category: "header" as const,
-        label: `and ${target.name} contains`,
-        detail: `同じルールへ${target.description}のAND条件を追加します。`,
-        insertText: `and ${target.name} contains:\n  \${1:キーワード}`,
-        isSnippet: true,
-      },
-      {
-        category: "header" as const,
-        label: `and ${target.name} regex`,
-        detail: `同じルールへ${target.description}の正規表現AND条件を追加します。`,
-        insertText: `and ${target.name} regex:\n  "\${1:パターン}"`,
-        isSnippet: true,
-      },
-    ];
-  });
-
-/** Monacoの型を共有層へ持ち込まず、各editor adapterが変換できる補完候補を公開する。 */
+/** 補完の本文も設定保存と同じ、動作・条件・設定の分離形式を使う。 */
 export const RULE_DSL_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate[] = [
-  ...RULE_ACTION_CATALOG.flatMap((action) =>
-    RULE_TARGET_CATALOG.filter((target) =>
-      isRuleCombinationSupported(action.name, target.name),
-    ).flatMap((target) => {
-      const isComparison =
-        target.comparison === "greater-than" || target.comparison === "greater-than-or-equal";
-      const matcherKinds = isComparison ? ["comparison"] : ["contains", "regex"];
-      return matcherKinds.map((matcherKind): RuleDslCompletionCandidate => ({
+  ...RULE_ACTION_CATALOG.filter(({ name }) => name !== "warn").flatMap((action) =>
+    RULE_TARGET_CATALOG.filter(
+      (target) =>
+        isRuleCombinationSupported(action.name, target.name) &&
+        (action.name !== "demote" || target.allowedOnBoard),
+    ).map((target): RuleDslCompletionCandidate => {
+      const numeric = target.field.endsWith("Count");
+      return {
         category: "header",
-        label:
-          matcherKind === "comparison"
-            ? `${action.name} ${target.name} >=`
-            : `${action.name} ${target.name} ${matcherKind}`,
+        label: `${action.name} (${target.name})`,
         detail: `${action.description} 対象: ${target.description}`,
-        insertText:
-          matcherKind === "comparison"
-            ? `${action.name} ${target.name} ${target.comparison === "greater-than" ? ">" : ">="} \${1:10}:`
-            : matcherKind === "regex"
-              ? `${action.name} ${target.name} regex:\n  "\${1:パターン}"`
-              : `${action.name} ${target.name} contains:\n  \${1:キーワード}`,
+        insertText: `${action.name}:\n  when ${target.name} ${numeric ? ">= ${1:10}" : 'contains "${1:キーワード}"'}`,
         isSnippet: true,
-      }));
+      };
     }),
   ),
-  ...RULE_DSL_AND_COMPLETION_CANDIDATES,
+  ...(["when", "unless"] as const).flatMap((keyword) =>
+    RULE_TARGET_CATALOG.flatMap((target) => {
+      const numeric = target.field.endsWith("Count");
+      return (numeric ? [">="] : ["contains", "regex"]).map(
+        (operator): RuleDslCompletionCandidate => ({
+          category: "condition",
+          label: `${keyword} ${target.name} ${operator}`,
+          detail: `${target.description}の${keyword === "unless" ? "除外" : "一致"}条件を追加します。`,
+          insertText: `${keyword} ${target.name} ${operator} ${numeric ? "${1:10}" : '"${1:値}"'}`,
+          isSnippet: true,
+        }),
+      );
+    }),
+  ),
   ...RULE_OPTION_CATALOG.map((option): RuleDslCompletionCandidate => ({
     category: "option",
     label: option.name,
     detail: option.description,
-    insertText: `${option.name}=`,
+    insertText:
+      option.name === "color"
+        ? "color ${1:blue}"
+        : option.name === "disabled"
+          ? "disabled ${1:true}"
+          : `${option.name} "\${1:値}"`,
+    isSnippet: true,
   })),
   ...NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map((preset): RuleDslCompletionCandidate => ({
     category: "color",
@@ -153,24 +132,7 @@ export const RULE_DSL_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate
   },
 ];
 
-export function stringifyNgDslValue(
-  value: string,
-  options: { alwaysQuote?: boolean } = {},
-): string {
-  // 普通の語は読みやすく残し、DSLの記号と衝突する値だけ引用する。
-  const trimmed = value.trimStart();
-  const couldBeComment =
-    trimmed.startsWith("//") ||
-    trimmed.startsWith("#") ||
-    trimmed.startsWith("/*") ||
-    trimmed.startsWith("*") ||
-    trimmed.startsWith("*/");
-  const canBeBare =
-    value.length > 0 &&
-    !couldBeComment &&
-    Array.from(value).every((character) => {
-      return !/\s/u.test(character) && !",()[]{}=:'\"".includes(character);
-    });
-  if (!options.alwaysQuote && canBeBare) return value;
-  return JSON.stringify(value);
+/** 1行の文字列値は常に引用し、手入力とNG追加で記号の扱いを揃える。 */
+export function stringifyNgDslValue(value: string): string {
+  return quoteRuleDslValue(value);
 }

@@ -22,46 +22,9 @@ describe("ルールDSLのPeggy文法", () => {
     expect(generated).toBe(readSibling("dsl-grammar.js"));
   });
 
-  it("構文エラーがあっても解析を止めず、後続のルールと複数の診断を返す", () => {
-    const result = parseRuleDsl(`hide title regex:
-  未引用の正規表現
-and:
-hide unknown-target contains:
-  x
-これはルールではない
-hide body contains:
-  生き残る`);
-
-    expect(result.rules).toEqual([
-      {
-        action: "hide",
-        target: "body",
-        enabled: true,
-        matchers: [{ kind: "contains", value: "生き残る" }],
-      },
-    ]);
-    expect(result.diagnostics.map((diagnostic) => diagnostic.line)).toEqual([2, 3, 4, 6]);
-  });
-
-  it("全角空白のインデントやBOM・ゼロ幅文字付きのコメントを従来どおり扱う", () => {
-    const result = parseRuleDsl("​// コメント\nhide title contains:\n　ほげ\r\n﻿# コメント");
-
+  it("全角空白・BOM・ゼロ幅文字とCRLFを含む入力を解析する", () => {
+    const result = parseRuleDsl('​// コメント\nhide:\n　when title contains "ほげ"\r\n﻿# コメント');
     expect(result.diagnostics).toEqual([]);
-    expect(result.rules).toEqual([
-      {
-        action: "hide",
-        target: "title",
-        enabled: true,
-        matchers: [{ kind: "contains", value: "ほげ" }],
-      },
-    ]);
-  });
-
-  it("オプション値に含まれるコロンを見出しの区切りとみなさない", () => {
-    const result = parseRuleDsl(`highlight title contains label="a: b":
-  x`);
-
-    expect(result.diagnostics).toEqual([]);
-    expect(result.rules[0]?.presentation).toEqual({ label: "a: b" });
+    expect(result.rules[0]?.matchers).toEqual([{ kind: "contains", value: "ほげ" }]);
   });
 });

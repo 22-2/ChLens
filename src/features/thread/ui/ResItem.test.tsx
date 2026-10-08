@@ -73,7 +73,7 @@ describe("ResItem", () => {
   it("soft-ngではNGレスを表示・再非表示・再表示できる", () => {
     const ngRes: IRes = {
       ...BASE_RES,
-      ng: { type: "Body", ruleDescription: "hide body contains:\n  本文" },
+      ng: { type: "Body", ruleDescription: 'hide:\n  when body contains "本文"' },
     };
     const { container } = renderNgRes(ngRes);
 

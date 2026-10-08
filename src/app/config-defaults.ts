@@ -18,7 +18,7 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   expand_short_url: "none",
   expand_short_url_timeout: "3000",
   ngwords:
-    "hide title contains:\n  5ちゃんねるへようこそ\n\nhide title contains:\n  【新着情報】5chブラウザがやってきた！",
+    'hide:\n  when title contains:\n    "5ちゃんねるへようこそ"\n    "【新着情報】5chブラウザがやってきた！"',
   chain_ng: "off",
   chain_ng_id: "off",
   chain_ng_slip: "off",

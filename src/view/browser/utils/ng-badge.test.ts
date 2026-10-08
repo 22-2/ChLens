@@ -7,8 +7,8 @@ describe("getNgBadgeLabel", () => {
     expect(
       getNgBadgeLabel({
         type: "Body",
-        ruleDescription: "hide body contains:\n  対象ワード",
+        ruleDescription: 'hide:\n  when body contains "対象ワード"',
       }),
-    ).toBe("NGルール\nhide body contains:\n  対象ワード");
+    ).toBe('NGルール\nhide:\n  when body contains "対象ワード"');
   });
 });

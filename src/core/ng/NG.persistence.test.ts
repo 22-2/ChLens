@@ -58,7 +58,7 @@ describe("NG Rule persistence", () => {
     invalidateCache();
 
     let settled = false;
-    const addPromise = add("hide id contains:\n  abc123").then(() => {
+    const addPromise = add('hide:\n  when id contains "abc123"').then(() => {
       settled = true;
     });
 
@@ -71,7 +71,7 @@ describe("NG Rule persistence", () => {
     write?.resolve();
     await addPromise;
 
-    expect(mocks.configStore.get("ngwords")).toBe("hide id contains:\n  abc123");
+    expect(mocks.configStore.get("ngwords")).toBe('hide:\n  when id contains "abc123"');
     expect(mocks.messageSend).toHaveBeenCalledWith("ng_changed");
 
     invalidateCache();
@@ -90,17 +90,19 @@ describe("NG Rule persistence", () => {
   });
 
   it("appends semi-automatically added rules after existing rules", async () => {
-    mocks.configStore.set("ngwords", "hide id contains:\n  existing");
+    mocks.configStore.set("ngwords", 'hide:\n  when id contains "existing"');
     const { add, get, invalidateCache } = await import("src/core/ng/NG");
     invalidateCache();
 
-    await add("hide id contains:\n  added");
+    await add('hide:\n  when id contains "added"');
 
     expect(get().flatMap((rule) => rule.matchers)).toEqual([
       { kind: "contains", value: "existing" },
       { kind: "contains", value: "added" },
     ]);
     // 単純なID containsルールは既存ルールへ集約する仕様（765bf5c）のため、ブロックは1つのまま。
-    expect(mocks.configStore.get("ngwords")).toBe("hide id contains:\n  existing\n  added");
+    expect(mocks.configStore.get("ngwords")).toBe(
+      'hide:\n  when id contains:\n    "existing"\n    "added"',
+    );
   });
 });

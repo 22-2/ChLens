@@ -7,13 +7,46 @@
 // 生成物: pnpm --filter @chlen/chlib run generate:dsl
 
 Document
-  = first:Line rest:("\n" @Line)* { return [first, ...rest]; }
+  = first:NgLine rest:("\n" @NgLine)* { return [first, ...rest]; }
 
-Line
+// NGは動作だけを見出しにし、ルール内のwhen/unlessと設定行を分離する。
+// インデントは意味検証へ渡し、条件一覧の値が隣の条件へ漏れるのを防ぐ。
+NgLine
   = BlankLine
   / CommentLine
-  / ValueLine
-  / TopLevelLine
+  / indent:$LeadIn content:(NgConditionLine / NgHeaderLine / NgPropertyLine / NgValueLine) {
+      const depth = indent.replace(/[\uFEFF\u200B\u200C\u200D]/g, "").replace(/\t/g, "  ").length;
+      const item = content.type === "ng-header" && depth > 0
+        ? { type: "ng-property", keyword: content.action, value: null } : content;
+      return { ...item, line: location().start.line, column: indent.length + 1, indent: depth };
+    }
+
+NgHeaderLine
+  = action:$[A-Za-z-]+ ":" Ws* LineEnd { return { type: "ng-header", action }; }
+
+NgConditionLine
+  = keyword:("when" / "unless") Ws+ target:$NonWs+ Ws+ operator:$("contains" / "regex" / ">=" / ">")
+    tail:(":" Ws* LineEnd { return null; } / Ws+ value:NgValueContent Ws* LineEnd { return value; }) {
+      return { type: "ng-condition", keyword, target, operator, value: tail };
+    }
+
+NgPropertyLine
+  = keyword:$[A-Za-z-]+ tail:(":" Ws* LineEnd { return null; } / Ws+ value:NgValueContent Ws* LineEnd { return value; }) {
+      return { type: "ng-property", keyword, value: tail };
+    }
+
+NgValueLine
+  = value:NgValueContent Ws* LineEnd { return { type: "ng-value", value }; }
+
+NgValueContent
+  = quoted:NgQuoted Ws* rest:$Body? { return { kind: "quoted", value: quoted, rest: rest ?? "" }; }
+  / ["'] Body? { return { kind: "unclosed" }; }
+  / text:$Body { return { kind: "bare", text }; }
+
+// 選択範囲に含まれる改行も1行の設定として保存する。\dや\b等は正規表現用に保持する。
+NgQuoted
+  = '"' chars:('\\\\' { return '\\'; } / '\\"' { return '"'; } / '\\n' { return '\n'; } / '\\r' { return '\r'; } / '\\t' { return '\t'; } / '\\' !('"' / '\\') { return '\\'; } / [^"\\\n])* '"' { return chars.join(""); }
+  / "'" chars:('\\\\' { return '\\'; } / "\\'" { return "'"; } / '\\n' { return '\n'; } / '\\r' { return '\r'; } / '\\t' { return '\t'; } / '\\' !("'" / '\\') { return '\\'; } / [^'\\\n])* "'" { return chars.join(""); }
 
 BlankLine
   = LeadIn LineEnd { return { type: "blank", line: location().start.line }; }
@@ -24,25 +57,9 @@ CommentLine
       return { type: "comment", line: location().start.line };
     }
 
-// 行頭が空白（BOMを含むJSの\s）ならルール本文の値行として扱う。
-ValueLine
-  = &Ws LeadIn value:ValueContent Ws* LineEnd {
-      return { type: "value", line: location().start.line, value };
-    }
-
+// 置換DSLの見出しは対象・方式・flagsを持つため、専用入口からこの字句を使う。
 TopLevelLine
-  = LeadIn line:(AndHeaderLine / InvalidAndLine / HeaderLine / UnknownLine) { return line; }
-
-AndHeaderLine
-  = "and"i Ws+ head:HeaderTail {
-      return { type: "and-header", line: location().start.line, ...head };
-    }
-
-// "and"で始まるのにAND見出しとして読めない行は、通常の見出しと誤認させずに診断する。
-InvalidAndLine
-  = "and"i (Ws / ":" / LineEnd) [^\n]* {
-      return { type: "invalid-and", line: location().start.line };
-    }
+  = LeadIn line:(HeaderLine / UnknownLine) { return line; }
 
 HeaderLine
   = action:$NonWs+ Ws+ head:HeaderTail {

@@ -2,263 +2,150 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { formatRuleDsl, parseRuleDsl } from "./dsl";
+import { validateRuleDsl } from "./validator";
 
-describe("rule block DSL", () => {
-  it("parses an explicit matcher, target and options", () => {
-    const result =
-      parseRuleDsl(`highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
-  google
-  ぐーぐる`);
-    expect(result.diagnostics).toEqual([]);
-    expect(result.rules).toEqual([
-      {
-        action: "highlight",
-        target: "title",
-        enabled: true,
-        scope: { sites: ["bbs.eddibb.cc"] },
-        presentation: { color: "blue", label: "注目" },
-        matchers: [
-          { kind: "contains", value: "google" },
-          { kind: "contains", value: "ぐーぐる" },
-        ],
-      },
-    ]);
-  });
+const canonical = String.raw`highlight:
+  color blue
+  label "注目"
+  sites "example.com"
+  when title contains:
+    "chatgpt"
+    "claude"
+    "gemini"
+  when res-count >= 10
+  unless title contains "除外"
 
-  it("parses a quoted regex without doubling backslashes", () => {
-    const result = parseRuleDsl(String.raw`hide body regex:
-  "(imgur\.com/.+?){15}"`);
+hide:
+  when body regex "(imgur\\.com/.+?){15}" flags=i
+
+hide:
+  when anchor-count >= 10`;
+
+describe("NGのwhen/unlessブロックDSL", () => {
+  it("動作・表示設定・適用先・OR一覧・AND条件を分離して解析する", () => {
+    const result = parseRuleDsl(canonical);
     expect(result.diagnostics).toEqual([]);
-    expect(result.rules[0]).toMatchObject({
-      action: "hide",
-      target: "body",
-      matchers: [{ kind: "regex", source: String.raw`(imgur\.com/.+?){15}` }],
+    expect(result.rules[0]).toEqual({
+      action: "highlight",
+      target: "title",
+      enabled: true,
+      presentation: { color: "blue", label: "注目" },
+      scope: { sites: ["example.com"] },
+      matchers: ["chatgpt", "claude", "gemini"].map((value) => ({ kind: "contains", value })),
+      conditions: [
+        { target: "res-count", matchers: [{ kind: "contains", value: "10" }] },
+        { target: "title", negate: true, matchers: [{ kind: "contains", value: "除外" }] },
+      ],
     });
-  });
-
-  it("parses numeric comparisons on the same line", () => {
-    const result = parseRuleDsl("hide anchor-count >= 10:");
-    expect(result.diagnostics).toEqual([]);
-    expect(result.rules).toEqual([
-      {
-        action: "hide",
-        target: "anchor-count",
-        enabled: true,
-        matchers: [{ kind: "contains", value: "10" }],
-      },
-    ]);
-  });
-
-  it("主動作を変えずにAND条件を解析・整形する", () => {
-    const source = `highlight title contains color=red label=注目:
-  注目
-and res-count >= 100:`;
-    const result = parseRuleDsl(source);
-
-    expect(result.diagnostics).toEqual([]);
-    expect(result.rules).toEqual([
-      {
-        action: "highlight",
-        target: "title",
-        enabled: true,
-        presentation: { color: "red", label: "注目" },
-        matchers: [{ kind: "contains", value: "注目" }],
-        conditions: [
-          {
-            target: "res-count",
-            matchers: [{ kind: "contains", value: "100" }],
-          },
-        ],
-      },
-    ]);
-    expect(formatRuleDsl(result.rules)).toBe(source);
+    expect(formatRuleDsl(result.rules)).toBe(canonical);
     expect(parseRuleDsl(formatRuleDsl(result.rules)).rules).toEqual(result.rules);
   });
 
-  it("不正なAND見出しを黙って破棄せず診断する", () => {
-    const result = parseRuleDsl(`highlight title contains:
-  注目
-and res-count contains:
-  100`);
-
-    expect(result.rules).toEqual([]);
-    expect(result.diagnostics).toContainEqual({
-      line: 3,
-      column: 1,
-      message: "res-count には比較演算子を指定してください。",
-    });
-  });
-
-  it("formats canonical DSL that can be parsed again", () => {
-    const source = String.raw`highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
-  google
-  ぐーぐる
-
-hide body regex:
-  "(imgur\.com/.+?){15}"
-
-hide anchor-count >= 10:`;
-    const first = parseRuleDsl(source);
-    const formatted = formatRuleDsl(first.rules);
-    expect(formatted).toBe(source);
-    expect(parseRuleDsl(formatted).rules).toEqual(first.rules);
-  });
-
-  it("requires a quoted value for regex conditions", () => {
-    const result = parseRuleDsl(String.raw`hide body regex:
-  imgur\.com`);
-    expect(result.rules).toEqual([]);
-    expect(result.diagnostics[0]).toMatchObject({
-      line: 2,
-      message: "regex の値は引用符で囲んでください。",
-    });
-  });
-
-  it("rejects the former implicit matcher syntax", () => {
-    const result = parseRuleDsl(`hide body:
-  spam`);
-    expect(result.rules).toEqual([]);
-    expect(result.diagnostics).toContainEqual({
-      line: 1,
-      column: 1,
-      message: "条件種別または比較演算子が必要です。",
-    });
-  });
-
-  it("reports unsupported actions instead of treating them as body text", () => {
-    const result = parseRuleDsl(`remove body contains:
-  spam`);
-    expect(result.recognized).toBe(true);
-    expect(result.rules).toEqual([]);
-    expect(result.diagnostics[0]).toMatchObject({
-      line: 1,
-      message:
-        "未対応の動作です: remove（利用可能な動作: hide、collapse、highlight、demote、warn）",
-    });
-  });
-
-  it("uses demote as the only action for moving board threads to the lower section", () => {
-    expect(parseRuleDsl("demote title contains:\n  quiet").rules[0]).toMatchObject({
-      action: "demote",
-    });
-    expect(parseRuleDsl("mute title contains:\n  quiet").diagnostics[0]).toMatchObject({
-      message: "未対応の動作です: mute（利用可能な動作: hide、collapse、highlight、demote、warn）",
-    });
-  });
-
-  it("rejects removed function-style option names", () => {
-    const result = parseRuleDsl(`highlight title contains bgColor=red:
-  注目`);
-    expect(result.rules).toEqual([]);
-    expect(result.diagnostics[0]).toMatchObject({
-      line: 1,
-      message: "未対応のオプションです: bgColor",
-    });
-  });
-
-  it("allows comments between multiple block rules", () => {
-    const result =
-      parseRuleDsl(`highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
-  google
-
-// コメント
-highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
-  microsoft`);
+  it("単一条件は同じ行、複数条件は一覧で指定できる", () => {
+    const result = parseRuleDsl(
+      'hide:\n  when id contains "a/b"\n  unless body contains:\n    "残す"\n    "許可"',
+    );
     expect(result.diagnostics).toEqual([]);
-    expect(result.rules).toHaveLength(2);
+    expect(result.rules[0].conditions?.[0]).toMatchObject({
+      negate: true,
+      matchers: [
+        { kind: "contains", value: "残す" },
+        { kind: "contains", value: "許可" },
+      ],
+    });
   });
 
-  it("accepts the settings-editor example with a comment at line 12", () => {
-    const source = String.raw`highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
-  google
-  ぐーぐる
-
-hide body regex:
-  "(imgur\.com/.+?){15}"
-
-hide id contains:
-  abc123
-
-// 既存の強いNG条件も残しつつ、現在のDSLを整理した版
-highlight title contains color=blue label=注目 sites=[bbs.eddibb.cc]:
-  microsoft`;
-    expect(parseRuleDsl(source).diagnostics).toEqual([]);
-  });
-
-  it("表示方式名を動作の別名として受け付ける", () => {
-    // 設定画面で目にする表示方式名を、同じ意味の動作（hard-ng→hide、soft-ng→collapse）として受け付ける。
-    const result = parseRuleDsl(`hard-ng body contains:
-  荒らし
-
-soft-ng body contains:
-  spam`);
+  it("複数の適用先、無効化、色名・カラーコードを往復する", () => {
+    const source =
+      'highlight:\n  color #ffcdd2\n  label "a: b"\n  sites:\n    "example.com"\n    "bbs.example.org"\n  disabled true\n  when title contains "注目"';
+    const result = parseRuleDsl(source);
     expect(result.diagnostics).toEqual([]);
-    expect(result.rules.map((rule) => rule.action)).toEqual(["hide", "collapse"]);
+    expect(result.rules[0]).toMatchObject({
+      enabled: false,
+      scope: { sites: ["example.com", "bbs.example.org"] },
+    });
+    expect(formatRuleDsl(result.rules)).toBe(source);
   });
 
-  it("collapseはレスで判定できる対象にだけ使える", () => {
-    const result = parseRuleDsl(`collapse body contains:
-  spam
-
-collapse res-count >= 100:`);
-    expect(result.rules.map((rule) => rule.target)).toEqual(["body"]);
-    expect(result.diagnostics.map((diagnostic) => diagnostic.line)).toEqual([4]);
-  });
-
-  it("highlight-ngは動作として受け付けない", () => {
-    // highlightと同じ意味の別名を持つ必要がないため、互換を残さず削除した。
-    const result = parseRuleDsl(`highlight-ng title contains:
-  注目`);
-    expect(result.rules).toEqual([]);
-    expect(result.diagnostics[0]?.message).toContain("未対応の動作です: highlight-ng");
-  });
-});
-
-describe("同時に判定できないAND条件", () => {
-  it("スレ一覧専用の対象とレス専用の対象をANDで組み合わせたルールを弾く", () => {
-    const result = parseRuleDsl(`hide res-count >= 100:
-and body contains:
-  ほげ
-hide title contains:
-  残る`);
-
-    expect(result.rules.map((rule) => rule.target)).toEqual(["title"]);
-    expect(result.diagnostics).toEqual([
-      {
-        line: 2,
-        column: 1,
-        message:
-          "AND条件の body は、res-count と同じ画面（スレ一覧）で判定できないため、このルールは一致しません。",
-      },
-    ]);
-  });
-
-  it("スレ一覧でしか使えない動作にレス専用の対象をANDで足すと弾く", () => {
-    const result = parseRuleDsl(`highlight title contains:
-  注目
-and anchor-count >= 3:`);
-
-    expect(result.rules).toEqual([]);
-    expect(result.diagnostics.map((diagnostic) => diagnostic.line)).toEqual([3]);
-  });
-
-  it("同じ画面で判定できるAND条件は受け付ける", () => {
-    const result = parseRuleDsl(`hide body contains:
-  ほげ
-and anchor-count >= 3:
-and id contains:
-  abc`);
-
+  it("設定と条件の順序を入れ替えてもtitleのハイライトを維持する", () => {
+    const result = parseRuleDsl(
+      'highlight:\n  when res-count >= 10\n  color red\n  unless title contains "除外"\n  label "注目"',
+    );
     expect(result.diagnostics).toEqual([]);
+    expect(result.rules[0]).toMatchObject({
+      target: "title",
+      negate: true,
+      conditions: [{ target: "res-count" }],
+    });
+    expect(parseRuleDsl(formatRuleDsl(result.rules)).rules).toEqual(result.rules);
+  });
+
+  it.each(["res-count", "reply-count", "anchor-count"])(
+    "%sの数値比較を解析・往復する",
+    (target) => {
+      for (const operator of [">=", ">"] as const) {
+        const source = `hide:\n  when ${target} ${operator} 10`;
+        const result = parseRuleDsl(source);
+        expect(result.diagnostics).toEqual([]);
+        expect(formatRuleDsl(result.rules)).toBe(source);
+      }
+    },
+  );
+
+  it("正規表現・引用符・末尾のバックスラッシュを往復する", () => {
+    const result = parseRuleDsl(String.raw`hide:
+  when body regex:
+    "\\d+\\s+" flags=i
+    'a"b'
+  unless name contains "a\\"
+`);
+    expect(result.diagnostics).toEqual([]);
+    expect(parseRuleDsl(formatRuleDsl(result.rules)).rules).toEqual(result.rules);
+  });
+
+  it.each([
+    ["hide body contains:\n  spam", "旧形式"],
+    ['hide:\n  when body contains "x"\nand res-count >= 10:', "旧形式"],
+    ["hide:\n  when body contains bare", "引用符"],
+    ['hide:\n  when body contains ""', "空でない"],
+    ['hide:\n  when body regex "["', "正規表現"],
+    ['hide:\n  when body regex "x" flags=ii', "flags"],
+    ['hide:\n  when body contains "x" flags=i', "引用文字列"],
+    ["hide:\n  when anchor-count >= -1", "整数"],
+    ['hide:\n  when res-count contains "10"', "数値比較"],
+    ["hide:\n  when body >= 10", "containsまたはregex"],
+    ["hide:\n  when body contains:", "1つ以上"],
+    ['hide:\n  sites:\n  when body contains "x"', "1つ以上"],
+    ['hide:\n  sites ""\n  when body contains "x"', "空でない"],
+    ['hide:\n  disabled yes\n  when body contains "x"', "trueまたはfalse"],
+    ['hide:\n  label "x"\n  when body contains "x"', "highlightでのみ"],
+    ['highlight:\n  when url contains "x"', "title条件"],
+    ['hide:\n  sites "example.com"\n  sites "example.org"\n  when body contains "x"', "重複"],
+    ['hide:\n  when body contains "x"\n    "y"', "一覧の見出し"],
+    ['hide:\n  when body contains:\n    "x"\n      "y"', "同じインデント"],
+    ['hide:\n  when res-count >= 1\n  unless body contains "x"', "同じ画面"],
+    ['demote:\n  when body contains "x"', "同じ画面"],
+    ['warn:\n  when title contains "x"', "同じ画面"],
+  ])("不正な指定を位置付きで診断する: %s", (source, message) => {
+    const result = validateRuleDsl(source);
+    expect(result.valid).toBe(false);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.message.includes(message))).toBe(
+      true,
+    );
+    expect(result.diagnostics.every(({ line, column }) => line > 0 && column > 0)).toBe(true);
+  });
+
+  it("不正なルールを除き後続を解析するが、全体は保存不可にする", () => {
+    const result = validateRuleDsl(
+      'hide:\n  when unknown contains "x"\nhide:\n  when body contains "残る"',
+    );
+    expect(result.valid).toBe(false);
     expect(result.rules).toHaveLength(1);
+    expect(result.diagnostics[0]).toMatchObject({ line: 2, column: 3 });
   });
 
-  it("主条件だけで判定できないルールはAND条件の誤りとして指摘しない", () => {
-    // demote bodyは主条件の時点で判定できる画面がないため、AND条件側の診断対象にしない。
-    const result = parseRuleDsl(`demote body contains:
-  x
-and res-count >= 1:`);
-
-    expect(result.diagnostics).toEqual([]);
+  it("空文字とコメントだけならルールを持たない有効な設定になる", () => {
+    expect(validateRuleDsl("")).toMatchObject({ valid: true, recognized: false, rules: [] });
+    expect(validateRuleDsl("// コメント\n# コメント\n")).toMatchObject({ valid: true, rules: [] });
   });
 });

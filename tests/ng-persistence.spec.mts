@@ -18,6 +18,9 @@ test("IDをNG指定したレスは更新と再読み込み後も非表示のま�
   await first.click({ button: "right" });
   await page.getByRole("button", { name: "ID/IPをNG指定", exact: true }).click();
   await expect(first).toBeHidden();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem("config_ngwords")))
+    .toBe('hide:\n  when id contains "local001"');
   await page.getByRole("button", { name: "更新", exact: true }).click();
   await expect(second).toBeVisible();
   await expect(first).toBeHidden();

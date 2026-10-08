@@ -276,7 +276,7 @@ describe("useThreadResContextMenu", () => {
       fireEvent.click(screen.getByRole("button", { name: "add-ng-id" }));
     });
 
-    expect(mocks.ngAdd).toHaveBeenCalledWith("hide id contains:\n  abc123");
+    expect(mocks.ngAdd).toHaveBeenCalledWith('hide:\n  when id contains "abc123"');
   });
 
   it("保存完了までは成功通知とローカル反映を進めない", async () => {

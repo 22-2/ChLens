@@ -56,7 +56,7 @@ export function useThreadTitleNgDialog({
 
     setSaving(true);
     setError(null);
-    const ngRule = `hide title contains:\n  ${stringifyNgDslValue(title)}`;
+    const ngRule = `hide:\n  when title contains ${stringifyNgDslValue(title)}`;
     try {
       await container.ng.add(ngRule);
       toast.info(`スレタイをNGに追加しました: ${title}`);

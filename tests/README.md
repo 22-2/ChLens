@@ -23,6 +23,8 @@ SETTING.TXT、subject.txt、datをShift_JISで配信します。レス追加も�
 セッション復元、閲覧履歴、NG設定の永続化、スレッド自動更新のON・OFFを検証します。
 `replacement.spec.mts` ではNG内の文字列置換タブ、構文診断・保存・状態復元、
 BEアイコン行の削除とサムネイル非表示、対象外の本文・画像の維持も検証します。
+`ng-dsl.spec.mts` ではwhen/unless形式のNG設定の診断・保存・復元、OR一覧・AND条件・ID除外、
+適用先指定とスレ一覧のハイライトを検証します。IDの右クリックNGも新構文での永続化を確認します。
 書き込み、read.cgi形式、差分206応答、Firefox・Tauriはまだ対象外です。
 
 既存のChromiumを使う場合は `CHLENS_E2E_CHROMIUM_PATH` に実行ファイルを指定できます。

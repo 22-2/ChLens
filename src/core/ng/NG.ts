@@ -80,6 +80,7 @@ function isSimpleIdContainsRule(rule: Rule): boolean {
     rule.action === "hide" &&
     rule.target === "id" &&
     rule.enabled &&
+    !rule.negate &&
     rule.matchers.length > 0 &&
     rule.matchers.every((matcher) => matcher.kind === "contains") &&
     rule.conditions == null &&
@@ -123,7 +124,10 @@ function mergeSimpleIdContainsRules(
 
 /** 同一targetのOR候補は一致したmatcherに絞り、複数targetのAND条件は全体を理由として表示する。 */
 function formatMatchedRule(matched: RuleMatchResult): string {
-  return formatRuleDsl([{ ...matched.rule, matchers: [matched.matcher] }]);
+  // 否定の一覧は全候補が不一致という理由なので、1語に絞ると意味が変わる。
+  return formatRuleDsl([
+    matched.rule.negate ? matched.rule : { ...matched.rule, matchers: [matched.matcher] },
+  ]);
 }
 
 /** 設定保存済みのDSLを判定へ反映する。保存処理は呼び出し側が担当する。 */

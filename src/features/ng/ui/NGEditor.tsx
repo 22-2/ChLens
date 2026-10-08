@@ -14,56 +14,49 @@ export interface NGEditorProps {
   onChange: (value: string) => void;
 }
 
-export const NG_DSL_EXAMPLE = `// 動作＋対象＋条件種別の見出しに、値をインデントして記述します
-hide body contains:
-  荒らし
-  spam
+export const NG_DSL_EXAMPLE = `// 一覧は「どれかに一致」（OR）です
+hide:
+  when body contains:
+    "荒らし"
+    "spam"
 
-hide id contains:
-  abc123
+hide:
+  when id contains "abc123"
 
-// スレ一覧の末尾へ薄く表示し、divider内へ折りたたみます
-demote title contains:
-  勢いのない定期スレ
+// 一覧の末尾に折りたたんで表示します
+demote:
+  when title contains "定期スレ"
 
-hide url regex:
-  "https?://(?:x|twitter)\\.com/.+"
+// collapseは表示方式の設定にかかわらず折りたたみます
+collapse:
+  when body contains "宣伝"
 
-// 名前欄・メール欄・SLIPも対象にできます
-hide name contains:
-  名無しの荒らし
+hide:
+  when anchor-count >= 10`;
 
-hide slip contains:
-  ワッチョイ
+export const NG_DSL_MULTILINE_EXAMPLE = `// 複数の条件は「すべて満たす」（AND）です
+highlight:
+  color blue
+  label "注目"
+  sites "example.com"
+  when title contains:
+    "google"
+    "ぐーぐる"
+    "microsoft"
+  when res-count >= 10
+  unless title contains "除外"
 
-// 数値条件は「対象 >= 数値:」で書きます
-hide reply-count >= 5:
+// 正規表現は引用し、必要ならflagsを付けます
+hide:
+  when body regex "(imgur\\.com/.+?){15}" flags=i
 
-hide anchor-count >= 3:
-
-// hideの消し方は「NGレスの表示方式」設定に従います
-// collapseは設定にかかわらず折りたたみ、クリックで表示できます
-// （hard-ngはhide、soft-ngはcollapseの別名です）
-collapse body contains:
-  宣伝
-
-// ルールを一時的に止めるときはdisabled=trueを付けます
-hide title contains disabled=true:
-  雑談`;
-
-export const NG_DSL_MULTILINE_EXAMPLE = `// 同じブロックの条件はORで判定します
-highlight title contains color=red label=注目 sites=[eddibb.cc 5ch.io]:
-  google
-  ぐーぐる
-  microsoft
-
-// 「注目」を含み、かつレス数が100以上のスレッドだけをハイライトします
-highlight title contains color=red label=注目:
-  注目
-and res-count >= 100:
-
-hide body regex:
-  "(imgur\\.com/.+?){15}"`;
+// 複数の適用先も一覧にできます
+hide:
+  sites:
+    "example.com"
+    "bbs.example.org"
+  disabled true
+  when name contains "名無し"`;
 
 interface NGDslHelpSnippetProps {
   code: string;
@@ -89,7 +82,7 @@ const optionPattern = RULE_OPTION_CATALOG.flatMap((entry) => [entry.name, ...(en
   .join("|");
 
 const NG_DSL_TOKEN_REGEX = new RegExp(
-  `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\/\\/.*$|^\\s*#.*$)|(\\b(?:${actionPattern}|${operatorPattern})\\b)|(\\b(?:${targetPattern})\\b)|(\\b(?:${matcherPattern})\\b)|(\\b(?:${optionPattern})\\b(?=\\s*=))|(#[0-9a-fA-F]{3,8}\\b)`,
+  `("(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*')|(\\/\\/.*$|^\\s*#.*$)|(\\b(?:${actionPattern}|${operatorPattern})\\b)|(\\b(?:${targetPattern})\\b)|(\\b(?:${matcherPattern})\\b)|(^\\s*(?:${optionPattern})\\b)|(#[0-9a-fA-F]{3,8}\\b)`,
   "g",
 );
 
