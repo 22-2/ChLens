@@ -149,7 +149,7 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
     ],
     indentationRules: {
       increaseIndentPattern: /:\s*$/u,
-      decreaseIndentPattern: /^(?:hide|collapse|highlight|demote):/u,
+      decreaseIndentPattern: /^(?:hide|collapse|highlight):/u,
     },
   });
 

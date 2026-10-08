@@ -124,7 +124,7 @@ describe("NGのwhen/unlessブロックDSL", () => {
     ['hide:\n  when body contains "x"\n    "y"', "一覧の見出し"],
     ['hide:\n  when body contains:\n    "x"\n      "y"', "同じインデント"],
     ['hide:\n  when res-count >= 1\n  unless body contains "x"', "同じ画面"],
-    ['demote:\n  when body contains "x"', "同じ画面"],
+    ['demote:\n  when title contains "x"', "未対応の動作"],
     ['warn:\n  when title contains "x"', "同じ画面"],
   ])("不正な指定を位置付きで診断する: %s", (source, message) => {
     const result = validateRuleDsl(source);

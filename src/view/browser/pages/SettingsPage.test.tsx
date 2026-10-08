@@ -34,8 +34,7 @@ vi.mock("src/view/browser/hooks/use-media-query", () => ({ useMediaQuery: () => 
 vi.mock("src/features/ng/ui/NGEditor", () => ({
   NGEditor: () => null,
   NGDslHelpSnippet: () => null,
-  NG_DSL_EXAMPLE: "",
-  NG_DSL_MULTILINE_EXAMPLE: "",
+  NG_DSL_EXAMPLES: [],
 }));
 vi.mock("src/view/browser/pages/settings/SettingsSupplementaryPanels", () => ({
   SettingsSupplementaryPanels: () => null,

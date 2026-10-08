@@ -608,7 +608,7 @@ export const ThreadListPage: React.FC<Props> = ({
         ? [
             {
               key: "demoted",
-              label: `NGしたスレ（${demoted.length}）`,
+              label: `折りたたんだスレ（${demoted.length}）`,
               rows: demoted,
               collapsible: true,
               defaultCollapsed: true,

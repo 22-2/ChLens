@@ -137,7 +137,7 @@ function refreshThreadNgState(thread: IThread, boardUrl: string): IThread {
     ngResult?.action === "highlight" ||
     ngResult?.type === "HighlightTitle" ||
     ngResult?.type === "RegExpHighlightTitle";
-  const demoted = ngResult?.action === "demote";
+  const demoted = ngResult?.action === "collapse";
 
   // 変更理由: 板名を変えずにNGルールだけが更新された場合も、パネル上の一覧を
   // 即時に通常／強調／折りたたみへ振り分け直す必要がある。
@@ -479,7 +479,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
         ? [
             {
               key: "demoted",
-              label: `NGしたスレ（${demoted.length}）`,
+              label: `折りたたんだスレ（${demoted.length}）`,
               rows: demoted,
               collapsible: true,
               defaultCollapsed: true,

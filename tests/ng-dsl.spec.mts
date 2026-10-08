@@ -64,7 +64,11 @@ hide:
     .toBe(rule);
   await expect(panel.getByText("NGルールを保存できません", { exact: true })).toHaveCount(0);
   await panel.getByRole("button", { name: "NG記法例", exact: true }).click();
-  await expect(panel.locator(".dsl-editor__snippet")).toHaveCount(2);
+  await expect(panel.locator(".dsl-editor__snippet")).toHaveCount(7);
+  await expect(
+    panel.getByRole("heading", { name: "複数のIDをまとめて指定する", exact: true }),
+  ).toBeVisible();
+  await expect(panel.getByRole("heading", { name: "unlessだけで書く", exact: true })).toBeVisible();
   await panel.getByRole("tab", { name: "文字列置換", exact: true }).click();
   await panel.getByRole("tab", { name: "NGルール", exact: true }).click();
   await expect(editingSurface).toContainText("unless id contains");
@@ -137,4 +141,50 @@ test("NG・置換エディタはEnterで現在の深さだけを維持し、段�
       page.evaluate(() => localStorage.getItem("config_replace_str_txt")?.replace(/\r\n/gu, "\n")),
     )
     .toBe('replace body:\n  from "前"\n  to "後"');
+});
+
+test("collapseでスレ一覧とレスを折りたたみ、unless単体の複数IDで例外を残す", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTitle("URLバーを表示", { exact: true }).click();
+  const input = page.getByPlaceholder("URLを入力");
+  await input.fill(localBoard.boardUrl);
+  await input.press("Enter");
+  const panel = page.locator('.content-area__tab-panel[data-active="true"]');
+  await expect(panel.getByText("ローカルテストスレッド", { exact: true })).toBeVisible();
+  await page.getByTitle("メニュー", { exact: true }).click();
+  await page.getByTitle("設定を開く", { exact: true }).click();
+  await panel.getByRole("button", { name: /^NG/ }).click();
+  const rule = `collapse:
+  when title contains "ローカル"
+
+collapse:
+  unless id contains:
+    "local001"
+    "local003"`;
+  await panel.locator(".monaco-editor .view-lines").click({ position: { x: 10, y: 10 } });
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.evaluate((text) => navigator.clipboard.writeText(text), rule);
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.press("ControlOrMeta+V");
+  await expect
+    .poll(() =>
+      page.evaluate(() => localStorage.getItem("config_ngwords")?.replace(/\r\n/gu, "\n")),
+    )
+    .toBe(rule);
+  await page.getByRole("tab", { name: "ローカルテスト板", exact: true }).click();
+  const group = panel.getByRole("button", { name: /折りたたんだスレ（1）/ });
+  await expect(group).toBeVisible();
+  await expect(panel.getByText("ローカルテストスレッド", { exact: true })).toBeHidden();
+  await group.click();
+  await expect(panel.getByText("ローカルテストスレッド", { exact: true })).toBeVisible();
+  await input.fill(localBoard.threadUrl);
+  await input.press("Enter");
+  await expect(panel.locator('[data-res-num="1"]')).toContainText("最初の日本語レス");
+  await expect(panel.getByText("二番目の日本語レス", { exact: true })).toBeHidden();
+  await panel.getByRole("button", { name: "レス2の内容を表示", exact: true }).click();
+  await expect(panel.locator('[data-res-num="2"]')).toContainText("二番目の日本語レス");
 });

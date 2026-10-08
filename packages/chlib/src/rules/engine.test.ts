@@ -271,11 +271,11 @@ describe("rule engine", () => {
 });
 
 describe("collapseルール", () => {
-  it("レスの判定ではcollapseルールを評価し、スレ一覧では評価しない", () => {
+  it("本文のcollapseはレスを折りたたみ、スレ一覧には適用しない", () => {
     const rules: Rule[] = [
       {
         action: "collapse",
-        target: "all",
+        target: "body",
         enabled: true,
         matchers: [{ kind: "contains", value: "宣伝" }],
       },
@@ -292,6 +292,50 @@ describe("collapseルール", () => {
       })?.rule.action,
     ).toBe("collapse");
     expect(evaluateBoardRules(rules, { title: "宣伝です", url: "", resCount: 1 })).toBeNull();
+  });
+
+  it("タイトルのcollapseはスレ一覧を折りたたみ、開いたスレのレスには適用しない", () => {
+    const rules: Rule[] = [
+      {
+        action: "collapse",
+        target: "title",
+        enabled: true,
+        matchers: [{ kind: "contains", value: "定期" }],
+      },
+    ];
+    expect(
+      evaluateBoardRules(rules, { title: "定期スレ", url: "", resCount: 1 })?.rule.action,
+    ).toBe("collapse");
+    expect(
+      evaluateResponseRules(rules, {
+        all: "本文",
+        title: "定期スレ",
+        body: "本文",
+        name: "",
+        mail: "",
+        url: "",
+      }),
+    ).toBeNull();
+    // タイトルで対象を絞り、IDの条件も指定した場合はレスの折りたたみになる。
+    const scoped = [
+      {
+        ...rules[0],
+        conditions: [
+          { target: "id" as const, matchers: [{ kind: "contains" as const, value: "sample001" }] },
+        ],
+      },
+    ];
+    expect(
+      evaluateResponseRules(scoped, {
+        all: "本文",
+        title: "定期スレ",
+        body: "本文",
+        id: "sample001",
+        name: "",
+        mail: "",
+        url: "",
+      })?.rule.action,
+    ).toBe("collapse");
   });
 });
 

@@ -67,17 +67,17 @@ hide:
     await expect(set("Body(value=荒らし)")).rejects.toThrow("新しいブロックDSL");
   });
 
-  it("distinguishes demoted board threads from hidden board threads", async () => {
+  it("スレ一覧の折りたたみを完全非表示と区別する", async () => {
     const { apply, invalidateCache, isNGBoard } = await import("src/core/ng/NG");
     invalidateCache();
-    apply(`demote:
+    apply(`collapse:
   when title contains "薄くする"
 
 hide:
   when title contains "隠す"`);
 
     expect(isNGBoard("薄くするスレ", "https://example.com/board/", 1)).toMatchObject({
-      action: "demote",
+      action: "collapse",
     });
     expect(isNGBoard("隠すスレ", "https://example.com/board/", 1)).toMatchObject({
       action: "hide",

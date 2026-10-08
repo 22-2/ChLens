@@ -125,12 +125,12 @@ export function useThreadListData({
       setThreads((prev) =>
         prev.map((thread) => {
           const ngResult = container.ng.isNGBoard(thread.title, boardUrl, thread.resCount);
-          // 変更理由: hideは一覧から除外し、demoteだけを折りたたみ領域へ送る。
+          // 変更理由: hideは一覧から除外し、collapseだけを折りたたみ領域へ送る。
           const highlight =
             ngResult?.action === "highlight" ||
             ngResult?.type === "HighlightTitle" ||
             ngResult?.type === "RegExpHighlightTitle";
-          const demoted = ngResult?.action === "demote";
+          const demoted = ngResult?.action === "collapse";
 
           return {
             ...thread,

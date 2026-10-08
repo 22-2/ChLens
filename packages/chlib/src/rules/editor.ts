@@ -69,10 +69,8 @@ export interface RuleDslCompletionCandidate {
 /** 補完の本文も設定保存と同じ、動作・条件・設定の分離形式を使う。 */
 export const RULE_DSL_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate[] = [
   ...RULE_ACTION_CATALOG.filter(({ name }) => name !== "warn").flatMap((action) =>
-    RULE_TARGET_CATALOG.filter(
-      (target) =>
-        isRuleCombinationSupported(action.name, target.name) &&
-        (action.name !== "demote" || target.allowedOnBoard),
+    RULE_TARGET_CATALOG.filter((target) =>
+      isRuleCombinationSupported(action.name, target.name),
     ).map((target): RuleDslCompletionCandidate => {
       const numeric = target.field.endsWith("Count");
       return {

@@ -41,7 +41,7 @@ export interface ResponseRuleContext extends RuleMatchContext {
   readonly mail: string;
 }
 
-export const BOARD_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "highlight", "demote"]);
+export const BOARD_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "highlight", "collapse"]);
 export const BOARD_RULE_TARGETS = new Set<RuleTarget>(["all", "title", "url", "res-count"]);
 export const RESPONSE_RULE_ACTIONS = new Set<Rule["action"]>(["hide", "collapse"]);
 export const RESPONSE_RULE_TARGETS = new Set<RuleTarget>([
@@ -214,7 +214,20 @@ export function evaluateResponseRules(
   context: ResponseRuleContext,
   onRegexError?: (source: string, error: unknown) => void,
 ): RuleMatchResult | null {
-  return matchRules(rules, context, RESPONSE_RULE_ACTIONS, RESPONSE_RULE_TARGETS, onRegexError);
+  // 一覧用のcollapseで、スレを開いたときに全レスまで折りたたまない。
+  // 本文・IDなどレス固有の条件を含むcollapseだけをレスへ適用する。
+  const responseRules = rules.filter(
+    (rule) =>
+      rule.action !== "collapse" ||
+      getRuleConditions(rule).some(({ target }) => !THREAD_LIST_RULE_TARGETS.has(target)),
+  );
+  return matchRules(
+    responseRules,
+    context,
+    RESPONSE_RULE_ACTIONS,
+    RESPONSE_RULE_TARGETS,
+    onRegexError,
+  );
 }
 
 export function clearRuleRegexCache(): void {

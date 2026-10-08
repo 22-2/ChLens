@@ -14,49 +14,70 @@ export interface NGEditorProps {
   onChange: (value: string) => void;
 }
 
-export const NG_DSL_EXAMPLE = `// 一覧は「どれかに一致」（OR）です
-hide:
-  when body contains:
-    "荒らし"
-    "spam"
-
-hide:
-  when id contains "abc123"
-
-// 一覧の末尾に折りたたんで表示します
-demote:
+/** 例を目的別に分け、最初から正規表現やサイト指定を覚えなくても使えるようにする。 */
+export const NG_DSL_EXAMPLES = [
+  {
+    title: "本文の言葉で非表示にする",
+    description:
+      "hideは非表示、whenは「当てはまる場合」、bodyは本文、containsは「含む」です。文字列は引用符で囲み、条件行は半角スペース2つで下げます。",
+    code: `hide:
+  when body contains "宣伝"`,
+  },
+  {
+    title: "複数のIDをまとめて指定する",
+    description:
+      "contains:の次の行からIDを1つずつ引用符で囲み、さらに半角スペース2つ下げます。どれか1つのIDを含むレスが対象です。IDは実際のものに置き換えてください。",
+    code: `hide:
+  when id contains:
+    "sample001"
+    "sample002"
+    "sample003"`,
+  },
+  {
+    title: "本文の条件に例外を付ける",
+    description:
+      "「宣伝」を含むレスを非表示にしますが、IDにsample001を含むレスは残します。unlessは「当てはまる場合は除外する」です。",
+    code: `hide:
+  when body contains "宣伝"
+  unless id contains "sample001"`,
+  },
+  {
+    title: "unlessだけで書く",
+    description:
+      "whenなしでも使えます。この例は「保存用」を含まない本文のレスをすべて非表示にします。一部の対象だけに絞る条件ではないので、広い範囲に適用される点に注意してください。複数の値を並べる場合は、どれにも一致しない対象に適用します。IDなど判定する値がない場合は適用しません。",
+    code: `hide:
+  unless body contains "保存用"`,
+  },
+  {
+    title: "非表示にせず折りたたむ",
+    description:
+      "collapseはクリックで表示できるように折りたたみます。タイトル条件はスレ一覧の末尾のグループへ、本文やIDの条件はレスをその場で折りたたみます。",
+    code: `collapse:
   when title contains "定期スレ"
 
-// collapseは表示方式の設定にかかわらず折りたたみます
 collapse:
-  when body contains "宣伝"
-
-hide:
-  when anchor-count >= 10`;
-
-export const NG_DSL_MULTILINE_EXAMPLE = `// 複数の条件は「すべて満たす」（AND）です
-highlight:
+  when body contains "宣伝"`,
+  },
+  {
+    title: "複数の条件を満たすスレを強調する",
+    description:
+      "タイトルに「実況」を含み、レス数が10以上のスレを青色で強調します。条件を複数書くと、すべて満たす場合に適用します。colorは色、labelはスレ一覧に表示する名前です。",
+    code: `highlight:
   color blue
   label "注目"
+  when title contains "実況"
+  when res-count >= 10`,
+  },
+  {
+    title: "サイト指定・一時無効化・正規表現",
+    description:
+      "sitesで適用先を絞れます。example.comは架空のサイトなので実際のサイトへ変更してください。disabled trueはルールを一時的に無効にします。regexは正規表現で、例では「宣伝」を3回以上繰り返す本文に一致します。",
+    code: `hide:
   sites "example.com"
-  when title contains:
-    "google"
-    "ぐーぐる"
-    "microsoft"
-  when res-count >= 10
-  unless title contains "除外"
-
-// 正規表現は引用し、必要ならflagsを付けます
-hide:
-  when body regex "(imgur\\.com/.+?){15}" flags=i
-
-// 複数の適用先も一覧にできます
-hide:
-  sites:
-    "example.com"
-    "bbs.example.org"
   disabled true
-  when name contains "名無し"`;
+  when body regex "(宣伝){3,}"`,
+  },
+] as const;
 
 interface NGDslHelpSnippetProps {
   code: string;
