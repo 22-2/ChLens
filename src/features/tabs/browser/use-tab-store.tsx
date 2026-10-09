@@ -9,6 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import { platform } from "src/app/platform";
 import {
   add as addHistoryRecord,
@@ -16,6 +17,7 @@ import {
   remove as removeHistoryRecord,
 } from "src/core/history/History";
 import { tabActions } from "src/features/tabs/browser/tab-store-actions";
+import { recordAutoRefreshTransitions } from "src/features/tabs/browser/tab-store-debug";
 import {
   clearThreadVisitsForTab,
   deriveHistoryBoardTitle,
@@ -224,6 +226,8 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     (action) => {
       const prevState = stateRef.current;
       const nextState = tabReducer(prevState, action);
+      // 開始拒否は状態が変わらない場合もあるため、同一stateで抜ける前に記録する。
+      recordAutoRefreshTransitions(action, prevState, nextState);
       if (nextState === prevState) return;
       // stateRefは常に最後にdispatchした結果を指す。描画後のEffectで書き戻すと、
       // startTransitionで先に確定した古い描画がrefを巻き戻すため、ここだけで更新する。
@@ -307,6 +311,29 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     },
     [persistThreadVisit, syncThreadVisitTitle],
+  );
+
+  // 外部CLIからペイン・タブ構成と自動更新状態を確認できるよう、最新のstateを公開する。
+  useEffect(
+    () =>
+      registerDebugStateProvider("tabs", () => {
+        const current = stateRef.current;
+        return {
+          activePaneId: current.activePaneId,
+          panes: current.panes.map((pane) => ({
+            id: pane.id,
+            activeTabId: pane.activeTabId,
+            tabs: pane.tabs.map((tab) => ({
+              id: tab.id,
+              page: getCurrentPage(tab),
+              autoRefreshEnabled: tab.autoRefreshEnabled,
+              autoRefreshPageKey: tab.autoRefreshPageKey,
+              autoRefreshStoppedPageKey: tab.autoRefreshStoppedPageKey ?? null,
+            })),
+          })),
+        };
+      }),
+    [],
   );
 
   // background からの新タブ追加指示を受け取り OPEN_IN_NEW_TAB をディスパッチする

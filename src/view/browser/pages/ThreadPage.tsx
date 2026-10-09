@@ -1,4 +1,6 @@
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { registerDebugStateProvider } from "src/app/debug/debug-api";
+import { recordDebugEvent } from "src/app/debug/debug-log";
 import { useArchiveReplayPositionStore } from "src/features/archive-replay/browser/position-store";
 import { normalizeArchiveReplayThreadUrl } from "src/features/archive-replay/domain";
 import {
@@ -47,6 +49,7 @@ import type { IThread } from "src/service-container/interfaces";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
+import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import {
   getThreadPageCountKey,
@@ -464,6 +467,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     },
     onThreadExpiredDetected: () => {
       if (autoRefreshPageKey != null && tab?.autoRefreshStoppedPageKey !== autoRefreshPageKey) {
+        // 停止記録は通知なしで付き、以後の開始操作を拒否するため、付けた根拠を残す。
+        recordDebugEvent("auto-refresh", "スレッドの停止記録を付けます", {
+          tabId,
+          pageKey: autoRefreshPageKey,
+          expired,
+          missingFromSubject,
+          responseCount: responses.length,
+          isAutoRefreshEnabled,
+          isCommentOverlayFlowing,
+        });
         dispatch(tabActions.setAutoRefreshStoppedPageKey(autoRefreshPageKey));
       }
     },
@@ -524,6 +537,36 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     followThread: handleFollowNextThread,
     onSearchExhausted: handleNextThreadSearchExhausted,
   });
+
+  // 外部CLIから停止判定の入力値をまとめて確認できるよう、描画ごとの最新値を公開する。
+  const debugStateRef = useLatestRef({
+    tabId,
+    threadUrl: page.threadUrl,
+    isActive,
+    loading,
+    responseCount: responses.length,
+    expired,
+    missingFromSubject,
+    isAutoRefreshEnabled,
+    isActiveAutoRefreshEnabled,
+    isAutoRefreshStopped,
+    autoRefreshExpired,
+    hasReachedThreadLimit,
+    shouldStopFetching,
+    shouldDeferNextThreadStop,
+    canAutoScroll,
+    isAutoScrolling,
+    isLiveChat,
+    liveChatPendingCount: liveChat.pendingCount,
+    liveChatIsDraining: liveChat.isDraining,
+    isCommentOverlayTarget,
+    isCommentOverlayFlowing,
+    hasPendingAutoNextThreadMove: pendingAutoNextThreadMove != null,
+  });
+  useEffect(
+    () => registerDebugStateProvider(`thread:${tabId}`, () => debugStateRef.current),
+    [debugStateRef, tabId],
+  );
 
   const imageBlurConfig = useImageBlurConfig();
 

@@ -1,3 +1,4 @@
+import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import { container } from "src/service-container/index";
 
 import { commentOverlayWindowPlatform, createCommentOverlayEventBus } from "../platform";
@@ -28,3 +29,6 @@ export const commentOverlayController = new CommentOverlayController({
   subscribeSettings: subscribeToCommentOverlaySettings,
   multiThreadSource: commentOverlayMultiThreadSource,
 });
+
+// 実況中だけ起きる不具合を調べるため、Overlayの対象スレと表示状態を外部CLIへ公開する。
+registerDebugStateProvider("commentOverlay", () => commentOverlayController.getSnapshot());
