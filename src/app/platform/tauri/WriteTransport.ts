@@ -5,6 +5,7 @@ interface TauriWriteTransportRequest {
   bootstrapUrl?: string;
   referer: string;
   userAgent: string | null | undefined;
+  excludedCookies?: readonly string[];
   body: ArrayBuffer;
   charset: string;
 }
@@ -50,6 +51,7 @@ export async function fetchTauriWrite(request: TauriWriteTransportRequest): Prom
       bootstrapUrl: request.bootstrapUrl,
       referer: request.referer,
       userAgent: request.userAgent,
+      excludedCookies: request.excludedCookies,
       body: Array.from(new Uint8Array(request.body)),
     },
   });

@@ -1,4 +1,5 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
+import { HOSTNAME } from "packages/chlib/src/url/hosts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const {
@@ -88,6 +89,37 @@ describe("useWrite", () => {
     cleanup();
     vi.useRealTimers();
   });
+
+  it.each([
+    { hostname: HOSTNAME.EDDIBB, mail: "#0123456789abcdef", excludedCookies: ["edge-token"] },
+    { hostname: HOSTNAME.EDDIBB, mail: "sage", excludedCookies: [] },
+    { hostname: "example.com", mail: "#0123456789abcdef", excludedCookies: [] },
+  ])(
+    "$hostnameのメール欄$mailに応じて認証Cookieの除外を指定する",
+    async ({ hostname, mail, excludedCookies }) => {
+      vi.useFakeTimers();
+      const threadUrl = new URL(THREAD_URL);
+      threadUrl.hostname = hostname;
+      fetchTauriWriteMock.mockResolvedValue({
+        status: 200,
+        headers: {},
+        url: new URL("/test/bbs.cgi", threadUrl).href,
+        body: "<html><head><title>書きこみました</title></head></html>",
+      });
+      const { result } = renderHook(() => useWrite(threadUrl.href));
+      act(() => {
+        result.current.setMail(mail);
+        result.current.setMessage("投稿本文");
+      });
+      await act(async () => result.current.submit());
+      expect(fetchTauriWriteMock).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ excludedCookies }),
+      );
+      const body = new TextDecoder().decode(fetchTauriWriteMock.mock.calls[0][0].body);
+      expect(new URLSearchParams(body).get("mail")).toBe(mail);
+      await act(async () => vi.runAllTimersAsync());
+    },
+  );
 
   it("自分レス照合用の成功通知は再取得の5秒待機より前に一度だけ配信する", async () => {
     vi.useFakeTimers();

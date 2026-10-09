@@ -1,5 +1,6 @@
 use crate::write_cookies::WriteCookies;
-use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, ORIGIN, REFERER, USER_AGENT};
+use reqwest::cookie::CookieStore;
+use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, COOKIE, ORIGIN, REFERER, USER_AGENT};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -34,6 +35,8 @@ pub struct WriteRequest {
   pub bootstrap_url: Option<String>,
   pub referer: String,
   pub user_agent: Option<String>,
+  #[serde(default)]
+  pub excluded_cookies: Vec<String>,
   pub body: Vec<u8>,
 }
 
@@ -156,6 +159,40 @@ fn get_or_create_client(state: &WriteTransportState, site: &str) -> Result<Clien
   Ok(new_client)
 }
 
+fn apply_cookie_exclusions(
+  headers: &mut HeaderMap,
+  cookies: Option<HeaderValue>,
+  excluded: &[String],
+) -> Result<(), String> {
+  if excluded.is_empty() {
+    return Ok(());
+  }
+  let cookies = cookies
+    .as_ref()
+    .map(HeaderValue::to_str)
+    .transpose()
+    .map_err(|error| format!("投稿Cookieのヘッダーを解釈できませんでした: {error}"))?
+    .unwrap_or("");
+  let filtered = cookies
+    .split(';')
+    .map(str::trim)
+    .filter(|cookie| {
+      !cookie.is_empty()
+        && !cookie
+          .split_once('=')
+          .is_some_and(|(name, _)| excluded.iter().any(|excluded| excluded == name))
+    })
+    .collect::<Vec<_>>()
+    .join("; ");
+  // 空でもCookieヘッダーを明示し、reqwestがJarの除外済みCookieを再び自動付与するのを防ぐ。
+  headers.insert(
+    COOKIE,
+    HeaderValue::from_str(&filtered)
+      .map_err(|error| format!("投稿Cookieの送信ヘッダーを作成できませんでした: {error}"))?,
+  );
+  Ok(())
+}
+
 #[tauri::command]
 pub fn has_write_cookies(
   state: State<'_, WriteTransportState>,
@@ -216,7 +253,12 @@ pub async fn write_request(
     }
   }
 
-  let headers = build_headers(&action, &request.referer, request.user_agent.as_deref());
+  let mut headers = build_headers(&action, &request.referer, request.user_agent.as_deref());
+  apply_cookie_exclusions(
+    &mut headers,
+    state.cookies.jar(&site).cookies(&action),
+    &request.excluded_cookies,
+  )?;
   let response = client
     .post(action)
     .headers(headers)
@@ -248,7 +290,86 @@ pub async fn write_request(
 
 #[cfg(test)]
 mod tests {
-  use super::parse_site_host;
+  use super::*;
+
+  #[test]
+  fn 指定した認証cookieだけを投稿ヘッダーから除外する() {
+    let mut headers = HeaderMap::new();
+    apply_cookie_exclusions(
+      &mut headers,
+      Some(HeaderValue::from_static("edge-token=old; other=keep=value")),
+      &["edge-token".into()],
+    )
+    .unwrap();
+    assert_eq!(headers[COOKIE], "other=keep=value");
+
+    apply_cookie_exclusions(
+      &mut headers,
+      Some(HeaderValue::from_static("edge-token=old")),
+      &["edge-token".into()],
+    )
+    .unwrap();
+    assert_eq!(headers[COOKIE], "");
+  }
+
+  #[test]
+  fn 除外指定がない投稿ではjarのcookie自動付与を維持する() {
+    let mut headers = HeaderMap::new();
+    apply_cookie_exclusions(
+      &mut headers,
+      Some(HeaderValue::from_static("edge-token=old")),
+      &[],
+    )
+    .unwrap();
+    assert!(!headers.contains_key(COOKIE));
+  }
+
+  #[test]
+  fn 除外したcookieを自動付与せず応答で発行されたcookieを保存する() {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let action = Url::parse(&format!(
+      "http://{}/test/bbs.cgi",
+      listener.local_addr().unwrap()
+    ))
+    .unwrap();
+    let server = std::thread::spawn(move || {
+      let (mut stream, _) = listener.accept().unwrap();
+      stream
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .unwrap();
+      let mut request = Vec::new();
+      let mut buffer = [0; 1024];
+      while !request.windows(4).any(|bytes| bytes == b"\r\n\r\n") {
+        let count = stream.read(&mut buffer).unwrap();
+        assert!(count > 0);
+        request.extend_from_slice(&buffer[..count]);
+      }
+      stream.write_all(b"HTTP/1.1 200 OK\r\nSet-Cookie: edge-token=new; Path=/\r\nContent-Length: 0\r\nConnection: close\r\n\r\n").unwrap();
+      String::from_utf8(request).unwrap()
+    });
+    let jar = Arc::new(reqwest::cookie::Jar::default());
+    jar.add_cookie_str("edge-token=old; Path=/", &action);
+    let client = Client::builder()
+      .cookie_provider(Arc::clone(&jar))
+      .build()
+      .unwrap();
+    let mut headers = HeaderMap::new();
+    apply_cookie_exclusions(&mut headers, jar.cookies(&action), &["edge-token".into()]).unwrap();
+    tauri::async_runtime::block_on(async {
+      client
+        .post(action.clone())
+        .headers(headers)
+        .send()
+        .await
+        .unwrap();
+    });
+    let request = server.join().unwrap();
+    assert!(!request.contains("edge-token=old"));
+    assert_eq!(jar.cookies(&action).unwrap(), "edge-token=new");
+  }
 
   #[test]
   fn cookie削除用のサイト識別子をホスト名へ正規化する() {

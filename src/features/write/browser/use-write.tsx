@@ -159,11 +159,14 @@ async function submitTauriWrite(
 ): Promise<WriteResultMessage> {
   const { encodeWriteFields } = await import("src/app/platform/tauri/WriteForm");
   const { fetchTauriWrite } = await import("src/app/platform/tauri/WriteTransport");
+  const mail = request.fields.find((field) => field.name === "mail")?.value ?? "";
   const response = await fetchTauriWrite({
     action: request.action,
     bootstrapUrl: request.bootstrapUrl,
     referer: request.referer,
     userAgent: container.config.get("useragent"),
+    // eddibbはCookieをメール欄のトークンより優先するため、明示したトークンで再認証するときは古いCookieを送らない。
+    excludedCookies: isWriteAuthToken(request.action, mail) ? ["edge-token"] : [],
     body: encodeWriteFields(request.fields, request.charset),
     charset: request.charset,
   });
