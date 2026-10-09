@@ -1,0 +1,3 @@
+interface:
+  display_name: "ChLens Tauri デバッグ"
+  short_description: "起動中のTauri版ChLensからCDPで状態とログを取り出して不具合を調べる"
