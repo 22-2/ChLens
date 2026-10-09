@@ -12,6 +12,11 @@ import { useViewSurface } from "src/features/auxiliary-window/browser/use-view-s
 import { useToast } from "src/view/browser/hooks/use-toast";
 
 import type { ViewerState } from "./media-viewer-types";
+import {
+  approachViewerTransform,
+  isViewerTransformSettled,
+  type ViewerTransform,
+} from "./media-viewer-zoom";
 import { useMediaViewerStore } from "./use-media-viewer-store";
 
 interface ViewerSize {
@@ -144,6 +149,8 @@ export function useMediaViewerController(
   const viewerStageSizeRef = useRef<ViewerSize | null>(null);
   const viewerPanRef = useRef<ViewerPoint>({ x: 0, y: 0 });
   const viewerScaleRef = useRef(1);
+  const currentTransformRef = useRef<ViewerTransform | null>(null);
+  const animationFrameRef = useRef<{ window: Window; id: number } | null>(null);
   const zoomPivotRef = useRef<ViewerPoint | null>(null);
   const panStateRef = useRef<{
     active: boolean;
@@ -155,19 +162,72 @@ export function useMediaViewerController(
     startPan: { x: 0, y: 0 },
   });
 
-  const renderViewerTransform = useCallback(() => {
-    const canvas = viewerCanvasRef.current;
-    const baseSize = viewerBaseSizeRef.current;
-    if (!canvas || !baseSize) {
-      return;
+  const stopViewerAnimation = useCallback(() => {
+    const frame = animationFrameRef.current;
+    if (frame) {
+      frame.window.cancelAnimationFrame(frame.id);
+      animationFrameRef.current = null;
     }
-
-    const { x, y } = viewerPanRef.current;
-
-    canvas.style.width = `${baseSize.width}px`;
-    canvas.style.height = `${baseSize.height}px`;
-    canvas.style.transform = `translate(${x}px, ${y}px) scale(${viewerScaleRef.current})`;
   }, []);
+
+  const renderViewerTransform = useCallback(
+    (animate = false) => {
+      const canvas = viewerCanvasRef.current;
+      const baseSize = viewerBaseSizeRef.current;
+      if (!canvas || !baseSize) {
+        return;
+      }
+
+      canvas.style.width = `${baseSize.width}px`;
+      canvas.style.height = `${baseSize.height}px`;
+      const goal: ViewerTransform = { ...viewerPanRef.current, scale: viewerScaleRef.current };
+      const animationWindow = canvas.ownerDocument.defaultView ?? window;
+      const paint = (view: ViewerTransform) => {
+        currentTransformRef.current = view;
+        canvas.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+      };
+
+      stopViewerAnimation();
+      if (
+        !animate ||
+        !currentTransformRef.current ||
+        animationWindow.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+      ) {
+        paint(goal);
+        return;
+      }
+
+      // 目標と描画中の状態を分け、連続入力でも表示中の位置から滑らかに追従させる。
+      // 別窓へ移動した後は、その窓の時計と描画フレームを使う。
+      let last = animationWindow.performance.now();
+      const step = (now: number) => {
+        animationFrameRef.current = null;
+        const current = currentTransformRef.current;
+        if (!current) return;
+        const next = approachViewerTransform(current, goal, now - last);
+        last = now;
+        if (isViewerTransformSettled(next, goal)) {
+          paint(goal);
+          return;
+        }
+        paint(next);
+        animationFrameRef.current = {
+          window: animationWindow,
+          id: animationWindow.requestAnimationFrame(step),
+        };
+      };
+      animationFrameRef.current = {
+        window: animationWindow,
+        id: animationWindow.requestAnimationFrame(step),
+      };
+    },
+    [stopViewerAnimation],
+  );
+
+  useLayoutEffect(() => {
+    // Portalの付け替えや破棄後に、古い窓・画像へ描画し続けないようにする。
+    return stopViewerAnimation;
+  }, [stopViewerAnimation, surfaceKey, viewWindow]);
 
   const centerViewer = useCallback((stageSize: ViewerSize, baseSize: ViewerSize) => {
     const scale = viewerScaleRef.current;
@@ -257,6 +317,8 @@ export function useMediaViewerController(
   }, []);
 
   const resetViewerSurface = useCallback(() => {
+    stopViewerAnimation();
+    currentTransformRef.current = null;
     viewerBaseSizeRef.current = null;
     viewerStageSizeRef.current = null;
     viewerPanRef.current = { x: 0, y: 0 };
@@ -278,7 +340,7 @@ export function useMediaViewerController(
     canvas.style.removeProperty("width");
     canvas.style.removeProperty("height");
     canvas.style.removeProperty("transform");
-  }, []);
+  }, [stopViewerAnimation]);
 
   useLayoutEffect(() => {
     // src 切り替え直後の1フレームで旧transformが見えると拡大ちらつきになるため、
@@ -317,7 +379,7 @@ export function useMediaViewerController(
 
     const stageSize = viewerStageSizeRef.current;
     if (stageSize && viewerBaseSizeRef.current) {
-      // 外部アプリの挙動再現に依存せず、倍率比から位置を一度だけ計算する。
+      // 描画途中の倍率ではなく前回の目標倍率から位置を計算し、連続入力を累積する。
       // ズーム中心にある画像上の点を固定し、ホイール操作で注目箇所がずれないようにする。
       const pivot = zoomPivotRef.current ?? getViewerStageCenter(stageSize);
       const ratio = viewerScale / viewerScaleRef.current;
@@ -328,7 +390,7 @@ export function useMediaViewerController(
     }
     viewerScaleRef.current = viewerScale;
     zoomPivotRef.current = null;
-    renderViewerTransform();
+    renderViewerTransform(true);
   }, [renderViewerTransform, viewer, viewerScale]);
 
   useEffect(() => {

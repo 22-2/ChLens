@@ -9,7 +9,7 @@ const TOOLBAR_ZOOM_STEP = 0.25;
 
 function clampViewerScale(scale: number): number {
   // 高解像度メディアの細部を確認しつつ、過大な描画負荷を避けるため拡大は10倍までに制限する。
-  return Math.min(MAX_VIEWER_SCALE, Math.max(MIN_VIEWER_SCALE, +scale.toFixed(2)));
+  return Math.min(MAX_VIEWER_SCALE, Math.max(MIN_VIEWER_SCALE, scale));
 }
 
 interface MediaViewerStoreState {
@@ -126,9 +126,9 @@ export const useMediaViewerStore = create<MediaViewerStoreState>((set, get) => (
       return;
     }
     set((state) => {
-      // 機器固有の移動量や単位の換算値に依存しないよう、入力の方向だけで
-      // ツールバーと同じ刻みを適用する。細かな入力でも確実に倍率が変わる。
-      const nextScale = state.viewerScale - Math.sign(deltaY) * TOOLBAR_ZOOM_STEP;
+      // ホイールの移動量を指数倍率へ変換し、拡大と縮小を対称にする。
+      // 小数を丸めるとトラックパッドの細かな入力が消えるため、目標倍率の精度を維持する。
+      const nextScale = state.viewerScale * Math.exp(-deltaY * 0.0018);
       return { viewerScale: clampViewerScale(nextScale) };
     });
   },

@@ -65,4 +65,26 @@ describe("useMediaViewerStore", () => {
 
     expect(useMediaViewerStore.getState().viewerScale).toBe(10);
   });
+
+  it("ホイールの移動量を累積し、逆方向に同じ量だけ動かすと元の倍率へ戻る", () => {
+    const store = useMediaViewerStore.getState();
+    store.zoomByWheel(-40);
+    store.zoomByWheel(-60);
+    expect(useMediaViewerStore.getState().viewerScale).toBeCloseTo(Math.exp(0.18), 10);
+
+    store.zoomByWheel(100);
+    expect(useMediaViewerStore.getState().viewerScale).toBeCloseTo(1, 10);
+  });
+
+  it("細かなホイール入力を丸めず、無効な入力と縮小下限を扱う", () => {
+    const store = useMediaViewerStore.getState();
+    store.zoomByWheel(-1);
+    expect(useMediaViewerStore.getState().viewerScale).toBeCloseTo(Math.exp(0.0018), 10);
+    store.zoomByWheel(Number.NaN);
+    store.zoomByWheel(Number.POSITIVE_INFINITY);
+    store.zoomByWheel(0);
+    expect(useMediaViewerStore.getState().viewerScale).toBeCloseTo(Math.exp(0.0018), 10);
+    store.zoomByWheel(10000);
+    expect(useMediaViewerStore.getState().viewerScale).toBe(0.25);
+  });
 });

@@ -40,6 +40,15 @@ describe("別窓ビューアの表示サーフェス", () => {
       throw new Error("別窓用のテストDocumentを作成できませんでした");
     }
     popupWindow = iframe.contentWindow;
+    // このテストはイベントの再接続を検証するため、アニメーションの時間経過を待たずに操作する。
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({ matches: true })),
+    );
+    Object.defineProperty(popupWindow, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({ matches: true })),
+    });
     popupDocument = popupWindow.document;
     Object.defineProperty(popupWindow, "focus", { configurable: true, value: vi.fn() });
     initialRoot = popupDocument.createElement("div");
@@ -59,44 +68,46 @@ describe("別窓ビューアの表示サーフェス", () => {
   afterEach(() => {
     cleanup();
     iframe.remove();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
+
+  const getStage = (targetDocument: Document) => {
+    const stage = targetDocument.querySelector<HTMLElement>(".media-viewer__stage");
+    const image = targetDocument.querySelector<HTMLImageElement>(".media-viewer__image");
+    const canvas = targetDocument.querySelector<HTMLElement>(".media-viewer__canvas");
+    if (!stage || !image || !canvas) {
+      throw new Error("テスト用ビューアーのstageが見つかりません");
+    }
+    stage.getBoundingClientRect = () =>
+      ({
+        x: 0,
+        y: 0,
+        left: 0,
+        top: 0,
+        right: 600,
+        bottom: 400,
+        width: 600,
+        height: 400,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    Object.defineProperties(image, {
+      complete: { configurable: true, value: true },
+      naturalWidth: { configurable: true, value: 800 },
+      naturalHeight: { configurable: true, value: 600 },
+    });
+    fireEvent.load(image);
+    return { stage, canvas };
+  };
 
   it("切り離し・再読み込み・復帰の後も新しいstageでwheelとpanを維持する", () => {
     useMediaViewerStore.getState().openMediaFromUrl(IMAGE_URL, undefined, "thread-a");
     render(<MediaViewerContainer scopeId="thread-a" />);
     fireEvent.click(screen.getByRole("button", { name: "別窓へ切り離す" }));
 
-    const getStage = (targetDocument: Document) => {
-      const stage = targetDocument.querySelector<HTMLElement>(".media-viewer__stage");
-      const image = targetDocument.querySelector<HTMLImageElement>(".media-viewer__image");
-      const canvas = targetDocument.querySelector<HTMLElement>(".media-viewer__canvas");
-      if (!stage || !image || !canvas) {
-        throw new Error("テスト用ビューアーのstageが見つかりません");
-      }
-      stage.getBoundingClientRect = () =>
-        ({
-          x: 0,
-          y: 0,
-          left: 0,
-          top: 0,
-          right: 600,
-          bottom: 400,
-          width: 600,
-          height: 400,
-          toJSON: () => ({}),
-        }) as DOMRect;
-      Object.defineProperties(image, {
-        complete: { configurable: true, value: true },
-        naturalWidth: { configurable: true, value: 800 },
-        naturalHeight: { configurable: true, value: 600 },
-      });
-      fireEvent.load(image);
-      return { stage, canvas };
-    };
-
     const { stage, canvas } = getStage(popupDocument);
-    fireEvent.wheel(stage, { deltaY: -1, clientX: 300, clientY: 200 });
-    expect(useMediaViewerStore.getState().viewerScale).toBe(1.25);
+    fireEvent.wheel(stage, { deltaY: -120, clientX: 300, clientY: 200 });
+    expect(useMediaViewerStore.getState().viewerScale).toBeCloseTo(Math.exp(0.216));
     const zoomTransform = canvas.style.transform;
     fireEvent.mouseDown(stage, { button: 0, clientX: 300, clientY: 200 });
     fireEvent.mouseMove(popupWindow, { clientX: 330, clientY: 220 });
@@ -127,12 +138,37 @@ describe("別窓ビューアの表示サーフェス", () => {
 
     const reloaded = getStage(popupDocument);
     expect(reloaded.canvas.style.transform).toBe(panTransform);
-    fireEvent.wheel(reloaded.stage, { deltaY: -1, clientX: 300, clientY: 200 });
-    expect(useMediaViewerStore.getState().viewerScale).toBe(1.5);
+    fireEvent.wheel(reloaded.stage, { deltaY: -120, clientX: 300, clientY: 200 });
+    expect(useMediaViewerStore.getState().viewerScale).toBeCloseTo(Math.exp(0.432));
 
     fireEvent.click(within(popupDocument.body).getByRole("button", { name: "元の画面に戻す" }));
     const { stage: returnedStage } = getStage(document);
-    fireEvent.wheel(returnedStage, { deltaY: -1, clientX: 300, clientY: 200 });
-    expect(useMediaViewerStore.getState().viewerScale).toBe(1.75);
+    fireEvent.wheel(returnedStage, { deltaY: -120, clientX: 300, clientY: 200 });
+    expect(useMediaViewerStore.getState().viewerScale).toBeCloseTo(Math.exp(0.648));
+  });
+
+  it("別窓で描画フレームを予約し、元の画面へ戻すと解除する", () => {
+    Object.defineProperty(popupWindow, "matchMedia", {
+      configurable: true,
+      value: vi.fn(() => ({ matches: false })),
+    });
+    const requestFrame = vi.fn(() => 17);
+    const cancelFrame = vi.fn();
+    Object.defineProperties(popupWindow, {
+      requestAnimationFrame: { configurable: true, value: requestFrame },
+      cancelAnimationFrame: { configurable: true, value: cancelFrame },
+    });
+    const requestSourceFrame = vi.spyOn(window, "requestAnimationFrame");
+    useMediaViewerStore.getState().openMediaFromUrl(IMAGE_URL, undefined, "thread-a");
+    render(<MediaViewerContainer scopeId="thread-a" />);
+    fireEvent.click(screen.getByRole("button", { name: "別窓へ切り離す" }));
+    const { stage } = getStage(popupDocument);
+
+    fireEvent.wheel(stage, { deltaY: -100, clientX: 300, clientY: 200 });
+    expect(requestFrame).toHaveBeenCalledOnce();
+    expect(requestSourceFrame).not.toHaveBeenCalled();
+
+    fireEvent.click(within(popupDocument.body).getByRole("button", { name: "元の画面に戻す" }));
+    expect(cancelFrame).toHaveBeenCalledWith(17);
   });
 });
