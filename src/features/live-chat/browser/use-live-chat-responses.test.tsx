@@ -8,6 +8,8 @@ const initial = {
   scopeKey: "tab-a/thread-a",
   enabled: true,
   isActive: true,
+  isAutoRefreshEnabled: true,
+  isFetching: false,
   intervalMs: 20000,
 };
 const advance = (ms: number) => {
@@ -71,14 +73,65 @@ describe("ライブチャットの新着表示", () => {
     expect(result.current.baseline).toBe(4);
   });
 
-  it("非表示タブでは流す予約を止め、復帰時は未表示レスから再開する", () => {
+  it("非表示の間に届いた新着は流さず、復帰時にすぐ追いつく", () => {
     const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: initial });
     rerender({ ...initial, responses: rows(1, 2, 3), isActive: false });
-    advance(5000);
-    expect(result.current.responses).toEqual(rows(1, 2));
+    expect(result.current.isDraining).toBe(false);
     rerender({ ...initial, responses: rows(1, 2, 3) });
-    advance(600);
     expect(result.current.responses).toEqual(rows(1, 2, 3));
+    expect(result.current.pendingCount).toBe(0);
+    expect(result.current.baseline).toBe(3);
+  });
+
+  it("流している途中で非表示になっても、復帰時は残りを待たずに表示する", () => {
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: initial });
+    rerender({ ...initial, responses: rows(1, 2, 3, 4) });
+    advance(600);
+    rerender({ ...initial, responses: rows(1, 2, 3, 4), isActive: false });
+    rerender({ ...initial, responses: rows(1, 2, 3, 4) });
+    expect(result.current.responses).toEqual(rows(1, 2, 3, 4));
+  });
+
+  it("自動更新OFFの手動更新では新着を流さずすぐ表示する", () => {
+    const off = { ...initial, isAutoRefreshEnabled: false };
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: off });
+    rerender({ ...off, responses: rows(1, 2, 3, 4) });
+    expect(result.current.responses).toEqual(rows(1, 2, 3, 4));
+    expect(result.current.isFlowing).toBe(false);
+    expect(result.current.isDraining).toBe(false);
+  });
+
+  it("dat落ちなどで自動更新が止まったら、流している残りをすぐ表示する", () => {
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: initial });
+    rerender({ ...initial, responses: rows(1, 2, 3, 4) });
+    rerender({ ...initial, responses: rows(1, 2, 3, 4), isAutoRefreshEnabled: false });
+    expect(result.current.responses).toEqual(rows(1, 2, 3, 4));
+  });
+
+  it("自動更新をONにした直後の再取得分は流さず、その次の取得から流す", () => {
+    const off = { ...initial, isAutoRefreshEnabled: false };
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: off });
+    // ONを反映した描画ではまだ再取得が始まっていない。
+    rerender(initial);
+    rerender({ ...initial, isFetching: true });
+    rerender({ ...initial, isFetching: true, responses: rows(1, 2, 3, 4) });
+    expect(result.current.responses).toEqual(rows(1, 2, 3, 4));
+    expect(result.current.baseline).toBe(4);
+    rerender({ ...initial, responses: rows(1, 2, 3, 4) });
+    rerender({ ...initial, responses: rows(1, 2, 3, 4, 5) });
+    expect(result.current.responses).toEqual(rows(1, 2, 3, 4));
+    expect(result.current.pendingCount).toBe(1);
+  });
+
+  it("自動更新ON直後の再取得が新着なしなら、その次の取得から流す", () => {
+    const off = { ...initial, isAutoRefreshEnabled: false };
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: off });
+    rerender(initial);
+    rerender({ ...initial, isFetching: true });
+    rerender(initial);
+    rerender({ ...initial, responses: rows(1, 2, 3) });
+    expect(result.current.responses).toEqual(rows(1, 2));
+    expect(result.current.pendingCount).toBe(1);
   });
 
   it("次スレでは旧スレの予約と番号を捨て、新スレの初回表示を揃える", () => {
@@ -90,14 +143,25 @@ describe("ライブチャットの新着表示", () => {
     expect(result.current.baseline).toBe(1);
   });
 
-  it("大量の新着でも間隔を詰めて次の取得前に全件を流し、途中の追加を欠落させない", () => {
+  it("上限を超える新着は古い分をすぐ表示し、末尾だけを流す", () => {
     const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: initial });
-    const first = rows(...Array.from({ length: 102 }, (_, i) => i + 1));
+    const nums = Array.from({ length: 102 }, (_, i) => i + 1);
+    rerender({ ...initial, responses: rows(...nums) });
+    expect(result.current.responses).toEqual(rows(...nums.slice(0, 92)));
+    expect(result.current.pendingCount).toBe(10);
+    expect(result.current.baseline).toBe(92);
+    for (let i = 0; i < 10; i++) advance(600);
+    expect(result.current.responses).toEqual(rows(...nums));
+  });
+
+  it("上限以内の新着は間隔を詰めて次の取得前に全件を流し、途中の追加を欠落させない", () => {
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: initial });
+    const first = rows(...Array.from({ length: 32 }, (_, i) => i + 1));
     rerender({ ...initial, responses: first });
-    for (let i = 0; i < 50; i++) advance(160);
-    const second = rows(...Array.from({ length: 152 }, (_, i) => i + 1));
+    for (let i = 0; i < 15; i++) advance(600);
+    const second = rows(...Array.from({ length: 42 }, (_, i) => i + 1));
     rerender({ ...initial, responses: second });
-    for (let i = 0; i < 100; i++) advance(160);
+    for (let i = 0; i < 40; i++) advance(600);
     expect(result.current.responses).toEqual(second);
     expect(result.current.pendingCount).toBe(0);
   });

@@ -106,6 +106,8 @@ function AutoRefreshHarness({
     scopeKey: scopeUrl,
     enabled: liveChatMode,
     isActive: active,
+    isAutoRefreshEnabled: enabled,
+    isFetching: isLoading,
     intervalMs: 3000,
   });
   const scrollContainerRef = React.useCallback(
@@ -1247,7 +1249,7 @@ describe("useAutoRefresh", () => {
   });
 
   it.each(["expired", "stopped"] as const)(
-    "ライブチャットの非表示中に新着が溜まっても復帰時の%sで停止する",
+    "ライブチャットの非表示中に届いた新着は溜めずに表示し、復帰時の%sで停止する",
     (expirySource) => {
       const onRequestRefresh = vi.fn();
       const onThreadExpired = vi.fn();
@@ -1264,12 +1266,13 @@ describe("useAutoRefresh", () => {
       act(() => {
         vi.advanceTimersByTime(5000);
       });
-      expect(screen.getByTestId("live-chat-pending")).toHaveTextContent("1");
+      // 非表示の間は流す相手がいないため、新着を保留せずにすぐ表示する。
+      expect(screen.getByTestId("live-chat-pending")).toHaveTextContent("0");
 
       view.rerender(<AutoRefreshHarness {...props} {...{ [expirySource]: true }} />);
 
-      // 新着の再生タイマーを進めなくても停止と停止理由の保存を完了する。
-      expect(screen.getByTestId("live-chat-pending")).toHaveTextContent("1");
+      // 復帰時も溜まった新着を流し直さず、停止と停止理由の保存を完了する。
+      expect(screen.getByTestId("live-chat-pending")).toHaveTextContent("0");
       expect(onThreadExpired).toHaveBeenCalledOnce();
       expect(onThreadExpiredDetected).toHaveBeenCalledOnce();
       expect(onRequestRefresh).not.toHaveBeenCalled();

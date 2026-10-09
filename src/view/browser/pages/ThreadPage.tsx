@@ -189,6 +189,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     // 検索・絞り込み中は結果をすぐ見せ、保留中の新着が検索結果から欠落するのを防ぐ。
     enabled: isLiveChat && !isFilterEnabled,
     isActive,
+    isAutoRefreshEnabled,
+    isFetching: loading,
     intervalMs: readThreadAutoRefreshIntervalSec(page.threadUrl) * 1000,
   });
   const displayedResponses = liveChat.responses;
@@ -836,7 +838,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
                   <ResItem
                     key={res.num}
                     // 新着だけに入場動作を付け、切り替え時の既存レスを一斉に動かさない。
-                    animateEntry={isLiveChat && !isFilterEnabled && res.num > liveChat.baseline}
+                    animateEntry={liveChat.isFlowing && res.num > liveChat.baseline}
                     res={res}
                     idPos={idPos}
                     idCount={idCount}
