@@ -14,6 +14,18 @@
   gap: 0.75rem;
 }
 
+.overlay-control-panel__aspect-ratio {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-3);
+  font-size: var(--sys-font-size-sm);
+  cursor: pointer;
+}
+
+.overlay-control-panel__aspect-ratio input {
+  accent-color: var(--sys-color-accent);
+}
+
 .overlay-control-panel__header h2 {
   margin: 0;
   font-size: 0.95rem;

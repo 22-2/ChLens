@@ -4,7 +4,6 @@ import { availableMonitors, LogicalPosition, LogicalSize, Window } from "@tauri-
 import {
   cloneCommentOverlayGeometry,
   fallbackCommentOverlayGeometry,
-  fitCommentOverlayGeometryToAspectRatio,
   fitCommentOverlayGeometryToWorkArea,
   loadStoredCommentOverlayGeometry,
   saveStoredCommentOverlayGeometry,
@@ -223,7 +222,8 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       const stored = loadStoredCommentOverlayGeometry();
       if (!stored) return null;
 
-      let restored = fitCommentOverlayGeometryToAspectRatio(stored);
+      // 自由な縦横比で指定した領域を再起動後も維持し、復元時に16:9へ戻さない。
+      let restored = fallbackCommentOverlayGeometry(stored);
       try {
         // 変更理由: モニター構成やタスクバー位置が変わっても、保存済みOverlayを
         // 完全に画面外へ残さず操作パネルから復帰できるよう、復元時だけwork areaへ収める。
@@ -238,7 +238,7 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       return cloneCommentOverlayGeometry(restored);
     },
     async saveGeometry(geometry: CommentOverlayGeometry) {
-      saveStoredCommentOverlayGeometry(fitCommentOverlayGeometryToAspectRatio(geometry));
+      saveStoredCommentOverlayGeometry(geometry);
     },
   };
 

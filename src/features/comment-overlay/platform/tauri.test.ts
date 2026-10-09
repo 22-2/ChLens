@@ -161,13 +161,13 @@ describe("TauriコメントOverlay window platform", () => {
       x: 32,
       y: 64,
       width: 640,
-      height: 360,
+      height: 128,
     });
     expect(tauriMocks.window.setPosition).toHaveBeenCalledWith(
       expect.objectContaining({ x: 32, y: 64 }),
     );
     expect(tauriMocks.window.setSize).toHaveBeenCalledWith(
-      expect.objectContaining({ width: 640, height: 360 }),
+      expect.objectContaining({ width: 640, height: 128 }),
     );
   });
 
@@ -182,13 +182,13 @@ describe("TauriコメントOverlay window platform", () => {
       x: 1_020,
       y: 0,
       width: 900,
-      height: 506,
+      height: 240,
     });
     expect(tauriMocks.window.setPosition).toHaveBeenCalledWith(
       expect.objectContaining({ x: 1_020, y: 0 }),
     );
     expect(localStorage.getItem(COMMENT_OVERLAY_GEOMETRY_STORAGE_KEY)).toBe(
-      JSON.stringify({ x: 1_020, y: 0, width: 900, height: 506 }),
+      JSON.stringify({ x: 1_020, y: 0, width: 900, height: 240 }),
     );
   });
 

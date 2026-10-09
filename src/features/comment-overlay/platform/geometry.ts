@@ -94,13 +94,12 @@ export function cloneCommentOverlayGeometry(
   return { ...geometry };
 }
 
-/** 保存済みgeometryを16:9へ移行し、既存の左上位置は変えずに操作領域を保つ。 */
+/** 縦横比固定を有効にしたとき、左上位置と幅を基準に16:9へ揃える。 */
 export function fitCommentOverlayGeometryToAspectRatio(
   geometry: CommentOverlayGeometry,
 ): CommentOverlayGeometry {
   const normalized = normalizeCommentOverlayGeometry(geometry);
-  // 変更理由: 旧版では高さだけを変更した一時的な比率も保存されていたため、
-  // 操作パネルの16:9ルールへ移行する。幅を基準にすることで表示サイズを小さくしない。
+  // 利用者が固定を選んだときだけ変換し、自由な縦横比で保存した領域はそのまま扱う。
   return normalizeCommentOverlayGeometry({
     x: normalized.x,
     y: normalized.y,

@@ -5,7 +5,7 @@ export interface CommentOverlayGeometry {
   height: number;
 }
 
-/** EdgeLiveViewerのリサイズ既定値と同じ16:9を、native windowと表示倍率で共有する。 */
+/** 縦横比固定を有効にしたときの表示領域の比率。 */
 export const COMMENT_OVERLAY_ASPECT_RATIO = 16 / 9;
 
 export const DEFAULT_COMMENT_OVERLAY_GEOMETRY: CommentOverlayGeometry = {

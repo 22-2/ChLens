@@ -12,6 +12,7 @@ import { useTabStore } from "src/features/tabs/browser/use-tab-store";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
+import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 
 interface CommentOverlayStatusItemProps {
   isActive: boolean;
@@ -25,6 +26,9 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
   const [monitors, setMonitors] = useState<readonly CommentOverlayMonitor[]>([]);
   const [panelGeometry, setPanelGeometry] = useState<CommentOverlayGeometry | null>(null);
+  const { value: lockAspectRatio, setValue: setLockAspectRatio } = useConfigBooleanSetting(
+    "comment_overlay_lock_aspect_ratio",
+  );
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -199,6 +203,8 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
               <OverlayControlPanel
                 monitors={monitors}
                 geometry={panelGeometry}
+                lockAspectRatio={lockAspectRatio}
+                onLockAspectRatioChange={setLockAspectRatio}
                 onGeometryChange={handlePanelGeometryChange}
               />
             </>

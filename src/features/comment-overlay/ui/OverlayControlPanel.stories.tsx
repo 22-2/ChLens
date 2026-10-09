@@ -50,9 +50,16 @@ function ControlPanelPreview() {
   const [geometry, setGeometry] = useState<CommentOverlayGeometry>(
     DEFAULT_COMMENT_OVERLAY_GEOMETRY,
   );
+  const [lockAspectRatio, setLockAspectRatio] = useState(false);
   return (
     <div style={{ width: "min(720px, 94vw)" }}>
-      <OverlayControlPanel monitors={monitors} geometry={geometry} onGeometryChange={setGeometry} />
+      <OverlayControlPanel
+        monitors={monitors}
+        geometry={geometry}
+        onGeometryChange={setGeometry}
+        lockAspectRatio={lockAspectRatio}
+        onLockAspectRatioChange={setLockAspectRatio}
+      />
     </div>
   );
 }
@@ -61,6 +68,8 @@ export const VirtualDesktop: Story = {
   args: {
     monitors,
     geometry: DEFAULT_COMMENT_OVERLAY_GEOMETRY,
+    lockAspectRatio: false,
+    onLockAspectRatioChange: () => undefined,
     onGeometryChange: () => undefined,
   },
   render: () => <ControlPanelPreview />,

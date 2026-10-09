@@ -38,6 +38,8 @@ describe("OverlayControlPanel", () => {
       <OverlayControlPanel
         monitors={[monitor]}
         geometry={DEFAULT_COMMENT_OVERLAY_GEOMETRY}
+        lockAspectRatio={false}
+        onLockAspectRatioChange={vi.fn()}
         onGeometryChange={onGeometryChange}
       />,
     );
@@ -58,6 +60,8 @@ describe("OverlayControlPanel", () => {
       <OverlayControlPanel
         monitors={[monitor, secondMonitor]}
         geometry={DEFAULT_COMMENT_OVERLAY_GEOMETRY}
+        lockAspectRatio={false}
+        onLockAspectRatioChange={vi.fn()}
         onGeometryChange={onGeometryChange}
       />,
     );
@@ -90,6 +94,8 @@ describe("OverlayControlPanel", () => {
       <OverlayControlPanel
         monitors={[monitor]}
         geometry={DEFAULT_COMMENT_OVERLAY_GEOMETRY}
+        lockAspectRatio={false}
+        onLockAspectRatioChange={vi.fn()}
         onGeometryChange={onGeometryChange}
       />,
     );

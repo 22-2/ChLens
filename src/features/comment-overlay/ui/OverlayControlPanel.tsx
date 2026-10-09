@@ -8,7 +8,10 @@ import {
   useState,
 } from "react";
 
-import { normalizeCommentOverlayGeometry } from "../platform/geometry";
+import {
+  fitCommentOverlayGeometryToAspectRatio,
+  normalizeCommentOverlayGeometry,
+} from "../platform/geometry";
 import {
   COMMENT_OVERLAY_ASPECT_RATIO,
   type CommentOverlayGeometry,
@@ -62,6 +65,8 @@ const RESIZE_HANDLES: ReadonlyArray<{
 export interface OverlayControlPanelProps {
   monitors: readonly CommentOverlayMonitor[];
   geometry?: CommentOverlayGeometry | null;
+  lockAspectRatio: boolean;
+  onLockAspectRatioChange: (locked: boolean) => void;
   onGeometryChange: (geometry: CommentOverlayGeometry) => void;
 }
 
@@ -81,13 +86,19 @@ function getMonitorBounds(monitor: CommentOverlayMonitor | null): DesktopBounds 
 function clampGeometry(
   geometry: CommentOverlayGeometry,
   bounds: DesktopBounds,
+  lockAspectRatio = false,
 ): CommentOverlayGeometry {
   const normalized = normalizeCommentOverlayGeometry(geometry);
-  const width = Math.min(Math.max(MIN_WIDTH, normalized.width), Math.max(MIN_WIDTH, bounds.width));
-  const height = Math.min(
+  let width = Math.min(Math.max(MIN_WIDTH, normalized.width), Math.max(MIN_WIDTH, bounds.width));
+  let height = Math.min(
     Math.max(MIN_HEIGHT, normalized.height),
     Math.max(MIN_HEIGHT, bounds.height),
   );
+  if (lockAspectRatio) {
+    // 画面端でも一方の寸法だけを切り詰めず、画面内に収まる16:9のサイズへ揃える。
+    width = Math.max(MIN_WIDTH, Math.round(Math.min(width, height * COMMENT_OVERLAY_ASPECT_RATIO)));
+    height = Math.round(width / COMMENT_OVERLAY_ASPECT_RATIO);
+  }
   return {
     x: Math.min(Math.max(normalized.x, bounds.x), bounds.x + bounds.width - width),
     y: Math.min(Math.max(normalized.y, bounds.y), bounds.y + bounds.height - height),
@@ -112,11 +123,23 @@ function selectionGeometry(
   start: { x: number; y: number },
   current: { x: number; y: number },
   bounds: DesktopBounds,
+  lockAspectRatio: boolean,
 ): CommentOverlayGeometry {
   const deltaX = current.x - start.x;
   const deltaY = current.y - start.y;
   const rawWidth = Math.max(1, Math.abs(deltaX));
   const rawHeight = Math.max(1, Math.abs(deltaY));
+  if (!lockAspectRatio) {
+    return clampGeometry(
+      {
+        x: Math.min(start.x, current.x),
+        y: Math.min(start.y, current.y),
+        width: rawWidth,
+        height: rawHeight,
+      },
+      bounds,
+    );
+  }
   let width = Math.max(MIN_WIDTH, rawWidth);
   let height = width / COMMENT_OVERLAY_ASPECT_RATIO;
   if (rawHeight < height) {
@@ -131,6 +154,7 @@ function selectionGeometry(
       height,
     },
     bounds,
+    lockAspectRatio,
   );
 }
 
@@ -156,6 +180,7 @@ function resizedGeometry(
   current: { x: number; y: number },
   direction: ResizeDirection,
   bounds: DesktopBounds,
+  lockAspectRatio: boolean,
 ): CommentOverlayGeometry {
   const deltaX = current.x - start.x;
   const deltaY = current.y - start.y;
@@ -169,8 +194,20 @@ function resizedGeometry(
       origin.height +
       (direction.includes("North") ? -deltaY : direction.includes("South") ? deltaY : 0),
   };
-  // 変更理由: Overlayの表示倍率はウィンドウの縦横比から決まるため、操作パネルでも
-  // 常に16:9を維持し、フォントとコメントの移動距離を一様に拡縮する。
+  if (!lockAspectRatio) {
+    // 固定OFFでは各辺を独立して動かし、最小サイズに達しても反対側の辺を移動しない。
+    const width = Math.max(MIN_WIDTH, resized.width);
+    const height = Math.max(MIN_HEIGHT, resized.height);
+    return clampGeometry(
+      {
+        x: direction.includes("West") ? origin.x + origin.width - width : resized.x,
+        y: direction.includes("North") ? origin.y + origin.height - height : resized.y,
+        width,
+        height,
+      },
+      bounds,
+    );
+  }
   const hasHorizontalHandle = direction.includes("East") || direction.includes("West");
   const hasVerticalHandle = direction.includes("North") || direction.includes("South");
   // 変更理由: 角のハンドルは動かした距離が大きい軸を基準にし、辺のハンドルは
@@ -187,7 +224,7 @@ function resizedGeometry(
     width,
     height,
   };
-  return clampGeometry(next, bounds);
+  return clampGeometry(next, bounds, lockAspectRatio);
 }
 
 function monitorContainsPoint(
@@ -202,18 +239,27 @@ function monitorContainsPoint(
   );
 }
 
-function monitorGeometry(monitor: CommentOverlayMonitor): CommentOverlayGeometry {
-  return normalizeCommentOverlayGeometry({
-    x: monitor.x,
-    y: monitor.y,
-    width: monitor.width,
-    height: monitor.height,
-  });
+function monitorGeometry(
+  monitor: CommentOverlayMonitor,
+  lockAspectRatio: boolean,
+): CommentOverlayGeometry {
+  return clampGeometry(
+    {
+      x: monitor.x,
+      y: monitor.y,
+      width: monitor.width,
+      height: monitor.height,
+    },
+    getMonitorBounds(monitor),
+    lockAspectRatio,
+  );
 }
 
 export function OverlayControlPanel({
   monitors,
   geometry = DEFAULT_COMMENT_OVERLAY_GEOMETRY,
+  lockAspectRatio,
+  onLockAspectRatioChange,
   onGeometryChange,
 }: OverlayControlPanelProps) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -244,9 +290,9 @@ export function OverlayControlPanel({
       y: source.y + source.height / 2,
     };
     return previewMonitor && monitorContainsPoint(previewMonitor, center)
-      ? clampGeometry(source, bounds)
+      ? clampGeometry(source, bounds, lockAspectRatio)
       : null;
-  }, [bounds, geometry, previewMonitor]);
+  }, [bounds, geometry, lockAspectRatio, previewMonitor]);
   const displayedGeometry = dragPreview ?? currentGeometry;
 
   const startDrag = (
@@ -271,6 +317,7 @@ export function OverlayControlPanel({
             y: bounds.y + DEFAULT_COMMENT_OVERLAY_GEOMETRY.y,
           },
           bounds,
+          lockAspectRatio,
         ),
       ...(direction ? { direction } : {}),
     };
@@ -287,7 +334,7 @@ export function OverlayControlPanel({
     const current = pointFromEvent(event, svgRef.current, bounds);
     const next =
       drag.mode === "select"
-        ? selectionGeometry(drag.start, current, bounds)
+        ? selectionGeometry(drag.start, current, bounds, lockAspectRatio)
         : drag.mode === "move"
           ? movedGeometry(drag.origin, drag.start, current, bounds)
           : resizedGeometry(
@@ -296,6 +343,7 @@ export function OverlayControlPanel({
               current,
               drag.direction ?? "SouthEast",
               bounds,
+              lockAspectRatio,
             );
     setDragPreview(next);
     // 変更理由: パネル内の選択範囲とnative Overlayを同時に追従させ、離した瞬間だけ
@@ -327,7 +375,7 @@ export function OverlayControlPanel({
     event.stopPropagation();
     dragRef.current = null;
     setDragPreview(null);
-    onGeometryChange(monitorGeometry(monitor));
+    onGeometryChange(monitorGeometry(monitor, lockAspectRatio));
   };
 
   const handleReset = (): void => {
@@ -341,6 +389,7 @@ export function OverlayControlPanel({
           y: bounds.y + DEFAULT_COMMENT_OVERLAY_GEOMETRY.y,
         },
         bounds,
+        lockAspectRatio,
       ),
     );
   };
@@ -366,6 +415,29 @@ export function OverlayControlPanel({
           初期位置
         </button>
       </header>
+
+      <label className="overlay-control-panel__aspect-ratio">
+        <input
+          type="checkbox"
+          checked={lockAspectRatio}
+          onChange={(event) => {
+            const locked = event.target.checked;
+            dragRef.current = null;
+            setDragPreview(null);
+            onLockAspectRatioChange(locked);
+            if (locked && currentGeometry) {
+              onGeometryChange(
+                clampGeometry(
+                  fitCommentOverlayGeometryToAspectRatio(currentGeometry),
+                  bounds,
+                  true,
+                ),
+              );
+            }
+          }}
+        />
+        縦横比を固定（16:9）
+      </label>
 
       {monitors.length === 0 ? (
         <p className="overlay-control-panel__empty" role="status">
