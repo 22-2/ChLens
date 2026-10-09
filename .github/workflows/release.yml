@@ -17,18 +17,21 @@ jobs:
     steps:
       # 変更理由: release-itが作成・pushしたタグの内容から配布物を作る。
       - name: Check out release tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: v${{ inputs.version }}
           fetch-depth: 0
 
+      # 変更理由: タグ時点のpackage.jsonのdevEnginesはpnpm 12.9.0を要求する。
+      # 11.13.0 + action-setup@v4 ではpnpm 12の実行ファイルをNodeが読み込もうとして
+      # install が SyntaxError で失敗し、リリース成果物が作られなかったため、ci.ymlと揃える。
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
-          version: 11.13.0
+          version: 12.9.0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 25
           cache: pnpm
