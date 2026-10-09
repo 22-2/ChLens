@@ -17,6 +17,11 @@
   scrollbar-gutter: stable;
 }
 
+.content-area__tab-panel:has(.thread-list-view) {
+  /* 検索で一覧が短くなったときはスクロールバー用の空きを残さず、テーブルを右端まで広げる。 */
+  scrollbar-gutter: auto;
+}
+
 .content-area__tab-panel:has(.thread-page) {
   scrollbar-width: none;
   scrollbar-gutter: auto;
