@@ -62,7 +62,7 @@ export function OverlayApp({
   const liveQueueEpochRef = useRef(0);
   const [archiveReplayPlaying, setArchiveReplayPlaying] = useState(true);
   const overlayRootRef = useRef<HTMLElement>(null);
-  const hoveredCommentKey = useOverlayPointerCapture(overlayRootRef);
+  useOverlayPointerCapture(overlayRootRef);
   useEffect(() => {
     let disposed = false;
     let unsubscribe: (() => void) | null = null;
@@ -390,7 +390,6 @@ export function OverlayApp({
         scaleReferenceHeight={DEFAULT_COMMENT_OVERLAY_GEOMETRY.height}
         playing={archiveReplaySessionRef.current === null ? true : archiveReplayPlaying}
         interactive
-        hoveredCommentKey={hoveredCommentKey}
         onCommentJump={(comment) => {
           if (!comment.sourceThreadUrl || comment.responseNumber <= 0) return;
           void publishCommentOverlayJump({

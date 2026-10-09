@@ -85,7 +85,6 @@ export interface OverlayStageProps {
   estimateWidth?: (comment: CommentCandidate, fontSize: number) => number;
   onQueueOverflow?: (comment: CommentCandidate) => void;
   onCommentClick?: (comment: CommentCandidate) => void;
-  hoveredCommentKey?: string | null;
   onCommentJump?: (comment: CommentCandidate) => void;
   className?: string;
 }
@@ -141,7 +140,6 @@ export function OverlayStage({
   estimateWidth = estimateCommentWidth,
   onQueueOverflow,
   onCommentClick,
-  hoveredCommentKey,
   onCommentJump,
   className,
 }: OverlayStageProps) {
@@ -265,16 +263,12 @@ export function OverlayStage({
     laneHeight: number;
     fontSize: number;
   } | null>(null);
-  const [localHoveredCommentKey, setLocalHoveredCommentKey] = useState<string | null>(null);
   const [menu, setMenu] = useState<{ comment: CommentCandidate; x: number; y: number } | null>(
     null,
   );
   const menuRef = useRef<HTMLDivElement>(null);
-  const selectedCommentKey = menu
-    ? commentIdentity(menu.comment)
-    : hoveredCommentKey === undefined
-      ? localHoveredCommentKey
-      : hoveredCommentKey;
+  // カーソルが通過しただけでは止めず、右クリックでメニューを開いたコメントだけを停止する。
+  const selectedCommentKey = menu ? commentIdentity(menu.comment) : null;
   const previouslySelectedCommentKey = useRef<string | null>(null);
   const selectionSchedulerRef = useRef(scheduler);
 
@@ -564,10 +558,6 @@ export function OverlayStage({
             tabIndex={interactive ? 0 : -1}
             style={commentStyle}
             aria-label={`レス${comment.responseNumber}: ${comment.text}`}
-            onMouseEnter={interactive ? () => setLocalHoveredCommentKey(commentKey) : undefined}
-            onMouseLeave={interactive ? () => setLocalHoveredCommentKey(null) : undefined}
-            onFocus={interactive ? () => setLocalHoveredCommentKey(commentKey) : undefined}
-            onBlur={interactive ? () => setLocalHoveredCommentKey(null) : undefined}
             onContextMenu={interactive ? (event) => openMenu(event, comment) : undefined}
             onClick={() => {
               // 変更理由: pointerdownを伴わないクリックでも閉じ、既存のレス操作も実行する。

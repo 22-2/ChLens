@@ -186,7 +186,7 @@ export class LaneAllocator {
     assertFinite(now, "now");
     for (const lane of this.lanes) {
       for (let index = lane.length - 1; index >= 0; index -= 1) {
-        // 変更理由: hover中のコメントは画面上で停止しているため、元のendAtだけで
+        // 変更理由: メニューを開いたコメントは画面上で停止しているため、元のendAtだけで
         // 解放すると、停止したコメントが消える前にlaneへ後続レスが侵入してしまう。
         if (!lane[index].paused && lane[index].endAt <= now) {
           lane.splice(index, 1);

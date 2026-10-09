@@ -49,11 +49,10 @@ describe("useOverlayPointerCapture", () => {
       value: () => hitTarget,
     });
     const rootRef = { current: root } as RefObject<HTMLElement | null>;
-    const { result, unmount } = renderHook(() => useOverlayPointerCapture(rootRef));
+    const { unmount } = renderHook(() => useOverlayPointerCapture(rootRef));
 
     await waitFor(() => {
       expect(setIgnoreCursorEvents).toHaveBeenLastCalledWith(false);
-      expect(result.current).toBe("example-thread:1");
     });
     expect(currentWindow.innerPosition).toHaveBeenCalled();
 
@@ -63,7 +62,6 @@ describe("useOverlayPointerCapture", () => {
     });
     await waitFor(() => {
       expect(setIgnoreCursorEvents).toHaveBeenLastCalledWith(true);
-      expect(result.current).toBeNull();
     });
 
     unmount();

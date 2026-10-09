@@ -1,11 +1,9 @@
 import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
-import { type RefObject, useEffect, useState } from "react";
+import { type RefObject, useEffect } from "react";
 import { isTauriRuntime } from "src/app/platform/runtime";
 
 /** 透過中の窓にはmouseenterが届かないため、OSのカーソル座標でコメントを判定する。 */
-export function useOverlayPointerCapture(rootRef: RefObject<HTMLElement | null>): string | null {
-  const [hoveredCommentKey, setHoveredCommentKey] = useState<string | null>(null);
-
+export function useOverlayPointerCapture(rootRef: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     if (!isTauriRuntime()) return;
     const overlay = getCurrentWindow();
@@ -16,7 +14,6 @@ export function useOverlayPointerCapture(rootRef: RefObject<HTMLElement | null>)
     const sample = async (): Promise<void> => {
       try {
         if (!(await overlay.isVisible())) {
-          setHoveredCommentKey(null);
           if (capturing) {
             await overlay.setIgnoreCursorEvents(true);
             capturing = false;
@@ -48,7 +45,6 @@ export function useOverlayPointerCapture(rootRef: RefObject<HTMLElement | null>)
           capturing = shouldCapture;
         }
         if (!disposed) {
-          setHoveredCommentKey((current) => (current === commentKey ? current : commentKey));
           timer = setTimeout(() => void sample(), 16);
         }
       } catch (error: unknown) {
@@ -66,6 +62,4 @@ export function useOverlayPointerCapture(rootRef: RefObject<HTMLElement | null>)
       });
     };
   }, [rootRef]);
-
-  return hoveredCommentKey;
 }

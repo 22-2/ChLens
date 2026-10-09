@@ -252,7 +252,7 @@ describe("OverlayStage", () => {
     expect(activeComment.style.animationDelay).toBe("-3s");
   });
 
-  it("interactive時はhoverでコメント単位を停止し、情報を表示する", () => {
+  it("ホバーやフォーカスでは流れ続け、右クリックで停止してメニューを閉じると再開する", () => {
     render(
       <OverlayStage
         comments={[{ ...comment, id: "abc", date: "2026/08/30" }]}
@@ -269,14 +269,28 @@ describe("OverlayStage", () => {
     const activeComment = screen.getByText("テストコメント");
 
     fireEvent.mouseEnter(activeComment);
+    fireEvent.focus(activeComment);
+
+    expect(activeComment).toHaveAttribute("data-paused", "false");
+    expect(activeComment.style.animationPlayState).toBe("running");
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
+    fireEvent.contextMenu(activeComment);
 
     expect(activeComment).toHaveAttribute("data-paused", "true");
+    expect(activeComment.style.animationPlayState).toBe("paused");
     expect(screen.getByRole("tooltip")).toHaveTextContent("レス1");
     expect(screen.getByRole("tooltip")).toHaveTextContent("ID: abc");
 
     fireEvent.mouseLeave(activeComment);
+    fireEvent.blur(activeComment);
+
+    expect(activeComment).toHaveAttribute("data-paused", "true");
+
+    fireEvent.keyDown(activeComment, { key: "Escape" });
 
     expect(activeComment).toHaveAttribute("data-paused", "false");
+    expect(activeComment.style.animationPlayState).toBe("running");
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
@@ -307,11 +321,16 @@ describe("OverlayStage", () => {
     const firstElement = screen.getByText("最初のスレ");
     const secondElement = screen.getByText("次のスレ");
     fireEvent.mouseEnter(secondElement);
+    expect(secondElement).toHaveAttribute("data-paused", "false");
+
+    fireEvent.contextMenu(firstElement);
+    expect(firstElement).toHaveAttribute("data-paused", "true");
+
+    fireEvent.contextMenu(secondElement);
     expect(secondElement).toHaveAttribute("data-paused", "true");
     expect(secondElement).toHaveAttribute("data-selected", "true");
     expect(firstElement).toHaveAttribute("data-paused", "false");
 
-    fireEvent.contextMenu(secondElement);
     fireEvent.mouseLeave(secondElement);
     expect(secondElement).toHaveAttribute("data-paused", "true");
     fireEvent.click(screen.getByRole("menuitem", { name: "このレスへジャンプ" }));
