@@ -221,9 +221,10 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     isImgurUploading ||
     imgurUploadStatus?.type === "success" ||
     imgurUploadStatus?.type === "error";
+  // 認証手順は専用ダイアログで案内し、ステータスバーには同じ案内を残さない。
   const statusBarMessage = uploadStatusIsVisible
     ? (imgurUploadStatus?.message ?? "Imgurに投稿しています...")
-    : status === "idle"
+    : status === "idle" || (status === "error" && authCodeUrl != null)
       ? null
       : statusText || (status === "error" ? writeErrorMessage : null);
   const statusBarIsError = uploadStatusIsVisible
@@ -847,7 +848,11 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
       </Dialog.Root>
       <Dialog.Root
         open={status === "error" && isErrorDialogOpen}
-        onOpenChange={setIsErrorDialogOpen}
+        onOpenChange={(open) => {
+          setIsErrorDialogOpen(open);
+          // 閉じる・Esc・背景クリックでも認証案内を解除し、ステータスバーへ残し続けない。
+          if (!open) handleRetry();
+        }}
       >
         <Dialog.Portal container={dialogPortalContainer ?? undefined}>
           <Dialog.Overlay className="browser-dialog-overlay" />
@@ -912,11 +917,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                 </button>
               </Dialog.Close>
               <Dialog.Close asChild>
-                <button
-                  type="button"
-                  className="write-panel__btn write-panel__btn--primary"
-                  onClick={handleRetry}
-                >
+                <button type="button" className="write-panel__btn write-panel__btn--primary">
                   再入力
                 </button>
               </Dialog.Close>
