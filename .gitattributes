@@ -9,6 +9,8 @@
 *.scss text eol=lf
 *.html text eol=lf
 *.pug text eol=lf
+# Peggyの生成結果は文法の改行コードで変わるため、WindowsでもLFを維持する。
+*.peggy text eol=lf
 *.md text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
