@@ -128,13 +128,12 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
 
   return (
     <>
-      {/* 変更理由: 左側の情報項目の末尾へ置き、アイコンだけで機能が伝わらない状態を避ける。 */}
+      {/* 実況操作を左端へ置き、実況中も共通のボタン色を使ってバー全体の見た目を揃える。 */}
       <StatusBarItem
         id="comment-overlay-status"
         alignment="left"
         priority={STATUS_BAR_PRIORITY.left.commentOverlay}
         title={statusLabel}
-        className={isRunning ? "status-bar__item--active" : undefined}
         interactive
       >
         <button
