@@ -3,6 +3,7 @@ import "./OverlayControlPanel.css";
 import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -68,6 +69,7 @@ export interface OverlayControlPanelProps {
   lockAspectRatio: boolean;
   onLockAspectRatioChange: (locked: boolean) => void;
   onGeometryChange: (geometry: CommentOverlayGeometry) => void;
+  captureMonitorPreview?: (monitor: CommentOverlayMonitor) => Promise<string | null>;
 }
 
 function getMonitorBounds(monitor: CommentOverlayMonitor | null): DesktopBounds {
@@ -261,6 +263,7 @@ export function OverlayControlPanel({
   lockAspectRatio,
   onLockAspectRatioChange,
   onGeometryChange,
+  captureMonitorPreview,
 }: OverlayControlPanelProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -294,6 +297,51 @@ export function OverlayControlPanel({
       : null;
   }, [bounds, geometry, lockAspectRatio, previewMonitor]);
   const displayedGeometry = dragPreview ?? currentGeometry;
+  const [previewRevision, setPreviewRevision] = useState(0);
+  const [screenPreview, setScreenPreview] = useState<{
+    monitor: CommentOverlayMonitor;
+    revision: number;
+    image: string | null;
+    error: boolean;
+  } | null>(null);
+  const currentPreview =
+    screenPreview?.monitor === previewMonitor && screenPreview.revision === previewRevision
+      ? screenPreview
+      : null;
+  const isPreviewLoading =
+    captureMonitorPreview != null && previewMonitor != null && !currentPreview;
+
+  useEffect(() => {
+    if (!captureMonitorPreview || !previewMonitor) return;
+    let disposed = false;
+    // 選択中の画面だけを要求時に撮影し、連続キャプチャや非表示パネルでの負荷を避ける。
+    void captureMonitorPreview(previewMonitor)
+      .then((image) => {
+        if (!disposed) {
+          setScreenPreview({
+            monitor: previewMonitor,
+            revision: previewRevision,
+            image,
+            error: false,
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        console.error("[ChLens] ディスプレイのプレビュー取得に失敗しました:", error);
+        if (!disposed) {
+          setScreenPreview({
+            monitor: previewMonitor,
+            revision: previewRevision,
+            image: null,
+            error: true,
+          });
+        }
+      });
+    return () => {
+      // 画面切り替え後に前の撮影が完了しても、別画面の画像を表示しない。
+      disposed = true;
+    };
+  }, [captureMonitorPreview, previewMonitor, previewRevision]);
 
   const startDrag = (
     event: ReactPointerEvent<SVGElement>,
@@ -409,7 +457,7 @@ export function OverlayControlPanel({
       <header className="overlay-control-panel__header">
         <div>
           <h2>コメント表示領域</h2>
-          <p>仮想ディスプレイ上で範囲を指定します。</p>
+          <p>ディスプレイのプレビュー上で範囲を指定します。</p>
         </div>
         <button type="button" onClick={handleReset}>
           初期位置
@@ -470,6 +518,26 @@ export function OverlayControlPanel({
               →
             </button>
           </div>
+          {captureMonitorPreview && (
+            <div className="overlay-control-panel__preview-status">
+              <span role="status">
+                {isPreviewLoading
+                  ? "画面を取得中…"
+                  : currentPreview?.error
+                    ? "画面を取得できませんでした。再度更新してください。"
+                    : currentPreview?.image
+                      ? "静止画プレビュー"
+                      : "この環境では画面の撮影に対応していません。"}
+              </span>
+              <button
+                type="button"
+                disabled={isPreviewLoading}
+                onClick={() => setPreviewRevision((value) => value + 1)}
+              >
+                プレビューを更新
+              </button>
+            </div>
+          )}
           <svg
             ref={svgRef}
             className="overlay-control-panel__desktop"
@@ -508,15 +576,34 @@ export function OverlayControlPanel({
                   className="overlay-control-panel__monitor-screen"
                   onPointerDown={(event) => startDrag(event, "select")}
                 />
-                <text
-                  x={previewMonitor.x + previewMonitor.width / 2}
-                  y={previewMonitor.y + previewMonitor.height / 2}
-                  className="overlay-control-panel__monitor-label"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                >
-                  {previewMonitor.name}
-                </text>
+                {currentPreview?.image ? (
+                  <image
+                    href={currentPreview.image}
+                    x={bounds.x}
+                    y={bounds.y}
+                    width={bounds.width}
+                    height={bounds.height}
+                    preserveAspectRatio="none"
+                    className="overlay-control-panel__screen-preview"
+                    onPointerDown={(event) => startDrag(event, "select")}
+                    onError={() => {
+                      console.error("[ChLens] ディスプレイのプレビュー画像を表示できませんでした");
+                      setScreenPreview((current) =>
+                        current ? { ...current, image: null, error: true } : null,
+                      );
+                    }}
+                  />
+                ) : (
+                  <text
+                    x={previewMonitor.x + previewMonitor.width / 2}
+                    y={previewMonitor.y + previewMonitor.height / 2}
+                    className="overlay-control-panel__monitor-label"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
+                    {previewMonitor.name}
+                  </text>
+                )}
               </g>
             )}
             {displayedGeometry && (

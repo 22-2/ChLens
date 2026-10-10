@@ -436,8 +436,10 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 name = "chlens"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "cookie_store",
  "log",
+ "png 0.17.16",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -446,6 +448,7 @@ dependencies = [
  "tauri-plugin-http",
  "tauri-plugin-log",
  "tauri-plugin-sql",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -37,6 +37,11 @@ reqwest = { version = "0.12", default-features = false, features = [
 ] }
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 
+[target.'cfg(windows)'.dependencies]
+base64 = "0.22"
+png = "0.17"
+windows-sys = { version = "0.61", features = ["Win32_Graphics_Gdi"] }
+
 [[bin]]
 name = "chlens"
 path = "src/main.rs"

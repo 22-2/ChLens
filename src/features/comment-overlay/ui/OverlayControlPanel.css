@@ -22,6 +22,44 @@
   cursor: pointer;
 }
 
+.overlay-control-panel__preview-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sys-space-3);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+
+.overlay-control-panel__preview-status button {
+  border: var(--sys-border-width-thin) solid var(--sys-color-border);
+  border-radius: var(--sys-radius-sm);
+  padding: var(--sys-space-2) var(--sys-space-3);
+  color: var(--sys-color-text);
+  background: var(--sys-color-surface-muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.overlay-control-panel__preview-status button:hover:not(:disabled) {
+  background: var(--sys-color-list-hover-bg);
+}
+
+.overlay-control-panel__preview-status button:focus-visible {
+  outline: var(--sys-border-width-strong) solid var(--sys-color-focus-ring);
+  outline-offset: var(--sys-space-1);
+}
+
+.overlay-control-panel__preview-status button:disabled {
+  color: var(--sys-color-text-disabled);
+  cursor: wait;
+}
+
+.overlay-control-panel__screen-preview {
+  cursor: crosshair;
+}
+
 .overlay-control-panel__aspect-ratio input {
   accent-color: var(--sys-color-accent);
 }

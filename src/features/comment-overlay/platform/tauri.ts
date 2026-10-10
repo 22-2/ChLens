@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { emit, listen } from "@tauri-apps/api/event";
 import { availableMonitors, LogicalPosition, LogicalSize, Window } from "@tauri-apps/api/window";
 
@@ -185,6 +186,15 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
     },
     async getMonitors() {
       return readCommentOverlayMonitors();
+    },
+    async captureMonitorPreview(monitor) {
+      // nativeの物理座標を使い、負座標や画面ごとのDPI倍率も実際の撮影先へ反映する。
+      return invoke<string | null>("capture_comment_overlay_monitor_preview", {
+        x: Math.round(monitor.x * monitor.scaleFactor),
+        y: Math.round(monitor.y * monitor.scaleFactor),
+        width: Math.round(monitor.width * monitor.scaleFactor),
+        height: Math.round(monitor.height * monitor.scaleFactor),
+      });
     },
     async getGeometry() {
       return readCommentOverlayGeometry(await getCommentOverlayWindow());

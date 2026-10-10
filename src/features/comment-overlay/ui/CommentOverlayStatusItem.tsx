@@ -206,6 +206,7 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
                 lockAspectRatio={lockAspectRatio}
                 onLockAspectRatioChange={setLockAspectRatio}
                 onGeometryChange={handlePanelGeometryChange}
+                captureMonitorPreview={commentOverlayWindowPlatform.captureMonitorPreview}
               />
             </>
           )}

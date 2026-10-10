@@ -1,4 +1,5 @@
 mod download;
+mod monitor_preview;
 mod write_cookies;
 mod write_transport;
 
@@ -74,6 +75,7 @@ pub fn run() {
     .plugin(tauri_plugin_sql::Builder::default().build())
     .invoke_handler(tauri::generate_handler![
       download::save_download_file,
+      monitor_preview::capture_comment_overlay_monitor_preview,
       write_transport::clear_all_write_cookies,
       write_transport::clear_write_cookies,
       write_transport::has_any_write_cookies,

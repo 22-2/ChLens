@@ -35,6 +35,8 @@ export interface CommentOverlayWindowPlatform {
   close(): Promise<void>;
   watchVisibility(listener: (visible: boolean) => void): Promise<() => void>;
   getMonitors(): Promise<readonly CommentOverlayMonitor[]>;
+  /** 選択画面の縮小静止画。対応しない環境ではnullを返す。保存や定期撮影は行わない。 */
+  captureMonitorPreview?: (monitor: CommentOverlayMonitor) => Promise<string | null>;
   getGeometry(): Promise<CommentOverlayGeometry | null>;
   watchGeometry(listener: (geometry: CommentOverlayGeometry) => void): Promise<() => void>;
   setGeometry(geometry: CommentOverlayGeometry): Promise<void>;
