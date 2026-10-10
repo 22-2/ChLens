@@ -26,6 +26,8 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
   const [monitors, setMonitors] = useState<readonly CommentOverlayMonitor[]>([]);
   const [panelGeometry, setPanelGeometry] = useState<CommentOverlayGeometry | null>(null);
+  const [isFlowChanging, setIsFlowChanging] = useState(false);
+  const flowChangingRef = useRef(false);
   const { value: lockAspectRatio, setValue: setLockAspectRatio } = useConfigBooleanSetting(
     "comment_overlay_lock_aspect_ratio",
   );
@@ -76,24 +78,25 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
   }, []);
 
   const handleFlowToggle = useCallback(() => {
-    if (isFlowing) {
-      void controller.stop().catch((error: unknown) => {
-        console.error("[ChLens] コメント実況の停止に失敗しました:", error);
-      });
-      return;
-    }
-    if (isRunning) {
-      void controller.setVisible(true).catch((error: unknown) => {
-        console.error("[ChLens] コメントOverlayの再表示に失敗しました:", error);
-      });
-      return;
-    }
-    if (!threadUrl) return;
+    if (flowChangingRef.current || (!isRunning && !threadUrl)) return;
+    // Reactの次の描画前の連打もrefで抑え、完了前の古いON/OFF状態で逆操作を始めない。
+    flowChangingRef.current = true;
+    setIsFlowChanging(true);
     // 変更理由: Overlay表示と実況開始は利用者にとって同じ操作なので、単一ボタンから
     // controller.startへ渡し、表示だけONで新着が流れない中間状態を作らない。
-    void controller.start(threadUrl).catch((error: unknown) => {
-      console.error("[ChLens] コメント実況の開始に失敗しました:", error);
-    });
+    const operation = isFlowing
+      ? controller.stop()
+      : isRunning
+        ? controller.setVisible(true)
+        : controller.start(threadUrl!);
+    void operation
+      .catch((error: unknown) => {
+        console.error("[ChLens] コメント実況の切り替えに失敗しました:", error);
+      })
+      .finally(() => {
+        flowChangingRef.current = false;
+        setIsFlowChanging(false);
+      });
   }, [controller, isFlowing, isRunning, threadUrl]);
 
   const handleWindowToggle = useCallback(() => {
@@ -175,7 +178,8 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
                   isFlowing ? " mini-window__toggle-btn--on" : ""
                 }`}
                 onClick={handleFlowToggle}
-                disabled={!isRunning && threadUrl == null}
+                disabled={isFlowChanging || (!isRunning && threadUrl == null)}
+                aria-busy={isFlowChanging}
                 title={flowLabel}
                 aria-label={flowLabel}
               >

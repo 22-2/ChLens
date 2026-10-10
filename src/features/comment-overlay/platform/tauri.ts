@@ -164,6 +164,18 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
       await platform.hide();
     },
     async watchVisibility(listener: (visible: boolean) => void) {
+      let revision = 0;
+      let disposed = false;
+      const synchronize = async (): Promise<void> => {
+        const requestedRevision = ++revision;
+        try {
+          const visible = await (await getCommentOverlayWindow()).isVisible();
+          // 遅れて届いた初期取得や古いeventで、新しいnative表示状態を上書きしない。
+          if (!disposed && requestedRevision === revision) listener(visible);
+        } catch (error: unknown) {
+          console.error("[ChLens] コメントOverlayの表示状態同期に失敗しました:", error);
+        }
+      };
       const unlisten = await listen<CommentOverlayVisibilityPayload>(
         COMMENT_OVERLAY_VISIBILITY_EVENT_NAME,
         ({ payload }) => {
@@ -171,18 +183,15 @@ export function createTauriCommentOverlayPlatform(): CommentOverlayWindowPlatfor
             console.error("[ChLens] コメントOverlayの表示状態eventを検証できません:", payload);
             return;
           }
-          listener(payload.visible);
+          void synchronize();
         },
       );
 
-      try {
-        const visible = await (await getCommentOverlayWindow()).isVisible();
-        listener(visible);
-      } catch (error: unknown) {
-        console.error("[ChLens] コメントOverlayの初期表示状態同期に失敗しました:", error);
-      }
-
-      return unlisten;
+      void synchronize();
+      return () => {
+        disposed = true;
+        unlisten();
+      };
     },
     async getMonitors() {
       return readCommentOverlayMonitors();

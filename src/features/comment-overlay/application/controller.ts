@@ -1,3 +1,4 @@
+import { recordDebugEvent } from "src/app/debug/debug-log";
 import { extractUrlsFromMessage, toViewerImageUrl } from "src/features/media/domain/url-media";
 import type { IRes } from "src/service-container/interfaces";
 
@@ -118,6 +119,8 @@ export class CommentOverlayController {
 
   private publishQueue: Promise<void> = Promise.resolve();
 
+  private operationQueue: Promise<void> = Promise.resolve();
+
   private settingsUnsubscribe: (() => void) | null = null;
 
   private visibilityUnsubscribe: (() => void) | null = null;
@@ -231,13 +234,21 @@ export class CommentOverlayController {
     }
   }
 
-  async start(
+  start(
     threadUrl: string,
     responses?: readonly IRes[],
     options: {
       preserveVisibleComments?: boolean;
       ownResponseNumbers?: ReadonlySet<number>;
     } = {},
+  ): Promise<void> {
+    return this.enqueueOperation(() => this.startSession(threadUrl, responses, options));
+  }
+
+  private async startSession(
+    threadUrl: string,
+    responses: readonly IRes[] | undefined,
+    options: { preserveVisibleComments?: boolean; ownResponseNumbers?: ReadonlySet<number> },
   ): Promise<void> {
     const snapshot = responses ?? this.getThreadResponses(threadUrl) ?? [];
     // 変更理由: 前回の一時的な送信失敗を、再試行できた開始状態へ持ち越さない。
@@ -252,7 +263,7 @@ export class CommentOverlayController {
     this.notify();
 
     try {
-      await this.setVisible(true);
+      await this.applyVisibility(true);
       // 通常開始は表示履歴を切り替えるが、次スレ移動だけは画面上を流れている
       // 前スレのコメントを最後まで見せるため、呼び出し側の意図をeventへ残す。
       await this.publish(
@@ -272,7 +283,7 @@ export class CommentOverlayController {
       if (this.visible) {
         try {
           // reset送信に失敗した場合も、表示だけが残って操作不能にならないよう戻す。
-          await this.setVisible(false);
+          await this.applyVisibility(false);
         } catch (rollbackError: unknown) {
           console.error(
             "[ChLens] コメント実況の開始失敗後のOverlay非表示に失敗しました:",
@@ -285,7 +296,11 @@ export class CommentOverlayController {
     }
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
+    return this.enqueueOperation(() => this.stopSession());
+  }
+
+  private async stopSession(): Promise<void> {
     this.stopMultiThreadSession();
     this.activeSourceThreadUrl = null;
     this.unsubscribeFromSettings();
@@ -293,15 +308,32 @@ export class CommentOverlayController {
     this.state = stopCommentOverlay(this.state);
     this.notify();
     try {
-      await this.setVisible(false);
+      await this.applyVisibility(false);
     } catch (error: unknown) {
       this.reportError("[ChLens] コメント実況Overlayの停止に失敗しました:", error);
       throw error;
     }
   }
 
-  async setVisible(visible: boolean): Promise<void> {
-    if (visible === this.visible) return;
+  setVisible(visible: boolean): Promise<void> {
+    return this.enqueueOperation(() => this.applyVisibility(visible));
+  }
+
+  private enqueueOperation(operation: () => Promise<void>): Promise<void> {
+    // 表示IPCやreset送信の途中で次の開始・停止が割り込むと、古いhideが新しいshowを
+    // 打ち消す。セッション全体を受付順に実行し、失敗後も次の操作を再試行できるようにする。
+    const next = this.operationQueue.then(operation);
+    this.operationQueue = next.catch(() => undefined);
+    return next;
+  }
+
+  private async applyVisibility(visible: boolean): Promise<void> {
+    // 別WebViewからの通知と実ウィンドウには遅延があるため、キャッシュ一致でも省略しない。
+    // ONを押せば必ずnative showが実行され、状態がずれた後にも再表示できるようにする。
+    recordDebugEvent("comment-overlay", "Overlayの表示切り替えを開始します", {
+      requestedVisible: visible,
+      previousVisible: this.visible,
+    });
 
     try {
       if (visible) {
@@ -320,6 +352,7 @@ export class CommentOverlayController {
     this.visible = visible;
     this.error = null;
     this.notify();
+    recordDebugEvent("comment-overlay", "Overlayの表示切り替えが完了しました", { visible });
   }
 
   async updateSettings(): Promise<void> {

@@ -23,6 +23,74 @@ async function waitForPublishedEvents(): Promise<void> {
 }
 
 describe("CommentOverlayController", () => {
+  it("表示IPCの途中で停止と再開を要求しても受付順に完了し、繰り返し再表示できる", async () => {
+    const platform = createBrowserCommentOverlayPlatform();
+    let releaseShow: (() => void) | undefined;
+    let nativeVisible = false;
+    const operations: string[] = [];
+    const show = vi
+      .spyOn(platform, "show")
+      .mockImplementationOnce(async () => {
+        operations.push("show-start");
+        await new Promise<void>((resolve) => {
+          releaseShow = resolve;
+        });
+        nativeVisible = true;
+        operations.push("show-end");
+      })
+      .mockImplementation(async () => {
+        nativeVisible = true;
+        operations.push("show");
+      });
+    vi.spyOn(platform, "hide").mockImplementation(async () => {
+      nativeVisible = false;
+      operations.push("hide");
+    });
+    const controller = new CommentOverlayController({
+      eventBus: new MemoryCommentOverlayEventBus(),
+      platform,
+    });
+    const threadUrl = "https://example.com/thread/1";
+    const first = controller.start(threadUrl);
+    await vi.waitFor(() => expect(releaseShow).toBeDefined());
+    const stop = controller.stop();
+    const restart = controller.start(threadUrl);
+    expect(operations).toEqual(["show-start"]);
+    releaseShow?.();
+    await Promise.all([first, stop, restart]);
+    expect(operations).toEqual(["show-start", "show-end", "hide", "show"]);
+    expect(nativeVisible).toBe(true);
+    expect(controller.getSnapshot()).toMatchObject({ visible: true, state: { status: "running" } });
+    for (let index = 0; index < 30; index += 1) {
+      await controller.stop();
+      expect(nativeVisible).toBe(false);
+      await controller.start(threadUrl);
+      expect(nativeVisible).toBe(true);
+    }
+    // nativeとキャッシュがずれた場合でも、再表示要求を省略しない。
+    nativeVisible = false;
+    await controller.setVisible(true);
+    expect(nativeVisible).toBe(true);
+    expect(show).toHaveBeenCalledTimes(33);
+  });
+
+  it("表示IPCが失敗しても次のON/OFF操作を実行できる", async () => {
+    const platform = createBrowserCommentOverlayPlatform();
+    vi.spyOn(platform, "show")
+      .mockRejectedValueOnce(new Error("表示失敗"))
+      .mockResolvedValue(undefined);
+    const hide = vi.spyOn(platform, "hide");
+    const controller = new CommentOverlayController({
+      eventBus: new MemoryCommentOverlayEventBus(),
+      platform,
+    });
+    await expect(controller.setVisible(true)).rejects.toThrow("表示失敗");
+    await controller.setVisible(false);
+    await controller.setVisible(true);
+    expect(hide).toHaveBeenCalledOnce();
+    expect(controller.getSnapshot()).toMatchObject({ visible: true, error: null });
+  });
+
   it("開始時の既存レスをbaselineにして、新着だけをeventへ送る", async () => {
     const eventBus = new MemoryCommentOverlayEventBus();
     const controller = new CommentOverlayController({

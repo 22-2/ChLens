@@ -18,6 +18,7 @@ const tauriMocks = vi.hoisted(() => ({
     ) {}
   },
   availableMonitors: vi.fn(),
+  invoke: vi.fn(),
   window: {
     getByLabel: vi.fn(),
     outerPosition: vi.fn(),
@@ -41,6 +42,8 @@ vi.mock("@tauri-apps/api/event", () => ({
   emit: tauriMocks.event.emit,
   listen: tauriMocks.event.listen,
 }));
+
+vi.mock("@tauri-apps/api/core", () => ({ invoke: tauriMocks.invoke }));
 
 vi.mock("@tauri-apps/api/window", () => ({
   availableMonitors: tauriMocks.availableMonitors,
@@ -266,9 +269,63 @@ describe("TauriコメントOverlay window platform", () => {
 
     const cleanup = await platform.watchVisibility(listener);
     visibilityHandler?.({ payload: { visible: false } });
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledWith(false));
 
     expect(listener).toHaveBeenCalledWith(false);
     cleanup();
     expect(unlisten).toHaveBeenCalledTimes(1);
+  });
+
+  it("古い非表示eventと遅延した初期取得で現在の表示状態を上書きしない", async () => {
+    let handler: VisibilityEventHandler | undefined;
+    let finishInitial: ((visible: boolean) => void) | undefined;
+    tauriMocks.event.listen.mockImplementationOnce(
+      async (_name: string, next: VisibilityEventHandler) => {
+        handler = next;
+        return vi.fn();
+      },
+    );
+    tauriMocks.window.isVisible
+      .mockImplementationOnce(
+        () =>
+          new Promise<boolean>((resolve) => {
+            finishInitial = resolve;
+          }),
+      )
+      .mockResolvedValue(true);
+    const listener = vi.fn();
+    const cleanup = await createTauriCommentOverlayPlatform().watchVisibility(listener);
+    await vi.waitFor(() => expect(finishInitial).toBeDefined());
+    handler?.({ payload: { visible: false } });
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledWith(true));
+    finishInitial?.(false);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(listener).toHaveBeenCalledTimes(1);
+    cleanup();
+    handler?.({ payload: { visible: false } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("負座標とDPI倍率を物理座標へ戻して選択画面の縮小画像を要求する", async () => {
+    tauriMocks.invoke.mockResolvedValue("data:image/png;base64,preview");
+    const platform = createTauriCommentOverlayPlatform();
+    await expect(
+      platform.captureMonitorPreview?.({
+        id: "left",
+        name: "左",
+        x: -1536,
+        y: -80,
+        width: 1536,
+        height: 864,
+        scaleFactor: 1.25,
+      }),
+    ).resolves.toBe("data:image/png;base64,preview");
+    expect(tauriMocks.invoke).toHaveBeenCalledWith("capture_comment_overlay_monitor_preview", {
+      x: -1920,
+      y: -100,
+      width: 1920,
+      height: 1080,
+    });
   });
 });

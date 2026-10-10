@@ -154,6 +154,8 @@ export const CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM = [
   "auto_load_idle_stop_timeout",
   // 更新コントロールからスレッドの表示形式を選択できる。
   "thread_display_mode",
+  // 実況の表示領域パネルで縦横比の固定を切り替えるため、通常の設定フォームには置かない。
+  "comment_overlay_lock_aspect_ratio",
   // ドメイン・板設定からsageの既定動作を切り替える。
   "sage_flag",
 ] as const;

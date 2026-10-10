@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import type { Page } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -105,6 +105,41 @@ describe("CommentOverlayStatusItem", () => {
     fireEvent.click(screen.getByRole("button", { name: "コメントを画面に流す: OFF" }));
 
     expect(mocks.controller.start).toHaveBeenCalledWith(THREAD_URL);
+  });
+
+  it("開始処理中の連打を抑え、完了後は再び操作できる", async () => {
+    let finishStart: (() => void) | undefined;
+    mocks.controller.start.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishStart = resolve;
+        }),
+    );
+    renderItem();
+    fireEvent.click(screen.getByRole("button", { name: /コメントOverlay制御/ }));
+    const toggle = screen.getByRole("button", { name: "コメントを画面に流す: OFF" });
+    fireEvent.click(toggle);
+    fireEvent.click(toggle);
+    expect(mocks.controller.start).toHaveBeenCalledTimes(1);
+    expect(toggle).toBeDisabled();
+    await act(async () => {
+      finishStart?.();
+    });
+    await waitFor(() => expect(toggle).toBeEnabled());
+    fireEvent.click(toggle);
+    expect(mocks.controller.start).toHaveBeenCalledTimes(2);
+  });
+
+  it("開始に失敗しても切り替えボタンを解除して再試行できる", async () => {
+    mocks.controller.start.mockRejectedValueOnce(new Error("表示失敗"));
+    renderItem();
+    fireEvent.click(screen.getByRole("button", { name: /コメントOverlay制御/ }));
+    const toggle = screen.getByRole("button", { name: "コメントを画面に流す: OFF" });
+    fireEvent.click(toggle);
+    await waitFor(() => expect(toggle).toBeEnabled());
+    fireEvent.click(toggle);
+    expect(mocks.controller.start).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(toggle).toBeEnabled());
   });
 
   it("コメント表示中は同じボタンから実況とOverlayをまとめて停止する", () => {
