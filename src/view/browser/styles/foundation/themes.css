@@ -113,6 +113,11 @@
   --sys-color-table-highlight-bg: var(--ref-color-yellow-100);
   --sys-color-table-highlight-hover-bg: var(--ref-color-yellow-200);
   --sys-color-table-highlight-fg: var(--ref-color-neutral-950);
+  /* ページ内検索の一致。検索フィルタの強調と見分けられるよう、現在の一致は橙で目立たせる。 */
+  --sys-color-find-match-bg: var(--ref-color-yellow-300);
+  --sys-color-find-match-fg: var(--ref-color-neutral-950);
+  --sys-color-find-current-bg: var(--ref-color-orange-700);
+  --sys-color-find-current-fg: var(--ref-color-neutral-0);
   --sys-color-table-label-bg: var(--ref-color-alpha-black-08);
   --sys-color-tooltip-surface: var(--ref-color-dark-neutral-0);
   --sys-color-tooltip-text: var(--ref-color-neutral-0);
@@ -221,6 +226,10 @@
   --sys-color-table-highlight-bg: var(--ref-color-dark-yellow-700);
   --sys-color-table-highlight-hover-bg: var(--ref-color-dark-yellow-800);
   --sys-color-table-highlight-fg: var(--ref-color-black);
+  --sys-color-find-match-bg: var(--ref-color-dark-yellow-600);
+  --sys-color-find-match-fg: var(--ref-color-black);
+  --sys-color-find-current-bg: var(--ref-color-dark-orange-700);
+  --sys-color-find-current-fg: var(--ref-color-black);
   --sys-color-table-label-bg: var(--ref-color-alpha-white-36);
   --sys-color-tooltip-surface: var(--ref-color-dark-neutral-0);
   --sys-color-tooltip-text: var(--ref-color-neutral-0);

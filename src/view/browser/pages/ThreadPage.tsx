@@ -30,6 +30,7 @@ import { PopupRenderer } from "src/features/popup/ui/PopupRenderer";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
 import { useThreadData } from "src/features/thread/browser/use-thread-data";
+import { useThreadFind } from "src/features/thread/browser/use-thread-find";
 import { useThreadRefreshController } from "src/features/thread/browser/use-thread-refresh-controller";
 import {
   REPLAY_LINE_KEY,
@@ -40,6 +41,7 @@ import {
   WHEEL_THRESHOLD,
 } from "src/features/thread/browser/useWheelPagination";
 import { ResItem } from "src/features/thread/ui/ResItem";
+import { ThreadFindBar } from "src/features/thread/ui/ThreadFindBar";
 import { ThreadMinimap } from "src/features/thread/ui/ThreadMinimap";
 import { ThreadScrollFloatingActions } from "src/features/thread/ui/ThreadScrollFloatingActions";
 import { VirtualResList } from "src/features/thread/ui/VirtualResList";
@@ -631,6 +633,20 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     debugKey: `virtual-list:${tabId}`,
   });
 
+  const { measureReadState: measureVirtualReadState } = virtualList;
+  const getTopVisibleResNum = useCallback(
+    () => measureVirtualReadState(1)?.last ?? null,
+    [measureVirtualReadState],
+  );
+  // 変更理由: ブラウザのページ内検索は描画していないレスを探せないため、Ctrl+F を置き換える。
+  const find = useThreadFind({
+    isActive,
+    responses: displayedResponses,
+    scrollToResponse: virtualList.scrollToResponse,
+    getTopVisibleResNum,
+    rootRef,
+  });
+
   const { scrollToResponse, isInitialReadStateResolved } = useThreadReadState({
     tabId,
     threadUrl: page.threadUrl,
@@ -818,6 +834,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         threadUrl={page.threadUrl}
         ngRevealed={revealedNgResNums.has(res.num)}
         onNgRevealedChange={handleNgRevealedChange}
+        findQuery={find.highlightQuery}
+        findActiveField={find.activeMatch?.resNum === res.num ? find.activeMatch.field : undefined}
+        findActiveOccurrence={
+          find.activeMatch?.resNum === res.num ? find.activeMatch.occurrence : undefined
+        }
       />
     );
   };
@@ -871,6 +892,18 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       ) : (
         <>
           <div className="thread-page__sticky-header">
+            {find.isOpen ? (
+              <ThreadFindBar
+                query={find.query}
+                total={find.total}
+                activeIndex={find.activeIndex}
+                focusKey={find.focusKey}
+                onQueryChange={find.setQuery}
+                onNext={find.next}
+                onPrevious={find.previous}
+                onClose={find.close}
+              />
+            ) : null}
             <ThreadPageTopBar
               activeTopBar={activeTopBar}
               filter={filter}

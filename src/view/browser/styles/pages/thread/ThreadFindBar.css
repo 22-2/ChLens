@@ -1,0 +1,65 @@
+/* スレッド内のページ内検索バー。上部の絞り込みバーと同じ見た目の帯にそろえる。 */
+.thread-find-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--sys-space-2);
+  padding: var(--sys-space-1) var(--sys-space-2);
+  background: var(--sys-color-table-heading-bg);
+  border-bottom: 1px solid var(--sys-color-table-heading-border);
+}
+
+.thread-find-bar__input {
+  flex: 0 1 260px;
+  min-width: 0;
+  height: 22px;
+  padding: 0 var(--sys-space-3);
+  border: 1px solid var(--sys-color-input-border);
+  border-radius: var(--sys-radius-sm);
+  font-family: inherit;
+  font-size: var(--sys-font-size-sm);
+  background: var(--sys-color-input-bg);
+  color: var(--sys-color-text);
+  outline: none;
+}
+
+.thread-find-bar__input::placeholder {
+  color: var(--sys-color-placeholder);
+}
+
+.thread-find-bar__input:focus {
+  border-color: var(--sys-color-focus-ring);
+}
+
+.thread-find-bar__status {
+  min-width: 5em;
+  font-size: var(--sys-font-size-xs);
+  color: var(--sys-color-text-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.thread-find-bar__status--empty {
+  color: var(--sys-color-error);
+}
+
+.thread-find-bar__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sys-space-1);
+  border: 0;
+  border-radius: var(--sys-radius-sm);
+  background: transparent;
+  color: var(--sys-color-text);
+  cursor: pointer;
+}
+
+.thread-find-bar__button:hover:not(:disabled) {
+  background: var(--sys-color-list-hover-bg);
+}
+
+.thread-find-bar__button:disabled {
+  color: var(--sys-color-text-disabled);
+  cursor: default;
+}

@@ -37,6 +37,9 @@ interface ResBodyProps {
   messageHtml: string;
   searchQuery?: string;
   searchTarget?: ThreadSearchTarget;
+  /** ページ内検索（Ctrl+F）の検索語と、本文の中で現在の一致が何番目か（なければ -1）。 */
+  findQuery?: string;
+  findActiveOccurrence?: number;
   anchorPreviewDepth: number;
   onUrlClick: ResBodyUrlClickHandler;
   onUrlContextMenu: UrlContextMenuHandler;
@@ -379,6 +382,8 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     messageHtml,
     searchQuery = "",
     searchTarget = "all",
+    findQuery = "",
+    findActiveOccurrence = -1,
     anchorPreviewDepth,
     onUrlClick,
     onUrlContextMenu,
@@ -402,13 +407,18 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       onAnchorLeave,
       viewWindow,
     });
-    const highlightedMessageHtml = useMemo(
-      () =>
+    const highlightedMessageHtml = useMemo(() => {
+      const searched =
         searchTarget === "all" || searchTarget === "body"
           ? highlightSearchMatches(messageHtml, searchQuery)
-          : messageHtml,
-      [messageHtml, searchQuery, searchTarget],
-    );
+          : messageHtml;
+      // ページ内検索の一致は検索フィルタの強調に重ねて付け、どちらの一致も見えるようにする。
+      return highlightSearchMatches(searched, findQuery, {
+        className: "res__find-match",
+        activeIndex: findActiveOccurrence,
+        activeClassName: "res__find-match--current",
+      });
+    }, [findActiveOccurrence, findQuery, messageHtml, searchQuery, searchTarget]);
     const decoratedMessageHtml = useMemo(() => {
       if ((ngResNums == null || ngResNums.size === 0) && resMap == null) {
         return highlightedMessageHtml;

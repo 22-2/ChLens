@@ -126,5 +126,5 @@ ThreadScrollFloatingActions・use-thread-top-scroll-open-filter・ポップア�
 - [x] Phase 3
 - [x] Phase 4
 - [x] Phase 5
-- [ ] Phase 6
+- [x] Phase 6
 - [ ] Phase 7

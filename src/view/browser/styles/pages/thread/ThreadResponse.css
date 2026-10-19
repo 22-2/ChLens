@@ -151,6 +151,18 @@
   color: var(--sys-color-table-highlight-fg);
 }
 
+/* ページ内検索（Ctrl+F）の一致。検索フィルタの強調と重なっても、こちらを上に見せる。 */
+.res__find-match {
+  border-radius: var(--sys-radius-sm);
+  background: var(--sys-color-find-match-bg);
+  color: var(--sys-color-find-match-fg);
+}
+
+.res__find-match--current {
+  background: var(--sys-color-find-current-bg);
+  color: var(--sys-color-find-current-fg);
+}
+
 .res__body a {
   color: var(--sys-color-table-link);
 }
