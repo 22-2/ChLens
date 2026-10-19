@@ -53,13 +53,12 @@ jobs:
       # WebView2 RuntimeはWindowsのrunnerに入っている。
       # offstage-windowsはWindows同梱のcsc.exeで補助プログラムを作り、窓を非表示デスクトップに出す。
       - name: Run Tauri E2E tests
-        run: pnpm run test:e2e:tauri -- --grep "ホームと新しいタブ"
+        run: pnpm run test:e2e:tauri
         env:
           CI: true
           # 非表示デスクトップではCIのWebView2が窓を作れず起動時にpanicするため、
           # CIでは既定のデスクトップに窓を出す（ランナーは作業用の画面を持たず、奪われて困る人もいない）。
           OFFSTAGE: "0"
-          OFFSTAGE_VERBOSE: "1"
 
       # 失敗時にトレースとスクリーンショット、Rust側のログから原因を追えるよう、結果を残す。
       - name: Upload Playwright report

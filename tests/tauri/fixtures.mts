@@ -67,7 +67,6 @@ async function logCdpDiagnostics(port: number): Promise<void> {
   const script = [
     "Get-CimInstance Win32_Process -Filter \"Name='msedgewebview2.exe'\" | Select-Object -First 3 ProcessId,CommandLine | Format-List | Out-String -Width 4000",
     "Get-NetTCPConnection -State Listen | Select-Object LocalAddress,LocalPort,OwningProcess | Format-Table | Out-String",
-    "Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}' | Select-Object pv | Format-List | Out-String",
   ].join("; ");
   try {
     const { stdout } = await execFileAsync("powershell", ["-NoProfile", "-Command", script]);
