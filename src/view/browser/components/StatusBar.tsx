@@ -7,6 +7,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 
 export type StatusBarAlignment = "left" | "right";
 export type StatusBarAppearance = "default" | "active";
@@ -18,7 +19,6 @@ interface StatusBarEntry {
   title?: string;
   className?: string;
   interactive: boolean;
-  content: ReactNode;
   operationRank?: number;
   sequence: number;
 }
@@ -32,6 +32,7 @@ interface StatusBarRegistryContextValue {
   setItem: (item: Omit<StatusBarEntry, "sequence">) => void;
   removeItem: (id: string) => void;
   setAppearance: (id: string, appearance: StatusBarAppearance | null) => void;
+  setSlot: (id: string, element: HTMLElement | null) => void;
 }
 
 interface StatusBarProviderProps {
@@ -56,6 +57,7 @@ interface StatusBarModeProps {
 
 const StatusBarContext = createContext<StatusBarContextValue | null>(null);
 const StatusBarRegistryContext = createContext<StatusBarRegistryContextValue | null>(null);
+const StatusBarSlotContext = createContext<Readonly<Record<string, HTMLElement>>>({});
 
 function useStatusBarContext(): StatusBarContextValue {
   const context = useContext(StatusBarContext);
@@ -76,6 +78,7 @@ function useStatusBarRegistryContext(): StatusBarRegistryContextValue {
 export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({ children }) => {
   const [itemsById, setItemsById] = useState<Record<string, StatusBarEntry>>({});
   const [appearanceById, setAppearanceById] = useState<Record<string, StatusBarAppearance>>({});
+  const [slotsById, setSlotsById] = useState<Record<string, HTMLElement>>({});
 
   const setItem = useCallback((item: Omit<StatusBarEntry, "sequence">) => {
     setItemsById((prev) => {
@@ -87,8 +90,7 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({ children }
         current.title === item.title &&
         current.className === item.className &&
         current.interactive === item.interactive &&
-        current.operationRank === item.operationRank &&
-        current.content === item.content
+        current.operationRank === item.operationRank
       ) {
         return prev;
       }
@@ -125,6 +127,23 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({ children }
     });
   }, []);
 
+  const setSlot = useCallback((id: string, element: HTMLElement | null) => {
+    setSlotsById((prev) => {
+      if (element == null) {
+        if (!(id in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      }
+      if (prev[id] === element) {
+        return prev;
+      }
+      return { ...prev, [id]: element };
+    });
+  }, []);
+
   const items = useMemo(() => {
     const entries = Object.values(itemsById);
     // 通信元は別々に保持し、表示だけを一枠に集約する。完了した操作が他の通信を消さず、
@@ -156,13 +175,15 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({ children }
 
   const value = useMemo<StatusBarContextValue>(() => ({ items, appearance }), [appearance, items]);
   const registryValue = useMemo<StatusBarRegistryContextValue>(
-    () => ({ setItem, removeItem, setAppearance }),
-    [removeItem, setAppearance, setItem],
+    () => ({ setItem, removeItem, setAppearance, setSlot }),
+    [removeItem, setAppearance, setItem, setSlot],
   );
 
   return (
     <StatusBarRegistryContext.Provider value={registryValue}>
-      <StatusBarContext.Provider value={value}>{children}</StatusBarContext.Provider>
+      <StatusBarSlotContext.Provider value={slotsById}>
+        <StatusBarContext.Provider value={value}>{children}</StatusBarContext.Provider>
+      </StatusBarSlotContext.Provider>
     </StatusBarRegistryContext.Provider>
   );
 };
@@ -178,6 +199,7 @@ export const StatusBarItem: React.FC<StatusBarItemProps> = ({
   children,
 }) => {
   const { removeItem, setItem } = useStatusBarRegistryContext();
+  const slot = useContext(StatusBarSlotContext)[id];
 
   useEffect(() => {
     setItem({
@@ -188,26 +210,19 @@ export const StatusBarItem: React.FC<StatusBarItemProps> = ({
       className,
       interactive,
       operationRank,
-      content: children,
     });
 
     return () => {
       removeItem(id);
     };
-  }, [
-    alignment,
-    children,
-    className,
-    id,
-    interactive,
-    operationRank,
-    priority,
-    removeItem,
-    setItem,
-    title,
-  ]);
+  }, [alignment, className, id, interactive, operationRank, priority, removeItem, setItem, title]);
 
-  return null;
+  // 変更理由: 以前は children の JSX を Provider の state に保存し、StatusBar 側で描画していた。
+  // Preact は初回描画した JSX 要素自体に親 VNode への参照（_parent）を書き込むため、保存した要素が
+  // その時点のアプリ全体の VNode ツリーを保持し、さらにそのツリー内の StatusBar が一つ前の要素を
+  // 保持する連鎖ができた。自動更新でレス数表示が変わるたびに古いツリーが解放されず、メモリが増え続けた。
+  // JSX は保存せず、StatusBar が用意した置き場へ自分の位置から portal で描画する。
+  return slot ? createPortal(children, slot) : null;
 };
 
 export const StatusBarMode: React.FC<StatusBarModeProps> = ({ id, appearance }) => {
@@ -224,6 +239,30 @@ export const StatusBarMode: React.FC<StatusBarModeProps> = ({ id, appearance }) 
   return null;
 };
 
+interface StatusBarSlotProps {
+  item: StatusBarEntry;
+}
+
+const StatusBarSlot: React.FC<StatusBarSlotProps> = ({ item }) => {
+  const { setSlot } = useStatusBarRegistryContext();
+  const { id } = item;
+  // ref を描画ごとに作り直すと null と要素の登録が毎回交互に起き、再描画が続くため固定する。
+  const slotRef = useCallback(
+    (element: HTMLDivElement | null) => setSlot(id, element),
+    [id, setSlot],
+  );
+
+  return (
+    <div
+      ref={slotRef}
+      className={`status-bar__item${
+        item.interactive ? " status-bar__item--interactive" : ""
+      }${item.className ? ` ${item.className}` : ""}`}
+      title={item.title}
+    />
+  );
+};
+
 export const StatusBar: React.FC = () => {
   const { appearance, items } = useStatusBarContext();
   const leftItems = items.filter((item) => item.alignment === "left");
@@ -233,28 +272,12 @@ export const StatusBar: React.FC = () => {
     <footer className={`status-bar status-bar--${appearance}`}>
       <div className="status-bar__group status-bar__group--left">
         {leftItems.map((item) => (
-          <div
-            key={item.id}
-            className={`status-bar__item${
-              item.interactive ? " status-bar__item--interactive" : ""
-            }${item.className ? ` ${item.className}` : ""}`}
-            title={item.title}
-          >
-            {item.content}
-          </div>
+          <StatusBarSlot key={item.id} item={item} />
         ))}
       </div>
       <div className="status-bar__group status-bar__group--right">
         {rightItems.map((item) => (
-          <div
-            key={item.id}
-            className={`status-bar__item${
-              item.interactive ? " status-bar__item--interactive" : ""
-            }${item.className ? ` ${item.className}` : ""}`}
-            title={item.title}
-          >
-            {item.content}
-          </div>
+          <StatusBarSlot key={item.id} item={item} />
         ))}
       </div>
     </footer>
