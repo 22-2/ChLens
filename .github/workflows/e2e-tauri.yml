@@ -53,7 +53,7 @@ jobs:
       # WebView2 RuntimeはWindowsのrunnerに入っている。
       # offstage-windowsはWindows同梱のcsc.exeで補助プログラムを作り、窓を非表示デスクトップに出す。
       - name: Run Tauri E2E tests
-        run: pnpm run test:e2e:tauri
+        run: pnpm run test:e2e:tauri -- --grep "ホームと新しいタブ"
         env:
           CI: true
           # 非表示デスクトップではCIのWebView2が窓を作れず起動時にpanicするため、

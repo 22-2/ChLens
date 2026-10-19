@@ -59,8 +59,27 @@ async function findFreePort(): Promise<number> {
   });
 }
 
+/**
+ * CDPが応答しないときの原因調査用に、WebView2の起動引数と待ち受けポートをログへ出す。
+ * CIのランナーだけで「ポートが開かない」ことがあり、環境変数の引数が効いているか確かめるため。
+ */
+async function logCdpDiagnostics(port: number): Promise<void> {
+  const script = [
+    "Get-CimInstance Win32_Process -Filter \"Name='msedgewebview2.exe'\" | Select-Object -First 3 ProcessId,CommandLine | Format-List | Out-String -Width 4000",
+    "Get-NetTCPConnection -State Listen | Select-Object LocalAddress,LocalPort,OwningProcess | Format-Table | Out-String",
+    "Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}' | Select-Object pv | Format-List | Out-String",
+  ].join("; ");
+  try {
+    const { stdout } = await execFileAsync("powershell", ["-NoProfile", "-Command", script]);
+    console.error(`[E2E] CDP診断 (期待ポート ${port})
+${stdout}`);
+  } catch (error) {
+    console.error("[E2E] CDP診断を取得できませんでした", error);
+  }
+}
+
 /** WebView2のリモートデバッグが応答するまで待つ。途中でアプリが終了したら失敗にする。 */
-async function waitForCdp(endpoint: string, child: ChildProcess): Promise<void> {
+async function waitForCdp(endpoint: string, child: ChildProcess, port: number): Promise<void> {
   const deadline = Date.now() + CDP_TIMEOUT_MS;
   let lastError: unknown = null;
   while (Date.now() < deadline) {
@@ -76,6 +95,7 @@ async function waitForCdp(endpoint: string, child: ChildProcess): Promise<void> 
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
+  await logCdpDiagnostics(port);
   throw new Error(`Tauri版のCDPが${CDP_TIMEOUT_MS}ms以内に応答しませんでした: ${endpoint}`, {
     cause: lastError,
   });
@@ -161,7 +181,7 @@ export class TauriApp {
     child.stderr?.on("data", (chunk: string) => process.stderr.write(`[tauri] ${chunk}`));
     child.once("error", (error) => console.error("[E2E] Tauri版を起動できませんでした", error));
 
-    await waitForCdp(endpoint, child);
+    await waitForCdp(endpoint, child, port);
     this.browser = await chromium.connectOverCDP(endpoint);
     const page = await this.window("main");
     page.on("pageerror", (error) => console.error("[E2E] ページエラー", error));
