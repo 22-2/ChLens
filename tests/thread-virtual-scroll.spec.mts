@@ -195,4 +195,52 @@ test.describe("大きなスレッドのスクロール位置", () => {
     const state = await readVirtualListState(page);
     expect(state!.corrections).toBeGreaterThan(correctionsBefore);
   });
+
+  test("Ctrl+Fのページ内検索は表記ゆれをまとめて探し、描画していないレスの一致へも移動する", async ({
+    page,
+    extensionId,
+    localBoard,
+  }) => {
+    const thread = localBoard.addLargeThread(RESPONSE_COUNT);
+    await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+    await waitForThreadLoaded(page, thread.threadUrl, RESPONSE_COUNT);
+
+    const panel = page.locator(ACTIVE_PANEL);
+    await panel.locator(".thread-page").click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press("ControlOrMeta+f");
+    const input = page.getByRole("textbox", { name: "スレッド内を検索" });
+    await expect(input).toBeFocused();
+
+    // ひらがな・カタカナ・半角カナ（ｶｸﾚﾝﾎﾞ）の5件を、カタカナの検索語でまとめて探す。
+    await input.fill("カクレンボ");
+    const status = panel.locator(".thread-find-bar__status");
+    const expectCurrentMatchIn = async (resNum: number) => {
+      const res = panel.locator(`.thread-page__responses [data-res-num="${resNum}"]`);
+      await expect(res.locator(".res__find-match--current")).toBeInViewport();
+    };
+    await expect(status).toHaveText("1 / 5");
+    await expectCurrentMatchIn(120);
+
+    for (const [index, resNum] of [300, 480, 650, 870].entries()) {
+      await input.press("Enter");
+      await expect(status).toHaveText(`${index + 2} / 5`);
+      await expectCurrentMatchIn(resNum);
+    }
+    // 末尾の次は先頭へ、先頭の前は末尾へ回る。
+    await input.press("Enter");
+    await expect(status).toHaveText("1 / 5");
+    await expectCurrentMatchIn(120);
+    await input.press("Shift+Enter");
+    await expect(status).toHaveText("5 / 5");
+    await expectCurrentMatchIn(870);
+
+    // 全角英字とカタカナの本文に、半角英字とひらがなの検索語で一致する。
+    await input.fill("abcてすと");
+    await expect(status).toHaveText("1 / 1");
+    await expectCurrentMatchIn(777);
+
+    await input.press("Escape");
+    await expect(input).toBeHidden();
+    await expect(panel.locator(".res__find-match")).toHaveCount(0);
+  });
 });

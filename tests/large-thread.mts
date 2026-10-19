@@ -8,11 +8,26 @@
 export const LARGE_THREAD_ID = "1000000002";
 export const LARGE_THREAD_TITLE = "大きなテストスレッド";
 
+/**
+ * ページ内検索の確認用に、表記を変えた同じ語を離れたレスへ置く。
+ * ひらがな・カタカナ・半角カナ（濁点つき）・全角英字の違いを、検索で同一視できるかを確かめる。
+ */
+export const FIND_TERM_RESPONSES: ReadonlyMap<number, string> = new Map([
+  [120, "ここでかくれんぼをする"],
+  [300, "カクレンボの鬼"],
+  [480, "かくれんぼ終了"],
+  [650, "ｶｸﾚﾝﾎﾞ再開"],
+  [870, "最後のカクレンボ"],
+  [777, "ＡＢＣテストの結果"],
+]);
+
 const LONG_SENTENCE =
   "これは折り返しを確かめるための長い文章で、表示領域の幅によって行数が変わるようにしてある。";
 
 function buildMessage(resNum: number, origin: string): string {
   const parts: string[] = [`レス本文マーカー${resNum}`];
+  const findTerm = FIND_TERM_RESPONSES.get(resNum);
+  if (findTerm) parts.push(findTerm);
   if (resNum % 7 === 0) {
     parts.push(LONG_SENTENCE.repeat(1 + (resNum % 4)));
   }
