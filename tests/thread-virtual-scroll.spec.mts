@@ -4,6 +4,7 @@ import {
   jumpToResponse,
   openThreadFromBoard,
   readViewportAnchor,
+  readVirtualListState,
   scrollActivePanelToRatio,
   waitForScrollSettled,
   waitForThreadLoaded,
@@ -11,6 +12,10 @@ import {
 
 const RESPONSE_COUNT = 1000;
 const AUTO_REFRESH_RESPONSE_COUNT = 900;
+/** 表示範囲と上下の余白にかかるレスの上限。全件描画に戻っていないことの確認に使う。 */
+const MAX_RENDERED_RESPONSES = 80;
+const WHEEL_STEPS = 30;
+const WHEEL_DELTA = 120;
 const ACTIVE_PANEL = '.content-area__tab-panel[data-active="true"]';
 
 test.describe("大きなスレッドのスクロール位置", () => {
@@ -128,5 +133,66 @@ test.describe("大きなスレッドのスクロール位置", () => {
     await waitForThreadLoaded(page, thread.threadUrl, AUTO_REFRESH_RESPONSE_COUNT + 60, 15_000);
     await waitForScrollSettled(page);
     await expectViewportAnchor(page, before!);
+  });
+
+  test("描画するレスは表示範囲の分だけで、非表示のタブではレスを描画しない", async ({
+    page,
+    extensionId,
+    localBoard,
+  }) => {
+    const thread = localBoard.addLargeThread(RESPONSE_COUNT);
+    await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+    await waitForThreadLoaded(page, thread.threadUrl, RESPONSE_COUNT);
+    await scrollActivePanelToRatio(page, 0.5);
+
+    const threadPanel = page.locator(".content-area__tab-panel").filter({
+      has: page.locator(".thread-page"),
+    });
+    const renderedCount = await threadPanel.locator(".thread-page__responses .res").count();
+    expect(renderedCount).toBeGreaterThan(0);
+    expect(renderedCount).toBeLessThanOrEqual(MAX_RENDERED_RESPONSES);
+
+    await page.getByTitle("新しいタブ", { exact: true }).click();
+    await expect(threadPanel.locator(".thread-page__responses .res")).toHaveCount(0);
+  });
+
+  test("未実測の範囲を上へホイールで少しずつ戻っても、見ているレスは操作した量だけ動く", async ({
+    page,
+    extensionId,
+    localBoard,
+  }) => {
+    const thread = localBoard.addLargeThread(RESPONSE_COUNT);
+    await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+    await waitForThreadLoaded(page, thread.threadUrl, RESPONSE_COUNT);
+    // 開いた直後は先頭付近しか実測していないため、末尾から上へ戻ると未実測のレスが次々に現れる。
+    await scrollActivePanelToRatio(page, 1);
+
+    const panel = page.locator(ACTIVE_PANEL);
+    const box = (await panel.boundingBox())!;
+    const correctionsBefore = (await readVirtualListState(page))!.corrections;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    for (let step = 0; step < WHEEL_STEPS; step++) {
+      const before = await readViewportAnchor(page);
+      expect(before).not.toBeNull();
+      await page.mouse.wheel(0, -WHEEL_DELTA);
+      await waitForScrollSettled(page);
+      const moved = await panel.evaluate(
+        (element, resNum) =>
+          element
+            .querySelector<HTMLElement>(`.thread-page__responses [data-res-num="${resNum}"]`)
+            ?.getBoundingClientRect().top ?? null,
+        before!.resNum,
+      );
+      const panelTop = box.y;
+      // 見ていたレスは、ホイールで動かした量だけ下へずれる。補正の取りこぼしがあれば大きく飛ぶ。
+      expect(
+        moved,
+        `${step}回目のスクロールで レス${before!.resNum} の位置がずれた`,
+      ).not.toBeNull();
+      expect(Math.abs(moved! - panelTop - before!.offset - WHEEL_DELTA)).toBeLessThanOrEqual(1);
+    }
+    // 推定値と実測値が食い違って補正が実際に起きた状態で、上の位置が保たれていたことを確かめる。
+    const state = await readVirtualListState(page);
+    expect(state!.corrections).toBeGreaterThan(correctionsBefore);
   });
 });

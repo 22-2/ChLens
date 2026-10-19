@@ -142,3 +142,24 @@ export async function jumpToResponse(page: Page, resNum: number) {
   await commandInput.fill(`>${resNum}`);
   await page.getByRole("option", { name: new RegExp(`^レス${resNum}へジャンプ`, "u") }).click();
 }
+
+interface VirtualListDebugState {
+  corrections: number;
+  lastCorrectionDelta: number;
+  measuredCount: number;
+  estimatedCount: number;
+  renderedKeys: Array<number | string>;
+  itemCount: number;
+}
+
+/** 仮想リストのデバッグ状態（補正の回数、描画中のレスなど）を読む。表示中のタブが1つの前提。 */
+export async function readVirtualListState(page: Page): Promise<VirtualListDebugState | null> {
+  return page.evaluate(() => {
+    const states = (
+      window as typeof window & { __chlensDebug?: { state: () => Record<string, unknown> } }
+    ).__chlensDebug?.state();
+    if (!states) return null;
+    const entry = Object.entries(states).find(([key]) => key.startsWith("virtual-list:"));
+    return (entry?.[1] as VirtualListDebugState | undefined) ?? null;
+  });
+}
