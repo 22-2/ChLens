@@ -23,50 +23,13 @@ function createResponse(num: number): IRes {
   };
 }
 
-function createRect(top: number, bottom: number): DOMRect {
-  return {
-    x: 0,
-    y: top,
-    top,
-    bottom,
-    left: 0,
-    right: 100,
-    width: 100,
-    height: bottom - top,
-    toJSON: () => ({}),
-  } as DOMRect;
-}
-
-function createThreadRoot(): {
-  host: HTMLDivElement;
-  panel: HTMLDivElement;
-  setResponseRects: (rects: Array<[number, number]>) => void;
-} {
+function createThreadRoot(): HTMLDivElement {
   const panel = document.createElement("div");
   panel.className = "content-area__tab-panel";
-  panel.getBoundingClientRect = () => createRect(0, 100);
-  Object.defineProperty(panel, "scrollTop", { configurable: true, value: 0, writable: true });
-  panel.scrollTo = vi.fn() as typeof panel.scrollTo;
-
   const host = document.createElement("div");
   host.className = "thread-page";
-  const responses = document.createElement("div");
-  responses.className = "thread-page__responses";
-  host.appendChild(responses);
   panel.appendChild(host);
-
-  const setResponseRects = (rects: Array<[number, number]>) => {
-    responses.replaceChildren(
-      ...rects.map(([top, bottom], index) => {
-        const article = document.createElement("article");
-        article.dataset.resNum = String(index + 1);
-        article.getBoundingClientRect = () => createRect(top, bottom);
-        return article;
-      }),
-    );
-  };
-
-  return { host, panel, setResponseRects };
+  return host;
 }
 
 describe("useThreadReadState Phase 0 contracts", () => {
@@ -93,11 +56,10 @@ describe("useThreadReadState Phase 0 contracts", () => {
       received: 2,
       offset: 10,
     };
-    const root = createThreadRoot();
-    root.setResponseRects([
-      [10, 40],
-      [40, 70],
-    ]);
+    const host = createThreadRoot();
+    // 表示領域の計測はレス一覧の位置計算が担うため、計測結果だけを差し替えられるようにする。
+    let visible = { last: 1, read: 2 };
+    const measureReadState = (received: number) => ({ ...visible, received, offset: 10 });
 
     container.bookmark = {
       get: () => undefined,
@@ -120,7 +82,9 @@ describe("useThreadReadState Phase 0 contracts", () => {
           isActive: true,
           responses,
           loading: false,
-          rootRef: { current: root.host } as RefObject<HTMLDivElement | null>,
+          rootRef: { current: host } as RefObject<HTMLDivElement | null>,
+          scrollToResponse: () => true,
+          measureReadState,
         }),
       { initialProps: { responses: [createResponse(1), createResponse(2)] } },
     );
@@ -136,11 +100,7 @@ describe("useThreadReadState Phase 0 contracts", () => {
 
     // 変更理由: pollingでレスが増えた際にviewportが上へ戻るケースでも、
     // 既に保存したread値をMath.maxで維持する契約をfixtureで固定する。
-    root.setResponseRects([
-      [10, 40],
-      [140, 170],
-      [180, 210],
-    ]);
+    visible = { last: 1, read: 1 };
     rerender({ responses: [createResponse(1), createResponse(2), createResponse(3)] });
 
     await act(async () => {

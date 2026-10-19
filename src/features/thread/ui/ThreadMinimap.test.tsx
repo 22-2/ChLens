@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import React from "react";
+import type { ThreadResponseLayout } from "src/features/thread/browser/use-thread-virtual-list";
 import { ThreadMinimap } from "src/features/thread/ui/ThreadMinimap";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -18,6 +19,21 @@ const CANVAS_CONTEXT_STUB = {
   strokeRect: vi.fn(),
   restore: vi.fn(),
 };
+
+/** レス番号・リスト内の位置・高さから、ミニマップが読む位置情報を作る。 */
+function createResponseLayout(entries: Array<[number, number, number]>): ThreadResponseLayout {
+  return {
+    getListTop: () => 0,
+    getResponseBox: (resNum) => {
+      const entry = entries.find(([num]) => num === resNum);
+      return entry ? { top: entry[1], size: entry[2] } : null;
+    },
+    forEachResponse: (callback) => {
+      for (const [num, top, size] of entries) callback(num, top, size);
+    },
+    subscribe: () => () => {},
+  };
+}
 
 describe("ThreadMinimap", () => {
   beforeEach(() => {
@@ -113,6 +129,7 @@ describe("ThreadMinimap", () => {
     const { container } = render(
       <ThreadMinimap
         rootRef={rootRef}
+        layout={createResponseLayout([[10, 300, 48]])}
         repIndex={repIndex}
         responseCount={1}
         activeTopBar="none"
@@ -177,6 +194,7 @@ describe("ThreadMinimap", () => {
     const { container } = render(
       <ThreadMinimap
         rootRef={rootRef}
+        layout={createResponseLayout([[10, 300, 48]])}
         repIndex={repIndex}
         responseCount={1}
         activeTopBar="none"
@@ -262,6 +280,7 @@ describe("ThreadMinimap", () => {
     const { container } = render(
       <ThreadMinimap
         rootRef={rootRef}
+        layout={createResponseLayout([[10, 300, 48]])}
         repIndex={repIndex}
         responseCount={1}
         activeTopBar="none"
@@ -353,6 +372,7 @@ describe("ThreadMinimap", () => {
     const { container } = render(
       <ThreadMinimap
         rootRef={rootRef}
+        layout={createResponseLayout([[10, 300, 48]])}
         repIndex={repIndex}
         responseCount={1}
         activeTopBar="none"

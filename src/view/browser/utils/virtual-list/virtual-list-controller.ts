@@ -124,7 +124,9 @@ export class VirtualListController {
 
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   };
 
   getSnapshot = (): VirtualListSnapshot => this.snapshot;
@@ -140,8 +142,9 @@ export class VirtualListController {
   /** 項目の並びと、各項目の描画条件を設定する。シグネチャが変わった項目は推定値に戻る。 */
   setItems(keys: readonly VirtualKey[], signatureOf: (key: VirtualKey) => string): void {
     if (this.anchor?.kind === "end" && !this.stickToEnd) {
-      // 追従しないときは、最下部へ移動した後でも新着で表示が動かないよう、今見ている項目へ付け替える。
-      this.captureAnchor();
+      // 追従しないときは、最下部にいても新着で表示が動かないよう、今見ている項目へ付け替える。
+      const viewport = this.toListViewport();
+      if (viewport) this.anchor = captureItemAnchor(this.layout, viewport);
     }
     this.keys = keys;
     this.signatureOf = signatureOf;
@@ -153,8 +156,11 @@ export class VirtualListController {
    * scrollTop が自分の書き込み以外で変わっていれば、利用者（またはブラウザ）がスクロールしたので
    * アンカーを取り直す。変わっていなければ、固定ヘッダの伸び縮みや表示領域の高さの変化で
    * リストが動いた分をアンカーで打ち消す。
+   *
+   * preserveAnchor は、非表示から戻ったときのように scrollTop が利用者の操作と無関係に
+   * 失われている場合に使う。今の scrollTop は捨て、覚えているアンカーの位置へ戻す。
    */
-  updateViewport(viewport: ContainerViewport): void {
+  updateViewport(viewport: ContainerViewport, options: { preserveAnchor?: boolean } = {}): void {
     const previous = this.viewport;
     this.viewport = viewport;
     const isOwnWrite =
@@ -162,7 +168,7 @@ export class VirtualListController {
       Math.abs(viewport.scrollTop - this.lastWrittenScrollTop) <= SCROLL_EPSILON;
     const moved =
       previous === null || Math.abs(viewport.scrollTop - previous.scrollTop) > SCROLL_EPSILON;
-    if (this.anchor === null || (moved && !isOwnWrite)) {
+    if (this.anchor === null || (moved && !isOwnWrite && !options.preserveAnchor)) {
       this.lastWrittenScrollTop = null;
       this.centeredKey = null;
       this.captureAnchor();
@@ -173,25 +179,23 @@ export class VirtualListController {
     this.publish();
   }
 
-  /** 実測した高さを受け取る。高さ0は非表示中の計測なので無視する。 */
+  /**
+   * 実測した高さを受け取る。
+   * 高さ0は「何も描かない項目」（非表示のNGレスなど）として受け付けるので、
+   * 容器ごと非表示（display:none）の間に測った値は、呼び出し側で渡さないこと。
+   */
   reportSizes(entries: Iterable<{ key: VirtualKey; size: number }>): void {
     let changed = false;
     for (const { key, size } of entries) {
-      if (!(size > 0) || !this.layout.indexByKey.has(key)) continue;
+      if (!Number.isFinite(size) || size < 0 || !this.layout.indexByKey.has(key)) continue;
       if (this.cache.set(key, this.signatureOf(key), size)) changed = true;
     }
     if (changed) this.relayout();
   }
 
-  /** 最下部にいるとき、新着や高さの変化があっても最下部に留まるかどうか（自動更新の追従用）。 */
+  /** 最下部にいるとき、新着が来ても最下部に留まるかどうか（自動更新の追従用）。 */
   setStickToEnd(stickToEnd: boolean): void {
-    if (this.stickToEnd === stickToEnd) return;
     this.stickToEnd = stickToEnd;
-    if (this.viewport && this.anchor) {
-      // 追従を始めた時点で最下部にいれば、そのまま末尾をアンカーにする。
-      this.captureAnchor();
-      this.publish();
-    }
   }
 
   /** 表示範囲の外でも描画し続ける項目（文字を選択中のレスなど）。 */
@@ -239,21 +243,37 @@ export class VirtualListController {
   }
 
   getItemTop(key: VirtualKey): number | null {
+    return this.getItem(key)?.top ?? null;
+  }
+
+  /** 項目の位置と高さ。位置はリストの上端から。並びになければ null。 */
+  getItem(key: VirtualKey): VirtualListItem | null {
     const index = this.layout.indexByKey.get(key);
-    return index === undefined ? null : getItemTop(this.layout, index);
+    return index === undefined ? null : this.itemAt(index);
+  }
+
+  /** 並んでいる全項目を、描画しているかどうかに関わらず順に渡す（ミニマップの描画用）。 */
+  forEachItem(callback: (item: VirtualListItem) => void): void {
+    for (let index = 0; index < this.layout.keys.length; index++) callback(this.itemAt(index));
   }
 
   getTotalSize(): number {
     return getTotalSize(this.layout);
   }
 
-  /** 表示領域の上端と下端にかかっている項目（既読位置の保存用）。 */
-  getViewportEdges(): { top: VirtualListItem; bottom: VirtualListItem } | null {
+  /** 最後に受け取った容器の状態。まだ表示されていなければ null。 */
+  getViewport(): Readonly<ContainerViewport> | null {
+    return this.viewport;
+  }
+
+  /** 余白を含めず、表示領域に実際にかかっている項目（既読位置の保存用）。 */
+  getVisibleItems(): VirtualListItem[] {
     const viewport = this.toListViewport();
-    if (!viewport || this.layout.keys.length === 0) return null;
+    if (!viewport) return [];
     const range = getVisibleRange(this.layout, viewport.top, viewport.height, 0);
-    if (range.end <= range.start) return null;
-    return { top: this.itemAt(range.start), bottom: this.itemAt(range.end - 1) };
+    const items: VirtualListItem[] = [];
+    for (let index = range.start; index < range.end; index++) items.push(this.itemAt(index));
+    return items;
   }
 
   private relayout(): void {
@@ -277,7 +297,9 @@ export class VirtualListController {
     const viewport = this.toListViewport();
     if (!viewport) return;
     const bounds = this.getBounds();
-    if (bounds && this.stickToEnd && isAtEnd(viewport, bounds, this.options.endThreshold)) {
+    // 最下部にいる間は、実測で高さが変わっても最下部に留まる（「最下部へ」の操作が実測で外れないように）。
+    // 新着で引っぱるかどうかは setItems で stickToEnd を見て決める。
+    if (bounds && isAtEnd(viewport, bounds, this.options.endThreshold)) {
       this.anchor = { kind: "end" };
       return;
     }
@@ -293,13 +315,16 @@ export class VirtualListController {
     const listTop = resolveAnchorTop(this.layout, this.anchor, bounds, this.options.orderOf);
     const scrollTop = listTop + viewport.listTop;
     const delta = scrollTop - viewport.scrollTop;
-    if (Math.abs(delta) <= SCROLL_EPSILON) return;
+    // 丸めで書き込みが変わらない差（1px未満）は補正しない。小数の誤差で書き込みが続くのを防ぐ。
+    if (Math.abs(delta) < 1) return;
     this.stats.corrections += 1;
     this.stats.lastCorrectionDelta = delta;
-    this.pendingScrollTop = scrollTop;
-    this.lastWrittenScrollTop = scrollTop;
+    // ブラウザは scrollTop を画素単位に丸めるため、こちらも整数で書き込み、自分の書き込みと判別できるようにする。
+    const roundedScrollTop = Math.round(scrollTop);
+    this.pendingScrollTop = roundedScrollTop;
+    this.lastWrittenScrollTop = roundedScrollTop;
     // 書き込み後の位置を前提に描画範囲を決め、補正先の項目が描画されていない状態を作らない。
-    this.viewport = { ...viewport, scrollTop };
+    this.viewport = { ...viewport, scrollTop: roundedScrollTop };
   }
 
   /** 中央揃えの項目は、今の高さで「項目の中心が表示領域の中心に来る」offset を求め直す。 */

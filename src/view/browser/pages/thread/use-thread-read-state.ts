@@ -7,10 +7,8 @@ import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   consumePendingThreadResJump,
   findThreadScrollContainer,
-  measureThreadReadState,
   peekPendingThreadResJump,
   type PendingThreadJump,
-  scrollThreadToResponse,
   subscribeThreadResJump,
 } from "src/view/browser/utils/thread-read-state";
 
@@ -23,6 +21,16 @@ interface UseThreadReadStateParams {
   responses: IRes[];
   loading: boolean;
   rootRef: RefObject<HTMLDivElement | null>;
+  /**
+   * 指定レスへスクロールする。並びにないレスなら false。
+   * 変更理由: レス一覧を仮想化して範囲外のレスがDOMにないため、DOMを探さず
+   * レス一覧の位置計算から移動・計測する関数を呼び出し側から受け取る。
+   */
+  scrollToResponse: (resNum: number, options?: { highlight?: boolean; offset?: number }) => boolean;
+  /** 表示中の位置から既読状態を計測する。表示前なら null。 */
+  measureReadState: (
+    received: number,
+  ) => Pick<IReadState, "last" | "read" | "received" | "offset"> | null;
 }
 
 interface UseThreadReadStateResult {
@@ -37,6 +45,8 @@ export function useThreadReadState({
   responses,
   loading,
   rootRef,
+  scrollToResponse,
+  measureReadState,
 }: UseThreadReadStateParams): UseThreadReadStateResult {
   const { window: viewWindow } = useViewSurface();
   const [initialReadState, setInitialReadState] = useState<IReadState | null>(null);
@@ -46,16 +56,10 @@ export function useThreadReadState({
   const latestReadStateRef = useRef<IReadState | null>(null);
   const saveReadStateTimerRef = useRef<number | null>(null);
 
-  const scrollToResponse = useCallback(
-    (resNum: number, options?: { highlight?: boolean; offset?: number }) =>
-      scrollThreadToResponse(rootRef.current, resNum, options),
-    [rootRef],
-  );
-
   const saveCurrentReadState = useCallback(async () => {
     if (!isActive || !isInitialReadStateResolved) return;
 
-    const measuredReadState = measureThreadReadState(rootRef.current, responses.length);
+    const measuredReadState = measureReadState(responses.length);
     if (!measuredReadState) return;
 
     const previousReadState = latestReadStateRef.current;
@@ -84,7 +88,7 @@ export function useThreadReadState({
     } catch (error) {
       logger.error(error);
     }
-  }, [isActive, isInitialReadStateResolved, threadUrl, responses.length, rootRef]);
+  }, [isActive, isInitialReadStateResolved, threadUrl, responses.length, measureReadState]);
 
   const scheduleReadStateSave = useCallback(() => {
     if (saveReadStateTimerRef.current != null) {
@@ -165,19 +169,12 @@ export function useThreadReadState({
       });
       return true;
     };
-    if (performJump()) return;
-    // 変更理由: 絞り込み解除やスレ再読込の直前に要求が来た場合、まだ存在しない
-    // レスへスクロールできない。DOMへ現れた時に再試行して要求を消費する。
-    const root = rootRef.current;
-    if (!root || typeof MutationObserver === "undefined") return;
-    const observer = new MutationObserver(() => {
-      if (performJump()) observer.disconnect();
-    });
-    observer.observe(root, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    // 変更理由: 絞り込み解除やスレ再読込の直前に要求が来た場合、まだ並びにない
+    // レスへはスクロールできない。並びが変わると scrollToResponse が作り直されて
+    // この effect が再実行されるため、そこで再試行して要求を消費する。
+    performJump();
   }, [
     isActive,
-    rootRef,
     tabId,
     loading,
     threadUrl,

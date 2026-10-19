@@ -1,10 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ThreadResponseLayout } from "src/features/thread/browser/use-thread-virtual-list";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { Tooltip } from "src/view/browser/ui/Tooltip";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 interface ThreadMinimapProps {
   rootRef: React.RefObject<HTMLDivElement | null>;
+  /**
+   * レスの位置。変更理由: レス一覧を仮想化して範囲外のレスがDOMにないため、
+   * マーカーの位置はDOMではなくレス一覧の位置計算から読む。
+   */
+  layout: ThreadResponseLayout;
   repIndex: Map<number, Set<number>>;
   responseCount: number;
   activeTopBar: "none" | "search" | "filter";
@@ -51,31 +57,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function getOffsetTopWithinAncestor(
-  el: HTMLElement,
-  ancestor: HTMLElement,
-  targetWindow: Window = globalThis.window,
-): number {
-  let top = 0;
-  let current: HTMLElement | null = el;
-
-  while (current && current !== ancestor) {
-    top += current.offsetTop;
-    current = isHTMLElementInWindow(current.offsetParent, targetWindow)
-      ? current.offsetParent
-      : null;
-  }
-
-  if (current === ancestor) {
-    return top;
-  }
-
-  // offsetParent チェーンで祖先へ辿れないケースは rect 差分で補正する。
-  const elRect = el.getBoundingClientRect();
-  const ancestorRect = ancestor.getBoundingClientRect();
-  return ancestor.scrollTop + (elRect.top - ancestorRect.top);
-}
-
 function isSameFrame(left: MinimapFrame | null, right: MinimapFrame | null): boolean {
   if (left === right) {
     return true;
@@ -94,6 +75,7 @@ function isSameFrame(left: MinimapFrame | null, right: MinimapFrame | null): boo
 
 export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   rootRef,
+  layout,
   repIndex,
   responseCount,
   activeTopBar,
@@ -128,15 +110,6 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
     const panel = host.closest(".content-area__tab-panel");
     return isHTMLElementInWindow(panel, viewWindow) ? panel : null;
-  }, [rootRef, viewWindow]);
-
-  const getResponsesRoot = useCallback((): HTMLElement | null => {
-    const host = rootRef.current;
-    if (!host) {
-      return null;
-    }
-    const responses = host.querySelector(".thread-page__responses");
-    return isHTMLElementInWindow(responses, viewWindow) ? responses : null;
   }, [rootRef, viewWindow]);
 
   const getTopBarRoot = useCallback((): HTMLElement | null => {
@@ -238,10 +211,10 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     responseHitsRef.current = [];
     const canvas = canvasRef.current;
     const scrollContainer = getScrollContainer();
-    const responsesRoot = getResponsesRoot();
+    const responsesTop = layout.getListTop();
     const metrics = getMetrics();
     const currentFrame = frame;
-    if (!canvas || !scrollContainer || !responsesRoot || !metrics || !currentFrame) {
+    if (!canvas || !scrollContainer || responsesTop === null || !metrics || !currentFrame) {
       return;
     }
 
@@ -267,7 +240,6 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, cssWidth, cssHeight);
 
-    const responsesTop = getOffsetTopWithinAncestor(responsesRoot, scrollContainer, viewWindow);
     const minY = 6;
     const maxY = cssHeight - 6;
     const markerX = cssWidth - 6;
@@ -275,19 +247,11 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     const markerHits: MinimapMarkerHit[] = [];
     const responseHits: MinimapResponseHit[] = [];
 
-    for (const resEl of responsesRoot.querySelectorAll<HTMLElement>("[data-res-num]")) {
-      const resNum = Number.parseInt(resEl.dataset.resNum ?? "", 10);
-      if (!Number.isFinite(resNum) || resNum <= 0 || resEl.offsetHeight === 0) {
-        continue;
-      }
-
-      const top = (responsesTop + resEl.offsetTop) * metrics.scale;
-      responseHits.push({
-        resNum,
-        top,
-        bottom: top + resEl.offsetHeight * metrics.scale,
-      });
-    }
+    layout.forEachResponse((resNum, itemTop, size) => {
+      if (size === 0) return;
+      const top = (responsesTop + itemTop) * metrics.scale;
+      responseHits.push({ resNum, top, bottom: top + size * metrics.scale });
+    });
     responseHitsRef.current = responseHits;
 
     ctx.textAlign = "right";
@@ -300,13 +264,13 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
         continue;
       }
 
-      const resEl = responsesRoot.querySelector(`[data-res-num="${resNum}"]`);
-      if (!isHTMLElementInWindow(resEl, viewWindow) || resEl.offsetHeight === 0) {
+      const box = layout.getResponseBox(resNum);
+      if (!box || box.size === 0) {
         continue;
       }
 
-      const markerHeight = Math.max(resEl.offsetHeight * metrics.scale, 4);
-      const centerY = (responsesTop + resEl.offsetTop) * metrics.scale + markerHeight / 2;
+      const markerHeight = Math.max(box.size * metrics.scale, 4);
+      const centerY = (responsesTop + box.top) * metrics.scale + markerHeight / 2;
       const y = clamp(centerY, minY, maxY);
 
       ctx.fillStyle = count >= 5 ? "rgba(220, 40, 40, 0.95)" : "rgba(255, 140, 0, 0.9)";
@@ -345,7 +309,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     ctx.strokeStyle = "rgba(0, 0, 0, 0.12)";
     ctx.strokeRect(0.5, 0.5, cssWidth - 1, cssHeight - 1);
     ctx.restore();
-  }, [frame, getMetrics, getResponsesRoot, getScrollContainer, repIndex, viewWindow]);
+  }, [frame, getMetrics, getScrollContainer, layout, repIndex, viewWindow]);
 
   const findMarkerByPoint = useCallback(
     (relativeX: number, relativeY: number): MinimapMarkerHit | null => {
@@ -598,6 +562,9 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     // レイアウト計算 effect と分離して再入ループを防ぐ。
     scheduleDraw();
   }, [frame, repIndex, responseCount, scheduleDraw]);
+
+  // 実測でレスの位置が変わったら描き直す。描画は rAF でまとめるため、続けて変わっても1回で済む。
+  useEffect(() => layout.subscribe(scheduleDraw), [layout, scheduleDraw]);
 
   useEffect(() => {
     const scrollContainer = getScrollContainer();

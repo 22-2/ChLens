@@ -56,7 +56,7 @@ class FakeScrollContainer {
   }
 
   topVisibleKey(): VirtualKey {
-    return this.controller.getViewportEdges()!.top.key;
+    return this.controller.getVisibleItems()[0]!.key;
   }
 
   viewport() {
@@ -126,7 +126,8 @@ describe("仮想リストのcontroller", () => {
     controller.scrollToKey(500, { align: "center" });
     container.flush();
     const center = container.screenTopOf(500) + realSizeOf(500) / 2;
-    expect(center).toBeCloseTo(container.height / 2, 5);
+    // scrollTop は整数へ丸めて書き込むため、1px未満の差は許容する。
+    expect(Math.abs(center - container.height / 2)).toBeLessThan(1);
   });
 
   it("末尾へ追従する設定では、最下部にいる間は新着と実測の後も最下部に留まる", () => {
@@ -183,15 +184,34 @@ describe("仮想リストのcontroller", () => {
     expect(container.screenTopOf(key)).toBeCloseTo(before, 5);
   });
 
-  it("固定した項目は表示範囲の外でも描画し、高さ0の実測は無視する", () => {
-    const { controller, container } = setup();
+  it("固定した項目は表示範囲の外でも描画する", () => {
+    const { controller } = setup();
     controller.setPinnedKeys([800]);
     expect(controller.getSnapshot().items.some((item) => item.key === 800)).toBe(true);
-    container.flush();
+  });
+
+  it("何も描かない項目の高さ0は受け付け、不正な値は無視する", () => {
+    const { controller } = setup(10);
     const total = controller.getTotalSize();
-    controller.reportSizes([{ key: 1, size: 0 }]);
-    container.flush();
+    controller.reportSizes([
+      { key: 1, size: Number.NaN },
+      { key: 2, size: -1 },
+    ]);
     expect(controller.getTotalSize()).toBe(total);
+    controller.reportSizes([{ key: 1, size: 0 }]);
+    expect(controller.getTotalSize()).toBe(total - realSizeOf(1));
+  });
+
+  it("非表示の間に scrollTop が失われても、再表示でアンカーの位置へ戻す", () => {
+    const { controller, container } = setup();
+    container.userScrollTo(15_000);
+    const key = container.topVisibleKey();
+    const before = container.screenTopOf(key);
+    // display:none の間にブラウザが scrollTop を0へ戻した状態を再現する。
+    container.scrollTop = 0;
+    controller.updateViewport(container.viewport(), { preserveAnchor: true });
+    container.flush();
+    expect(container.screenTopOf(key)).toBeCloseTo(before, 5);
   });
 
   it("並びにない項目へのジャンプは false を返す", () => {

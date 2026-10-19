@@ -25,6 +25,8 @@
 .content-area__tab-panel:has(.thread-page) {
   scrollbar-width: none;
   scrollbar-gutter: auto;
+  /* スレッドの表示位置は仮想リストがアンカーで補正するため、ブラウザの補正と競合させない。 */
+  overflow-anchor: none;
 }
 
 .content-area__tab-panel:has(.thread-page)::-webkit-scrollbar {

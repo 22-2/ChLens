@@ -122,6 +122,23 @@ describe("ResItem", () => {
     expect(container.querySelector(".res__body")).toBeInTheDocument();
   });
 
+  it("soft-ngの表示状態を親が持つときは、描画し直しても表示したままにする", () => {
+    const ngRes: IRes = { ...BASE_RES, ng: { type: "Body" } };
+    const onNgRevealedChange = vi.fn();
+    const first = renderNgRes(ngRes, { ngRevealed: false, onNgRevealedChange });
+    fireEvent.click(screen.getByRole("button", { name: "レス1の内容を表示" }));
+    // 表示状態は親へ伝えるだけで、レス自身では切り替えない。
+    expect(onNgRevealedChange).toHaveBeenCalledWith(1, true);
+    expect(first.container.querySelector(".res__body")).not.toBeInTheDocument();
+    first.unmount();
+
+    // 仮想リストで範囲外へ外れて描画し直した状態を再現する。
+    const second = renderNgRes(ngRes, { ngRevealed: true, onNgRevealedChange });
+    expect(second.container.querySelector(".res__body")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "レス1をNG表示に戻す" }));
+    expect(onNgRevealedChange).toHaveBeenLastCalledWith(1, false);
+  });
+
   it("hard-ngではNGレスをDOMへ描画しない", () => {
     ngMocks.configValue = "hard-ng";
     const ngRes: IRes = { ...BASE_RES, ng: { type: "Body" } };
@@ -488,7 +505,10 @@ function containerQueryByClass(className: string): HTMLElement {
 
 function renderNgRes(
   res: IRes,
-  entryProps: Pick<ResItemProps, "animateEntry" | "onEntryDisplayed"> = {},
+  entryProps: Pick<
+    ResItemProps,
+    "animateEntry" | "onEntryDisplayed" | "ngRevealed" | "onNgRevealedChange"
+  > = {},
 ) {
   return render(
     <NgStatusProvider>

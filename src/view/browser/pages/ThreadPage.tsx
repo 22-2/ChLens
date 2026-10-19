@@ -32,12 +32,17 @@ import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtim
 import { useThreadData } from "src/features/thread/browser/use-thread-data";
 import { useThreadRefreshController } from "src/features/thread/browser/use-thread-refresh-controller";
 import {
+  REPLAY_LINE_KEY,
+  useThreadVirtualList,
+} from "src/features/thread/browser/use-thread-virtual-list";
+import {
   useWheelPagination,
   WHEEL_THRESHOLD,
 } from "src/features/thread/browser/useWheelPagination";
 import { ResItem } from "src/features/thread/ui/ResItem";
 import { ThreadMinimap } from "src/features/thread/ui/ThreadMinimap";
 import { ThreadScrollFloatingActions } from "src/features/thread/ui/ThreadScrollFloatingActions";
+import { VirtualResList } from "src/features/thread/ui/VirtualResList";
 import { WheelScrollIndicator } from "src/features/thread/ui/WheelScrollIndicator";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
@@ -80,6 +85,7 @@ import {
   countNewRepliesToWrittenResponses,
 } from "src/view/browser/utils/thread-emphasis";
 import { subscribeThreadResJump } from "src/view/browser/utils/thread-read-state";
+import type { VirtualKey } from "src/view/browser/utils/virtual-list/layout";
 
 const logger = createLogger("view/browser");
 interface ThreadPageProps {
@@ -278,6 +284,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const isFilterDefaultOpen = useThreadFilterDefaultOpenSetting();
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
+  // 範囲外へ外れたレスを描画し直しても、ソフトNGを「表示」した状態を保つ。
+  const [revealedNgResNums, setRevealedNgResNums] = useState<ReadonlySet<number>>(new Set());
+  const handleNgRevealedChange = useCallback((resNum: number, revealed: boolean) => {
+    setRevealedNgResNums((current) => {
+      if (current.has(resNum) === revealed) return current;
+      const next = new Set(current);
+      if (revealed) next.add(resNum);
+      else next.delete(resNum);
+      return next;
+    });
+  }, []);
   const {
     activeTopBar,
     closeTopBar,
@@ -590,6 +607,30 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const imageBlurConfig = useImageBlurConfig();
 
+  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
+  const replayBoundary =
+    replayPosition?.tabId === tabId &&
+    normalizeArchiveReplayThreadUrl(replayPosition.threadUrl) ===
+      normalizeArchiveReplayThreadUrl(page.threadUrl)
+      ? getReplayBoundaryIndex(
+          displayedResponses,
+          replayPosition.playbackAt,
+          replayPosition.responseNumber,
+        )
+      : -1;
+
+  // 変更理由: 全レスを描画すると、レス数とタブ数に比例して描画負荷とメモリが増えるため、
+  // 表示範囲のレスだけを描画する。位置の計算・ジャンプ・既読位置の計測はここへまとめる。
+  const virtualList = useThreadVirtualList({
+    responses: displayedResponses,
+    replayBoundary,
+    scrollContainerRef: effectiveScrollContainerRef,
+    // 自動更新で追従している間は、新着の実測で高さが変わっても最下部に留める。
+    stickToEnd:
+      isActiveAutoRefreshEnabled && !isFilterEnabled && canAutoScroll && !isThreadDisplayPaused,
+    debugKey: `virtual-list:${tabId}`,
+  });
+
   const { scrollToResponse, isInitialReadStateResolved } = useThreadReadState({
     tabId,
     threadUrl: page.threadUrl,
@@ -597,6 +638,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     responses,
     loading,
     rootRef,
+    scrollToResponse: virtualList.scrollToResponse,
+    measureReadState: virtualList.measureReadState,
   });
 
   const handleMinimapMarkerClick = useCallback(
@@ -719,17 +762,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     [requestManualRefresh, viewWindow],
   );
 
-  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
-  const replayBoundary =
-    replayPosition?.tabId === tabId &&
-    normalizeArchiveReplayThreadUrl(replayPosition.threadUrl) ===
-      normalizeArchiveReplayThreadUrl(page.threadUrl)
-      ? getReplayBoundaryIndex(
-          displayedResponses,
-          replayPosition.playbackAt,
-          replayPosition.responseNumber,
-        )
-      : -1;
   const replayLine =
     replayBoundary >= 0 ? (
       <ArchiveReplayPositionLine
@@ -739,6 +771,56 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         active={isActive && !loading && isInitialReadStateResolved}
       />
     ) : null;
+
+  const displayedResponseByNum = useMemo(
+    () => new Map(displayedResponses.map((res) => [res.num, res])),
+    [displayedResponses],
+  );
+  const renderVirtualItem = (key: VirtualKey) => {
+    if (key === REPLAY_LINE_KEY) return replayLine;
+    const res = typeof key === "number" ? displayedResponseByNum.get(key) : undefined;
+    if (!res) return null;
+    const idCount = res.id ? (indexes.idIndex.get(res.id)?.size ?? 0) : 0;
+    const idPos = res.id ? (idPositions.get(res.num) ?? 0) : 0;
+    const repCount = liveChatReplies.repIndex.get(res.num)?.size ?? 0;
+    return (
+      <ResItem
+        // 新着だけに入場動作を付け、切り替え時の既存レスを一斉に動かさない。
+        // 変更理由: 範囲外へ外れて描画し直したレスで入場動作を繰り返さないよう、表示済みのレスは除く。
+        animateEntry={
+          liveChat.isFlowing &&
+          res.num > liveChat.baseline &&
+          !(liveChatReplies.replySourceNums?.has(res.num) ?? false)
+        }
+        onEntryDisplayed={liveChatReplies.onEntryDisplayed}
+        res={res}
+        idPos={idPos}
+        idCount={idCount}
+        repCount={repCount}
+        miniAa={miniAaResNums.has(res.num)}
+        messageProtocol={messageProtocol}
+        searchQuery={searchQuery}
+        searchTarget={searchTarget}
+        onIdClick={handleIdClick}
+        onRepClick={handleRepClick}
+        onUrlClick={handleUrlClick}
+        onUrlContextMenu={handleUrlContextMenu}
+        onAnchorClick={handleAnchorClick}
+        onAnchorHover={showAnchorPreview}
+        onAnchorLeave={hideAnchorPreview}
+        onContextMenu={openThreadResContextMenu}
+        isOwn={ownResNums.has(res.num)}
+        isReplyToOwn={replyToOwnResNums.has(res.num)}
+        isImageBlurred={blurredResNums.has(res.num)}
+        imageBlurRadius={imageBlurConfig.radius}
+        ngResNums={ngResNums}
+        resMap={indexes.resMap}
+        threadUrl={page.threadUrl}
+        ngRevealed={revealedNgResNums.has(res.num)}
+        onNgRevealedChange={handleNgRevealedChange}
+      />
+    );
+  };
 
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
@@ -810,46 +892,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           </div>
 
           <div className="thread-page__responses">
-            {displayedResponses.map((res, index) => {
-              const idCount = res.id ? (indexes.idIndex.get(res.id)?.size ?? 0) : 0;
-              const idPos = res.id ? (idPositions.get(res.num) ?? 0) : 0;
-              const repCount = liveChatReplies.repIndex.get(res.num)?.size ?? 0;
-              return (
-                <React.Fragment key={res.num}>
-                  {index === replayBoundary ? replayLine : null}
-                  <ResItem
-                    key={res.num}
-                    // 新着だけに入場動作を付け、切り替え時の既存レスを一斉に動かさない。
-                    animateEntry={liveChat.isFlowing && res.num > liveChat.baseline}
-                    onEntryDisplayed={liveChatReplies.onEntryDisplayed}
-                    res={res}
-                    idPos={idPos}
-                    idCount={idCount}
-                    repCount={repCount}
-                    miniAa={miniAaResNums.has(res.num)}
-                    messageProtocol={messageProtocol}
-                    searchQuery={searchQuery}
-                    searchTarget={searchTarget}
-                    onIdClick={handleIdClick}
-                    onRepClick={handleRepClick}
-                    onUrlClick={handleUrlClick}
-                    onUrlContextMenu={handleUrlContextMenu}
-                    onAnchorClick={handleAnchorClick}
-                    onAnchorHover={showAnchorPreview}
-                    onAnchorLeave={hideAnchorPreview}
-                    onContextMenu={openThreadResContextMenu}
-                    isOwn={ownResNums.has(res.num)}
-                    isReplyToOwn={replyToOwnResNums.has(res.num)}
-                    isImageBlurred={blurredResNums.has(res.num)}
-                    imageBlurRadius={imageBlurConfig.radius}
-                    ngResNums={ngResNums}
-                    resMap={indexes.resMap}
-                    threadUrl={page.threadUrl}
-                  />
-                </React.Fragment>
-              );
-            })}
-            {replayBoundary === displayedResponses.length ? replayLine : null}
+            {/* 変更理由: 非表示のタブでもレスのDOMを持ち続けるとタブ数に比例してメモリが増えるため、
+                表示中だけ一覧を描画する。見ていた位置と実測した高さは virtualList が保持する。 */}
+            {isActive ? (
+              <VirtualResList
+                controller={virtualList.controller}
+                scrollContainerRef={effectiveScrollContainerRef}
+                renderItem={renderVirtualItem}
+                highlightKey={virtualList.highlightKey}
+                onHighlightApplied={virtualList.onHighlightApplied}
+              />
+            ) : null}
           </div>
 
           {isActiveAutoRefreshEnabled &&
@@ -916,6 +969,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           />
           <ThreadMinimap
             rootRef={rootRef}
+            layout={virtualList.layout}
             repIndex={liveChatReplies.repIndex}
             responseCount={displayedResponses.length}
             activeTopBar={activeTopBar}

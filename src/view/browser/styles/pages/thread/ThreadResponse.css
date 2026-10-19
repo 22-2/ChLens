@@ -2,9 +2,6 @@
 .res {
   padding: var(--sys-space-1) var(--sys-space-8) var(--sys-space-3);
   border-inline-start: 3px solid transparent;
-  /* Defer offscreen response painting, except when the minimap needs exact geometry. */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 140px;
 }
 
 /*
@@ -28,12 +25,6 @@
 
 .res--state-reply-to-own {
   border-inline-start-color: var(--sys-color-warning);
-}
-
-.thread-page--with-minimap .res {
-  /* The minimap reads each response's layout box to place its marker. */
-  content-visibility: visible;
-  contain-intrinsic-size: none;
 }
 
 .res__header {

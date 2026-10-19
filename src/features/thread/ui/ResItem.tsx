@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { extractUrlsFromMessage } from "src/core/util/url-media";
 import { useImgurAlbumMedia } from "src/features/media/application/imgur-album";
 import { ResMediaGallery } from "src/features/media/ui/ResMediaGallery";
@@ -75,6 +75,8 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     searchTarget = "all",
     animateEntry = false,
     onEntryDisplayed,
+    ngRevealed,
+    onNgRevealedChange,
   }) => {
     const { window: viewWindow } = useViewSurface();
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
@@ -86,13 +88,23 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     const isNgMatched = res.ng != null || res.class?.includes("ng");
     const isNgActive = !isNgTemporarilyDisabled && isNgMatched;
     const isNgHighlighted = isNgMatched && ngDisplayMode === "highlight-ng";
-    const [isNgRevealed, setIsNgRevealed] = useState(false);
+    // 変更理由: レス一覧は表示範囲外のレスを外すため、レス自身の state だけで持つと、
+    // スクロールで外れて戻ったときに「表示」した内容が折りたたみへ戻る。親が持つ値があれば優先する。
+    const [localNgRevealed, setLocalNgRevealed] = useState(false);
+    const isNgRevealed = ngRevealed ?? localNgRevealed;
+    const setIsNgRevealed = useCallback(
+      (revealed: boolean) => {
+        if (onNgRevealedChange) onNgRevealedChange(res.num, revealed);
+        else setLocalNgRevealed(revealed);
+      },
+      [onNgRevealedChange, res.num],
+    );
     useEffect(() => {
       if (ngDisplayMode !== "soft-ng" && isNgRevealed) {
         // soft-ng以外へ切り替えた後にsoft-ngへ戻した際、本文を自動再表示しない。
         setIsNgRevealed(false);
       }
-    }, [isNgRevealed, ngDisplayMode]);
+    }, [isNgRevealed, ngDisplayMode, setIsNgRevealed]);
     const isEntryAnimated =
       animateEntry &&
       !(
@@ -304,4 +316,7 @@ export interface ResItemProps {
   threadUrl?: string;
   searchQuery?: string;
   searchTarget?: ThreadSearchTarget;
+  /** ソフトNGのレスを「表示」しているか。省略するとレス自身が覚える。 */
+  ngRevealed?: boolean;
+  onNgRevealedChange?: (resNum: number, revealed: boolean) => void;
 }
