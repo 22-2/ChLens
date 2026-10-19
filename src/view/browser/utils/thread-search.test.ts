@@ -37,6 +37,21 @@ describe("filterThreadResponses", () => {
     });
   }
 
+  it("ひらがなとカタカナを区別せずに検索する", () => {
+    const kanaResponses = [
+      createRes(1, "ぎゃく", "名前1", "ID-1"),
+      createRes(2, "ギャク", "名前2", "ID-2"),
+      createRes(3, "別の語", "名前3", "ID-3"),
+    ];
+
+    expect(filterThreadResponses(kanaResponses, "ギャク", "body").map((res) => res.num)).toEqual([
+      1, 2,
+    ]);
+    expect(filterThreadResponses(kanaResponses, "ぎゃく", "body").map((res) => res.num)).toEqual([
+      1, 2,
+    ]);
+  });
+
   it("空の検索語では元のレス一覧をそのまま返す", () => {
     expect(filterThreadResponses(responses, "", "name")).toBe(responses);
   });

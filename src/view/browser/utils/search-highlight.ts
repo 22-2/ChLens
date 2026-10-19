@@ -1,3 +1,8 @@
+import {
+  normalizeSearchCharacter,
+  normalizeSearchText,
+} from "src/view/browser/utils/search-normalize";
+
 export interface SearchMatchRange {
   start: number;
   end: number;
@@ -26,7 +31,8 @@ function normalizeWithOffsets(text: string): NormalizedText {
   for (const character of text) {
     const start = originalIndex;
     originalIndex += character.length;
-    const normalizedCharacter = character.toLowerCase();
+    // フィルタ（thread-search）と同じ正規化を使い、一致範囲の表示がずれないようにする。
+    const normalizedCharacter = normalizeSearchCharacter(character);
     value += normalizedCharacter;
     for (let index = 0; index < normalizedCharacter.length; index++) {
       starts.push(start);
@@ -38,7 +44,7 @@ function normalizeWithOffsets(text: string): NormalizedText {
 }
 
 export function findSearchMatchRanges(text: string, query: string): SearchMatchRange[] {
-  const normalizedQuery = query.toLowerCase();
+  const normalizedQuery = normalizeSearchText(query);
   if (!normalizedQuery) {
     return [];
   }

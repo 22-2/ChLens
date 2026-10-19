@@ -24,6 +24,13 @@ describe("search highlight", () => {
     ]);
   });
 
+  it("ひらがなとカタカナを区別せずに強調する", () => {
+    expect(findSearchMatchRanges("ぎゃくギャク", "ギャク")).toEqual([
+      { start: 0, end: 3 },
+      { start: 3, end: 6 },
+    ]);
+  });
+
   it("文字参照と日本語を表示後の文字列として強調する", () => {
     const result = highlightSearchMatches("A &amp; 日本語", "& 日本語");
 
