@@ -3,6 +3,14 @@ import type { AddressInfo } from "node:net";
 
 import iconv from "iconv-lite";
 
+import {
+  createLargeThreadPost,
+  createLargeThreadPosts,
+  LARGE_THREAD_ID,
+  LARGE_THREAD_TITLE,
+  TINY_PNG,
+} from "./large-thread.mjs";
+
 interface LocalThread {
   id: string;
   title: string;
@@ -25,6 +33,12 @@ export async function startLocalBoard() {
   const server = createServer((request, response) => {
     const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
     requests.push(pathname);
+    if (/^\/img\/\d+\.png$/u.test(pathname)) {
+      // 大きなスレッドの画像URL用。外部の画像サーバーへ通信せずにサムネイルを表示させる。
+      response.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "no-store" });
+      response.end(TINY_PNG);
+      return;
+    }
     const resources: Record<string, string> = {
       "/bbsmenu.html":
         '<html><head><title>テスト板メニュー</title></head><body>\n<br><br><b>テストカテゴリ</b><br>\n<a href="/local/">ローカルテスト板</a><br>\n</body></html>',
@@ -82,6 +96,26 @@ export async function startLocalBoard() {
       thread.posts.push(
         `追加住民<>sage<>2026/10/02(金) 12:02:00 ID:local${String(nextNumber).padStart(3, "0")}<>更新で追加された日本語レス #${nextNumber}<>`,
       );
+    },
+    /** 仮想スクロールの検証用に、高さの違うレスを含む大きなスレッドを板へ追加する。 */
+    addLargeThread(count: number) {
+      threads.push({
+        id: LARGE_THREAD_ID,
+        title: LARGE_THREAD_TITLE,
+        posts: createLargeThreadPosts(count, origin),
+      });
+      return {
+        threadId: LARGE_THREAD_ID,
+        title: LARGE_THREAD_TITLE,
+        threadUrl: `${origin}/test/read.cgi/local/${LARGE_THREAD_ID}/`,
+      };
+    },
+    appendLargeThreadPosts(count: number) {
+      const thread = threads.find((item) => item.id === LARGE_THREAD_ID);
+      if (!thread) throw new Error("大きなスレッドがまだ追加されていません");
+      for (let index = 0; index < count; index++) {
+        thread.posts.push(createLargeThreadPost(thread.posts.length + 1, origin));
+      }
     },
     async close() {
       await new Promise<void>((resolve, reject) => {
