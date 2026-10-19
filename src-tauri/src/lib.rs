@@ -2,6 +2,8 @@ mod cookie_cipher;
 mod data_dir;
 mod download;
 mod download_path;
+#[cfg(feature = "e2e")]
+mod e2e_cdp;
 mod http_transport;
 mod log_level;
 mod monitor_preview;
@@ -84,6 +86,11 @@ pub fn run() {
   // WebView2の保存先は最初のWebViewを作る前に決まるため、Builderより先に差し替える。
   let data_override = data_dir::prepare_override().expect("E2E用の保存先を作成できませんでした");
 
+  #[cfg_attr(not(feature = "e2e"), allow(unused_mut))]
+  let mut context = tauri::generate_context!();
+  #[cfg(feature = "e2e")]
+  e2e_cdp::apply(&mut context);
+
   // Overlayは起動直後から背後のMain操作を受け取れるよう、native側で常時クリック透過にする。
   tauri::Builder::default()
     .plugin(tauri_plugin_sql::Builder::default().build())
@@ -162,6 +169,6 @@ pub fn run() {
       }
       Ok(())
     })
-    .run(tauri::generate_context!())
+    .run(context)
     .expect("error while running tauri application");
 }

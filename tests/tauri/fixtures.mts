@@ -169,7 +169,7 @@ export class TauriApp {
       env: {
         ...process.env,
         CHLENS_DATA_DIR: this.dataDir,
-        WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: `--remote-debugging-port=${port}`,
+        CHLENS_E2E_CDP_PORT: String(port),
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
