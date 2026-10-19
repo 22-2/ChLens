@@ -10,7 +10,9 @@ import { startLocalBoard } from "./localboard.mjs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const EXTENSION_PATH = path.join(__dirname, "../debug/chrome");
+// 性能計測では導入前のビルドと比べるため、読み込む拡張機能のビルドを環境変数で差し替えられるようにする。
+const EXTENSION_PATH =
+  process.env.CHLENS_E2E_EXTENSION_PATH ?? path.join(__dirname, "../debug/chrome");
 const SERVICE_WORKER_TIMEOUT_MS = 10_000;
 const LAUNCH_ATTEMPTS = 3;
 

@@ -65,14 +65,24 @@ function formatDate(resNum: number): string {
   return `2026/10/02(金) ${hh}:${mm}:${ss}`;
 }
 
-export function createLargeThreadPost(resNum: number, origin: string): string {
+export function createLargeThreadPost(
+  resNum: number,
+  origin: string,
+  threadTitle = LARGE_THREAD_TITLE,
+): string {
   const id = `big${String(resNum % 97).padStart(4, "0")}`;
-  const title = resNum === 1 ? LARGE_THREAD_TITLE : "";
+  const title = resNum === 1 ? threadTitle : "";
   return `名無し<>sage<>${formatDate(resNum)} ID:${id}<>${buildMessage(resNum, origin)}<>${title}`;
 }
 
-export function createLargeThreadPosts(count: number, origin: string): string[] {
-  return Array.from({ length: count }, (_, index) => createLargeThreadPost(index + 1, origin));
+export function createLargeThreadPosts(
+  count: number,
+  origin: string,
+  threadTitle = LARGE_THREAD_TITLE,
+): string[] {
+  return Array.from({ length: count }, (_, index) =>
+    createLargeThreadPost(index + 1, origin, threadTitle),
+  );
 }
 
 /** 画像URLのレスへ返す1x1のPNG。サムネイルの枠は固定なので、画像の大きさは問わない。 */

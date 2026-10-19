@@ -26,6 +26,8 @@ export default defineConfig({
       testIgnore: [
         "tauri/**",
         ...(process.env.CHLENS_UI_SHOTS === "true" ? [] : ["**/ui-screenshots.spec.mts"]),
+        // 性能計測は導入前後の比較用で時間もかかるため、pnpm run perf:thread のときだけ実行する。
+        ...(process.env.CHLENS_PERF === "true" ? [] : ["perf/**"]),
       ],
     },
     {

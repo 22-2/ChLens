@@ -134,13 +134,26 @@ export async function expectViewportAnchor(page: Page, expected: ViewportAnchor,
  * アプリ自身の移動経路を使うため、飛び先がDOM上にない仮想化後も同じ手順で検証できる。
  */
 export async function jumpToResponse(page: Page, resNum: number) {
+  await runPaletteCommand(page, String(resNum), new RegExp(`^レス${resNum}へジャンプ`, "u"));
+}
+
+/**
+ * コマンドパレットを開き、入力に対して出た候補を選ぶ。
+ *
+ * コマンドモードは入力欄の先頭に「>」が付く。開いた直後はアプリが「>」を入れる処理と
+ * テストの入力が前後することがあり、「>>…」になって候補が出ないため、値と候補が
+ * そろうまで入力し直す。
+ */
+export async function runPaletteCommand(page: Page, input: string, option: RegExp) {
   await page.keyboard.press("ControlOrMeta+Shift+P");
-  // コマンドモードは入力欄の先頭に「>」が付く。入力欄へのフォーカス移動より先に打鍵すると
-  // 1文字目が落ちるため、keyboard.typeではなく値ごと設定する。
   const commandInput = page.getByPlaceholder("コマンドを検索...");
-  await expect(commandInput).toHaveValue(/^>/u);
-  await commandInput.fill(`>${resNum}`);
-  await page.getByRole("option", { name: new RegExp(`^レス${resNum}へジャンプ`, "u") }).click();
+  const optionLocator = page.getByRole("option", { name: option });
+  await expect(async () => {
+    await commandInput.fill(`>${input}`);
+    await expect(commandInput).toHaveValue(`>${input}`, { timeout: 1000 });
+    await expect(optionLocator).toBeVisible({ timeout: 1000 });
+  }).toPass();
+  await optionLocator.click();
 }
 
 interface VirtualListDebugState {

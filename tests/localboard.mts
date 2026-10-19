@@ -98,17 +98,10 @@ export async function startLocalBoard() {
       );
     },
     /** 仮想スクロールの検証用に、高さの違うレスを含む大きなスレッドを板へ追加する。 */
-    addLargeThread(count: number) {
-      threads.push({
-        id: LARGE_THREAD_ID,
-        title: LARGE_THREAD_TITLE,
-        posts: createLargeThreadPosts(count, origin),
-      });
-      return {
-        threadId: LARGE_THREAD_ID,
-        title: LARGE_THREAD_TITLE,
-        threadUrl: `${origin}/test/read.cgi/local/${LARGE_THREAD_ID}/`,
-      };
+    addLargeThread(count: number, { id = LARGE_THREAD_ID, title = LARGE_THREAD_TITLE } = {}) {
+      // 性能計測では同じ形のスレを複数のタブで開くため、IDとタイトルだけを変えて追加できるようにする。
+      threads.push({ id, title, posts: createLargeThreadPosts(count, origin, title) });
+      return { threadId: id, title, threadUrl: `${origin}/test/read.cgi/local/${id}/` };
     },
     appendLargeThreadPosts(count: number) {
       const thread = threads.find((item) => item.id === LARGE_THREAD_ID);
