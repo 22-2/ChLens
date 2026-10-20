@@ -275,6 +275,18 @@ describe("useWrite", () => {
     expect(result.current.message).toBe("既存の本文\n引用レス");
   });
 
+  it("入力中の本文を、後から届いた同じ内容の下書きで戻さない", () => {
+    let draft = "";
+    const { result, rerender } = renderHook(() => useWrite(THREAD_URL, { draft }));
+
+    act(() => result.current.setMessage("a"));
+    act(() => result.current.setMessage("ab"));
+    draft = "ab";
+    act(() => rerender());
+
+    expect(result.current.message).toBe("ab");
+  });
+
   it("Tauri版は確認HTMLを表示し、同じセッションで確認フォームを再送信する", async () => {
     const action = "https://example.com/test/bbs.cgi";
     fetchTauriWriteMock
