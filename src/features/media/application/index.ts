@@ -14,6 +14,13 @@ export {
   normalizeImgurImageUrl,
   useImgurAlbumMedia,
 } from "./imgur-album";
+export {
+  deleteImgurImage,
+  hasImgurDeletehash,
+  IMGUR_DELETE_TIMEOUT_MS,
+  removeImgurImageLines,
+  subscribeImgurImageDeleted,
+} from "./imgur-deletehash";
 export { IMGUR_UPLOAD_TIMEOUT_MS, uploadImageToImgur } from "./imgur-upload";
 export type {
   TwitterPost,

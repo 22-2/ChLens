@@ -12,12 +12,14 @@ import { isTauriRuntime } from "src/app/platform/runtime";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
+import { deleteImgurImage } from "../application/imgur-deletehash";
 import type { ViewerState } from "./media-viewer-types";
 import {
   approachViewerTransform,
   isViewerTransformSettled,
   type ViewerTransform,
 } from "./media-viewer-zoom";
+import { useImgurDeletableImage } from "./use-imgur-deletable-image";
 import { useMediaViewerStore } from "./use-media-viewer-store";
 
 const logger = createLogger("media");
@@ -48,6 +50,8 @@ export interface MediaViewerProps {
   onZoomReset: () => void;
   onZoomIn: () => void;
   onSave: () => void;
+  canDeleteImage: boolean;
+  onDeleteImage: () => void;
   onClose: () => void;
   onImageLoad: () => void;
   onImageError: () => void;
@@ -135,6 +139,7 @@ export function useMediaViewerController(
   const zoomByWheel = useMediaViewerStore((state) => state.zoomByWheel);
   const setImageLoading = useMediaViewerStore((state) => state.setImageLoading);
   const closeViewerForScope = useCallback(() => closeViewer(scopeId), [closeViewer, scopeId]);
+  const canDeleteImage = useImgurDeletableImage(viewer?.label ?? null);
 
   useEffect(() => {
     return () => {
@@ -515,6 +520,23 @@ export function useMediaViewerController(
     }
   };
 
+  const deleteViewerImage = async () => {
+    const imageUrl = viewer.label;
+    // Imgurからの削除は元に戻せないため、誤操作を防ぐために確認してから実行する。
+    if (!viewWindow.confirm("この画像をImgurから削除します。元に戻せません。よろしいですか？")) {
+      return;
+    }
+
+    try {
+      await deleteImgurImage(imageUrl);
+      closeViewerForScope();
+      toast.success("画像を削除しました");
+    } catch (error) {
+      logger.error("画像の削除に失敗しました", { url: imageUrl, error });
+      toast.error(error instanceof Error ? error.message : "画像を削除できませんでした");
+    }
+  };
+
   return {
     viewer,
     viewerStageRef,
@@ -541,6 +563,10 @@ export function useMediaViewerController(
     },
     onSave: () => {
       void saveViewerImage();
+    },
+    canDeleteImage,
+    onDeleteImage: () => {
+      void deleteViewerImage();
     },
     onClose: closeViewerForScope,
     onImageLoad: () => {

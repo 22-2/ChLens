@@ -1,5 +1,9 @@
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
+import {
+  removeImgurImageLines,
+  subscribeImgurImageDeleted,
+} from "src/features/media/application/imgur-deletehash";
 import { uploadImageToImgur } from "src/features/media/application/imgur-upload";
 import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { readClipboardImage } from "src/view/browser/utils/clipboard";
@@ -44,6 +48,17 @@ export function useImgurUpload({
     const timer = viewWindow.setTimeout(() => setImgurUploadStatus(null), 5_000);
     return () => viewWindow.clearTimeout(timer);
   }, [imgurUploadStatus, viewWindow]);
+
+  useEffect(() => {
+    // 変更理由: ビューアから削除した画像のURLが本文に残ると、投稿時に存在しないリンクを送ってしまうため、
+    // 書き込み欄の本文からも同じ画像の行を取り除く。
+    return subscribeImgurImageDeleted((deletedUrl) => {
+      const nextMessage = removeImgurImageLines(messageRef.current, deletedUrl);
+      if (nextMessage === messageRef.current) return;
+      messageRef.current = nextMessage;
+      setMessage(nextMessage);
+    });
+  }, [setMessage]);
 
   const runImgurUpload = useCallback(
     async (getImage: () => Promise<Blob>) => {

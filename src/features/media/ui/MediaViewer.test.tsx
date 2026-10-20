@@ -28,6 +28,8 @@ describe("MediaViewer", () => {
         onZoomReset={() => {}}
         onZoomIn={() => {}}
         onSave={() => {}}
+        canDeleteImage={false}
+        onDeleteImage={() => {}}
         onClose={() => {}}
         isDetached={false}
         onDetach={() => {}}
@@ -46,6 +48,22 @@ describe("MediaViewer", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
     expect(onSave).toHaveBeenCalledOnce();
+  });
+
+  it("このアプリから投稿した画像では削除ボタンから onDeleteImage を呼ぶ", () => {
+    const onDeleteImage = vi.fn();
+
+    renderMediaViewer({ canDeleteImage: true, onDeleteImage });
+
+    fireEvent.click(screen.getByRole("button", { name: "削除" }));
+
+    expect(onDeleteImage).toHaveBeenCalledOnce();
+  });
+
+  it("削除できない画像では削除ボタンを表示しない", () => {
+    const { container } = renderMediaViewer({ canDeleteImage: false });
+
+    expect(container.querySelector('[title="Imgurから削除"]')).toBeNull();
   });
 
   it("最大化操作を表示せず、別窓では閉じる操作を隠す", () => {
@@ -72,6 +90,8 @@ describe("MediaViewer", () => {
         onZoomReset={() => {}}
         onZoomIn={() => {}}
         onSave={() => {}}
+        canDeleteImage={false}
+        onDeleteImage={() => {}}
         onClose={() => {}}
         isDetached
         onDetach={() => {}}
