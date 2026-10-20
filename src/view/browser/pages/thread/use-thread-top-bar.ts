@@ -4,7 +4,10 @@ import {
   THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
   type ThreadFilterToolbarToggleDetail,
 } from "src/view/browser/utils/filter-toolbar-events";
-import { setFilterToolbarOpen } from "src/view/browser/utils/filter-toolbar-open-state";
+import {
+  setFilterToolbarOpen,
+  setFilterToolbarPinned,
+} from "src/view/browser/utils/filter-toolbar-open-state";
 
 const TOP_BAR_EVENT_BY_MODE = {
   search: "thread-search-toggle",
@@ -67,6 +70,14 @@ export function useThreadTopBar({
       setFilterToolbarOpen(tabId, false);
     };
   }, [activeTopBar, tabId]);
+
+  useEffect(() => {
+    // 常時表示のときは開閉ボタンを隠すため、NavigationBarへ状態を伝える。
+    setFilterToolbarPinned(tabId, pinnedOpen);
+    return () => {
+      setFilterToolbarPinned(tabId, false);
+    };
+  }, [pinnedOpen, tabId]);
 
   const closeTopBar = useCallback(() => {
     if (pinnedOpen) {

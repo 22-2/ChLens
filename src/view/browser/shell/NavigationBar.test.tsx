@@ -10,7 +10,10 @@ import {
 import { NavigationBar } from "src/view/browser/shell/NavigationBar";
 import type { Page } from "src/view/browser/types";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
-import { setFilterToolbarOpen } from "src/view/browser/utils/filter-toolbar-open-state";
+import {
+  setFilterToolbarOpen,
+  setFilterToolbarPinned,
+} from "src/view/browser/utils/filter-toolbar-open-state";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // browser-commands は拡張機能向け依存を含むため、DOM単体テストではAPIモジュールを差し替える。
@@ -674,6 +677,17 @@ describe("NavigationBar", () => {
 
     act(() => setFilterToolbarOpen(viewTab.id, false));
     expect(filterButton).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("フィルタバーが常時表示のスレではフィルタボタンを出さない", () => {
+    render(<NavigationBar />);
+    expect(screen.getByRole("button", { name: "フィルターを開閉" })).toBeInTheDocument();
+
+    act(() => setFilterToolbarPinned(viewTab.id, true));
+    expect(screen.queryByRole("button", { name: "フィルターを開閉" })).not.toBeInTheDocument();
+
+    act(() => setFilterToolbarPinned(viewTab.id, false));
+    expect(screen.getByRole("button", { name: "フィルターを開閉" })).toBeInTheDocument();
   });
 
   it("メニュー項目の『フィルターを開く』でフィルタトグルイベントを送る", () => {

@@ -51,7 +51,10 @@ import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,
 } from "src/view/browser/utils/filter-toolbar-events";
-import { useFilterToolbarOpen } from "src/view/browser/utils/filter-toolbar-open-state";
+import {
+  useFilterToolbarOpen,
+  useFilterToolbarPinned,
+} from "src/view/browser/utils/filter-toolbar-open-state";
 import {
   getManualRefreshScopeKey,
   runManualRefresh,
@@ -413,7 +416,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     [forward],
   );
 
-  const canToggleFilter = isFilterablePageType(viewPage.type);
+  const isFilterToolbarPinned = useFilterToolbarPinned(viewTab.id);
+  // 変更理由: 常時表示のスレはフィルタバーを閉じられないため、開閉の導線を出さない。
+  const canToggleFilter =
+    isFilterablePageType(viewPage.type) && !(viewPage.type === "thread" && isFilterToolbarPinned);
 
   const toggleFilterFromMenu = useCallback(() => {
     // フィルタUIはメニュー項目からのみ開くことで、
