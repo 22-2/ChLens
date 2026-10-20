@@ -109,9 +109,16 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
           value={searchQuery}
           onChange={(event) => onSearchQueryChange(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              onClose();
+            if (event.key !== "Escape") {
+              return;
             }
+            // 変更理由: 入力中のEscapeは文字だけを消し、空欄のときに限りバーを閉じる。
+            // いきなり閉じると入力した絞り込み語まで失われるため、段階的に解除する。
+            if (searchQuery !== "") {
+              onSearchQueryChange("");
+              return;
+            }
+            onClose();
           }}
         />
       </div>
