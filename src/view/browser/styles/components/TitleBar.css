@@ -183,7 +183,7 @@
   /* 変更理由: 70vw基準では狭いペインで中央列が左右を押し出すため、列幅いっぱいまでに抑えて
      省略表示へ任せる。広い画面ではピルが間延びしないよう上限を設ける。 */
   width: 100%;
-  max-width: calc(var(--sys-space-16) * 7);
+  max-width: calc(var(--sys-space-16) * 10);
   overflow: hidden;
   color: var(--sys-color-text);
   font-size: var(--sys-font-size-xs);
@@ -205,7 +205,7 @@
   height: var(--sys-space-11);
   padding: 0 var(--sys-space-6);
   border: 1px solid var(--sys-color-border);
-  border-radius: var(--sys-radius-md);
+  border-radius: var(--sys-radius-lg);
   background: var(--sys-color-surface);
   color: var(--sys-color-text-muted);
   cursor: pointer;
@@ -231,7 +231,7 @@
 .title-bar__omnibar-slot {
   display: none;
   width: 100%;
-  max-width: calc(var(--sys-space-16) * 7);
+  max-width: calc(var(--sys-space-16) * 10);
   min-width: 0;
 }
 
