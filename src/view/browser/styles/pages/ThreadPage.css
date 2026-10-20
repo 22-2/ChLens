@@ -242,6 +242,8 @@
   align-items: stretch;
   /* 変更理由: タイトルバーと同じ面の色にして、上部の帯の色をそろえる。 */
   background: var(--sys-color-surface-muted);
+  /* 変更理由: 色が近いため、上に並ぶタイトルバー側との境目を線で示す。 */
+  border-top: 1px solid var(--sys-color-border);
   border-bottom: 1px solid var(--sys-color-table-heading-border);
 }
 
