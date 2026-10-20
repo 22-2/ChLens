@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import type { ThreadResponseLayout } from "src/features/thread/browser/use-thread-virtual-list";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
@@ -13,7 +14,16 @@ interface ThreadMinimapProps {
   repIndex: Map<number, Set<number>>;
   responseCount: number;
   activeTopBar: "none" | "search" | "filter";
-  onMarkerClick: (resNum: number) => void;
+  /**
+   * ミニマップ上のレスをクリックしたときの処理。
+   * `scroll: false` は、ポインタ操作ですでに移動した位置を維持して強調だけを行う。
+   */
+  onResponseClick: (
+    resNum: number,
+    options: { scroll: boolean; align?: "start" | "center" },
+  ) => void;
+  /** E2Eから表示領域枠の位置を読むためのデバッグ名。 */
+  debugKey?: string;
 }
 
 interface MinimapFrame {
@@ -37,7 +47,20 @@ interface MinimapMetrics {
   listTop: number;
   viewportHeightPx: number;
   viewportTopPx: number;
+  viewportTopOrdinal: number;
+  viewportBottomOrdinal: number;
   maxScrollTop: number;
+}
+
+interface MinimapDebugState {
+  scrollTop: number;
+  totalSize: number;
+  clientHeight: number;
+  frameHeight: number;
+  responseTotal: number;
+  viewportTopOrdinal: number;
+  viewportBottomOrdinal: number;
+  markers: { resNum: number; x: number; y: number }[];
 }
 
 interface MinimapMarkerHit {
@@ -150,7 +173,8 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   repIndex,
   responseCount,
   activeTopBar,
-  onMarkerClick,
+  onResponseClick,
+  debugKey,
 }) => {
   const { window: viewWindow } = useViewSurface();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -161,6 +185,16 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   // 変更理由: pointerUp時のコールバックから最新のスティッチ先を読むため、
   // hoveredResNum stateと同期したrefを持つ。stateだけではclosureが古くなる。
   const hoveredResNumRef = useRef<number | null>(null);
+  const debugStateRef = useRef<MinimapDebugState>({
+    scrollTop: 0,
+    totalSize: 0,
+    clientHeight: 0,
+    frameHeight: 0,
+    responseTotal: 0,
+    viewportTopOrdinal: 0,
+    viewportBottomOrdinal: 0,
+    markers: [],
+  });
   const pointerStateRef = useRef({
     isDragging: false,
     pointerId: -1,
@@ -268,11 +302,13 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       const responseTotal = entries.length;
       let viewportTopPx = 0;
       let viewportHeightPx = 6;
+      let viewportTopOrdinal = 0;
+      let viewportBottomOrdinal = 0;
 
       if (responseTotal > 0) {
         // 現在位置枠もレス順位で描く。実測高さの置換で総高さが変わっても枠が跳ねない。
-        const viewportTopOrdinal = listYToOrdinal(entries, scrollContainer.scrollTop - listTop);
-        const viewportBottomOrdinal = listYToOrdinal(
+        viewportTopOrdinal = listYToOrdinal(entries, scrollContainer.scrollTop - listTop);
+        viewportBottomOrdinal = listYToOrdinal(
           entries,
           scrollContainer.scrollTop - listTop + clientHeight,
         );
@@ -292,6 +328,8 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
         listTop,
         viewportHeightPx,
         viewportTopPx,
+        viewportTopOrdinal,
+        viewportBottomOrdinal,
         maxScrollTop: Math.max(scrollHeight - clientHeight, 0),
       };
     },
@@ -351,7 +389,6 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       }
     }
     responseHitsRef.current = responseHits;
-
     for (const [resNum, responders] of repIndex.entries()) {
       const count = responders.size;
       if (count < 3) {
@@ -384,6 +421,16 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       });
     }
     markerHitsRef.current = markerHits;
+    debugStateRef.current = {
+      scrollTop: scrollContainer.scrollTop,
+      totalSize: metrics.scrollHeight,
+      clientHeight: metrics.clientHeight,
+      frameHeight: cssHeight,
+      responseTotal,
+      viewportTopOrdinal: metrics.viewportTopOrdinal,
+      viewportBottomOrdinal: metrics.viewportBottomOrdinal,
+      markers: markerHits.map(({ resNum, x, y }) => ({ resNum, x, y })),
+    };
 
     ctx.fillStyle = "rgba(26, 115, 232, 0.28)";
     ctx.fillRect(0, metrics.viewportTopPx, cssWidth, metrics.viewportHeightPx);
@@ -635,7 +682,11 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
           const movedDistanceSq = moveX * moveX + moveY * moveY;
           // 軽微なブレはクリックとして扱い、既存のジャンプ＆ハイライトへ委譲する。
           if (movedDistanceSq <= 144) {
-            onMarkerClick(pointerStateRef.current.markerResNum);
+            // 三角はレス枠の中央にあるため、中央揃えでジャンプすると枠の中心と一致する。
+            onResponseClick(pointerStateRef.current.markerResNum, {
+              scroll: true,
+              align: "center",
+            });
           }
         }
       } else if (pointerStateRef.current.mode === "scroll") {
@@ -646,19 +697,24 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
           const moveX = relativeX - pointerStateRef.current.startX;
           const moveY = relativeY - pointerStateRef.current.startY;
           const movedDistanceSq = moveX * moveX + moveY * moveY;
-          // 変更理由: マーカー直上以外へのクリックはスクロールだけだったため、
-          // カーソルが注目レスへスティッチ表示されているときのクリックでは
-          // そのレスへ飛んで強調する。ドラッグによるスクロールでは強調しない。
+          // 変更理由: ポインタダウンでクリック位置までスクロール済みのため、
+          // 離したときにレス先頭へ寄せ直すと表示領域枠が大きく飛ぶ。強調だけを行う。
+          // ドラッグによるスクロールでは強調しない。
           if (movedDistanceSq <= 144 && hoveredResNumRef.current != null) {
-            onMarkerClick(hoveredResNumRef.current);
+            onResponseClick(hoveredResNumRef.current, { scroll: false });
           }
         }
       }
 
       releasePointerState();
     },
-    [frame, onMarkerClick, releasePointerState],
+    [frame, onResponseClick, releasePointerState],
   );
+
+  useEffect(() => {
+    if (!debugKey) return;
+    return registerDebugStateProvider(debugKey, () => debugStateRef.current);
+  }, [debugKey]);
 
   useEffect(() => {
     updateFrame();

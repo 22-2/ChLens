@@ -50,6 +50,8 @@ export interface UseThreadVirtualListResult {
   layout: ThreadResponseLayout;
   highlightKey: VirtualKey | null;
   onHighlightApplied: (key: VirtualKey) => void;
+  /** スクロール位置を変えずにレスを強調する。ミニマップのクリック確定に使う。 */
+  highlightResponse: (resNum: number) => boolean;
   scrollToResponse: (resNum: number, options?: ThreadScrollToResponseOptions) => boolean;
   measureReadState: (
     received: number,
@@ -179,6 +181,15 @@ export function useThreadVirtualList({
     [controller, keys],
   );
 
+  const highlightResponse = useCallback(
+    (resNum: number) => {
+      if (!keys.includes(resNum)) return false;
+      setHighlightKey(resNum);
+      return true;
+    },
+    [keys],
+  );
+
   const measureReadState = useCallback(
     (received: number) => {
       const viewport = controller.getViewport();
@@ -237,6 +248,7 @@ export function useThreadVirtualList({
     layout,
     highlightKey,
     onHighlightApplied,
+    highlightResponse,
     scrollToResponse,
     measureReadState,
     hasResponse,

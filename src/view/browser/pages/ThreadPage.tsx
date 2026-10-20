@@ -633,7 +633,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     debugKey: `virtual-list:${tabId}`,
   });
 
-  const { measureReadState: measureVirtualReadState } = virtualList;
+  const { measureReadState: measureVirtualReadState, highlightResponse: highlightVirtualResponse } =
+    virtualList;
   const getTopVisibleResNum = useCallback(
     () => measureVirtualReadState(1)?.last ?? null,
     [measureVirtualReadState],
@@ -658,13 +659,19 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     measureReadState: virtualList.measureReadState,
   });
 
-  const handleMinimapMarkerClick = useCallback(
-    (resNum: number) => {
-      // ミニマップはポップアップを閉じる状態更新を挟むとCSS animationが打ち消されうるため、
+  const handleMinimapResponseClick = useCallback(
+    (resNum: number, options: { scroll: boolean; align?: "start" | "center" }) => {
+      if (!options.scroll) {
+        // 変更理由: スクロール領域のクリックはポインタダウンで移動済みのため、
+        // 離したときに先頭合わせで再スクロールせず、強調だけを行う。
+        highlightVirtualResponse(resNum);
+        return;
+      }
+      // 変更理由: ミニマップはポップアップを閉じる間も更新し続けるCSS animationで位置がずれるため、
       // 対象レスへ直接ジャンプしてハイライトを確実に開始する。
-      scrollToResponse(resNum, { highlight: true });
+      scrollToResponse(resNum, { highlight: true, align: options.align });
     },
-    [scrollToResponse],
+    [highlightVirtualResponse, scrollToResponse],
   );
 
   const { handleUrlClick, handleUrlContextMenu, openPopupUrlContextMenu } = useUrlHandlers({
@@ -1006,7 +1013,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             repIndex={liveChatReplies.repIndex}
             responseCount={displayedResponses.length}
             activeTopBar={activeTopBar}
-            onMarkerClick={handleMinimapMarkerClick}
+            onResponseClick={handleMinimapResponseClick}
+            debugKey={`thread-minimap:${tabId}`}
           />
           <ThreadScrollFloatingActions
             rootRef={rootRef}

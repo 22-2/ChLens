@@ -1,6 +1,7 @@
 import type { RefObject } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
+import type { ThreadScrollToResponseOptions } from "src/features/thread/browser/use-thread-virtual-list";
 import { container } from "src/service-container/index";
 import type { IReadState, IRes } from "src/service-container/interfaces";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -26,7 +27,7 @@ interface UseThreadReadStateParams {
    * 変更理由: レス一覧を仮想化して範囲外のレスがDOMにないため、DOMを探さず
    * レス一覧の位置計算から移動・計測する関数を呼び出し側から受け取る。
    */
-  scrollToResponse: (resNum: number, options?: { highlight?: boolean; offset?: number }) => boolean;
+  scrollToResponse: (resNum: number, options?: ThreadScrollToResponseOptions) => boolean;
   /** 表示中の位置から既読状態を計測する。表示前なら null。 */
   measureReadState: (
     received: number,
@@ -35,7 +36,7 @@ interface UseThreadReadStateParams {
 
 interface UseThreadReadStateResult {
   isInitialReadStateResolved: boolean;
-  scrollToResponse: (resNum: number, options?: { highlight?: boolean; offset?: number }) => boolean;
+  scrollToResponse: (resNum: number, options?: ThreadScrollToResponseOptions) => boolean;
 }
 
 export function useThreadReadState({

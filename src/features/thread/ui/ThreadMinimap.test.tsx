@@ -134,7 +134,7 @@ describe("ThreadMinimap", () => {
         repIndex={repIndex}
         responseCount={1}
         activeTopBar="none"
-        onMarkerClick={() => {}}
+        onResponseClick={() => {}}
       />,
     );
 
@@ -199,7 +199,7 @@ describe("ThreadMinimap", () => {
         repIndex={repIndex}
         responseCount={1}
         activeTopBar="none"
-        onMarkerClick={() => {}}
+        onResponseClick={() => {}}
       />,
     );
 
@@ -237,7 +237,7 @@ describe("ThreadMinimap", () => {
     expect(document.body.querySelector('[role="tooltip"]')).toBeNull();
   });
 
-  it("スティッチ表示中のクリックで注目レスを飛んで強調する", async () => {
+  it("スティッチ表示中のクリックはスクロール位置を変えず強調だけ行う", async () => {
     const panel = document.createElement("div");
     panel.className = "content-area__tab-panel";
     const host = document.createElement("div");
@@ -280,7 +280,7 @@ describe("ThreadMinimap", () => {
 
     const rootRef = { current: host } as React.RefObject<HTMLDivElement | null>;
     const repIndex = new Map<number, Set<number>>([[10, new Set([11, 12, 13])]]);
-    const onMarkerClick = vi.fn();
+    const onResponseClick = vi.fn();
     const { container } = render(
       <ThreadMinimap
         rootRef={rootRef}
@@ -288,7 +288,7 @@ describe("ThreadMinimap", () => {
         repIndex={repIndex}
         responseCount={1}
         activeTopBar="none"
-        onMarkerClick={onMarkerClick}
+        onResponseClick={onResponseClick}
       />,
     );
 
@@ -324,9 +324,25 @@ describe("ThreadMinimap", () => {
       pointerType: "mouse",
     });
 
-    // 変更理由: スティッチ表示中のクリックは対象レスへ飛んで強調し、飛び先を見失わないようにする。
-    expect(onMarkerClick).toHaveBeenCalledTimes(1);
-    expect(onMarkerClick).toHaveBeenCalledWith(10);
+    // ポインタダウンで移動済みの位置を維持し、離したときは強調だけを行う。
+    expect(onResponseClick).toHaveBeenCalledTimes(1);
+    expect(onResponseClick).toHaveBeenCalledWith(10, { scroll: false });
+
+    // 三角マーカー上はレス枠の中央を指すため、中央揃えでジャンプする。
+    fireEvent.pointerDown(canvas, {
+      clientX: 982,
+      clientY: 300,
+      pointerId: 2,
+      pointerType: "mouse",
+      button: 0,
+    });
+    fireEvent.pointerUp(canvas, {
+      clientX: 982,
+      clientY: 300,
+      pointerId: 2,
+      pointerType: "mouse",
+    });
+    expect(onResponseClick).toHaveBeenLastCalledWith(10, { scroll: true, align: "center" });
   });
 
   it("ドラッグによるスクロールでは注目レスを強調しない", async () => {
@@ -372,7 +388,7 @@ describe("ThreadMinimap", () => {
 
     const rootRef = { current: host } as React.RefObject<HTMLDivElement | null>;
     const repIndex = new Map<number, Set<number>>([[10, new Set([11, 12, 13])]]);
-    const onMarkerClick = vi.fn();
+    const onResponseClick = vi.fn();
     const { container } = render(
       <ThreadMinimap
         rootRef={rootRef}
@@ -380,7 +396,7 @@ describe("ThreadMinimap", () => {
         repIndex={repIndex}
         responseCount={1}
         activeTopBar="none"
-        onMarkerClick={onMarkerClick}
+        onResponseClick={onResponseClick}
       />,
     );
 
@@ -415,7 +431,7 @@ describe("ThreadMinimap", () => {
 
     // 変更理由: ドラッグは視点移動が目的なので、離しても対象レスの強調は行わない。
     expect(panel.scrollTo).toHaveBeenCalled();
-    expect(onMarkerClick).not.toHaveBeenCalled();
+    expect(onResponseClick).not.toHaveBeenCalled();
   });
 
   it("高さの実測値が変わっても人気レスの縦位置は変わらない", async () => {
@@ -460,7 +476,7 @@ describe("ThreadMinimap", () => {
         repIndex={repIndex}
         responseCount={2}
         activeTopBar="none"
-        onMarkerClick={() => {}}
+        onResponseClick={() => {}}
       />,
     );
 
@@ -490,7 +506,7 @@ describe("ThreadMinimap", () => {
         repIndex={repIndex}
         responseCount={2}
         activeTopBar="none"
-        onMarkerClick={() => {}}
+        onResponseClick={() => {}}
       />,
     );
 
