@@ -3,7 +3,15 @@ import {
   isWriteAuthToken,
   resolveWriteAuthCodeUrl,
 } from "packages/chlib/src/index";
-import { type FormEvent, type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { platform } from "src/app";
 import { wait } from "src/app/Defer";
 import { createLogger } from "src/app/logger";
@@ -286,14 +294,16 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
     }
   }, [clearSubmitWatchdog, clearTauriWriteAttempt, threadUrl]);
 
-  useEffect(() => {
+  // 変更理由: 別窓で開いたまま同じスレへ返信引用を追加するとthreadUrlは変わらない。
+  // URL切替用effectだけで下書きを同期すると、その引用がtextareaへ届かないため、
+  // 外部セッションの本文変更を独立して反映する。
+  // 変更理由: useLayoutEffectで描画直後に同期する。Preact互換ではuseEffectが描画後に遅れて走り、
+  // その間に打たれた文字を古い下書きで上書きして、文字が戻りキャレットが末尾へ飛ぶため。
+  useLayoutEffect(() => {
     if (draft === undefined) {
       return;
     }
 
-    // 変更理由: 別窓で開いたまま同じスレへ返信引用を追加するとthreadUrlは変わらない。
-    // URL切替用effectだけで下書きを同期すると、その引用がtextareaへ届かないため、
-    // 外部セッションの本文変更を独立して反映する。
     // oxlint-disable-next-line react/set-state-in-effect -- 呼び出し元が下書きを制御しない場合も入力状態を保持するため、外部更新をローカルstateへ同期する。
     setMessageState((currentMessage) => (currentMessage === draft ? currentMessage : draft));
   }, [draft]);

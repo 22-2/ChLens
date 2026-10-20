@@ -240,7 +240,10 @@
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
-  background: var(--sys-color-table-heading-bg);
+  /* 変更理由: タイトルバーと同じ面の色にして、上部の帯の色をそろえる。 */
+  background: var(--sys-color-surface-muted);
+  /* 変更理由: 色が近いため、上に並ぶタイトルバー側との境目を線で示す。 */
+  border-top: 1px solid var(--sys-color-border);
   border-bottom: 1px solid var(--sys-color-table-heading-border);
 }
 
@@ -273,6 +276,11 @@
 
 .thread-page__filter-btn:hover {
   background: var(--sys-color-list-hover-bg);
+}
+
+/* 変更理由: 並んだフィルタ項目の境界を線で示し、どこまでが1つの項目か分かるようにする。 */
+.thread-page__filter-btn + .thread-page__filter-btn {
+  border-left: 1px solid var(--sys-color-border);
 }
 
 .thread-page__filter-btn--empty {

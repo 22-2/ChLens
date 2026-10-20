@@ -1,4 +1,4 @@
-import { type RefObject, useEffect } from "react";
+import { type RefObject, useLayoutEffect } from "react";
 import { isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 export interface PopupViewportBounds {
@@ -90,7 +90,9 @@ function adjustPopupOverflow(
  * 補正では画面下端・ステータスバー領域へはみ出すため、全ポップアップで変化を監視する。
  */
 export function useAdjustOverflow(ref: RefObject<HTMLElement | null>, margin = 8): void {
-  useEffect(() => {
+  // 変更理由: useEffectは描画後に遅れて走るため、はみ出した位置が一瞬見えてから補正されてガクッと動いていた。
+  // useLayoutEffectで描画直後の初回補正を画面に出る前に終わらせる。
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
 

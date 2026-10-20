@@ -121,6 +121,54 @@ describe("ThreadPageTopBar", () => {
     expect(screen.queryByRole("button", { name: /全て/u })).not.toBeInTheDocument();
   });
 
+  it("入力中にEscapeを押すと入力欄を空にし、バーは開いたままにする", () => {
+    const onClose = vi.fn();
+    const onSearchQueryChange = vi.fn();
+    render(
+      <ThreadPageTopBar
+        activeTopBar="filter"
+        filter="all"
+        filterCounts={COUNTS}
+        onClose={onClose}
+        onFilterChange={vi.fn()}
+        onSearchTargetChange={vi.fn()}
+        onSearchQueryChange={onSearchQueryChange}
+        searchFocusKey={0}
+        searchQuery="abc"
+        searchTarget="all"
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
+
+    expect(onSearchQueryChange).toHaveBeenLastCalledWith("");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("入力欄が空のままEscapeを押すとバーを閉じる", () => {
+    const onClose = vi.fn();
+    const onSearchQueryChange = vi.fn();
+    render(
+      <ThreadPageTopBar
+        activeTopBar="filter"
+        filter="all"
+        filterCounts={COUNTS}
+        onClose={onClose}
+        onFilterChange={vi.fn()}
+        onSearchTargetChange={vi.fn()}
+        onSearchQueryChange={onSearchQueryChange}
+        searchFocusKey={0}
+        searchQuery=""
+        searchTarget="all"
+      />,
+    );
+
+    fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onSearchQueryChange).not.toHaveBeenCalled();
+  });
+
   it("選択中のフィルタ項目をもう一度押すと解除する", () => {
     const onFilterChange = vi.fn();
     render(
