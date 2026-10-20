@@ -96,6 +96,14 @@
   opacity: 1;
 }
 
+/* ホバー中の「レス n」はキャンバス中央固定ではなく、青線と同じカーソルYへ追従させる。 */
+.thread-page__minimap-tooltip {
+  position: fixed;
+  z-index: var(--sys-z-tooltip);
+  transform: translate(-100%, -50%);
+  pointer-events: none;
+}
+
 /* 変更理由: 最下部操作を本文の流れから切り離し、レスの高さやミニマップの再描画で
    ボタン位置がずれないようviewport固定のフローティング操作にする。 */
 .thread-page__floating-action {

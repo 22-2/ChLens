@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ThreadResponseLayout } from "src/features/thread/browser/use-thread-virtual-list";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import { Tooltip } from "src/view/browser/ui/Tooltip";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 interface ThreadMinimapProps {
@@ -24,13 +23,21 @@ interface MinimapFrame {
   height: number;
 }
 
+interface MinimapResponseEntry {
+  resNum: number;
+  top: number;
+  size: number;
+  /** 表示中のレスの中での順位。高さの実測値が変わっても動かない。 */
+  ordinal: number;
+}
+
 interface MinimapMetrics {
   scrollHeight: number;
   clientHeight: number;
-  scale: number;
+  listTop: number;
   viewportHeightPx: number;
   viewportTopPx: number;
-  maxViewportTop: number;
+  maxScrollTop: number;
 }
 
 interface MinimapMarkerHit {
@@ -52,6 +59,9 @@ const MINIMAP_WIDTH_RATIO = 0.08;
 const MINIMAP_CONTENT_GAP = 10;
 const MINIMAP_MIN_DRAWABLE_HEIGHT = 80;
 const MINIMAP_MARKER_SNAP_DISTANCE = 8;
+const MINIMAP_MARKER_WIDTH = 8;
+const MINIMAP_MARKER_HALF_HEIGHT = 5;
+const MINIMAP_TOOLTIP_EDGE_PADDING = 16;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -71,6 +81,67 @@ function isSameFrame(left: MinimapFrame | null, right: MinimapFrame | null): boo
     left.width === right.width &&
     left.height === right.height
   );
+}
+
+function collectResponses(layout: ThreadResponseLayout): MinimapResponseEntry[] {
+  const entries: MinimapResponseEntry[] = [];
+  layout.forEachResponse((resNum, top, size) => {
+    if (size === 0) return;
+    entries.push({ resNum, top, size, ordinal: entries.length });
+  });
+  return entries;
+}
+
+/**
+ * リスト内のピクセル位置を「何番目のレスか」の割合へ変換する。
+ *
+ * 仮想スクロールでは未実測レスの高さが推定値から実測値へ置き換わり、全体の高さと
+ * 各レスの位置がスクロール中も変わる。ピクセル位置をそのままミニマップへ写すと
+ * マーカーが動いて見えるため、位置はレス順位を基準にし、レス内の割合だけ高さを使う。
+ */
+function listYToOrdinal(entries: readonly MinimapResponseEntry[], listY: number): number {
+  if (entries.length === 0) {
+    return 0;
+  }
+
+  const first = entries[0]!;
+  const last = entries[entries.length - 1]!;
+  if (listY <= first.top) {
+    return 0;
+  }
+  if (listY >= last.top + last.size) {
+    return entries.length;
+  }
+
+  let low = 0;
+  let high = entries.length - 1;
+  while (low < high) {
+    const middle = (low + high + 1) >> 1;
+    if (entries[middle]!.top <= listY) low = middle;
+    else high = middle - 1;
+  }
+
+  const entry = entries[low]!;
+  const fraction = entry.size > 0 ? clamp((listY - entry.top) / entry.size, 0, 1) : 0;
+  return entry.ordinal + fraction;
+}
+
+/** レス順位をリスト内のピクセル位置へ戻す。ミニマップのクリック位置から移動先を決める。 */
+function ordinalToListY(entries: readonly MinimapResponseEntry[], ordinal: number): number {
+  if (entries.length === 0) {
+    return 0;
+  }
+  if (ordinal <= 0) {
+    return entries[0]!.top;
+  }
+  if (ordinal >= entries.length) {
+    const last = entries[entries.length - 1]!;
+    return last.top + last.size;
+  }
+
+  const index = Math.floor(ordinal);
+  const entry = entries[index]!;
+  return entry.top + entry.size * (ordinal - index);
 }
 
 export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
@@ -101,6 +172,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   });
   const [frame, setFrame] = useState<MinimapFrame | null>(null);
   const [hoveredResNum, setHoveredResNum] = useState<number | null>(null);
+  const [hoverLineY, setHoverLineY] = useState<number | null>(null);
 
   const getScrollContainer = useCallback((): HTMLElement | null => {
     const host = rootRef.current;
@@ -182,39 +254,59 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     setHostMinimapWidth(width + MINIMAP_CONTENT_GAP);
   }, [getScrollContainer, getTopBarRoot, responseCount, setHostMinimapWidth, viewWindow]);
 
-  const getMetrics = useCallback((): MinimapMetrics | null => {
-    const scrollContainer = getScrollContainer();
-    const currentFrame = frame;
-    if (!scrollContainer || !currentFrame) {
-      return null;
-    }
+  const getMetrics = useCallback(
+    (entries: readonly MinimapResponseEntry[]): MinimapMetrics | null => {
+      const scrollContainer = getScrollContainer();
+      const currentFrame = frame;
+      const listTop = layout.getListTop();
+      if (!scrollContainer || !currentFrame || listTop === null) {
+        return null;
+      }
 
-    const scrollHeight = Math.max(scrollContainer.scrollHeight, 1);
-    const clientHeight = Math.max(scrollContainer.clientHeight, 1);
-    const scale = currentFrame.height / scrollHeight;
-    const viewportHeightPx = Math.max(clientHeight * scale, 6);
-    const viewportTopPx = scrollContainer.scrollTop * scale;
-    const maxViewportTop = Math.max(currentFrame.height - viewportHeightPx, 0);
+      const scrollHeight = Math.max(scrollContainer.scrollHeight, 1);
+      const clientHeight = Math.max(scrollContainer.clientHeight, 1);
+      const responseTotal = entries.length;
+      let viewportTopPx = 0;
+      let viewportHeightPx = 6;
 
-    return {
-      scrollHeight,
-      clientHeight,
-      scale,
-      viewportHeightPx,
-      viewportTopPx,
-      maxViewportTop,
-    };
-  }, [frame, getScrollContainer]);
+      if (responseTotal > 0) {
+        // 現在位置枠もレス順位で描く。実測高さの置換で総高さが変わっても枠が跳ねない。
+        const viewportTopOrdinal = listYToOrdinal(entries, scrollContainer.scrollTop - listTop);
+        const viewportBottomOrdinal = listYToOrdinal(
+          entries,
+          scrollContainer.scrollTop - listTop + clientHeight,
+        );
+        const topRatio = viewportTopOrdinal / responseTotal;
+        const bottomRatio = viewportBottomOrdinal / responseTotal;
+        viewportHeightPx = Math.max((bottomRatio - topRatio) * currentFrame.height, 6);
+        viewportTopPx = clamp(
+          topRatio * currentFrame.height,
+          0,
+          Math.max(currentFrame.height - viewportHeightPx, 0),
+        );
+      }
+
+      return {
+        scrollHeight,
+        clientHeight,
+        listTop,
+        viewportHeightPx,
+        viewportTopPx,
+        maxScrollTop: Math.max(scrollHeight - clientHeight, 0),
+      };
+    },
+    [frame, getScrollContainer, layout],
+  );
 
   const draw = useCallback(() => {
     markerHitsRef.current = [];
     responseHitsRef.current = [];
     const canvas = canvasRef.current;
     const scrollContainer = getScrollContainer();
-    const responsesTop = layout.getListTop();
-    const metrics = getMetrics();
+    const entries = collectResponses(layout);
+    const metrics = getMetrics(entries);
     const currentFrame = frame;
-    if (!canvas || !scrollContainer || responsesTop === null || !metrics || !currentFrame) {
+    if (!canvas || !scrollContainer || !metrics || !currentFrame) {
       return;
     }
 
@@ -246,17 +338,19 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     const markerHitRadius = 12;
     const markerHits: MinimapMarkerHit[] = [];
     const responseHits: MinimapResponseHit[] = [];
+    const entryByResNum = new Map(entries.map((entry) => [entry.resNum, entry]));
+    const responseTotal = entries.length;
 
-    layout.forEachResponse((resNum, itemTop, size) => {
-      if (size === 0) return;
-      const top = (responsesTop + itemTop) * metrics.scale;
-      responseHits.push({ resNum, top, bottom: top + size * metrics.scale });
-    });
+    if (responseTotal > 0) {
+      for (const entry of entries) {
+        responseHits.push({
+          resNum: entry.resNum,
+          top: (entry.ordinal / responseTotal) * cssHeight,
+          bottom: ((entry.ordinal + 1) / responseTotal) * cssHeight,
+        });
+      }
+    }
     responseHitsRef.current = responseHits;
-
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
-    ctx.font = "bold 12px system-ui, sans-serif";
 
     for (const [resNum, responders] of repIndex.entries()) {
       const count = responders.size;
@@ -264,17 +358,23 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
         continue;
       }
 
-      const box = layout.getResponseBox(resNum);
-      if (!box || box.size === 0) {
+      const entry = entryByResNum.get(resNum);
+      if (!entry) {
         continue;
       }
 
-      const markerHeight = Math.max(box.size * metrics.scale, 4);
-      const centerY = (responsesTop + box.top) * metrics.scale + markerHeight / 2;
+      // レス順位の中点へ置く。`size` はレス内の位置補間だけに使い、マーカー自体は動かさない。
+      const centerY = ((entry.ordinal + 0.5) / responseTotal) * cssHeight;
       const y = clamp(centerY, minY, maxY);
 
+      // フォントの文字中心は環境で数pxずれるため、パスで描いてホバー線と中心を厳密に合わせる。
       ctx.fillStyle = count >= 5 ? "rgba(220, 40, 40, 0.95)" : "rgba(255, 140, 0, 0.9)";
-      ctx.fillText("◀", markerX, y);
+      ctx.beginPath();
+      ctx.moveTo(markerX - MINIMAP_MARKER_WIDTH, y);
+      ctx.lineTo(markerX, y - MINIMAP_MARKER_HALF_HEIGHT);
+      ctx.lineTo(markerX, y + MINIMAP_MARKER_HALF_HEIGHT);
+      ctx.closePath();
+      ctx.fill();
       // 実際の三角記号より広い当たり判定を持たせ、細いミニマップでもクリックしやすくする。
       markerHits.push({
         resNum,
@@ -382,6 +482,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       hoverLineYRef.current = nextY;
       hoveredResNumRef.current = nextResNum;
       setHoveredResNum((current) => (current === nextResNum ? current : nextResNum));
+      setHoverLineY((current) => (current === nextY ? current : nextY));
       scheduleDraw();
     },
     [scheduleDraw],
@@ -390,24 +491,28 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   const scrollByPointer = useCallback(
     (relativeY: number, useDragOffset: boolean) => {
       const scrollContainer = getScrollContainer();
-      const metrics = getMetrics();
-      if (!scrollContainer || !metrics) {
+      const currentFrame = frame;
+      const entries = collectResponses(layout);
+      const metrics = getMetrics(entries);
+      if (!scrollContainer || !currentFrame || !metrics || entries.length === 0) {
         return;
       }
 
       const dragOffset = pointerStateRef.current.dragOffset;
-      let viewportTop = useDragOffset
-        ? relativeY - dragOffset
-        : relativeY - metrics.viewportHeightPx / 2;
-      viewportTop = clamp(viewportTop, 0, metrics.maxViewportTop);
+      const bandTop = clamp(
+        relativeY - (useDragOffset ? dragOffset : metrics.viewportHeightPx / 2),
+        0,
+        currentFrame.height,
+      );
+      const ordinal = (bandTop / currentFrame.height) * entries.length;
+      const targetTop = metrics.listTop + ordinalToListY(entries, ordinal);
 
-      const scrollableRange = metrics.scrollHeight - metrics.clientHeight;
-      const ratio = metrics.maxViewportTop === 0 ? 0 : viewportTop / metrics.maxViewportTop;
-      const targetTop = scrollableRange <= 0 ? 0 : ratio * scrollableRange;
-
-      scrollContainer.scrollTo({ top: targetTop, behavior: "auto" });
+      scrollContainer.scrollTo({
+        top: clamp(targetTop, 0, metrics.maxScrollTop),
+        behavior: "auto",
+      });
     },
-    [getMetrics, getScrollContainer],
+    [frame, getMetrics, getScrollContainer, layout],
   );
 
   const handlePointerDown = useCallback(
@@ -416,7 +521,8 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
         return;
       }
 
-      const metrics = getMetrics();
+      const entries = collectResponses(layout);
+      const metrics = getMetrics(entries);
       const currentFrame = frame;
       if (!metrics || !currentFrame) {
         return;
@@ -456,7 +562,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
 
       scrollByPointer(relativeY, inViewport);
     },
-    [findMarkerByPoint, frame, getMetrics, scrollByPointer, updateHoverLine],
+    [findMarkerByPoint, frame, getMetrics, layout, scrollByPointer, updateHoverLine],
   );
 
   const handlePointerMove = useCallback(
@@ -491,6 +597,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     hoverLineYRef.current = null;
     hoveredResNumRef.current = null;
     setHoveredResNum(null);
+    setHoverLineY(null);
     scheduleDraw();
   }, [scheduleDraw]);
 
@@ -626,20 +733,30 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     };
   }, [frame]);
 
+  const tooltipStyle = useMemo<React.CSSProperties | undefined>(() => {
+    if (!frame || hoverLineY == null) {
+      return undefined;
+    }
+    // ミニマップのカーソルYをそのまま使う。RadixのTrigger基準ではキャンバス中央に固定されるため、
+    // ホバー位置に追従するラベルは自前で配置する。端では見切れない位置へ寄せる。
+    const top = clamp(
+      frame.top + hoverLineY,
+      frame.top + MINIMAP_TOOLTIP_EDGE_PADDING,
+      frame.top + frame.height - MINIMAP_TOOLTIP_EDGE_PADDING,
+    );
+    return {
+      top: `${top}px`,
+      left: `calc(${frame.left}px - var(--sys-space-6))`,
+    };
+  }, [frame, hoverLineY]);
+
   if (!frame) {
     return null;
   }
 
   return (
-    <div className="thread-page__minimap" style={style} aria-hidden="true">
-      <Tooltip
-        label={hoveredResNum == null ? "" : `レス ${hoveredResNum}`}
-        disabled={hoveredResNum == null}
-        open={hoveredResNum != null}
-        position="left"
-        offset={12}
-        zIndex="var(--sys-z-tooltip)"
-      >
+    <>
+      <div className="thread-page__minimap" style={style} aria-hidden="true">
         <canvas
           ref={canvasRef}
           className="thread-page__minimap-canvas"
@@ -649,7 +766,16 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
         />
-      </Tooltip>
-    </div>
+      </div>
+      {hoveredResNum != null && hoverLineY != null && (
+        <div
+          className="browser-tooltip thread-page__minimap-tooltip"
+          role="tooltip"
+          style={tooltipStyle}
+        >
+          {`レス ${hoveredResNum}`}
+        </div>
+      )}
+    </>
   );
 };

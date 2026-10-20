@@ -14,7 +14,8 @@ const CANVAS_CONTEXT_STUB = {
   moveTo: vi.fn(),
   lineTo: vi.fn(),
   stroke: vi.fn(),
-  fillText: vi.fn(),
+  closePath: vi.fn(),
+  fill: vi.fn(),
   fillRect: vi.fn(),
   strokeRect: vi.fn(),
   restore: vi.fn(),
@@ -208,16 +209,17 @@ describe("ThreadMinimap", () => {
       return element as HTMLCanvasElement;
     });
 
-    // 人気レスのマーカーは 81px。8px以内の 82px ではその位置へ吸着する。
+    // レスが1件なのでマーカーは中央の 300px。8px以内の 302px ではその位置へ吸着する。
     fireEvent.pointerMove(canvas, {
       clientX: 920,
-      clientY: 82,
+      clientY: 302,
       pointerId: 1,
       pointerType: "mouse",
     });
-    expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenLastCalledWith(0, 81.5);
-    expect(CANVAS_CONTEXT_STUB.lineTo).toHaveBeenLastCalledWith(82, 81.5);
+    expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenLastCalledWith(0, 300.5);
+    expect(CANVAS_CONTEXT_STUB.lineTo).toHaveBeenLastCalledWith(82, 300.5);
     expect(document.body.querySelector('[role="tooltip"]')).toHaveTextContent("レス 10");
+    expect(document.body.querySelector('[role="tooltip"]')).toHaveStyle({ top: "300px" });
 
     fireEvent.pointerMove(canvas, {
       clientX: 920,
@@ -226,10 +228,12 @@ describe("ThreadMinimap", () => {
       pointerType: "mouse",
     });
     expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenLastCalledWith(0, 100.5);
+    // ラベルはキャンバス中央固定ではなく、ホバー中の青線と同じYへ動く。
+    expect(document.body.querySelector('[role="tooltip"]')).toHaveStyle({ top: "100px" });
 
-    const lineCount = CANVAS_CONTEXT_STUB.moveTo.mock.calls.length;
+    const lineCount = CANVAS_CONTEXT_STUB.moveTo.mock.calls.filter(([x]) => x === 0).length;
     fireEvent.pointerLeave(canvas);
-    expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenCalledTimes(lineCount);
+    expect(CANVAS_CONTEXT_STUB.moveTo.mock.calls.filter(([x]) => x === 0)).toHaveLength(lineCount);
     expect(document.body.querySelector('[role="tooltip"]')).toBeNull();
   });
 
@@ -300,7 +304,7 @@ describe("ThreadMinimap", () => {
     // マーカー直上ではなく中央寄りのクリックでも、ホバーが吸着していれば注目レス扱いにする。
     fireEvent.pointerMove(canvas, {
       clientX: 920,
-      clientY: 82,
+      clientY: 306,
       pointerId: 1,
       pointerType: "mouse",
     });
@@ -308,14 +312,14 @@ describe("ThreadMinimap", () => {
 
     fireEvent.pointerDown(canvas, {
       clientX: 920,
-      clientY: 82,
+      clientY: 306,
       pointerId: 1,
       pointerType: "mouse",
       button: 0,
     });
     fireEvent.pointerUp(canvas, {
       clientX: 920,
-      clientY: 82,
+      clientY: 306,
       pointerId: 1,
       pointerType: "mouse",
     });
@@ -412,5 +416,88 @@ describe("ThreadMinimap", () => {
     // 変更理由: ドラッグは視点移動が目的なので、離しても対象レスの強調は行わない。
     expect(panel.scrollTo).toHaveBeenCalled();
     expect(onMarkerClick).not.toHaveBeenCalled();
+  });
+
+  it("高さの実測値が変わっても人気レスの縦位置は変わらない", async () => {
+    const panel = document.createElement("div");
+    panel.className = "content-area__tab-panel";
+    const host = document.createElement("div");
+    host.className = "thread-page";
+    const responses = document.createElement("div");
+    responses.className = "thread-page__responses";
+    host.append(responses);
+    panel.append(host);
+    document.body.append(panel);
+
+    Object.defineProperties(panel, {
+      clientWidth: { configurable: true, value: 1000 },
+      offsetWidth: { configurable: true, value: 1012 },
+      clientHeight: { configurable: true, value: 600 },
+      scrollHeight: { configurable: true, value: 2400 },
+      scrollTop: { configurable: true, value: 120 },
+    });
+    panel.scrollTo = vi.fn();
+    panel.getBoundingClientRect = () =>
+      ({
+        top: 0,
+        left: 0,
+        right: 1000,
+        bottom: 600,
+        width: 1000,
+        height: 600,
+      }) as DOMRect;
+    responses.getBoundingClientRect = () => panel.getBoundingClientRect();
+
+    const rootRef = { current: host } as React.RefObject<HTMLDivElement | null>;
+    const repIndex = new Map<number, Set<number>>([[20, new Set([21, 22, 23])]]);
+    const { container, rerender } = render(
+      <ThreadMinimap
+        rootRef={rootRef}
+        layout={createResponseLayout([
+          [10, 0, 100],
+          [20, 200, 100],
+        ])}
+        repIndex={repIndex}
+        responseCount={2}
+        activeTopBar="none"
+        onMarkerClick={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector(".thread-page__minimap-canvas")).toBeInTheDocument();
+    });
+
+    const markerY = (): number => {
+      // 三角の先端（markerX - 幅8px）を moveTo したYがマーカー中心。
+      const call = [...CANVAS_CONTEXT_STUB.moveTo.mock.calls]
+        .reverse()
+        .find((args) => args[0] === 68);
+      expect(call).toBeDefined();
+      return call![1] as number;
+    };
+    expect(markerY()).toBe(450);
+
+    const drawCount = CANVAS_CONTEXT_STUB.moveTo.mock.calls.length;
+    // 実測により先頭レスの高さが伸び、全体の高さと人気レスまでのピクセル距離が変わる状況を再現する。
+    rerender(
+      <ThreadMinimap
+        rootRef={rootRef}
+        layout={createResponseLayout([
+          [10, 0, 400],
+          [20, 700, 100],
+        ])}
+        repIndex={repIndex}
+        responseCount={2}
+        activeTopBar="none"
+        onMarkerClick={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(CANVAS_CONTEXT_STUB.moveTo.mock.calls.length).toBeGreaterThan(drawCount);
+    });
+    // レス順位は 2件中の2番目のままなので、高さが変わってもマーカーは中央下（450px）に留まる。
+    expect(markerY()).toBe(450);
   });
 });
