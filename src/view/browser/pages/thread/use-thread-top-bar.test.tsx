@@ -10,11 +10,11 @@ import { afterEach, describe, expect, it } from "vite-plus/test";
 function TopBarHarness({
   isActive = true,
   tabId = "tab-1",
-  openByDefault = false,
+  pinnedOpen = false,
 }: {
   isActive?: boolean;
   tabId?: string;
-  openByDefault?: boolean;
+  pinnedOpen?: boolean;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<ThreadFilter>("all");
@@ -31,7 +31,7 @@ function TopBarHarness({
     searchQuery,
     setSearchQuery,
     clearFilter: () => setFilter("all"),
-    openByDefault,
+    pinnedOpen,
   });
 
   return (
@@ -55,21 +55,36 @@ describe("useThreadTopBar", () => {
     cleanup();
   });
 
-  it("既定で開く設定のときは開いた状態で始まり、入力欄へのフォーカスを抑える", () => {
-    render(<TopBarHarness openByDefault />);
+  it("常時表示の設定のときは開いた状態で始まり、入力欄へのフォーカスを抑える", () => {
+    render(<TopBarHarness pinnedOpen />);
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
     expect(screen.getByTestId("suppress-initial-focus")).toHaveTextContent("true");
   });
 
-  it("既定で開く設定でも、閉じて開き直した後は通常どおりフォーカスする", () => {
-    render(<TopBarHarness openByDefault />);
+  it("常時表示の設定のときは閉じる操作を無視し、検索語とフィルタを保つ", () => {
+    render(<TopBarHarness pinnedOpen />);
 
+    fireEvent.click(screen.getByRole("button", { name: "set query" }));
     fireEvent.click(screen.getByRole("button", { name: "close" }));
-    fireEvent.click(screen.getByRole("button", { name: "open filter" }));
+    fireEvent.click(screen.getByRole("button", { name: "wheel close" }));
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
-    expect(screen.getByTestId("suppress-initial-focus")).toHaveTextContent("false");
+    expect(screen.getByTestId("search-query")).toHaveTextContent("abc");
+  });
+
+  it("常時表示の設定のときはタイトルバー相当のトグルイベントで閉じない", () => {
+    render(<TopBarHarness pinnedOpen />);
+
+    act(() => {
+      window.dispatchEvent(
+        new window.CustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, {
+          detail: { tabId: "tab-1" },
+        }),
+      );
+    });
+
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
   });
 
   it("設定が無いときは閉じた状態で始まる", () => {

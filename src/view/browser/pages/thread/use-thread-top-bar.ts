@@ -20,8 +20,8 @@ interface UseThreadTopBarParams {
   setSearchQuery: (query: string) => void;
   clearFilter: () => void;
   hasActiveFilter?: boolean;
-  /** 設定により、検索語やフィルタがなくてもバーを開いた状態で始める。 */
-  openByDefault?: boolean;
+  /** 設定がONのとき、バーを常時表示し、閉じる操作とタイトルバーからの切り替えを受け付けない。 */
+  pinnedOpen?: boolean;
 }
 
 interface UseThreadTopBarResult {
@@ -41,16 +41,19 @@ export function useThreadTopBar({
   setSearchQuery,
   clearFilter,
   hasActiveFilter = false,
-  openByDefault = false,
+  pinnedOpen = false,
 }: UseThreadTopBarParams): UseThreadTopBarResult {
   const { window: viewWindow } = useViewSurface();
-  const [activeTopBar, setActiveTopBarState] = useState<TopBarMode>(() =>
-    searchQuery.trim() !== "" || hasActiveFilter || openByDefault ? "filter" : "none",
+  const [selectedTopBar, setActiveTopBarState] = useState<TopBarMode>(() =>
+    searchQuery.trim() !== "" || hasActiveFilter || pinnedOpen ? "filter" : "none",
   );
+  // 変更理由: 設定がONのときは状態に関係なく常に開いた表示にし、閉じる操作を効かせない。
+  // 状態は保持したままなので、設定をOFFに戻したときは直前の表示状態へ戻る。
+  const activeTopBar: TopBarMode = pinnedOpen ? "filter" : selectedTopBar;
   const [searchFocusKey, setSearchFocusKey] = useState(0);
-  // 検索語やフィルタが無く、設定だけで開いたときに限りフォーカスを移さない。
+  // 検索語やフィルタが無く、設定で開いた直後に限りフォーカスを移さない。
   const [suppressInitialFocus, setSuppressInitialFocus] = useState(
-    () => openByDefault && searchQuery.trim() === "" && !hasActiveFilter,
+    () => pinnedOpen && searchQuery.trim() === "" && !hasActiveFilter,
   );
   // 利用者の操作でバーの状態が変わったら、以降は通常どおり入力欄へフォーカスする。
   const setActiveTopBar = useCallback((mode: TopBarMode) => {
@@ -66,6 +69,9 @@ export function useThreadTopBar({
   }, [activeTopBar, tabId]);
 
   const closeTopBar = useCallback(() => {
+    if (pinnedOpen) {
+      return;
+    }
     if (searchQuery) {
       setSearchQuery("");
     }
@@ -73,22 +79,29 @@ export function useThreadTopBar({
     // 食い違わないよう、検索語とフィルタ条件を同じクローズ操作で解除する。
     clearFilter();
     setActiveTopBar("none");
-  }, [clearFilter, searchQuery, setSearchQuery]);
+  }, [clearFilter, pinnedOpen, searchQuery, setSearchQuery]);
 
   const closeTopBarPreservingFilter = useCallback(() => {
     // 変更理由: ホイールで閉じる操作はツールバーの表示だけを戻し、
-    // 入力済みの検索語による絞り込みは維持する。
+    // 入力済みの検索語による絞り込みは維持する。常時表示のときは閉じない。
+    if (pinnedOpen) {
+      return;
+    }
     setActiveTopBar("none");
-  }, []);
+  }, [pinnedOpen]);
 
   const toggleFilterToolbar = useCallback(() => {
     // 検索欄を同じツールバーへ統合したので、フィルタ操作は表示状態だけを反転させる。
+    // 変更理由: 常時表示のときはタイトルバーからの切り替えを無視する。
+    if (pinnedOpen) {
+      return;
+    }
     if (activeTopBar === "filter") {
       closeTopBar();
     } else {
       setActiveTopBar("filter");
     }
-  }, [activeTopBar, closeTopBar]);
+  }, [activeTopBar, closeTopBar, pinnedOpen]);
 
   const openFilterToolbar = useCallback(() => {
     // 変更理由: ホイールなどの「開くだけでよい」導線では toggle だと閉じ戻り得るため、

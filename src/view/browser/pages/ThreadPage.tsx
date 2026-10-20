@@ -311,7 +311,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setSearchQuery,
     clearFilter,
     hasActiveFilter: filter !== "all",
-    openByDefault: isFilterDefaultOpen,
+    pinnedOpen: isFilterDefaultOpen,
   });
   useThreadFilterModeToggle({
     tabId,
