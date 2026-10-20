@@ -1,6 +1,14 @@
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+// 変更理由: 画像削除の経路が platform を読み込むと拡張機能APIの初期化が走るため、テストでは差し替える。
+vi.mock("src/app/platform", () => ({
+  platform: {
+    http: { fetch: vi.fn() },
+    storage: { kv: { get: async () => null, set: async () => {}, remove: async () => {} } },
+  },
+}));
+
 import { type MediaViewerProps, useMediaViewerController } from "./use-media-viewer-controller";
 import { useMediaViewerStore } from "./use-media-viewer-store";
 

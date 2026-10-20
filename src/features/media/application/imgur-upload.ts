@@ -1,7 +1,11 @@
+import { createLogger } from "src/app/logger";
 import { platform } from "src/app/platform";
 import { container } from "src/service-container";
 
 import { IMGUR_DEFAULT_CLIENT_ID, IMGUR_IMAGE_API_URL } from "./imgur-album";
+import { saveImgurDeletehash } from "./imgur-deletehash";
+
+const logger = createLogger("media");
 
 export const IMGUR_UPLOAD_TIMEOUT_MS = 60_000;
 
@@ -9,9 +13,15 @@ interface ImgurUploadResponse {
   success?: unknown;
   data?: {
     link?: unknown;
+    deletehash?: unknown;
     error?: unknown;
   };
   error?: unknown;
+}
+
+interface ImgurUploadResult {
+  link: string;
+  deletehash: string | null;
 }
 
 function getImgurAuthorization(): string {
@@ -20,7 +30,7 @@ function getImgurAuthorization(): string {
   return accessToken ? `Bearer ${accessToken}` : `Client-ID ${clientId}`;
 }
 
-function parseImgurUploadResponse(body: string, status: number): string {
+function parseImgurUploadResponse(body: string, status: number): ImgurUploadResult {
   let payload: ImgurUploadResponse;
   try {
     payload = JSON.parse(body) as ImgurUploadResponse;
@@ -54,7 +64,10 @@ function parseImgurUploadResponse(body: string, status: number): string {
     throw new Error("Imgur APIから想定外の画像URLが返されました");
   }
 
-  return imageUrl.href;
+  return {
+    link: imageUrl.href,
+    deletehash: typeof payload.data.deletehash === "string" ? payload.data.deletehash : null,
+  };
 }
 
 /** ブラウザーまたはTauriの共通HTTP層から画像をImgurへ投稿する。 */
@@ -83,5 +96,15 @@ export async function uploadImageToImgur(image: Blob): Promise<string> {
     timeout: IMGUR_UPLOAD_TIMEOUT_MS,
   });
 
-  return parseImgurUploadResponse(response.body, response.status);
+  const { link, deletehash } = parseImgurUploadResponse(response.body, response.status);
+  if (deletehash) {
+    // 変更理由: 削除キーの保存失敗で投稿済みの画像URLを捨てると本文へ追加できないため、
+    // 投稿自体は成功扱いにし、後から削除できない原因だけをログへ残す。
+    try {
+      await saveImgurDeletehash(link, deletehash);
+    } catch (error) {
+      logger.error("Imgurの削除キーを保存できませんでした", { link, error });
+    }
+  }
+  return link;
 }

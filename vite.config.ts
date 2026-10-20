@@ -267,6 +267,7 @@ const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
   "live-chat": ["browser/use-live-chat-responses", "browser/use-thread-display-mode-setting"],
   media: [
     "application/imgur-album",
+    "application/imgur-deletehash",
     "application/imgur-upload",
     "browser/use-media-viewer-store",
     "ui/ExternalImage",

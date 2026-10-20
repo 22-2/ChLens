@@ -23,6 +23,8 @@ export function MediaViewer({
   onNavigatePrev,
   onNavigateNext,
   onSave,
+  canDeleteImage,
+  onDeleteImage,
   onClose,
   isDetached,
   onDetach,
@@ -82,6 +84,17 @@ export function MediaViewer({
             <button type="button" className="media-viewer__btn" onClick={onSave} title="保存">
               保存
             </button>
+            {/* 変更理由: 削除キーを持つこのアプリの投稿画像だけ削除を出し、他人の画像に操作を出さない。 */}
+            {canDeleteImage && (
+              <button
+                type="button"
+                className="media-viewer__btn"
+                onClick={onDeleteImage}
+                title="Imgurから削除"
+              >
+                削除
+              </button>
+            )}
             <button
               type="button"
               className="media-viewer__btn media-viewer__close"
