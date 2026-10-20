@@ -1009,6 +1009,11 @@ describe("ReplyTreePopup close behavior", () => {
 
     // カーソルがポップアップ内に入る
     const popup = document.querySelector(".res-popup") as HTMLElement;
+    // 変更理由: jsdomは:hoverに一致しない（nullではなくfalseを返す）ため、ブラウザでカーソルが内部にある状態を再現する。
+    const matchesOriginal = popup.matches.bind(popup);
+    vi.spyOn(popup, "matches").mockImplementation((selector: string) =>
+      selector === ":hover" ? true : matchesOriginal(selector),
+    );
     fireEvent.mouseEnter(popup);
 
     // 子が閉じて disableOutsideClick が false に変わる
@@ -1018,6 +1023,7 @@ describe("ReplyTreePopup close behavior", () => {
     expect(onClose).not.toHaveBeenCalled();
 
     // その後カーソルが出ると mouseleave で close される
+    vi.spyOn(popup, "matches").mockImplementation(matchesOriginal);
     act(() => {
       fireEvent.mouseLeave(popup);
     });
