@@ -60,10 +60,15 @@ const openOrFocusNewUiTab = async (currentUrl?: string): Promise<void> => {
     : NEW_UI_URL_PREFIX;
 
   if (existingTab?.id != null) {
-    await browser.tabs.update(existingTab.id, {
-      url: viewerUrl,
-      active: true,
-    });
+    // 変更理由: ツールバーアイコンからはURLを指定しないため、既存タブのURLを書き換えない。
+    // URLを上書きするとビューアーが再読み込みされ、フォーカスまで約1秒の遅延が出るため、
+    // URL指定があるときだけ更新し、それ以外は既存タブを前面に出すだけにする。
+    if (currentUrl) {
+      await browser.tabs.update(existingTab.id, {
+        url: viewerUrl,
+        active: true,
+      });
+    }
     await focusTabById(existingTab.id);
     newUiPrimaryTabId = existingTab.id;
   } else {

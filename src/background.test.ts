@@ -33,6 +33,7 @@ vi.mock("webextension-polyfill", () => ({
 
 describe("background", () => {
   let messageListener: MessageListener | undefined;
+  let actionClickListener: ((tab: { id?: number; url?: string }) => Promise<void>) | undefined;
 
   beforeAll(async () => {
     backgroundMocks.runtime.onMessage.addListener.mockImplementation(
@@ -41,6 +42,7 @@ describe("background", () => {
       },
     );
     await import("src/background");
+    actionClickListener = backgroundMocks.action.onClicked.addListener.mock.calls[0]?.[0];
   });
 
   beforeEach(() => {
@@ -77,6 +79,19 @@ describe("background", () => {
       type: "open-tab-in-viewer",
       url: "http://bbs.eddibb.cc/test/read.cgi/liveedge/1788019282/",
     });
+  });
+
+  it("ツールバーから開いたとき既存ビューアーのURLを書き換えずに前面に出す", async () => {
+    if (!actionClickListener) throw new Error("ツールバークリックのリスナーが登録されていません");
+
+    await actionClickListener({ id: 55, url: "https://example.com/" });
+
+    expect(backgroundMocks.tabs.update).not.toHaveBeenCalledWith(
+      900,
+      expect.objectContaining({ url: expect.anything() }),
+    );
+    expect(backgroundMocks.windows.update).toHaveBeenCalledWith(12, { focused: true });
+    expect(backgroundMocks.tabs.update).toHaveBeenCalledWith(900, { active: true });
   });
 
   it("ChLens側の処理に失敗した場合は元タブを閉じない", async () => {
