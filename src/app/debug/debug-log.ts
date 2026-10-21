@@ -192,6 +192,39 @@ export function installConsoleCapture(target: Console = console): void {
   }
 }
 
+let runtimeErrorCaptureInstalled = false;
+
+/**
+ * 未捕捉の例外と未処理のPromise拒否を記録する。
+ *
+ * 変更理由: 描画中の例外は console を通らないため、画面が操作不能になってもログに残らなかった。
+ * window の error / unhandledrejection を拾い、再現時に原因を後から追えるようにする。
+ */
+export function installRuntimeErrorCapture(
+  target: Pick<Window, "addEventListener"> = window,
+): void {
+  if (runtimeErrorCaptureInstalled) return;
+  runtimeErrorCaptureInstalled = true;
+
+  target.addEventListener("error", (event: ErrorEvent) => {
+    const detail = event.filename ? `${event.filename}:${event.lineno}` : "不明な位置";
+    recordRuntimeError(`未捕捉の例外 (${detail})`, event.error ?? event.message);
+  });
+  target.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
+    recordRuntimeError("未処理のPromise拒否", event.reason);
+  });
+}
+
+function recordRuntimeError(message: string, error: unknown): void {
+  const reason = error instanceof Error ? error.message : String(error);
+  pushEntry({
+    level: "error",
+    category: "runtime",
+    message: `${message}: ${reason}`,
+    stack: error instanceof Error && error.stack ? truncate(error.stack) : undefined,
+  });
+}
+
 export function resetDebugLogForTest(): void {
   entries.length = 0;
   listeners.clear();

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { collectDebugState, registerDebugStateProvider } from "./debug-api";
 import {
   installConsoleCapture,
+  installRuntimeErrorCapture,
   queryDebugLogs,
   recordDebugEvent,
   resetDebugLogForTest,
@@ -84,5 +85,27 @@ describe("デバッグ状態", () => {
     unregisterNg();
     errorSpy.mockRestore();
     expect(collectDebugState()).toEqual({});
+  });
+});
+
+describe("未捕捉の例外の記録", () => {
+  it("未捕捉の例外と未処理のPromise拒否を runtime として記録する", () => {
+    const target = new EventTarget();
+    installRuntimeErrorCapture(target as unknown as Pick<Window, "addEventListener">);
+
+    target.dispatchEvent(
+      new ErrorEvent("error", {
+        error: new Error("描画に失敗"),
+        filename: "browser.js",
+        lineno: 12,
+      }),
+    );
+    target.dispatchEvent(Object.assign(new Event("unhandledrejection"), { reason: "拒否理由" }));
+
+    const errors = queryDebugLogs({ level: "error", category: "runtime" });
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toMatchObject({ message: "未捕捉の例外 (browser.js:12): 描画に失敗" });
+    expect(errors[0].stack).toContain("描画に失敗");
+    expect(errors[1]).toMatchObject({ message: "未処理のPromise拒否: 拒否理由" });
   });
 });
