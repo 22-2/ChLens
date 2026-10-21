@@ -32,3 +32,29 @@
 .content-area__tab-panel:has(.thread-page)::-webkit-scrollbar {
   display: none;
 }
+
+/* 変更理由: 1タブの描画失敗を、そのタブの中だけで伝えて閉じられるようにする。 */
+.tab-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sys-space-4);
+  height: 100%;
+  padding: var(--sys-space-6);
+  color: var(--sys-color-text-muted);
+}
+
+.tab-error__close {
+  padding: var(--sys-space-2) var(--sys-space-5);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-surface);
+  color: var(--sys-color-text);
+  cursor: pointer;
+}
+
+.tab-error__close:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: 2px;
+}

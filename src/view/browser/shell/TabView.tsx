@@ -9,9 +9,10 @@ import { SettingsPage } from "src/view/browser/pages/SettingsPage";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { ThreadPage } from "src/view/browser/pages/ThreadPage";
 import { WriteHistoryListPage } from "src/view/browser/pages/WriteHistoryListPage";
+import { TabErrorBoundary } from "src/view/browser/shell/TabErrorBoundary";
 import { isAutoRefreshEnabledForPage } from "src/view/browser/state/tabs/auto-refresh-pages";
 import type { Tab } from "src/view/browser/types";
-import { getCurrentPage } from "src/view/browser/types";
+import { getCurrentPage, getPageViewStateKey } from "src/view/browser/types";
 
 function buildPageRenderKey(
   tabId: string,
@@ -163,14 +164,21 @@ export const TabPanel = memo(function TabPanel({
       {
         // display 切替で DOM/scroll を残しつつ、
         // ページ本体はタブ自身が変わった時だけ再実行させる。
-        <TabPageContent
+        // 変更理由: 1タブの描画例外で画面全体を止めないよう、タブ単位で受け止める。
+        // ページが変わったら境界もリセットし、閉じる導線を残さない。
+        <TabErrorBoundary
           key={buildPageRenderKey(tab.id, tab.currentIndex, page)}
-          tab={tab}
-          isActive={isActive}
-          isOverlayTarget={isOverlayTarget && isActive}
-          threadListActive={page.type === "threadList" ? isActive : undefined}
-          scrollContainerRef={scrollContainerRef}
-        />
+          tabId={tab.id}
+          pageKey={getPageViewStateKey(page)}
+        >
+          <TabPageContent
+            tab={tab}
+            isActive={isActive}
+            isOverlayTarget={isOverlayTarget && isActive}
+            threadListActive={page.type === "threadList" ? isActive : undefined}
+            scrollContainerRef={scrollContainerRef}
+          />
+        </TabErrorBoundary>
       }
     </div>
   );
