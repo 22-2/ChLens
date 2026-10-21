@@ -30,6 +30,17 @@ describe("message-filter", () => {
     expect(hasImage(message)).toBe(true);
   });
 
+  it("プロトコルが欠けたURLを含む本文でも例外を投げず、画像・動画を判定する", () => {
+    // なぜ判定が必要か: 「://」で始まるURLは補完時に fallbackProtocol を参照する。
+    // URL変換の関数をそのまま replace に渡すと、第2引数に文字位置が入って例外になり、
+    // レスの描画全体が止まるため、URLだけを渡して判定する。
+    const message = "見て ://pbs.twimg.com/media/TestTwitterImageE.jpg と ://youtu.be/TestVideo02";
+
+    expect(() => hasImage(message)).not.toThrow();
+    expect(hasImage(message)).toBe(true);
+    expect(hasVideo(message)).toBe(true);
+  });
+
   it("YouTube と直リンク mp4 を動画として判定する", () => {
     expect(hasVideo("https://youtu.be/TestVideo01")).toBe(true);
     expect(

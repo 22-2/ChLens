@@ -7,8 +7,17 @@ import { isInlineVideoEmbedUrl } from "src/core/util/external-media";
  * レス表示やURL変換の実装とは独立した入力判定として保つ。
  */
 
+/**
+ * 変更理由: normalizeObfuscatedUrl を replace の関数引数として直接渡すと、第2引数に
+ * 文字位置（数値）が渡って fallbackProtocol として扱われ、「://」で始まるURLで例外になる。
+ * URLの文字列だけを渡すよう包む。
+ */
+function normalizeMessageUrls(message: string): string {
+  return message.replace(URL_LIKE_PATTERN, (url) => normalizeObfuscatedUrl(url));
+}
+
 export function hasImage(message: string): boolean {
-  const normalizedMessage = message.replace(URL_LIKE_PATTERN, normalizeObfuscatedUrl);
+  const normalizedMessage = normalizeMessageUrls(message);
   return (
     // なぜサフィックスを許容するか: pbs.twimg.com の画像は「XXX.jpg:orig」のように
     // 拡張子の直後へコロン付きのサイズ指定（:thumb/:small/:medium/:large/:orig など）が付く。
@@ -23,7 +32,7 @@ export function hasImage(message: string): boolean {
 }
 
 export function hasVideo(message: string): boolean {
-  const normalizedMessage = message.replace(URL_LIKE_PATTERN, normalizeObfuscatedUrl);
+  const normalizedMessage = normalizeMessageUrls(message);
   return (
     /\.(mp4|webm|avi|mov)(?:\?[^"<]*)?(?=["<\s]|$)/i.test(normalizedMessage) ||
     /<video\b/i.test(normalizedMessage) ||
