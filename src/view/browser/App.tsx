@@ -45,6 +45,7 @@ import {
 } from "src/view/browser/state/tabs/use-tab-store";
 import { ToastProvider } from "src/view/browser/ui/Toast";
 import { TooltipProvider } from "src/view/browser/ui/Tooltip";
+import { useAnyFilterToolbarOpen } from "src/view/browser/utils/filter-toolbar-open-state";
 import { applyBBSMenuToItestServerMap } from "src/view/browser/utils/itest-server-map";
 import browser from "webextension-polyfill";
 
@@ -286,7 +287,7 @@ export const BrowserApp: React.FC = () => {
                 {/* 変更理由: 本文を覆う範囲を減らし、通知を上部バー直下の右端へ寄せる。
                     URL入力はタイトルバー内でピルと入れ替わるだけで行が増えないため、
                     入力中でも通知の位置は変えない。 */}
-                <ToastProvider topOffset="var(--sys-space-13)" rightOffset="var(--sys-space-4)" />
+                <ShellToastProvider />
                 {/*
                 水平モードではタイトルと必須のレイアウト操作はペインの外に置く。
                 これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
@@ -302,6 +303,16 @@ export const BrowserApp: React.FC = () => {
       </TabProvider>
     </TooltipProvider>
   );
+};
+
+const ShellToastProvider: React.FC = () => {
+  const isFilterToolbarOpen = useAnyFilterToolbarOpen();
+  // 変更理由: フィルタバーは上部バー直下の本文先頭に出るため、開いている間は通知をその下へずらして重ならないようにする。
+  const topOffset = isFilterToolbarOpen
+    ? "calc(var(--sys-space-13) + var(--sys-space-16))"
+    : "var(--sys-space-13)";
+
+  return <ToastProvider topOffset={topOffset} rightOffset="var(--sys-space-4)" />;
 };
 
 const ArchiveReplayMainThreadSyncBridge: React.FC = () => {

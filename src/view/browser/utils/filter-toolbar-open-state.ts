@@ -44,6 +44,15 @@ export function useFilterToolbarOpen(tabId: string): boolean {
   );
 }
 
+// 変更理由: 通知は画面全体で1か所に出すため、どのタブでフィルタバーが開いていても上端の位置を変えられるよう、開いているタブが1つでもあるかを返す。
+export function useAnyFilterToolbarOpen(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => openTabIds.size > 0,
+    () => false,
+  );
+}
+
 export function useFilterToolbarPinned(tabId: string): boolean {
   return useSyncExternalStore(
     subscribe,
