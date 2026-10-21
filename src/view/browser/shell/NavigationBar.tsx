@@ -151,7 +151,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // アクティブペインが切り替わったときも受け口を探し直す。
   const [titleBarSlot, setTitleBarSlot] = useState<HTMLElement | null>(null);
   // 変更理由: オムニバーの入力欄はボタン群とは別に、タイトルバー中央のピルと同じ位置へ出す。
-  const [omnibarSlot, setOmnibarSlot] = useState<HTMLElement | null>(null);
+  const [commandCenterSlot, setCommandCenterSlot] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     setPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
@@ -161,8 +161,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     setTitleBarSlot(
       document.querySelector<HTMLElement>(`.title-bar__nav-slot[data-pane-id="${paneId}"]`),
     );
-    setOmnibarSlot(
-      document.querySelector<HTMLElement>(`.title-bar__omnibar-slot[data-pane-id="${paneId}"]`),
+    setCommandCenterSlot(
+      document.querySelector<HTMLElement>(
+        `.title-bar__command-center-slot[data-pane-id="${paneId}"]`,
+      ),
     );
   }, [paneId, tabBarOrientation, activePaneId]);
   // 変更理由: 受け口へポータルしてペイン上部の高さを本文へ返す。
@@ -709,7 +711,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           <Filter size={13} />
         </button>
       ) : null}
-      {isUrlEditing && !omnibarSlot ? omnibar : null}
+      {isUrlEditing && !commandCenterSlot ? omnibar : null}
 
       <button
         ref={menuButtonRef}
@@ -777,7 +779,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           : chrome}
       {/* 変更理由: 入力欄はタイトルバー中央のピルと同じ位置へ出す。受け口がない環境
           （テスト等）では上のボタン群と同じ場所へインライン表示する。 */}
-      {isUrlEditing && omnibarSlot ? createPortal(omnibar, omnibarSlot) : null}
+      {isUrlEditing && commandCenterSlot ? createPortal(omnibar, commandCenterSlot) : null}
 
       <Dialog.Root
         open={isResponseJumpDialogOpen}

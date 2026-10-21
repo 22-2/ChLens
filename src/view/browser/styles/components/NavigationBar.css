@@ -36,7 +36,7 @@
 
 /* 変更理由: タイトルバー中央では、ピルと同じ高さ・見た目の入力欄にして置き換わりを自然にする。
    候補リストは入力欄の幅に合わせて下へ開く。 */
-.title-bar__omnibar-slot .nav-bar__url {
+.title-bar__command-center-slot .nav-bar__url {
   flex: 1 1 auto;
   width: 100%;
   height: var(--sys-space-11);
@@ -46,7 +46,7 @@
   background: var(--sys-color-surface);
 }
 
-.title-bar__omnibar-slot .nav-bar__url-input {
+.title-bar__command-center-slot .nav-bar__url-input {
   border-radius: var(--sys-radius-md);
   font-size: var(--sys-font-size-xs);
 }

@@ -895,7 +895,7 @@ describe("NavigationBar", () => {
 
 describe("NavigationBar titlebar slot", () => {
   let slot: HTMLDivElement;
-  let omnibarSlot: HTMLDivElement;
+  let commandCenterSlot: HTMLDivElement;
 
   beforeEach(() => {
     orientationHolder.value = "vertical";
@@ -935,15 +935,15 @@ describe("NavigationBar titlebar slot", () => {
     slot.dataset.paneId = "pane-1";
     document.body.appendChild(slot);
 
-    omnibarSlot = document.createElement("div");
-    omnibarSlot.className = "title-bar__omnibar-slot";
-    omnibarSlot.dataset.paneId = "pane-1";
-    document.body.appendChild(omnibarSlot);
+    commandCenterSlot = document.createElement("div");
+    commandCenterSlot.className = "title-bar__command-center-slot";
+    commandCenterSlot.dataset.paneId = "pane-1";
+    document.body.appendChild(commandCenterSlot);
   });
 
   afterEach(() => {
     slot.remove();
-    omnibarSlot.remove();
+    commandCenterSlot.remove();
     orientationHolder.value = "horizontal";
     paneHolder.activePaneId = "pane-1";
     cleanup();
@@ -1017,11 +1017,11 @@ describe("NavigationBar titlebar slot", () => {
       </div>,
     );
 
-    expect(omnibarSlot).toBeEmptyDOMElement();
+    expect(commandCenterSlot).toBeEmptyDOMElement();
 
     openUrlBar();
 
-    expect(omnibarSlot.querySelector(".nav-bar__url-input")).not.toBeNull();
+    expect(commandCenterSlot.querySelector(".nav-bar__url-input")).not.toBeNull();
     // 右上のボタン群や元の場所へは入力欄を出さない。
     expect(slot.querySelector(".nav-bar__url-input")).toBeNull();
     expect(container.querySelector(".nav-bar__url-input")).toBeNull();
@@ -1035,18 +1035,18 @@ describe("NavigationBar titlebar slot", () => {
     );
 
     openUrlBar();
-    expect(omnibarSlot.querySelector(".nav-bar__url-input")).not.toBeNull();
+    expect(commandCenterSlot.querySelector(".nav-bar__url-input")).not.toBeNull();
 
-    fireEvent.blur(omnibarSlot.querySelector(".nav-bar__url-input") as HTMLInputElement);
+    fireEvent.blur(commandCenterSlot.querySelector(".nav-bar__url-input") as HTMLInputElement);
 
-    expect(omnibarSlot).toBeEmptyDOMElement();
+    expect(commandCenterSlot).toBeEmptyDOMElement();
   });
 
   it("別ペインのオムニバー受け口には入力欄を出さない", () => {
-    const otherOmnibarSlot = document.createElement("div");
-    otherOmnibarSlot.className = "title-bar__omnibar-slot";
-    otherOmnibarSlot.dataset.paneId = "pane-2";
-    document.body.appendChild(otherOmnibarSlot);
+    const otherCommandCenterSlot = document.createElement("div");
+    otherCommandCenterSlot.className = "title-bar__command-center-slot";
+    otherCommandCenterSlot.dataset.paneId = "pane-2";
+    document.body.appendChild(otherCommandCenterSlot);
 
     try {
       render(
@@ -1057,10 +1057,10 @@ describe("NavigationBar titlebar slot", () => {
 
       openUrlBar();
 
-      expect(omnibarSlot.querySelector(".nav-bar__url-input")).not.toBeNull();
-      expect(otherOmnibarSlot).toBeEmptyDOMElement();
+      expect(commandCenterSlot.querySelector(".nav-bar__url-input")).not.toBeNull();
+      expect(otherCommandCenterSlot).toBeEmptyDOMElement();
     } finally {
-      otherOmnibarSlot.remove();
+      otherCommandCenterSlot.remove();
     }
   });
 
@@ -1095,7 +1095,7 @@ describe("NavigationBar titlebar slot", () => {
   it("受け口が無い環境ではURL入力もインラインに描画し、フォーカスアウトで閉じる", () => {
     orientationHolder.value = "horizontal";
     slot.remove();
-    omnibarSlot.remove();
+    commandCenterSlot.remove();
 
     const { container } = render(<NavigationBar />);
 

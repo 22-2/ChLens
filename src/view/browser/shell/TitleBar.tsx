@@ -111,7 +111,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         {omnibarEnabled ? (
           <button
             type="button"
-            className="title-bar__title title-bar__title--omnibar"
+            className="title-bar__title title-bar__title--command-center"
             data-testid="title-bar-title"
             data-page-type={viewPage.type}
             title={title}
@@ -133,9 +133,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           </div>
         )}
         <div
-          className="title-bar__omnibar-slot"
+          className="title-bar__command-center-slot"
           data-pane-id={paneId}
-          data-testid="title-bar-omnibar-slot"
+          data-testid="title-bar-command-center-slot"
         />
       </div>
       <div

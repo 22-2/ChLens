@@ -295,7 +295,7 @@ describe("TitleBar", () => {
   it("オムニバーの受け口を中央に持ち、自ペインのIDを持つ", () => {
     render(<TitleBar />);
 
-    const slot = screen.getByTestId("title-bar-omnibar-slot");
+    const slot = screen.getByTestId("title-bar-command-center-slot");
     expect(slot).toHaveAttribute("data-pane-id", "pane-1");
     expect(screen.getByTestId("title-bar-center")).toContainElement(slot);
   });
