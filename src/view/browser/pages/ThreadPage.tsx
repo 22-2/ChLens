@@ -576,6 +576,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     onSearchExhausted: handleNextThreadSearchExhausted,
   });
 
+  // 変更理由: 不具合の再現時に、どのスレを開いた直後の出来事か追えるよう、表示したURLを記録する。
+  // スタックは呼び出し元が常に同じで情報にならないため付けない。
+  useEffect(() => {
+    recordDebugEvent(
+      "thread",
+      "スレを表示しました",
+      { tabId, threadUrl: page.threadUrl },
+      { withStack: false },
+    );
+  }, [page.threadUrl, tabId]);
+
   // 外部CLIから停止判定の入力値をまとめて確認できるよう、描画ごとの最新値を公開する。
   const debugStateRef = useLatestRef({
     tabId,
