@@ -482,6 +482,11 @@ export function OverlayStage({
     }
   }, [scheduler, selectedCommentKey]);
 
+  // 変更理由: ダブルクリックと右クリックメニューで同じ条件を使い、元レスを指せないコメントでは
+  // 移動要求を出さない。
+  const canJumpToComment = (comment: CommentCandidate): boolean =>
+    onCommentJump != null && comment.responseNumber > 0 && Boolean(comment.sourceThreadUrl);
+
   const openMenu = (event: React.MouseEvent<HTMLElement>, comment: CommentCandidate): void => {
     if (!interactive) return;
     event.preventDefault();
@@ -567,6 +572,10 @@ export function OverlayStage({
               setMenu(null);
               onCommentClick?.(comment);
             }}
+            // 変更理由: 実況のコメントをダブルクリックしたら、右クリックメニューと同じく元レスへ移動する。
+            onDoubleClick={
+              interactive && canJumpToComment(comment) ? () => onCommentJump?.(comment) : undefined
+            }
           >
             {comment.imageUrls?.slice(0, 3).map((imageUrl) => (
               <ExternalImage
@@ -605,12 +614,12 @@ export function OverlayStage({
           role="menu"
           style={{ left: menu.x, top: menu.y }}
         >
-          {menu.comment.responseNumber > 0 && menu.comment.sourceThreadUrl && onCommentJump ? (
+          {canJumpToComment(menu.comment) ? (
             <button
               type="button"
               role="menuitem"
               onClick={() => {
-                onCommentJump(menu.comment);
+                onCommentJump?.(menu.comment);
                 setMenu(null);
               }}
             >

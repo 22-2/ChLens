@@ -285,7 +285,7 @@ describe("OverlayApp", () => {
     expect(screen.queryByText("前回の実況")).not.toBeInTheDocument();
   });
 
-  it("通常実況の右クリックメニューにはジャンプ項目を表示しない", async () => {
+  it("通常実況の右クリックメニューから元レスへジャンプできる", async () => {
     const eventBus = new MemoryCommentOverlayEventBus();
     render(<OverlayApp eventBus={eventBus} platform={createBrowserCommentOverlayPlatform()} />);
     await act(async () => {
@@ -304,11 +304,15 @@ describe("OverlayApp", () => {
 
     fireEvent.contextMenu(screen.getByText(targetComment.text));
 
-    expect(screen.queryByRole("menuitem", { name: "このレスへジャンプ" })).not.toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "レスをコピー" })).toBeVisible();
+    fireEvent.click(screen.getByRole("menuitem", { name: "このレスへジャンプ" }));
+
+    expect(publishJump).toHaveBeenCalledWith({
+      threadUrl: THREAD_URL,
+      responseNumber: targetComment.responseNumber,
+    });
   });
 
-  it("過去実況の一時停止中もジャンプでき、再生終了後の通常実況では項目を隠す", async () => {
+  it("過去実況の一時停止中も、再生終了後の通常実況でもジャンプできる", async () => {
     const eventBus = new MemoryCommentOverlayEventBus();
     const archiveReplayEventBus = new MemoryArchiveReplayOverlayEventBus();
     render(
@@ -367,7 +371,7 @@ describe("OverlayApp", () => {
     act(() => scheduledFrame?.(0));
     fireEvent.contextMenu(screen.getByText(targetComment.text));
 
-    expect(screen.queryByRole("menuitem", { name: "このレスへジャンプ" })).not.toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "このレスへジャンプ" })).toBeVisible();
   });
 
   it("実況開始時の設定をOverlayStageへ反映し、文字サイズはコード定数を使う", async () => {

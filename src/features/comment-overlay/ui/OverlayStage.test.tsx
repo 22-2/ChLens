@@ -337,6 +337,56 @@ describe("OverlayStage", () => {
     expect(onCommentJump).toHaveBeenCalledWith(second);
   });
 
+  it("実況コメントをダブルクリックすると、そのコメントの元レスへ移動する", () => {
+    const target = {
+      ...comment,
+      responseNumber: 1,
+      text: "ダブルクリック対象",
+      sourceThreadUrl: "https://example.com/thread/1",
+    };
+    const onCommentJump = vi.fn();
+    render(
+      <OverlayStage
+        comments={[target]}
+        stageWidth={600}
+        stageHeight={64}
+        laneHeight={32}
+        collisionMode="adaptive"
+        onCommentJump={onCommentJump}
+      />,
+    );
+    act(() => scheduledFrame?.(0));
+
+    fireEvent.doubleClick(screen.getByText("ダブルクリック対象"));
+
+    expect(onCommentJump).toHaveBeenCalledWith(target);
+  });
+
+  it("元レスを指せないコメントはダブルクリックしても移動要求を出さない", () => {
+    const target = {
+      ...comment,
+      responseNumber: 1,
+      text: "移動できない",
+      sourceThreadUrl: undefined,
+    };
+    const onCommentJump = vi.fn();
+    render(
+      <OverlayStage
+        comments={[target]}
+        stageWidth={600}
+        stageHeight={64}
+        laneHeight={32}
+        collisionMode="adaptive"
+        onCommentJump={onCommentJump}
+      />,
+    );
+    act(() => scheduledFrame?.(0));
+
+    fireEvent.doubleClick(screen.getByText("移動できない"));
+
+    expect(onCommentJump).not.toHaveBeenCalled();
+  });
+
   it("メニュー内の押下では閉じず、表示領域内外の押下で閉じてコメントの停止を解除する", () => {
     render(
       <>

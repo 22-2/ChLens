@@ -408,20 +408,16 @@ export function OverlayApp({
         scaleReferenceHeight={DEFAULT_COMMENT_OVERLAY_GEOMETRY.height}
         playing={isArchiveReplay ? archiveReplayPlaying : true}
         interactive
-        // 過去ログの再生位置を確認する操作なので、通常実況ではジャンプ項目を表示しない。
-        onCommentJump={
-          isArchiveReplay
-            ? (comment) => {
-                if (!comment.sourceThreadUrl || comment.responseNumber <= 0) return;
-                void publishCommentOverlayJump({
-                  threadUrl: comment.sourceThreadUrl,
-                  responseNumber: comment.responseNumber,
-                }).catch((error: unknown) => {
-                  logger.error("コメントOverlayからのレスジャンプ要求に失敗しました:", error);
-                });
-              }
-            : undefined
-        }
+        // 変更理由: 過去ログだけでなく通常実況のコメントからも、元レスへ移動できるようにする。
+        onCommentJump={(comment) => {
+          if (!comment.sourceThreadUrl || comment.responseNumber <= 0) return;
+          void publishCommentOverlayJump({
+            threadUrl: comment.sourceThreadUrl,
+            responseNumber: comment.responseNumber,
+          }).catch((error: unknown) => {
+            logger.error("コメントOverlayからのレスジャンプ要求に失敗しました:", error);
+          });
+        }}
         showCommentInfo={false}
         backgroundColor="transparent"
       />
