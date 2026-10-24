@@ -2,7 +2,7 @@ import {
   forwardRef,
   type ImgHTMLAttributes,
   type SyntheticEvent,
-  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -53,24 +53,29 @@ async function fetchTauriImage(url: string): Promise<string> {
  * 通常のimg読み込みを先に試すことで、ブラウザのlazy loadingと既存のキャッシュ挙動を維持する。
  */
 export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
-  function ExternalImage({ src, onError, ...props }, ref) {
+  function ExternalImage({ src, onError, onLoad, ...props }, ref) {
     const [sourceState, setSourceState] = useState<{ rawSrc: string; renderedSrc: string | null }>(
       () => ({
         rawSrc: src,
         renderedSrc: src,
       }),
     );
-    const fallbackAttemptedRef = useRef(false);
+    const fallbackStatusRef = useRef<"idle" | "pending" | "loaded" | "failed">("idle");
+    const requestVersionRef = useRef(0);
     const currentSrcRef = useRef(src);
     const objectUrlRef = useRef<string | null>(null);
 
     currentSrcRef.current = src;
 
-    useEffect(() => {
-      fallbackAttemptedRef.current = false;
+    // WebViewではCSPエラーが通常のeffectより先に届くため、取得世代を描画直後に確定する。
+    useLayoutEffect(() => {
+      requestVersionRef.current += 1;
+      fallbackStatusRef.current = "idle";
       setSourceState({ rawSrc: src, renderedSrc: src });
 
       return () => {
+        // 同じURLへ戻った場合も、前の表示で始めた取得結果は引き継がない。
+        requestVersionRef.current += 1;
         if (objectUrlRef.current) {
           URL.revokeObjectURL(objectUrlRef.current);
           objectUrlRef.current = null;
@@ -79,26 +84,31 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
     }, [src]);
 
     const handleError = (event: SyntheticEvent<HTMLImageElement, Event>) => {
-      if (
-        !isTauriRuntime() ||
-        !isHttpUrl(src) ||
-        fallbackAttemptedRef.current ||
-        sourceState.rawSrc !== src
-      ) {
+      // src切替・フォールバック待機のために属性を外した際のエラーは、読込失敗ではない。
+      if (!event.currentTarget.getAttribute("src") || sourceState.rawSrc !== src) return;
+      if (fallbackStatusRef.current === "pending" || fallbackStatusRef.current === "failed") return;
+
+      if (!isTauriRuntime() || !isHttpUrl(src) || fallbackStatusRef.current === "loaded") {
+        if (fallbackStatusRef.current === "loaded") {
+          logger.error("取得済みの外部画像を表示できませんでした", { url: src });
+        }
+        fallbackStatusRef.current = "failed";
         onError?.(event);
         return;
       }
 
-      fallbackAttemptedRef.current = true;
+      fallbackStatusRef.current = "pending";
+      const requestVersion = requestVersionRef.current;
       setSourceState({ rawSrc: src, renderedSrc: null });
 
       void fetchTauriImage(src)
         .then((objectUrl) => {
-          if (currentSrcRef.current !== src) {
+          if (currentSrcRef.current !== src || requestVersionRef.current !== requestVersion) {
             URL.revokeObjectURL(objectUrl);
             return;
           }
           objectUrlRef.current = objectUrl;
+          fallbackStatusRef.current = "loaded";
           setSourceState({ rawSrc: src, renderedSrc: objectUrl });
         })
         .catch((error: unknown) => {
@@ -107,15 +117,32 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
             url: src,
             error,
           });
-          if (currentSrcRef.current !== src) {
+          if (currentSrcRef.current !== src || requestVersionRef.current !== requestVersion) {
             return;
           }
+          fallbackStatusRef.current = "failed";
           setSourceState({ rawSrc: src, renderedSrc: src });
           onError?.(event);
         });
     };
 
     const renderedSrc = sourceState.rawSrc === src ? sourceState.renderedSrc : null;
-    return <img {...props} ref={ref} src={renderedSrc ?? undefined} onError={handleError} />;
+    return (
+      <img
+        {...props}
+        ref={ref}
+        src={renderedSrc ?? undefined}
+        onError={handleError}
+        onLoad={(event) => {
+          if (
+            renderedSrc !== null &&
+            sourceState.rawSrc === src &&
+            event.currentTarget.getAttribute("src") === renderedSrc
+          ) {
+            onLoad?.(event);
+          }
+        }}
+      />
+    );
   },
 );
