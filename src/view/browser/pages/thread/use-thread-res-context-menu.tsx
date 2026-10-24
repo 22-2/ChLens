@@ -237,7 +237,7 @@ export function useThreadResContextMenu({
     (targetRes: IRes, fromPopup: boolean, clickedOnId: boolean): ContextMenuItem[] => {
       const rawId = targetRes.id ?? "";
       const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
-      const isMiniAa = miniAaResNums.has(targetRes.num);
+      const isMiniAa = targetRes.isAA === true || miniAaResNums.has(targetRes.num);
       const isInWriteHistory = ownResNums.has(targetRes.num);
       const selectedText = viewSurface.window.getSelection()?.toString().trim() ?? "";
       const hasSelection = selectedText.length > 0;
@@ -375,6 +375,12 @@ export function useThreadResContextMenu({
           label: isMiniAa ? "AA表示モードを解除" : "AA表示モードに変更",
           icon: <Type size={14} />,
           onSelect: () => {
+            if (targetRes.isAA === true) {
+              setResponses((prev) =>
+                prev.map((res) => (res.num === targetRes.num ? { ...res, isAA: false } : res)),
+              );
+              return;
+            }
             setMiniAaResNums((prev) => {
               const next = new Set(prev);
               if (next.has(targetRes.num)) {
@@ -460,6 +466,7 @@ export function useThreadResContextMenu({
       setFilter,
       setSearchQuery,
       setMiniAaResNums,
+      setResponses,
       toast,
       viewSurface,
     ],

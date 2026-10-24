@@ -831,7 +831,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         idPos={idPos}
         idCount={idCount}
         repCount={repCount}
-        miniAa={miniAaResNums.has(res.num)}
+        miniAa={res.isAA === true || miniAaResNums.has(res.num)}
         messageProtocol={messageProtocol}
         searchQuery={searchQuery}
         searchTarget={searchTarget}

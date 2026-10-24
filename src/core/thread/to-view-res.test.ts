@@ -33,6 +33,11 @@ describe("toViewRes", () => {
     expect(toViewRes(post()).id).toBeUndefined();
   });
 
+  it("AA判定をレス表示用データへ渡す", () => {
+    expect(toViewRes(post({ message: "　／￣￣＼<br>　|　猫　|<br>　＼＿＿／" })).isAA).toBe(true);
+    expect(toViewRes(post({ message: "通常の文章" })).isAA).toBe(false);
+  });
+
   it("otherが無ければdateを使い、日時が無ければ空文字にする", () => {
     expect(toViewRes(post({ other: undefined, date: "2026/08/27 12:00:00" })).date).toBe(
       "2026/08/27 12:00:00",

@@ -1,5 +1,6 @@
 import { extractPostDate, type IRes as CanonicalRes } from "packages/chlib/src/index";
 import type { IRes } from "src/core/ports/thread";
+import { detectAsciiArt } from "src/features/thread/domain/detect-ascii-art";
 
 /**
  * chlibの共有レス（CanonicalRes）を、ビューへ渡すIResへ変換する。
@@ -16,6 +17,7 @@ export function toViewRes(post: CanonicalRes): IRes {
     name: post.name,
     mail: post.mail,
     message: post.message,
+    isAA: detectAsciiArt(post.message),
     other,
     // 日時の形式差はchlibへ集約し、見つからなければ空文字にする。
     date: other ? (extractPostDate(other) ?? "") : "",
