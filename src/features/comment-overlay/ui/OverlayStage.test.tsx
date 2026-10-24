@@ -49,6 +49,15 @@ describe("OverlayStage", () => {
     expect(estimateCommentWidth({ ...comment, text: "123\n456" }, 10)).toBeCloseTo(76.5);
   });
 
+  it("画像の幅をテキストコメントの速度と衝突計算へ含めない", () => {
+    expect(
+      estimateCommentWidth(
+        { ...comment, text: "画像付きレス", imageUrls: ["https://example.test/image.png"] },
+        25,
+      ),
+    ).toBe(6 * 25 * 0.95 + 25);
+  });
+
   it("基準サイズに対する短い側の比率で表示倍率を計算する", () => {
     expect(calculateOverlayDisplayScale(1_800, 240, 900, 160)).toBe(1.5);
     expect(calculateOverlayDisplayScale(450, 160, 900, 160)).toBe(0.5);
@@ -94,8 +103,8 @@ describe("OverlayStage", () => {
     expect(screen.getByTestId("comment-overlay-stage")).toHaveAttribute("data-active-count", "1");
   });
 
-  it("画像と自分のレス状態を流れるコメントへ描画する", () => {
-    const { container } = render(
+  it("画像を下部レーンへ分離し、自分のレス状態はテキストに残す", () => {
+    render(
       <OverlayStage
         comments={[
           {
@@ -116,9 +125,10 @@ describe("OverlayStage", () => {
       scheduledFrame?.(0);
     });
 
-    const image = container.querySelector<HTMLImageElement>(".comment-overlay-stage__media");
+    const image = screen.getByTestId("comment-overlay-image");
     expect(image).toHaveAttribute("src", "https://example.com/image.jpg");
-    expect(image?.parentElement).toHaveClass("comment-overlay-stage__comment--own");
+    expect(image.parentElement).toHaveClass("comment-overlay-image-lane");
+    expect(screen.getByText("画像付きレス")).toHaveClass("comment-overlay-stage__comment--own");
   });
 
   it("停止中は時刻を進めず最後の表示位置を保持する", () => {

@@ -25,6 +25,13 @@ import {
 } from "src/features/comment-overlay/platform";
 import { publishCommentOverlayJump } from "src/features/comment-overlay/platform/jump-events";
 import {
+  COMMENT_OVERLAY_IMAGE_BOTTOM_PADDING,
+  COMMENT_OVERLAY_IMAGE_HEIGHT,
+  COMMENT_OVERLAY_IMAGE_REFERENCE_HEIGHT,
+  COMMENT_OVERLAY_IMAGE_REFERENCE_WIDTH,
+} from "src/features/comment-overlay/ui/OverlayImageLane";
+import {
+  calculateOverlayDisplayScale,
   DEFAULT_COMMENT_HISTORY_LIMIT,
   OverlayStage,
 } from "src/features/comment-overlay/ui/OverlayStage";
@@ -68,6 +75,15 @@ export function OverlayApp({
   const [placementGuideActive, setPlacementGuideActive] = useState(false);
   const overlayRootRef = useRef<HTMLElement>(null);
   useOverlayPointerCapture(overlayRootRef);
+  const imageLaneBottomPadding = Math.round(
+    (COMMENT_OVERLAY_IMAGE_HEIGHT + COMMENT_OVERLAY_IMAGE_BOTTOM_PADDING) *
+      calculateOverlayDisplayScale(
+        overlayGeometry.width,
+        overlayGeometry.height,
+        COMMENT_OVERLAY_IMAGE_REFERENCE_WIDTH,
+        COMMENT_OVERLAY_IMAGE_REFERENCE_HEIGHT,
+      ),
+  );
   useEffect(() => {
     let disposed = false;
     let unsubscribe: (() => void) | null = null;
@@ -395,6 +411,7 @@ export function OverlayApp({
         stageHeight={DEFAULT_COMMENT_OVERLAY_GEOMETRY.height}
         containerWidth={overlayGeometry.width}
         containerHeight={overlayGeometry.height}
+        bottomPadding={imageLaneBottomPadding}
         durationSeconds={settings.durationSeconds}
         commentOpacity={settings.opacity}
         maxQueueSize={settings.maxQueueSize}

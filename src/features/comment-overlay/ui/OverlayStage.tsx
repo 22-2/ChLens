@@ -3,8 +3,6 @@ import "./OverlayStage.css";
 import type { CSSProperties } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
-import { toViewerImageUrl } from "src/core/util/url-media";
-import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { copyText } from "src/view/browser/utils/clipboard";
 
 import {
@@ -20,6 +18,11 @@ import {
   DEFAULT_MAX_QUEUE_SIZE,
 } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
+import {
+  COMMENT_OVERLAY_IMAGE_REFERENCE_HEIGHT,
+  COMMENT_OVERLAY_IMAGE_REFERENCE_WIDTH,
+  OverlayImageLane,
+} from "./OverlayImageLane";
 
 const logger = createLogger("comment-overlay");
 
@@ -34,8 +37,6 @@ const DEFAULT_STAGE_HEIGHT = 240;
 export const COMMENT_OVERLAY_FONT_SIZE = 25;
 const DEFAULT_COMMENT_OPACITY = 0.95;
 export const DEFAULT_COMMENT_HISTORY_LIMIT = 3_000;
-const COMMENT_IMAGE_WIDTH = 180;
-const COMMENT_IMAGE_HEIGHT = 120;
 
 /** CSSのline-heightと行間を揃え、文字サイズ変更後もレスが上下から切れない高さにする。 */
 export function calculateCommentLaneHeight(fontSize: number): number {
@@ -99,9 +100,7 @@ export function estimateCommentWidth(comment: CommentCandidate, fontSize: number
   const singleLineText = comment.text.replace(/[\r\n]+/g, " ");
   const longestLineLength = Math.max(Array.from(singleLineText).length, 1);
   const textWidth = longestLineLength * fontSize * 0.95 + fontSize;
-  const imageCount = Math.min(comment.imageUrls?.length ?? 0, 3);
-  const imageWidth = imageCount * (COMMENT_IMAGE_WIDTH + fontSize * 0.35);
-  return textWidth + imageWidth;
+  return textWidth;
 }
 
 /** 改行を空白へ変換し、コメントの幅計算と実際の一行表示を一致させる。 */
@@ -529,6 +528,17 @@ export function OverlayStage({
         if (event.key === "Escape") setMenu(null);
       }}
     >
+      <OverlayImageLane
+        comments={comments}
+        stageWidth={effectiveStageWidth}
+        imageScale={calculateOverlayDisplayScale(
+          effectiveStageWidth,
+          effectiveStageHeight,
+          COMMENT_OVERLAY_IMAGE_REFERENCE_WIDTH,
+          COMMENT_OVERLAY_IMAGE_REFERENCE_HEIGHT,
+        )}
+        playing={playing}
+      />
       {snapshot.active.map((scheduledComment) => {
         const commentStyle = {
           top: `${effectiveTopPadding + scheduledComment.laneIndex * laneHeight}px`,
@@ -602,18 +612,6 @@ export function OverlayStage({
               interactive && canJumpToComment(comment) ? () => onCommentJump?.(comment) : undefined
             }
           >
-            {comment.imageUrls?.slice(0, 3).map((imageUrl) => (
-              <ExternalImage
-                key={imageUrl}
-                className="comment-overlay-stage__media"
-                src={toViewerImageUrl(imageUrl) ?? imageUrl}
-                alt=""
-                width={COMMENT_IMAGE_WIDTH}
-                height={COMMENT_IMAGE_HEIGHT}
-                loading="eager"
-                decoding="async"
-              />
-            ))}
             {comment.text}
             {interactive && showCommentInfo && scheduledComment.paused ? (
               <span

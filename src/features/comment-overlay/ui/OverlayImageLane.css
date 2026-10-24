@@ -1,0 +1,35 @@
+.comment-overlay-image-lane {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 120px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.comment-overlay-image-lane__image {
+  display: block;
+  position: absolute;
+  bottom: 0;
+  left: 100%;
+  flex: 0 0 auto;
+  border-radius: var(--sys-radius-sm);
+  object-fit: contain;
+  background: var(--sys-color-overlay-media-bg);
+  animation-name: comment-overlay-image-lane__scroll;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  will-change: transform;
+}
+
+@keyframes comment-overlay-image-lane__scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(var(--comment-overlay-image-exit-translate), 0, 0);
+  }
+}

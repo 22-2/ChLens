@@ -55,17 +55,6 @@
   color: var(--sys-color-overlay-comment-own-fg);
 }
 
-.comment-overlay-stage__media {
-  display: block;
-  width: 180px;
-  height: 1.2em;
-  max-height: 120px;
-  flex: 0 0 auto;
-  border-radius: var(--sys-radius-sm);
-  object-fit: contain;
-  background: var(--sys-color-overlay-media-bg);
-}
-
 /* 変更理由: 毎frame Reactでtransformを書き換えると、弾幕の数に比例して再描画負荷が
  * 増えるため、移動はブラウザの合成レイヤーへ任せ、Reactは生成と破棄だけを担当する。 */
 @keyframes comment-overlay-stage__scroll {
