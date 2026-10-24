@@ -35,6 +35,7 @@ interface OverlayImageLaneProps {
   comments: readonly CommentCandidate[];
   stageWidth: number;
   imageScale: number;
+  imageOpacity: number;
   playing: boolean;
 }
 
@@ -43,6 +44,7 @@ export function OverlayImageLane({
   comments,
   stageWidth,
   imageScale,
+  imageOpacity,
   playing,
 }: OverlayImageLaneProps) {
   const [queue, setQueue] = useState<readonly OverlayImage[]>([]);
@@ -107,6 +109,7 @@ export function OverlayImageLane({
     "--comment-overlay-image-exit-translate": `-${stageWidth + imageWidth}px`,
     animationDuration: `${COMMENT_OVERLAY_IMAGE_TRAVEL_SECONDS}s`,
     animationPlayState: playing ? "running" : "paused",
+    opacity: imageOpacity,
   } as CSSProperties;
 
   return (

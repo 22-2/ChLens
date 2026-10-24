@@ -23,7 +23,15 @@ describe("OverlayImageLane", () => {
       imageUrls: ["https://example.test/image.png"],
     };
 
-    render(<OverlayImageLane comments={[comment]} stageWidth={800} imageScale={0.3} playing />);
+    render(
+      <OverlayImageLane
+        comments={[comment]}
+        stageWidth={800}
+        imageScale={0.3}
+        imageOpacity={0.65}
+        playing
+      />,
+    );
 
     const lane = screen.getByTestId("comment-overlay-image-lane");
     const image = screen.getByTestId("comment-overlay-image");
@@ -37,6 +45,7 @@ describe("OverlayImageLane", () => {
       height: `${COMMENT_OVERLAY_IMAGE_HEIGHT * 0.3}px`,
       animationDuration: `${COMMENT_OVERLAY_IMAGE_TRAVEL_SECONDS}s`,
       animationPlayState: "running",
+      opacity: "0.65",
     });
     expect(image.style.getPropertyValue("--comment-overlay-image-exit-translate")).toBe(
       `-${800 + COMMENT_OVERLAY_IMAGE_HEIGHT * 0.3}px`,
@@ -59,7 +68,15 @@ describe("OverlayImageLane", () => {
       imageUrls: ["https://example.test/first.png", "https://example.test/second.png"],
     };
 
-    render(<OverlayImageLane comments={[comment]} stageWidth={800} imageScale={0.3} playing />);
+    render(
+      <OverlayImageLane
+        comments={[comment]}
+        stageWidth={800}
+        imageScale={0.3}
+        imageOpacity={1}
+        playing
+      />,
+    );
 
     const firstImage = screen.getByTestId("comment-overlay-image");
     expect(firstImage).toHaveAttribute("src", "https://example.test/first.png");
@@ -81,7 +98,15 @@ describe("OverlayImageLane", () => {
       asciiArtImageUrl: "data:image/svg+xml;charset=utf-8,%3Csvg%2F%3E",
     };
 
-    render(<OverlayImageLane comments={[comment]} stageWidth={800} imageScale={0.3} playing />);
+    render(
+      <OverlayImageLane
+        comments={[comment]}
+        stageWidth={800}
+        imageScale={0.3}
+        imageOpacity={1}
+        playing
+      />,
+    );
 
     const image = screen.getByTestId("comment-overlay-aa-image");
     expect(image).toHaveAttribute("alt", comment.text);
@@ -98,10 +123,22 @@ describe("OverlayImageLane", () => {
     };
 
     const { rerender } = render(
-      <OverlayImageLane comments={[comment]} stageWidth={800} imageScale={0.3} playing />,
+      <OverlayImageLane
+        comments={[comment]}
+        stageWidth={800}
+        imageScale={0.3}
+        imageOpacity={1}
+        playing
+      />,
     );
     rerender(
-      <OverlayImageLane comments={[comment]} stageWidth={400} imageScale={0.2} playing={false} />,
+      <OverlayImageLane
+        comments={[comment]}
+        stageWidth={400}
+        imageScale={0.2}
+        imageOpacity={0.65}
+        playing={false}
+      />,
     );
 
     const image = screen.getByTestId("comment-overlay-image");
@@ -111,6 +148,7 @@ describe("OverlayImageLane", () => {
       height: "60px",
       animationDuration: `${COMMENT_OVERLAY_IMAGE_TRAVEL_SECONDS}s`,
       animationPlayState: "paused",
+      opacity: "0.65",
     });
     expect(image.style.getPropertyValue("--comment-overlay-image-exit-translate")).toBe("-460px");
   });

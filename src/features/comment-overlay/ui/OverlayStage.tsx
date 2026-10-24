@@ -535,6 +535,7 @@ export function OverlayStage({
       <OverlayImageLane
         comments={comments}
         stageWidth={effectiveStageWidth}
+        imageOpacity={commentOpacity}
         imageScale={calculateOverlayDisplayScale(
           effectiveStageWidth,
           effectiveStageHeight,
