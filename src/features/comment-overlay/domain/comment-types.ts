@@ -6,6 +6,8 @@ export type CommentResponse = Pick<IRes, "num" | "name" | "message"> &
     class?: readonly string[];
     /** 本文中から抽出した画像URL。テキストを隠して弾幕内へ画像として表示する。 */
     imageUrls?: readonly string[];
+    /** Issue #201で検出されたAA。 */
+    isAA?: boolean;
     /** 自分のレスだけを黄色枠で表示するための表示層向け状態。 */
     isOwn?: boolean;
   };
@@ -18,6 +20,9 @@ export interface CommentCandidate {
   date?: string;
   /** EdgeLiveViewerと同じく、画像URLを本文ではなく流れる画像として表示する。 */
   imageUrls?: readonly string[];
+  /** コメント用画像レーンで流すAA画像。textはコピーと失敗時表示に使う。 */
+  asciiArtImageUrl?: string;
+  isAA?: boolean;
   /** システム通知は通常レスと同じqueueを使いながら見た目を分ける。 */
   isSystem?: boolean;
   /** 自分のレスはEdgeLiveViewerと同じ黄色枠で流す。 */

@@ -1,5 +1,6 @@
 import { decodeCharReference } from "@chlen/chlib";
 
+import { createAsciiArtImageUrl } from "./ascii-art-image";
 import type {
   CommentBatch,
   CommentCandidate,
@@ -13,14 +14,12 @@ import type {
  * レス本文からOverlayで安全に表示できるテキストを作る。
  * HTMLをそのまま渡すとOverlay側の表示責務と安全性が不安定になるため、domainで文字列へ固定する。
  */
-export function toCommentText(message: string): string {
-  return decodeCharReference(
-    message
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<[^>]*>/g, "")
-      .replace(/\r\n?/g, "\n")
-      .trim(),
-  );
+export function toCommentText(message: string, trim = true): string {
+  const text = message
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\r\n?/g, "\n");
+  return decodeCharReference(trim ? text.trim() : text);
 }
 
 function toCommentAuthor(name: string): string {
@@ -47,7 +46,20 @@ export function projectCommentResponse(
   if (!options.includeNg && isNgResponse(response)) return null;
 
   const imageUrls = response.imageUrls ?? [];
-  let text = toCommentText(response.message);
+  let text = toCommentText(response.message, !response.isAA);
+  if (response.isAA) {
+    const asciiArtImageUrl = createAsciiArtImageUrl(text);
+    return {
+      responseNumber: response.num,
+      text,
+      author: toCommentAuthor(response.name),
+      ...(response.id ? { id: response.id } : {}),
+      ...(response.date ? { date: response.date } : {}),
+      ...(asciiArtImageUrl ? { asciiArtImageUrl } : {}),
+      isAA: true,
+      ...(response.isOwn ? { isOwn: true } : {}),
+    };
+  }
   // 変更理由: 画像URLを本文にも残すと、画像とURLが同時に流れて弾幕の幅を
   // 不必要に占有するため、画像を表示できるURLは本文から除いて目印だけ残す。
   for (const imageUrl of imageUrls) {
@@ -66,6 +78,7 @@ export function projectCommentResponse(
     ...(response.id ? { id: response.id } : {}),
     ...(response.date ? { date: response.date } : {}),
     ...(imageUrls.length > 0 ? { imageUrls } : {}),
+    ...(response.isAA ? { isAA: true } : {}),
     ...(response.isOwn ? { isOwn: true } : {}),
   };
 }

@@ -376,6 +376,10 @@ export function OverlayStage({
     for (const comment of comments) {
       const identity = commentIdentity(comment);
       if (seenResponseNumbers.current.has(identity)) continue;
+      if (comment.isAA && comment.asciiArtImageUrl) {
+        seenResponseNumbers.current.add(identity);
+        continue;
+      }
 
       const displayComment = {
         ...comment,

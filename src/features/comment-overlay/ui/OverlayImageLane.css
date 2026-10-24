@@ -24,6 +24,29 @@
   will-change: transform;
 }
 
+.comment-overlay-image-lane__image[alt]:not([alt=""]) {
+  pointer-events: auto;
+  cursor: context-menu;
+}
+
+.comment-overlay-image-lane__fallback {
+  display: block;
+  position: absolute;
+  bottom: 0;
+  left: 100%;
+  max-width: 70vw;
+  margin: 0;
+  overflow: hidden;
+  color: var(--sys-color-overlay-comment-text);
+  background: var(--sys-color-overlay-media-bg);
+  font: 16px/1.2 "MS PGothic", "Mona", monospace;
+  white-space: pre;
+  pointer-events: auto;
+  cursor: context-menu;
+  animation: comment-overlay-image-lane__scroll linear both;
+  animation-duration: 6s;
+}
+
 @keyframes comment-overlay-image-lane__scroll {
   from {
     transform: translate3d(0, 0, 0);

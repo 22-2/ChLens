@@ -2,8 +2,10 @@ import "./OverlayImageLane.css";
 
 import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
+import { createLogger } from "src/app/logger";
 import { toViewerImageUrl } from "src/core/util/url-media";
 import { ExternalImage } from "src/features/media/ui/ExternalImage";
+import { copyText } from "src/view/browser/utils/clipboard";
 
 import { commentIdentity } from "../domain";
 import type { CommentCandidate } from "../domain/comment-types";
@@ -14,10 +16,12 @@ export const COMMENT_OVERLAY_IMAGE_HEIGHT = 300;
 export const COMMENT_OVERLAY_IMAGE_BOTTOM_PADDING = 10;
 export const COMMENT_OVERLAY_IMAGE_TRAVEL_SECONDS = 6;
 const MAX_IMAGE_QUEUE_SIZE = 64;
+const logger = createLogger("comment-overlay");
 
 interface OverlayImage {
   key: string;
   url: string;
+  asciiArtText?: string;
 }
 
 /** CSS animationの完了後に先頭だけを除き、次の画像へ進める。 */
@@ -47,6 +51,7 @@ export function OverlayImageLane({
     width: number;
     height: number;
   } | null>(null);
+  const [failedKey, setFailedKey] = useState<string | null>(null);
   const seenImages = useRef(new Set<string>());
   const seenOrder = useRef<string[]>([]);
 
@@ -54,6 +59,18 @@ export function OverlayImageLane({
     const additions: OverlayImage[] = [];
     for (const comment of comments) {
       const identity = commentIdentity(comment);
+      if (comment.asciiArtImageUrl) {
+        const key = `${identity}:ascii-art`;
+        if (!seenImages.current.has(key)) {
+          seenImages.current.add(key);
+          seenOrder.current.push(key);
+          additions.push({
+            key,
+            url: comment.asciiArtImageUrl,
+            asciiArtText: comment.text,
+          });
+        }
+      }
       for (const [index, url] of (comment.imageUrls ?? []).slice(0, 3).entries()) {
         const key = `${identity}:${index}:${url}`;
         if (seenImages.current.has(key)) continue;
@@ -77,6 +94,7 @@ export function OverlayImageLane({
   if (!activeImage) return null;
   const imageHeight = Math.max(1, Math.round(COMMENT_OVERLAY_IMAGE_HEIGHT * imageScale));
   const isLoadedImage = naturalDimensions?.key === activeImage.key;
+  const isFailedAsciiArt = failedKey === activeImage.key && activeImage.asciiArtText != null;
   const aspectRatio = isLoadedImage
     ? naturalDimensions.width / Math.max(1, naturalDimensions.height)
     : 1;
@@ -101,28 +119,60 @@ export function OverlayImageLane({
       }}
       onAnimationEnd={() => setQueue(removeCompletedOverlayImage)}
     >
-      <ExternalImage
-        key={activeImage.key}
-        className="comment-overlay-image-lane__image"
-        data-testid="comment-overlay-image"
-        data-image-key={activeImage.key}
-        src={activeImage.url}
-        alt=""
-        width={imageWidth}
-        height={imageHeight}
-        loading="eager"
-        decoding="async"
-        style={imageStyle}
-        onLoad={(event) => {
-          const { naturalWidth, naturalHeight } = event.currentTarget;
-          if (naturalWidth <= 0 || naturalHeight <= 0) return;
-          setNaturalDimensions({
-            key: activeImage.key,
-            width: naturalWidth,
-            height: naturalHeight,
-          });
-        }}
-      />
+      {isFailedAsciiArt ? (
+        <pre
+          className="comment-overlay-image-lane__fallback"
+          data-testid="comment-overlay-aa-fallback"
+          style={imageStyle}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            void copyText(activeImage.asciiArtText ?? "").catch((error: unknown) => {
+              logger.error("AAコメントのコピーに失敗しました:", error);
+            });
+          }}
+        >
+          {activeImage.asciiArtText}
+        </pre>
+      ) : (
+        <ExternalImage
+          key={activeImage.key}
+          className="comment-overlay-image-lane__image"
+          data-testid={
+            activeImage.asciiArtText != null ? "comment-overlay-aa-image" : "comment-overlay-image"
+          }
+          data-image-key={activeImage.key}
+          src={activeImage.url}
+          alt={activeImage.asciiArtText ?? ""}
+          title={activeImage.asciiArtText != null ? "右クリックでAA本文をコピー" : undefined}
+          width={imageWidth}
+          height={imageHeight}
+          loading="eager"
+          decoding="async"
+          style={imageStyle}
+          onContextMenu={
+            activeImage.asciiArtText == null
+              ? undefined
+              : (event) => {
+                  event.preventDefault();
+                  void copyText(activeImage.asciiArtText ?? "").catch((error: unknown) => {
+                    logger.error("AAコメントのコピーに失敗しました:", error);
+                  });
+                }
+          }
+          onError={() => {
+            if (activeImage.asciiArtText != null) setFailedKey(activeImage.key);
+          }}
+          onLoad={(event) => {
+            const { naturalWidth, naturalHeight } = event.currentTarget;
+            if (naturalWidth <= 0 || naturalHeight <= 0) return;
+            setNaturalDimensions({
+              key: activeImage.key,
+              width: naturalWidth,
+              height: naturalHeight,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

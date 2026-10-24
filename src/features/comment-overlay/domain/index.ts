@@ -1,3 +1,4 @@
+export { createAsciiArtImageUrl } from "./ascii-art-image";
 export type {
   CommentBatch,
   CommentCandidate,

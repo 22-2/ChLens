@@ -72,6 +72,23 @@ describe("OverlayImageLane", () => {
     expect(removeCompletedOverlayImage(nextQueue)).toEqual([]);
   });
 
+  it("AA画像を空白と改行を含む代替テキスト付きで読み込み、失敗時に本文へ戻す", () => {
+    const comment: CommentCandidate = {
+      responseNumber: 4,
+      text: "　／￣￣＼\n　|　猫　|\n　＼＿＿／",
+      author: "名無し",
+      isAA: true,
+      asciiArtImageUrl: "data:image/svg+xml;charset=utf-8,%3Csvg%2F%3E",
+    };
+
+    render(<OverlayImageLane comments={[comment]} stageWidth={800} imageScale={0.3} playing />);
+
+    const image = screen.getByTestId("comment-overlay-aa-image");
+    expect(image).toHaveAttribute("alt", comment.text);
+    fireEvent.error(image);
+    expect(screen.getByTestId("comment-overlay-aa-fallback")).toHaveTextContent("猫");
+  });
+
   it("表示領域の変更に合わせて画像サイズ・距離・速度をスケールする", () => {
     const comment: CommentCandidate = {
       responseNumber: 3,

@@ -149,6 +149,19 @@ describe("コメントオーバーレイdomain", () => {
     });
   });
 
+  it("AAの改行と空白を保った画像を作り、元テキストも候補へ残す", () => {
+    const candidate = projectCommentResponse(
+      response(4, "　／￣￣＼<br>　|　猫　|<br>　＼＿＿／", { isAA: true }),
+    );
+
+    expect(candidate).toMatchObject({
+      text: "　／￣￣＼\n　|　猫　|\n　＼＿＿／",
+      isAA: true,
+    });
+    expect(candidate?.asciiArtImageUrl).toMatch(/^data:image\/svg\+xml/);
+    expect(decodeURIComponent(candidate?.asciiArtImageUrl ?? "")).toContain('xml:space="preserve"');
+  });
+
   it("自分のレス状態をOverlay候補へ引き継ぐ", () => {
     expect(projectCommentResponse(response(3, "自分の本文", { isOwn: true }))).toMatchObject({
       responseNumber: 3,

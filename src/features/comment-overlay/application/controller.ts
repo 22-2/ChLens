@@ -57,6 +57,7 @@ function toCommentResponse(
     num: response.num,
     name: response.name,
     message: response.message,
+    ...(response.isAA ? { isAA: true } : {}),
     ...(response.date ? { date: response.date } : {}),
     ...(response.id ? { id: response.id } : {}),
     ...(response.ng != null ? { ng: response.ng } : {}),
