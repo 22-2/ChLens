@@ -83,8 +83,61 @@ describe("レス本文の表示処理", () => {
 
       const result = MessageProcessor.decode(res, "https:");
       expect(result.messageHtml).toContain(
-        '<a href="https://example.com/path?param=value&other=123"',
+        '<a href="https://example.com/path?param=value&amp;other=123"',
       );
+    });
+
+    it("通常URLのHTML entityはDOM上で一度だけ戻し、queryを保つ", () => {
+      const result = MessageProcessor.decode(
+        {
+          name: "テスト",
+          mail: "",
+          other: "",
+          message: "https://example.com/?a=1&amp;b=2",
+        },
+        "https:",
+      );
+      const template = document.createElement("template");
+      template.innerHTML = result.messageHtml;
+      const link = template.content.querySelector("a");
+
+      expect(link?.getAttribute("href")).toBe("https://example.com/?a=1&b=2");
+      expect(link?.textContent).toBe("https://example.com/?a=1&b=2");
+    });
+
+    it("5ch中継URLは表示文字列とhrefの両方をHTTP(S)遷移先へ揃える", () => {
+      const target = "https://example.com/project?q=1%2F2";
+      const result = MessageProcessor.decode(
+        {
+          name: "テスト",
+          mail: "",
+          other: "",
+          message: `https://jump.5ch.net/?${encodeURIComponent(target)}`,
+        },
+        "https:",
+      );
+
+      expect(result.messageHtml).toContain(`<a href="${target}"`);
+      expect(result.messageHtml).toContain(`>${target}</a>`);
+      expect(result.messageHtml).not.toContain("jump.5ch.net");
+    });
+
+    it("中継先のqueryをHTML属性としてエスケープし、queryとfragmentを保持する", () => {
+      const target = "https://example.com/project?a=1&b=2#section";
+      const result = MessageProcessor.decode(
+        {
+          name: "テスト",
+          mail: "",
+          other: "",
+          message: `https://jump.5ch.net/?${encodeURIComponent(target)}`,
+        },
+        "https:",
+      );
+
+      expect(result.messageHtml).toContain(
+        '<a href="https://example.com/project?a=1&amp;b=2#section"',
+      );
+      expect(result.messageHtml).toContain(`>${target}</a>`);
     });
 
     it("全角括弧で囲まれたURLを解析する", () => {

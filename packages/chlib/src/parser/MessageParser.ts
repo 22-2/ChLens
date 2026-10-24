@@ -1,4 +1,5 @@
-import { normalizeObfuscatedUrl, URL_LIKE_PATTERN } from "../url/text";
+import { normalizeObfuscatedUrl, unwrap5chJumpUrl, URL_LIKE_PATTERN } from "../url/text";
+import { decodeCharReference } from "../utils/entities";
 import { type AnchorData, AnchorParser } from "./AnchorParser";
 
 export interface MessageParserOptions {
@@ -101,6 +102,15 @@ function appendToken(tokens: MessageToken[], token: MessageToken): void {
   tokens.push(token);
 }
 
+function decodeUrlHtmlEntities(rawUrl: string): string {
+  try {
+    // URL文字列をHTMLへ出力する前にentityを一度だけ戻し、URL展開後は再デコードしない。
+    return decodeCharReference(rawUrl);
+  } catch {
+    return rawUrl;
+  }
+}
+
 function parseTextTokens(
   text: string,
   linkifyUrls: boolean,
@@ -164,10 +174,16 @@ function parseUrlTokens(
     }
 
     const displayUrl = trimLinkTrailingPunctuation(match[0]);
+    const normalizedUrl = normalizeObfuscatedUrl(
+      decodeUrlHtmlEntities(displayUrl),
+      fallbackProtocol,
+    );
+    const linkUrl = unwrap5chJumpUrl(normalizedUrl);
     appendToken(tokens, {
       type: "url",
-      value: displayUrl,
-      href: normalizeObfuscatedUrl(displayUrl, fallbackProtocol),
+      // 変更理由: 表示文字列・href・クリック時のコピー先を同一の展開済みURLに揃える。
+      value: linkUrl === normalizedUrl ? displayUrl : linkUrl,
+      href: linkUrl,
     });
 
     // 解析で取り除いた句読点を捨てずに本文へ戻す。
@@ -190,6 +206,48 @@ function isAnchorEndTag(tag: string): boolean {
   return /^<\/a\s*>/i.test(tag);
 }
 
+function normalize5chJumpAnchorTag(tag: string): string {
+  let index = 2;
+  while (index < tag.length) {
+    while (/\s/u.test(tag[index] ?? "")) index += 1;
+    if (tag[index] === ">" || tag[index] === "/" || index >= tag.length) return tag;
+
+    const nameStart = index;
+    while (index < tag.length && !/[\s=/>]/u.test(tag[index] ?? "")) index += 1;
+    const name = tag.slice(nameStart, index).toLowerCase();
+    while (/\s/u.test(tag[index] ?? "")) index += 1;
+    if (tag[index] !== "=") continue;
+    index += 1;
+    while (/\s/u.test(tag[index] ?? "")) index += 1;
+
+    const quote = tag[index] === "'" || tag[index] === '"' ? tag[index] : "";
+    if (quote) index += 1;
+    const valueStart = index;
+    while (
+      index < tag.length &&
+      (quote ? tag[index] !== quote : !/[\s>]/u.test(tag[index] ?? ""))
+    ) {
+      index += 1;
+    }
+    const valueEnd = index;
+    const value = tag.slice(valueStart, valueEnd);
+    if (quote) index += 1;
+
+    if (name !== "href") continue;
+    if (!value) return tag;
+
+    // HTML entityは中継URLの属性文脈で一度だけ戻し、URLヘルパーはpercent表現を保つ。
+    const decodedHref = decodeUrlHtmlEntities(value);
+    const target = unwrap5chJumpUrl(decodedHref);
+    if (target === decodedHref) return tag;
+
+    const escapedTarget = target.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+    // 常にダブルクォートへ統一し、replacer関数でURL内の$&などを文字どおり保持する。
+    return `${tag.slice(0, nameStart)}href="${escapedTarget}"${tag.slice(index)}`;
+  }
+  return tag;
+}
+
 /**
  * Parses message markup into semantic tokens without generating application HTML.
  *
@@ -206,7 +264,10 @@ export function parseMessage(message: string, options: MessageParserOptions): Me
     if (!part) continue;
 
     if (TAG_PATTERN.test(part)) {
-      appendToken(tokens, { type: "tag", value: part });
+      appendToken(tokens, {
+        type: "tag",
+        value: isAnchorStartTag(part) ? normalize5chJumpAnchorTag(part) : part,
+      });
       if (isAnchorStartTag(part)) insideAnchor = true;
       if (isAnchorEndTag(part)) insideAnchor = false;
       continue;

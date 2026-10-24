@@ -22,6 +22,10 @@ interface DecodableRes {
   date?: string;
 }
 
+function escapeHtmlAttribute(value: string): string {
+  return value.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+}
+
 function renderMessageTokens(tokens: readonly MessageToken[]): string {
   return tokens
     .map((token) => {
@@ -45,7 +49,7 @@ function renderMessageTokens(tokens: readonly MessageToken[]): string {
           return `<a role="link" tabindex="0" class="anchor_id">${token.value}</a>`;
         case "url":
           // 意図: URLの意味解析はchlibに任せ、リンク属性やCSSクラスはアプリ表示層で決める。
-          return `<a href="${token.href}" target="_blank" rel="noopener noreferrer">${token.value}</a>`;
+          return `<a href="${escapeHtmlAttribute(token.href)}" target="_blank" rel="noopener noreferrer">${token.value}</a>`;
       }
     })
     .join("");

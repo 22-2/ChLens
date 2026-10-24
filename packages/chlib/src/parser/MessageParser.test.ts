@@ -53,6 +53,77 @@ describe("MessageParser", () => {
     ]);
   });
 
+  it("既存アンカーのラベルを保ち、中継URLのhrefだけをデコードして展開する", () => {
+    const tokens = parseMessage(
+      '<a href="https://jump.5ch.net/?https%3A%2F%2Fexample.com%2F%3Fa%3D1%26b%3D2">元のラベル</a>',
+      { protocol: "https:" },
+    );
+
+    expect(tokens).toEqual([
+      { type: "tag", value: '<a href="https://example.com/?a=1&amp;b=2">' },
+      { type: "text", value: "元のラベル" },
+      { type: "tag", value: "</a>" },
+    ]);
+  });
+
+  it("data-hrefやtitle内の文字列ではなくhref属性だけを展開する", () => {
+    const wrapper = `https://jump.5ch.net/?${encodeURIComponent("https://example.com/target")}`;
+    const tokens = parseMessage(
+      `<a data-href="${wrapper}" title="href='${wrapper}'" href="${wrapper}">元ラベル</a>`,
+      { protocol: "https:" },
+    );
+
+    expect(tokens[0]).toEqual({
+      type: "tag",
+      value: `<a data-href="${wrapper}" title="href='${wrapper}'" href="https://example.com/target">`,
+    });
+    expect(tokens[1]).toEqual({ type: "text", value: "元ラベル" });
+  });
+
+  it("single-quote属性を安全な引用符へ直し、apostropheと$置換記号を保持する", () => {
+    const target = "https://example.com/it's?value=$&next=$$";
+    const encodedTarget = encodeURIComponent(target).replaceAll("'", "%27");
+    const wrapper = `https://jump.5ch.net/?${encodedTarget}`;
+    const tokens = parseMessage(`<a href='${wrapper}'>元のラベル</a>`, { protocol: "https:" });
+
+    expect(tokens).toEqual([
+      { type: "tag", value: '<a href="https://example.com/it\'s?value=$&amp;next=$$">' },
+      { type: "text", value: "元のラベル" },
+      { type: "tag", value: "</a>" },
+    ]);
+  });
+
+  it("遷移先の引用符をURLエンコードして属性注入を防ぐ", () => {
+    const target = "https://example.com/%22%20onclick%3D%22alert(1)";
+    const wrapper = `https://jump.5ch.net/?${encodeURIComponent(target)}`;
+    const tokens = parseMessage(`<a href='${wrapper}'>ラベル</a>`, { protocol: "https:" });
+
+    expect(tokens[0]).toEqual({
+      type: "tag",
+      value: '<a href="https://example.com/%22%20onclick%3D%22alert(1)">',
+    });
+  });
+
+  it("HTML entityを1回だけ戻し、URL内の二重entityやpercent encodeを保つ", () => {
+    const encodedTarget = encodeURIComponent("https://example.com/path?token=%26amp%3B");
+    const tokens = parseMessage(`<a href="https://jump.5ch.net/?${encodedTarget}">ラベル</a>`, {
+      protocol: "https:",
+    });
+    const doubleEntityTokens = parseMessage(
+      '<a href="https://jump.5ch.net/?https://example.com/path?token=&amp;amp;">ラベル</a>',
+      { protocol: "https:" },
+    );
+
+    expect(tokens[0]).toEqual({
+      type: "tag",
+      value: '<a href="https://example.com/path?token=%26amp%3B">',
+    });
+    expect(doubleEntityTokens[0]).toEqual({
+      type: "tag",
+      value: '<a href="https://example.com/path?token=&amp;amp;">',
+    });
+  });
+
   it("normalizes protocol-relative image sources before parsing URLs", () => {
     const tokens = parseMessage('<img src="//i.imgur.com/example.jpg">', {
       protocol: "https:",

@@ -28,6 +28,58 @@ export const URL_LIKE_PATTERN =
 const HOST_ONLY_URL_PATTERN =
   /^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}(?::\d+)?(?:[/?#].*)?$/i;
 
+/** 5chの既知の中継URLがルートのクエリに持つHTTP(S)リンクを取り出す。 */
+export function unwrap5chJumpUrl(rawUrl: string): string {
+  let wrapper: URL;
+  try {
+    wrapper = new URL(rawUrl);
+  } catch {
+    return rawUrl;
+  }
+
+  if (
+    !["http:", "https:"].includes(wrapper.protocol) ||
+    wrapper.hostname.toLowerCase() !== "jump.5ch.net" ||
+    wrapper.port !== "" ||
+    wrapper.pathname !== "/" ||
+    wrapper.hash ||
+    !wrapper.search
+  ) {
+    return rawUrl;
+  }
+
+  const encodedTarget = wrapper.search.slice(1);
+  let targetText = encodedTarget;
+  if (!/^https?:\/\//iu.test(targetText)) {
+    try {
+      targetText = decodeURIComponent(encodedTarget);
+    } catch {
+      return rawUrl;
+    }
+  }
+
+  let target: URL;
+  if (/%(?![\da-f]{2})/iu.test(targetText)) return rawUrl;
+  try {
+    target = new URL(targetText);
+  } catch {
+    return rawUrl;
+  }
+
+  // 任意スキームや資格情報付きURL、中継URLの再帰展開は遷移先として許可しない。
+  if (
+    !["http:", "https:"].includes(target.protocol) ||
+    !target.hostname ||
+    target.username ||
+    target.password ||
+    target.hostname.toLowerCase() === "jump.5ch.net"
+  ) {
+    return rawUrl;
+  }
+
+  return target.href;
+}
+
 export function normalizeObfuscatedUrl(rawUrl: string, fallbackProtocol?: string): string {
   if (HOST_ONLY_URL_PATTERN.test(rawUrl)) {
     // ホスト名だけの画像URLは相対パスとして解釈されるため、画像取得前に絶対URLへ戻す。
