@@ -54,7 +54,9 @@
         "frame-src": "'self' customprotocol: asset: http://* https://* blob:",
         "connect-src": "ipc: http://ipc.localhost https://ipc.localhost",
         "worker-src": "'self' blob:",
-        "script-src": "'self' 'wasm-unsafe-eval'"
+        "script-src": "'self' 'wasm-unsafe-eval'",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:"
       }
     }
   },
