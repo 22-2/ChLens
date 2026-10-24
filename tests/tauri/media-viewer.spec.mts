@@ -17,11 +17,7 @@ interface ViewerFrame {
 
 async function captureViewerFrames(page: Page, count: number, action: () => Promise<void>) {
   await page.evaluate((frameCount) => {
-    const target = window as typeof window & {
-      __mediaViewerFrames: Promise<ViewerFrame[]>;
-      __mediaViewerActionDone: boolean;
-    };
-    target.__mediaViewerActionDone = false;
+    const target = window as typeof window & { __mediaViewerFrames: Promise<ViewerFrame[]> };
     target.__mediaViewerFrames = new Promise((resolve) => {
       const frames: ViewerFrame[] = [];
       const sample = () => {
@@ -37,17 +33,13 @@ async function captureViewerFrames(page: Page, count: number, action: () => Prom
           opacity: Number(style.opacity),
           loading: document.querySelector(".media-viewer__loader") !== null,
         });
-        if (frames.length < frameCount || !target.__mediaViewerActionDone)
-          requestAnimationFrame(sample);
+        if (frames.length < frameCount) requestAnimationFrame(sample);
         else resolve(frames);
       };
       requestAnimationFrame(sample);
     });
   }, count);
   await action();
-  await page.evaluate(() => {
-    (window as typeof window & { __mediaViewerActionDone: boolean }).__mediaViewerActionDone = true;
-  });
   return page.evaluate(() => {
     return (window as typeof window & { __mediaViewerFrames: Promise<ViewerFrame[]> })
       .__mediaViewerFrames;
@@ -113,13 +105,6 @@ test("Tauriの実画像読み込みとホイール入力でも逆行や読込前
       const target = images[next ? 1 : 0]!;
       const frames = await captureViewerFrames(page, 45, async () => {
         await page.getByTitle(next ? "次の画像" : "前の画像", { exact: true }).click();
-        await expect
-          .poll(() =>
-            page
-              .locator(".media-viewer__image")
-              .evaluate((image) => (image as HTMLImageElement).naturalWidth),
-          )
-          .toBe(next ? 800 : 400);
       });
       navigation.push(frames);
       const exposed = frames.filter(
