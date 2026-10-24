@@ -270,6 +270,7 @@ export function OverlayStage({
     null,
   );
   const menuRef = useRef<HTMLDivElement>(null);
+  const focusMenuItemRef = useRef(false);
   // カーソルが通過しただけでは止めず、右クリックでメニューを開いたコメントだけを停止する。
   const selectedCommentKey = menu ? commentIdentity(menu.comment) : null;
   const previouslySelectedCommentKey = useRef<string | null>(null);
@@ -294,6 +295,12 @@ export function OverlayStage({
       ownerDocument.removeEventListener("pointerdown", handleOutsidePointerDown, true);
       ownerWindow.removeEventListener("blur", closeMenu);
     };
+  }, [menu]);
+
+  useLayoutEffect(() => {
+    if (!menu || !focusMenuItemRef.current) return;
+    focusMenuItemRef.current = false;
+    menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
   }, [menu]);
 
   useLayoutEffect(() => {
@@ -567,6 +574,24 @@ export function OverlayStage({
             style={commentStyle}
             aria-label={`レス${comment.responseNumber}: ${comment.text}`}
             onContextMenu={interactive ? (event) => openMenu(event, comment) : undefined}
+            onKeyDown={
+              interactive
+                ? (event) => {
+                    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
+                      event.preventDefault();
+                      const stageRect = stageRef.current?.getBoundingClientRect();
+                      if (!stageRect) return;
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      focusMenuItemRef.current = true;
+                      setMenu({
+                        comment,
+                        x: Math.max(0, Math.min(rect.left - stageRect.left, stageRect.width - 190)),
+                        y: Math.max(0, Math.min(rect.top - stageRect.top, stageRect.height - 120)),
+                      });
+                    }
+                  }
+                : undefined
+            }
             onClick={() => {
               // 変更理由: pointerdownを伴わないクリックでも閉じ、既存のレス操作も実行する。
               setMenu(null);

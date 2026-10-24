@@ -337,6 +337,39 @@ describe("OverlayStage", () => {
     expect(onCommentJump).toHaveBeenCalledWith(second);
   });
 
+  it("Shift+F10でメニューを開くとジャンプボタンへフォーカスし、クリックで移動できる", () => {
+    const target = {
+      ...comment,
+      responseNumber: 2,
+      sourceThreadUrl: "https://example.com/thread/1",
+    };
+    const onCommentJump = vi.fn();
+    render(
+      <OverlayStage
+        comments={[target]}
+        stageWidth={600}
+        stageHeight={64}
+        laneHeight={32}
+        collisionMode="adaptive"
+        onCommentJump={onCommentJump}
+      />,
+    );
+    act(() => scheduledFrame?.(0));
+
+    const commentElement = screen.getByRole("group", {
+      name: `レス${target.responseNumber}: ${target.text}`,
+    });
+    commentElement.focus();
+    fireEvent.keyDown(commentElement, { key: "F10", shiftKey: true });
+
+    const jumpItem = screen.getByRole("menuitem", { name: "このレスへジャンプ" });
+    expect(jumpItem).toHaveFocus();
+    expect(jumpItem.tagName).toBe("BUTTON");
+    fireEvent.click(jumpItem);
+
+    expect(onCommentJump).toHaveBeenCalledWith(target);
+  });
+
   it("実況コメントをダブルクリックすると、そのコメントの元レスへ移動する", () => {
     const target = {
       ...comment,
