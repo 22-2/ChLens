@@ -158,7 +158,13 @@ export function useMediaViewerController(
   const viewerPanRef = useRef<ViewerPoint>({ x: 0, y: 0 });
   const viewerScaleRef = useRef(1);
   const currentTransformRef = useRef<ViewerTransform | null>(null);
-  const animationFrameRef = useRef<{ window: Window; id: number } | null>(null);
+  const animationFrameRef = useRef<{
+    window: Window;
+    canvas: HTMLDivElement;
+    id: number;
+  } | null>(null);
+  const animationGoalRef = useRef<ViewerTransform | null>(null);
+  const paintedSurfaceRef = useRef<{ canvas: HTMLDivElement; window: Window } | null>(null);
   const zoomPivotRef = useRef<ViewerPoint | null>(null);
   const panStateRef = useRef<{
     active: boolean;
@@ -189,21 +195,28 @@ export function useMediaViewerController(
       canvas.style.width = `${baseSize.width}px`;
       canvas.style.height = `${baseSize.height}px`;
       const goal: ViewerTransform = { ...viewerPanRef.current, scale: viewerScaleRef.current };
+      animationGoalRef.current = goal;
       const animationWindow = canvas.ownerDocument.defaultView ?? window;
       const paint = (view: ViewerTransform) => {
         currentTransformRef.current = view;
+        paintedSurfaceRef.current = { canvas, window: animationWindow };
         canvas.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
       };
 
-      stopViewerAnimation();
       if (
         !animate ||
         !currentTransformRef.current ||
         animationWindow.matchMedia?.("(prefers-reduced-motion: reduce)").matches
       ) {
+        stopViewerAnimation();
         paint(goal);
         return;
       }
+
+      // 連続入力では目標だけ更新する。予約と時計を作り直すと描画が入力に追いつかない。
+      const pending = animationFrameRef.current;
+      if (pending?.canvas === canvas && pending.window === animationWindow) return;
+      stopViewerAnimation();
 
       // 目標と描画中の状態を分け、連続入力でも表示中の位置から滑らかに追従させる。
       // 別窓へ移動した後は、その窓の時計と描画フレームを使う。
@@ -211,21 +224,24 @@ export function useMediaViewerController(
       const step = (now: number) => {
         animationFrameRef.current = null;
         const current = currentTransformRef.current;
-        if (!current) return;
-        const next = approachViewerTransform(current, goal, now - last);
+        const target = animationGoalRef.current;
+        if (!current || !target) return;
+        const next = approachViewerTransform(current, target, now - last);
         last = now;
-        if (isViewerTransformSettled(next, goal)) {
-          paint(goal);
+        if (isViewerTransformSettled(next, target)) {
+          paint(target);
           return;
         }
         paint(next);
         animationFrameRef.current = {
           window: animationWindow,
+          canvas,
           id: animationWindow.requestAnimationFrame(step),
         };
       };
       animationFrameRef.current = {
         window: animationWindow,
+        canvas,
         id: animationWindow.requestAnimationFrame(step),
       };
     },
@@ -281,7 +297,16 @@ export function useMediaViewerController(
       isSameViewerSize(previousStageSize, nextStageSize) &&
       isSameViewerSize(previousBaseSize, nextBaseSize)
     ) {
-      renderViewerTransform();
+      // 寸法が変わらないRO通知では補間を維持する。別窓の新しい描画面だけは描き直す。
+      const canvas = viewerCanvasRef.current;
+      const painted = paintedSurfaceRef.current;
+      if (
+        canvas &&
+        (painted?.canvas !== canvas ||
+          painted.window !== (canvas.ownerDocument.defaultView ?? window))
+      ) {
+        renderViewerTransform();
+      }
       return;
     }
 
@@ -327,6 +352,8 @@ export function useMediaViewerController(
   const resetViewerSurface = useCallback(() => {
     stopViewerAnimation();
     currentTransformRef.current = null;
+    animationGoalRef.current = null;
+    paintedSurfaceRef.current = null;
     viewerBaseSizeRef.current = null;
     viewerStageSizeRef.current = null;
     viewerPanRef.current = { x: 0, y: 0 };

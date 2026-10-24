@@ -12,6 +12,9 @@ export function approachViewerTransform(
   target: ViewerTransform,
   elapsedMs: number,
 ): ViewerTransform {
+  // rAFの時刻が予約時のperformance.now()より早くても、補間を逆行させない。
+  if (elapsedMs <= 0) return current;
+
   // 経過時間と45msの時定数で補間し、フレームレートが違っても同じ速さで目標へ追従させる。
   const progress = 1 - Math.exp(-elapsedMs / 45);
   // 対数空間で補間すると、拡大と縮小で倍率の変化を対称に感じられる。

@@ -22,6 +22,13 @@ function zoomAround(
 }
 
 describe("approachViewerTransform", () => {
+  it("経過時間が0以下でも倍率と位置を逆行させない", () => {
+    const current = { scale: 1.2, x: 20, y: -10 };
+    const goal = { scale: 2, x: -50, y: -40 };
+    expect(approachViewerTransform(current, goal, -1)).toEqual(current);
+    expect(approachViewerTransform(current, goal, 0)).toEqual(current);
+  });
+
   it("画像端でズームしても、補間中にズーム中心の点が動かない", () => {
     const start: ViewerTransform = { scale: 2, x: -1200, y: -800 };
     // 左上から遠い右下寄りの点をズーム中心にする。

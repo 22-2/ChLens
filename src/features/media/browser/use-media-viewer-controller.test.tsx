@@ -12,10 +12,16 @@ vi.mock("src/app/platform", () => ({
 import { type MediaViewerProps, useMediaViewerController } from "./use-media-viewer-controller";
 import { useMediaViewerStore } from "./use-media-viewer-store";
 
-function ViewerHarness() {
-  const props = useMediaViewerController("thread-a");
+function ViewerHarness({
+  surfaceKey = null,
+  surfaceId = "main",
+}: {
+  surfaceKey?: object | null;
+  surfaceId?: string;
+}) {
+  const props = useMediaViewerController("thread-a", surfaceKey);
   if (!props) return null;
-  return <ViewerSurface {...props} />;
+  return <ViewerSurface key={surfaceId} {...props} />;
 }
 
 function ViewerSurface({
@@ -39,12 +45,24 @@ describe("画像ビューアのズームアニメーション", () => {
   let frameId: number;
   let frames: Map<number, FrameRequestCallback>;
   let reduceMotion: boolean;
+  let resizeCallbacks: ResizeObserverCallback[];
 
   beforeEach(() => {
     now = 0;
     frameId = 0;
     frames = new Map();
     reduceMotion = false;
+    resizeCallbacks = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resizeCallbacks.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
     vi.spyOn(window.performance, "now").mockImplementation(() => now);
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       frames.set(++frameId, callback);
@@ -141,6 +159,68 @@ describe("画像ビューアのズームアニメーション", () => {
     expect(restored.scale).toBeCloseTo(1, 10);
     expect(restored.x).toBeCloseTo(100, 10);
     expect(restored.y).toBeCloseTo(100, 10);
+  });
+
+  it("予約時刻より早い初回rAFでも表示を逆行させない", () => {
+    const { stage, canvas } = mountViewer();
+    now = 100;
+    const initial = canvas.style.transform;
+    fireEvent.wheel(stage, { deltaY: -100 });
+    advanceFrame(-1);
+    expect(canvas.style.transform).toBe(initial);
+    advanceFrame(16);
+    expect(getTransform(canvas).scale).toBeGreaterThan(1);
+  });
+
+  it("各フレーム直前の連続入力でも表示倍率が毎フレーム前進する", () => {
+    const { stage, canvas } = mountViewer();
+    fireEvent.wheel(stage, { deltaY: -20 });
+    advanceFrame(16);
+    let previousScale = getTransform(canvas).scale;
+    for (let index = 0; index < 10; index += 1) {
+      // 実WebView2同様、入力時のperformance.now()よりrAFの時刻が少し早い状況を作る。
+      now += 17;
+      fireEvent.wheel(stage, { deltaY: -20 });
+      advanceFrame(-1);
+      const scale = getTransform(canvas).scale;
+      expect(scale).toBeGreaterThan(previousScale);
+      previousScale = scale;
+    }
+    advanceFrame(1000);
+    expect(getTransform(canvas).scale).toBeCloseTo(Math.exp(11 * 0.036), 10);
+  });
+
+  it("丸め後の寸法が変わらない再計測でも補間を維持する", () => {
+    const { stage, canvas } = mountViewer();
+    fireEvent.wheel(stage, { deltaY: -100 });
+    advanceFrame(16);
+    const intermediate = canvas.style.transform;
+    stage.getBoundingClientRect = () => new DOMRect(0, 0, 600.1, 400);
+    act(() => resizeCallbacks.at(-1)?.([], {} as ResizeObserver));
+    expect(canvas.style.transform).toBe(intermediate);
+    expect(frames.size).toBe(1);
+    advanceFrame(16);
+    expect(getTransform(canvas).scale).toBeGreaterThan(1);
+    expect(getTransform(canvas).scale).toBeLessThan(Math.exp(0.18));
+  });
+
+  it("別の描画面へ移っても同寸法なら現在の倍率で新canvasを描画する", () => {
+    reduceMotion = true;
+    const { stage, canvas, container, rerender } = mountViewer();
+    fireEvent.wheel(stage, { deltaY: -100, clientX: 200, clientY: 150 });
+    const transform = canvas.style.transform;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, 0, 600, 400),
+    );
+    vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(true);
+    vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(400);
+    vi.spyOn(HTMLImageElement.prototype, "naturalHeight", "get").mockReturnValue(200);
+    rerender(<ViewerHarness surfaceKey={{}} surfaceId="detached" />);
+    const newCanvas = container.firstElementChild?.firstElementChild as HTMLDivElement;
+    expect(newCanvas).not.toBe(canvas);
+    expect(newCanvas.style.transform).toBe(transform);
+    expect(newCanvas.style.width).toBe("400px");
+    expect(frames.size).toBe(0);
   });
 
   it("動きを減らす設定では即時に描画し、ドラッグも遅延させない", () => {
