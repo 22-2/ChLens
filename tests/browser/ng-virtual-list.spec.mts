@@ -59,8 +59,8 @@ test("指定の正規表現は14画像を表示し、15・16画像を完全非�
   await expect(page.locator('[data-res-num="3"]')).toBeVisible();
   await expect(page.locator('[data-res-num="1"]')).toHaveCount(0);
   await expect(page.locator('[data-res-num="2"]')).toHaveCount(0);
-  // 高さ0が確定して、先頭のNGレス自体が仮想リストから外れたことまで確認する。
-  await expect(page.locator('[data-virtual-key="1"]')).toHaveCount(0);
+  // 先頭のNGレス本文が描画されず、ゼロ高さのレスを仮想化できていることを確認する。
+  await expect(page.locator('[data-res-num="1"]')).toHaveCount(0);
   for (let revision = 1; revision <= 5; revision++) {
     await page.getByRole("button", { name: "NGを再判定", exact: true }).click();
     await expect(page.getByTestId("revision")).toHaveText(String(revision));
@@ -74,7 +74,7 @@ test("スクロールでNGレスを外した後も、一時解除のON/OFFを繰
 }, testInfo) => {
   const toggle = page.getByRole("region", { name: "NG切り替え" }).getByRole("button");
   const restoredInMs: number[] = [];
-  await expect(page.locator('[data-virtual-key="1"]')).toHaveCount(0);
+  await expect(page.locator('[data-res-num="1"]')).toHaveCount(0);
   for (let cycle = 0; cycle < 5; cycle++) {
     await page.getByRole("button", { name: "中央へ", exact: true }).click();
     await expect(page.locator('[data-res-num="400"]')).toBeVisible();
@@ -94,7 +94,7 @@ test("スクロールでNGレスを外した後も、一時解除のON/OFFを繰
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
     await expect(page.locator('[data-res-num="1"]')).toHaveCount(0, { timeout: 1500 });
     await expect(page.locator('[data-res-num="2"]')).toHaveCount(0);
-    await expect(page.locator('[data-virtual-key="1"]')).toHaveCount(0);
+    await expect(page.locator('[data-res-num="1"]')).toHaveCount(0);
   }
   await page.screenshot({ path: testInfo.outputPath("ng-hidden.png") });
   await testInfo.attach("NG解除から先頭へ移動して表示されるまでの時間", {

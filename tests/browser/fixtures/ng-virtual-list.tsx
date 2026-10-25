@@ -109,8 +109,8 @@ function Probe() {
       >
         {scrollContainer ? (
           <VirtualResList
-            controller={list.controller}
-            scrollContainerRef={scrollContainerRef}
+            virtualizer={list.virtualizer}
+            keys={list.keys}
             highlightKey={null}
             onHighlightApplied={() => {}}
             renderItem={(key) => {

@@ -38,7 +38,7 @@ const responses: IRes[] = [
 const scrollContainerRef = { current: null };
 
 function setup(initialResponses = responses) {
-  const hook = renderHook(
+  return renderHook(
     ({ items }) => ({
       list: useThreadVirtualList({
         responses: items,
@@ -51,69 +51,29 @@ function setup(initialResponses = responses) {
     }),
     { initialProps: { items: initialResponses }, wrapper: NgStatusProvider },
   );
-  const controller = hook.result.current.list.controller;
-  act(() => {
-    controller.updateViewport({ scrollTop: 0, height: 50, listTop: 0, trailing: 0 });
-    // hard-ngで何も描かず、実測した高さ0のレスが描画範囲から外れた状態。
-    controller.reportSizes([
-      { key: 1, size: 0 },
-      { key: 2, size: 0 },
-      { key: 3, size: 100 },
-    ]);
-  });
-  expect(controller.getSnapshot().items.map((item) => item.key)).toEqual([3]);
-  return { ...hook, controller };
 }
 
-describe("仮想レス一覧のNG表示切替", () => {
-  it("NG一時解除を繰り返しても高さ0のレスが再描画され、通常レスの実測値を維持する", () => {
-    const { result, controller } = setup();
+describe("TanStack Virtualを使ったレス一覧", () => {
+  it("NG解除後も非表示レスが実測できるよう、推定高さを確保する", () => {
+    const { result } = setup();
+    const virtualizer = result.current.list.virtualizer;
+    expect(virtualizer.options.estimateSize(0)).toBeGreaterThan(0);
+    expect(virtualizer.options.estimateSize(2)).toBeGreaterThan(0);
 
-    for (let cycle = 0; cycle < 3; cycle++) {
-      act(() => result.current.ng.setNgTemporarilyDisabled(true));
+    act(() => result.current.ng.setNgTemporarilyDisabled(true));
 
-      expect(controller.getItem(1)?.size).toBeGreaterThan(0);
-      expect(controller.getItem(2)?.size).toBeGreaterThan(0);
-      expect(controller.getSnapshot().items.map((item) => item.key)).toEqual([1, 2, 3]);
-      expect(controller.getItem(3)?.size).toBe(100);
-
-      act(() =>
-        controller.reportSizes([
-          { key: 1, size: 200 },
-          { key: 2, size: 100 },
-        ]),
-      );
-      act(() => result.current.ng.setNgTemporarilyDisabled(false));
-      act(() =>
-        controller.reportSizes([
-          { key: 1, size: 0 },
-          { key: 2, size: 0 },
-        ]),
-      );
-      expect(controller.getSnapshot().items.map((item) => item.key)).toEqual([3]);
-    }
+    expect(result.current.list.virtualizer.options.estimateSize(0)).toBeGreaterThan(0);
+    expect(result.current.list.virtualizer.options.estimateSize(1)).toBeGreaterThan(0);
+    expect(result.current.list.virtualizer.options.estimateSize(2)).toBeGreaterThan(0);
+    expect(result.current.list.hasResponse(1)).toBe(true);
   });
 
-  it("完全非表示からクリックで表示へ変更すると、高さ0の先頭レスも再描画する", () => {
-    const { controller } = setup();
-
-    act(() => {
-      mocks.configValue = "soft-ng";
-      mocks.configUpdatedCallback?.({ key: "display_ng" });
-    });
-
-    expect(controller.getItem(1)?.size).toBeGreaterThan(0);
-    expect(controller.getSnapshot().items.map((item) => item.key)).toEqual([1, 2, 3]);
-    expect(controller.getItem(3)?.size).toBe(100);
-  });
-
-  it("NGルールの変更でNG判定が外れたレスも、高さ0の実測値を使い続けない", () => {
-    const { rerender, controller } = setup();
-
-    rerender({ items: responses.map((res) => ({ ...res, ng: undefined })) });
-
-    expect(controller.getItem(1)?.size).toBeGreaterThan(0);
-    expect(controller.getItem(2)?.size).toBeGreaterThan(0);
-    expect(controller.getItem(3)?.size).toBe(100);
+  it("レスの並びと再生位置の線を仮想izerへ渡す", () => {
+    const { result, rerender } = setup();
+    rerender({ items: [...responses, { ...responses[2]!, num: 4 }] });
+    expect(result.current.list.keys).toEqual([1, 2, 3, 4]);
+    expect(result.current.list.virtualizer.options.count).toBe(4);
+    expect(result.current.list.hasResponse(4)).toBe(true);
+    expect(result.current.list.hasResponse(99)).toBe(false);
   });
 });

@@ -32,6 +32,7 @@ import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtim
 import { useThreadData } from "src/features/thread/browser/use-thread-data";
 import { useThreadFind } from "src/features/thread/browser/use-thread-find";
 import { useThreadRefreshController } from "src/features/thread/browser/use-thread-refresh-controller";
+import type { VirtualKey } from "src/features/thread/browser/use-thread-virtual-list";
 import {
   REPLAY_LINE_KEY,
   useThreadVirtualList,
@@ -87,7 +88,6 @@ import {
   countNewRepliesToWrittenResponses,
 } from "src/view/browser/utils/thread-emphasis";
 import { subscribeThreadResJump } from "src/view/browser/utils/thread-read-state";
-import type { VirtualKey } from "src/view/browser/utils/virtual-list/layout";
 
 const logger = createLogger("view/browser");
 interface ThreadPageProps {
@@ -944,11 +944,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
           <div className="thread-page__responses">
             {/* 変更理由: 非表示のタブでもレスのDOMを持ち続けるとタブ数に比例してメモリが増えるため、
-                表示中だけ一覧を描画する。見ていた位置と実測した高さは virtualList が保持する。 */}
+                表示中だけ一覧を描画する。見ていた位置と実測値は useThreadVirtualList の仮想izerが保持する。 */}
             {isActive ? (
               <VirtualResList
-                controller={virtualList.controller}
-                scrollContainerRef={effectiveScrollContainerRef}
+                virtualizer={virtualList.virtualizer}
+                keys={virtualList.keys}
                 renderItem={renderVirtualItem}
                 highlightKey={virtualList.highlightKey}
                 onHighlightApplied={virtualList.onHighlightApplied}
