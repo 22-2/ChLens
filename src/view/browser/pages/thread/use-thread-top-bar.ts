@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
+  THREAD_FILTER_TOOLBAR_OPEN_EVENT,
   THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
   type ThreadFilterToolbarToggleDetail,
 } from "src/view/browser/utils/filter-toolbar-events";
@@ -90,7 +91,7 @@ export function useThreadTopBar({
     // 食い違わないよう、検索語とフィルタ条件を同じクローズ操作で解除する。
     clearFilter();
     setActiveTopBar("none");
-  }, [clearFilter, pinnedOpen, searchQuery, setSearchQuery]);
+  }, [clearFilter, pinnedOpen, searchQuery, setActiveTopBar, setSearchQuery]);
 
   const closeTopBarPreservingFilter = useCallback(() => {
     // 変更理由: ホイールで閉じる操作はツールバーの表示だけを戻し、
@@ -99,7 +100,7 @@ export function useThreadTopBar({
       return;
     }
     setActiveTopBar("none");
-  }, [pinnedOpen]);
+  }, [pinnedOpen, setActiveTopBar]);
 
   const toggleFilterToolbar = useCallback(() => {
     // 検索欄を同じツールバーへ統合したので、フィルタ操作は表示状態だけを反転させる。
@@ -112,20 +113,20 @@ export function useThreadTopBar({
     } else {
       setActiveTopBar("filter");
     }
-  }, [activeTopBar, closeTopBar, pinnedOpen]);
+  }, [activeTopBar, closeTopBar, pinnedOpen, setActiveTopBar]);
 
   const openFilterToolbar = useCallback(() => {
     // 変更理由: ホイールなどの「開くだけでよい」導線では toggle だと閉じ戻り得るため、
     // 明示的な open API を用意して入力欄の表示を安定させる。
     setActiveTopBar("filter");
-  }, []);
+  }, [setActiveTopBar]);
 
   const openFilterToolbarForSearch = useCallback(() => {
     // 検索は独立バーではなく同じツールバー内で開き、
     // スクロール中でも即入力欄へ移れるよう focus 用キーを更新する。
     setActiveTopBar("filter");
     setSearchFocusKey((prev) => prev + 1);
-  }, []);
+  }, [setActiveTopBar]);
 
   useEffect(() => {
     const handleSearchToggle = () => {
@@ -138,15 +139,31 @@ export function useThreadTopBar({
       }
       toggleFilterToolbar();
     };
+    const handleFilterOpen = (event: Event) => {
+      const detail = (event as CustomEvent<ThreadFilterToolbarToggleDetail>).detail;
+      if (detail?.tabId != null && (!isActive || detail.tabId !== tabId)) {
+        return;
+      }
+      openFilterToolbar();
+    };
 
     viewWindow.addEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
     viewWindow.addEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
+    viewWindow.addEventListener(THREAD_FILTER_TOOLBAR_OPEN_EVENT, handleFilterOpen);
 
     return () => {
       viewWindow.removeEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
       viewWindow.removeEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
+      viewWindow.removeEventListener(THREAD_FILTER_TOOLBAR_OPEN_EVENT, handleFilterOpen);
     };
-  }, [isActive, openFilterToolbarForSearch, tabId, toggleFilterToolbar, viewWindow]);
+  }, [
+    isActive,
+    openFilterToolbar,
+    openFilterToolbarForSearch,
+    tabId,
+    toggleFilterToolbar,
+    viewWindow,
+  ]);
 
   return {
     activeTopBar,

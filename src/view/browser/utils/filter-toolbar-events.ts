@@ -11,6 +11,7 @@ export const QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE = {
 // 変更理由: ステータスバーはThreadPageの外にあるため、対象タブを明示しつつ、
 // 既存のフィルタ操作と同じトグル動作を再利用する。
 export const THREAD_FILTER_TOOLBAR_TOGGLE_EVENT = "thread-filter-toolbar-toggle";
+export const THREAD_FILTER_TOOLBAR_OPEN_EVENT = "thread-filter-toolbar-open";
 
 export interface ThreadFilterToolbarToggleDetail {
   tabId: string;
