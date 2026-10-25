@@ -117,7 +117,7 @@ const ALL_SETTINGS_SECTIONS = [
   defineSection(
     "general",
     "一般",
-    "新しいタブで開くページや、タブバーの配置、通信の方法を設定します。",
+    "新しいタブで開くページや、通信の方法を設定します。",
     <Settings size={20} />,
     [
       {
@@ -145,25 +145,6 @@ const ALL_SETTINGS_SECTIONS = [
         title: "指定の板 URL",
         description:
           "『指定の板』を選んだ時に開く板URLです（例: https://example.com/test/read.cgi/software/）。",
-      },
-      {
-        kind: "divider",
-        id: "tab-bar",
-        title: "タブバー",
-      },
-      {
-        kind: "string",
-        key: "tab_bar_orientation",
-        title: "タブバーの配置",
-        description: "タブ一覧を上部の横並びと左端の縦並びで切り替えます。",
-        options: TAB_BAR_ORIENTATION_OPTIONS,
-        widget: "segmented",
-      },
-      {
-        kind: "boolean",
-        key: "tab_bar_collapsed",
-        title: "垂直タブバーを簡易表示にする",
-        description: "タイトルを隠してアイコンのみの細幅で表示します。",
       },
       {
         kind: "divider",
@@ -202,12 +183,11 @@ const ALL_SETTINGS_SECTIONS = [
       // },
     ],
   ),
-  // 変更理由: 一般とサムネイルに分かれていた見た目の設定をまとめ、探しやすくする。
-  // タブバーはタブの操作と一緒に探されるため、一般へ置く。
+  // 変更理由: タブバーの配置・密度も画面の見た目に関わるため、テーマやサムネイルと同じ場所へまとめる。
   defineSection(
     "display",
     "表示",
-    "テーマやタイトルバー、サムネイルなど画面の見た目を調整します。",
+    "テーマやタブバー、タイトルバー、サムネイルなど画面の見た目を調整します。",
     <Eye size={20} />,
     [
       {
@@ -221,6 +201,25 @@ const ALL_SETTINGS_SECTIONS = [
         title: "テーマ",
         options: THEME_ID_OPTIONS,
         widget: "segmented",
+      },
+      {
+        kind: "divider",
+        id: "tab-bar",
+        title: "タブバー",
+      },
+      {
+        kind: "string",
+        key: "tab_bar_orientation",
+        title: "タブバーの配置",
+        description: "タブ一覧を上部の横並びと左端の縦並びで切り替えます。",
+        options: TAB_BAR_ORIENTATION_OPTIONS,
+        widget: "segmented",
+      },
+      {
+        kind: "boolean",
+        key: "tab_bar_collapsed",
+        title: "垂直タブバーを簡易表示にする",
+        description: "タイトルを隠してアイコンのみの細幅で表示します。",
       },
       {
         kind: "divider",

@@ -206,17 +206,20 @@ describe("設定セクションの実行環境フィルター", () => {
 });
 
 describe("設定項目の置き場所", () => {
-  it("タブバーの設定を新しいタブの設定と同じ一般カテゴリへ置く", () => {
+  it("新しいタブの設定は一般、タブバーの設定は表示カテゴリへ置く", () => {
     const sections = getSettingsSections(false);
     const keysOf = (id: string) =>
       sections
         .find((section) => section.id === id)
         ?.fields.flatMap((field) => ("key" in field ? [field.key] : []));
 
-    expect(keysOf("general")).toEqual(
-      expect.arrayContaining(["new_tab_page_mode", "tab_bar_orientation", "tab_bar_collapsed"]),
+    expect(keysOf("general")).toContain("new_tab_page_mode");
+    expect(keysOf("general")).not.toEqual(
+      expect.arrayContaining(["tab_bar_orientation", "tab_bar_collapsed"]),
     );
-    expect(keysOf("display")).not.toContain("tab_bar_orientation");
+    expect(keysOf("display")).toEqual(
+      expect.arrayContaining(["tab_bar_orientation", "tab_bar_collapsed"]),
+    );
   });
 
   it("ブックマークの保存先と設定の初期化をデータカテゴリへ置く", () => {
@@ -297,7 +300,6 @@ describe("設定項目の区切りごとのまとめ", () => {
     ).toEqual([
       [undefined, ["before"]],
       ["new-tab", ["new_tab_page_mode", "focus_new_tab_on_open", "new_tab_page_board_url"]],
-      ["tab-bar", ["tab_bar_orientation", "tab_bar_collapsed"]],
       ["network", ["https_mode", "confirm_external_links"]],
     ]);
   });
