@@ -8,6 +8,7 @@ import {
   IConfig,
   ICoreNoticeService,
   IHistoryService,
+  IImgurImagesService,
   IMessage,
   INGService,
   INotificationService,
@@ -45,6 +46,7 @@ interface ServiceContainerImpl extends IServiceContainer {
   _history: IHistoryService | undefined;
   _writeHistory: IWriteHistoryService | undefined;
   _threadLog: IThreadLogService | undefined;
+  _imgurImages: IImgurImagesService | undefined;
   _openedBoards: IOpenedBoardsService | undefined;
   _boardTitle: IBoardTitleService | undefined;
   _replaceStr: IReplaceStrService | undefined;
@@ -69,6 +71,7 @@ if (!globalObj.__ServiceContainer) {
     _history: undefined,
     _writeHistory: undefined,
     _threadLog: undefined,
+    _imgurImages: undefined,
     _openedBoards: undefined,
     _boardTitle: undefined,
     _replaceStr: undefined,
@@ -200,6 +203,14 @@ if (!globalObj.__ServiceContainer) {
     },
     set threadLog(value: IThreadLogService) {
       this._threadLog = value;
+    },
+
+    get imgurImages(): IImgurImagesService {
+      if (!this._imgurImages) throw new Error("ImgurImages service not registered");
+      return this._imgurImages;
+    },
+    set imgurImages(value: IImgurImagesService) {
+      this._imgurImages = value;
     },
 
     get openedBoards(): IOpenedBoardsService {

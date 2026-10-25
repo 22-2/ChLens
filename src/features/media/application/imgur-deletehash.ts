@@ -1,5 +1,6 @@
 import { createLogger } from "src/app/logger";
 import { platform } from "src/app/platform";
+import { mapWithConcurrency } from "src/core/util/map-with-concurrency";
 
 import {
   IMGUR_DEFAULT_CLIENT_ID,
@@ -10,6 +11,8 @@ import {
 const logger = createLogger("media");
 
 export const IMGUR_DELETE_TIMEOUT_MS = 30_000;
+// 変更理由: 大量削除でImgurへ一斉にリクエストを送らず、処理時間と負荷のバランスを取る。
+export const IMGUR_BULK_DELETE_CONCURRENCY = 2;
 
 // 変更理由: Imgurの削除には投稿時に返る deletehash が必要で、画像URLからは復元できない。
 // プラットフォームの KeyValueStore に画像IDごとの対応を保存し、投稿したアプリからだけ削除できるようにする。
@@ -28,7 +31,10 @@ let pendingStorageWrite: Promise<void> = Promise.resolve();
 export function getImgurImageId(rawUrl: string): string | null {
   const normalized = normalizeImgurImageUrl(rawUrl);
   if (!normalized) return null;
-  const fileName = new URL(normalized).pathname.slice(1);
+  const path = new URL(normalized).pathname;
+  // Imgurのmサムネイルはdeletehashと同じ元画像を指すため、取得時と削除時のIDを揃える。
+  const thumbnailMatch = path.match(/^\/([a-z0-9]+)m\.[a-z0-9]+$/i);
+  const fileName = thumbnailMatch?.[1] ?? path.slice(1);
   return fileName.replace(/\.[a-z0-9]+$/i, "");
 }
 
@@ -82,6 +88,71 @@ export async function hasImgurDeletehash(imageUrl: string): Promise<boolean> {
   return Object.hasOwn(map, imageId);
 }
 
+/** 保存済みdeletehashを持つ画像URLを返す。URL指定時はその中に含まれる画像だけに絞る。 */
+export async function getImgurDeletableImageUrls(imageUrls?: readonly string[]): Promise<string[]> {
+  const map = await readDeletehashMap();
+  const imageIds = imageUrls
+    ? Array.from(
+        new Set(
+          imageUrls.flatMap((url) => {
+            const imageId = getImgurImageId(url);
+            return imageId ? [imageId] : [];
+          }),
+        ),
+      )
+    : Object.keys(map);
+
+  return imageIds
+    .filter((imageId) => Object.hasOwn(map, imageId))
+    .map((imageId) => `https://i.imgur.com/${imageId}.png`);
+}
+
+export interface ImgurBulkDeleteResult {
+  deletedCount: number;
+  skippedCount: number;
+  failures: Array<{ imageUrl: string; message: string }>;
+}
+
+/** URLを重複排除し、保存済みdeletehashを持つ画像だけを同時数を抑えて削除する。 */
+export async function deleteImgurImages(
+  imageUrls: readonly string[],
+): Promise<ImgurBulkDeleteResult> {
+  const map = await readDeletehashMap();
+  const uniqueImages = new Map<string, string>();
+  for (const imageUrl of imageUrls) {
+    const imageId = getImgurImageId(imageUrl);
+    if (imageId && !uniqueImages.has(imageId)) {
+      uniqueImages.set(imageId, imageUrl);
+    }
+  }
+
+  const deletable = Array.from(uniqueImages, ([imageId, imageUrl]) => ({
+    imageId,
+    imageUrl,
+    deletehash: map[imageId],
+  })).filter((image): image is { imageId: string; imageUrl: string; deletehash: string } =>
+    Boolean(image.deletehash),
+  );
+  const failures = (
+    await mapWithConcurrency(deletable, IMGUR_BULK_DELETE_CONCURRENCY, async (image) => {
+      try {
+        await deleteImgurImageWithDeletehash(image.imageUrl, image.imageId, image.deletehash);
+        return null;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.error("Imgur画像の一括削除に失敗しました", { imageUrl: image.imageUrl, error });
+        return { imageUrl: image.imageUrl, message };
+      }
+    })
+  ).filter((failure): failure is { imageUrl: string; message: string } => failure != null);
+
+  return {
+    deletedCount: deletable.length - failures.length,
+    skippedCount: uniqueImages.size - deletable.length,
+    failures,
+  };
+}
+
 /**
  * Imgurから画像を削除し、成功したら保存済みの削除キーも消す。
  * 失敗時は理由を含むエラーを投げ、呼び出し側で利用者へ伝えられるようにする。
@@ -94,6 +165,14 @@ export async function deleteImgurImage(imageUrl: string): Promise<void> {
     throw new Error("この画像はこのアプリから投稿されていないため、削除できません");
   }
 
+  await deleteImgurImageWithDeletehash(imageUrl, imageId, deletehash);
+}
+
+async function deleteImgurImageWithDeletehash(
+  imageUrl: string,
+  imageId: string,
+  deletehash: string,
+): Promise<void> {
   // 変更理由: 削除は deletehash を認証情報として行うため、設定のClient-IDを読む必要がない。
   // 設定サービスへの依存を持つと、ビューア単体のテストやPortal表示の読み込みが拡張機能APIを要求するため、既定IDで送る。
   const response = await platform.http.fetch(

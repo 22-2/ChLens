@@ -16,7 +16,10 @@ export {
 } from "./imgur-album";
 export {
   deleteImgurImage,
+  deleteImgurImages,
+  getImgurDeletableImageUrls,
   hasImgurDeletehash,
+  IMGUR_BULK_DELETE_CONCURRENCY,
   IMGUR_DELETE_TIMEOUT_MS,
   removeImgurImageLines,
   subscribeImgurImageDeleted,

@@ -81,6 +81,16 @@ export type IThreadLogService = Pick<
   "listLogs" | "searchLogsPage" | "deleteLogs" | "getLogArchiveRecords" | "replaceLogArchiveRecords"
 >;
 
+/** 投稿済みImgur画像の削除機能。ビューから機能実装を直接参照しないための境界。 */
+export interface IImgurImagesService {
+  getDeletableImageUrls(imageUrls?: readonly string[]): Promise<string[]>;
+  deleteImages(imageUrls: readonly string[]): Promise<{
+    deletedCount: number;
+    skippedCount: number;
+    failures: Array<{ imageUrl: string; message: string }>;
+  }>;
+}
+
 /** 開いた板の記録への書き込み（Phase E、計画書 §3.6）。読み取り用の parseOpenedBoardEntries は純粋なので直接使う。 */
 export type IOpenedBoardsService = Pick<
   ReturnType<typeof createOpenedBoards>,
@@ -124,6 +134,7 @@ export interface IServiceContainer {
   history: IHistoryService;
   writeHistory: IWriteHistoryService;
   threadLog: IThreadLogService;
+  imgurImages: IImgurImagesService;
   openedBoards: IOpenedBoardsService;
   boardTitle: IBoardTitleService;
   replaceStr: IReplaceStrService;

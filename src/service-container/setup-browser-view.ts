@@ -3,6 +3,10 @@ import { createOpenedBoards } from "src/core/board/OpenedBoards";
 import * as History from "src/core/history/History";
 import * as WriteHistory from "src/core/history/WriteHistory";
 import Cache from "src/core/storage/Cache";
+import {
+  deleteImgurImages,
+  getImgurDeletableImageUrls,
+} from "src/features/media/application/imgur-deletehash";
 import { container } from "src/service-container/Container";
 
 /**
@@ -40,5 +44,9 @@ export function setupBrowserViewServices(): void {
     deleteLogs: () => Cache.deleteLogs(),
     getLogArchiveRecords: () => Cache.getLogArchiveRecords(),
     replaceLogArchiveRecords: (...args) => Cache.replaceLogArchiveRecords(...args),
+  };
+  container.imgurImages = {
+    getDeletableImageUrls: (imageUrls) => getImgurDeletableImageUrls(imageUrls),
+    deleteImages: (imageUrls) => deleteImgurImages(imageUrls),
   };
 }

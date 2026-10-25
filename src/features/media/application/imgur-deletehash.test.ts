@@ -29,6 +29,8 @@ vi.mock("src/app/logger", () => ({
 
 import {
   deleteImgurImage,
+  deleteImgurImages,
+  getImgurDeletableImageUrls,
   hasImgurDeletehash,
   removeImgurImageLines,
   saveImgurDeletehash,
@@ -105,6 +107,57 @@ describe("Imgur削除キーの保存と削除", () => {
     await deleteImgurImage(IMAGE_URL);
 
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  it("一括削除はURLを重複排除し、削除済み・未登録画像へリクエストしない", async () => {
+    await saveImgurDeletehash(IMAGE_URL, "hash-1");
+    await saveImgurDeletehash("https://i.imgur.com/def456.jpg", "hash-2");
+    mocks.fetch.mockResolvedValue({
+      status: 200,
+      body: JSON.stringify({ data: true, success: true, status: 200 }),
+    });
+
+    await expect(
+      getImgurDeletableImageUrls([
+        IMAGE_URL,
+        "https://i.imgur.com/def456m.jpg",
+        "https://i.imgur.com/missing.png",
+      ]),
+    ).resolves.toEqual([IMAGE_URL, "https://i.imgur.com/def456.png"]);
+
+    const firstRun = await deleteImgurImages([
+      IMAGE_URL,
+      "http://imgur.com/abc123.jpg",
+      "https://i.imgur.com/def456m.jpg",
+      "https://i.imgur.com/missing.png",
+    ]);
+    expect(firstRun).toEqual({ deletedCount: 2, skippedCount: 1, failures: [] });
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+
+    const secondRun = await deleteImgurImages([IMAGE_URL, "https://i.imgur.com/def456.png"]);
+    expect(secondRun).toEqual({ deletedCount: 0, skippedCount: 2, failures: [] });
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("一括削除は一部が失敗しても残りを続け、失敗した画像の削除キーを保つ", async () => {
+    await saveImgurDeletehash(IMAGE_URL, "hash-1");
+    await saveImgurDeletehash("https://i.imgur.com/def456.jpg", "hash-2");
+    mocks.fetch.mockImplementation(async (url: string) => ({
+      status: url.endsWith("hash-1") ? 403 : 200,
+      body: url.endsWith("hash-1")
+        ? JSON.stringify({ data: { error: "Forbidden" }, success: false, status: 403 })
+        : JSON.stringify({ data: true, success: true, status: 200 }),
+    }));
+
+    const result = await deleteImgurImages([IMAGE_URL, "https://i.imgur.com/def456.jpg"]);
+
+    expect(result).toMatchObject({ deletedCount: 1, skippedCount: 0 });
+    expect(result.failures).toEqual([
+      { imageUrl: IMAGE_URL, message: expect.stringContaining("Forbidden") },
+    ]);
+    expect(mocks.fetch).toHaveBeenCalledTimes(2);
+    await expect(hasImgurDeletehash(IMAGE_URL)).resolves.toBe(true);
+    await expect(hasImgurDeletehash("https://i.imgur.com/def456.jpg")).resolves.toBe(false);
   });
 });
 
