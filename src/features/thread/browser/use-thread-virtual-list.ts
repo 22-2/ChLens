@@ -1,6 +1,10 @@
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import {
+  useIsNgTemporarilyDisabled,
+  useNgDisplayMode,
+} from "src/features/ng/browser/use-ng-status";
+import {
   DEFAULT_RES_HEIGHT_METRICS,
   estimateResHeight,
   type ResHeightMetrics,
@@ -8,6 +12,7 @@ import {
 import type { IReadState, IRes } from "src/service-container/interfaces";
 import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 import type { VirtualKey } from "src/view/browser/utils/virtual-list/layout";
 import {
   VirtualListController,
@@ -81,6 +86,8 @@ export function useThreadVirtualList({
   debugKey,
 }: UseThreadVirtualListParams): UseThreadVirtualListResult {
   const { window: viewWindow } = useViewSurface();
+  const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
+  const ngDisplayMode = useNgDisplayMode();
   const [containerWidth, setContainerWidth] = useState(0);
   const metrics = useMemo<ResHeightMetrics>(
     () => ({
@@ -123,8 +130,16 @@ export function useThreadVirtualList({
 
   const widthSignature = `w${Math.round(containerWidth / WIDTH_BUCKET_PX)}`;
   useLayoutEffect(() => {
-    controller.setItems(keys, () => widthSignature);
-  }, [controller, keys, widthSignature]);
+    // hard-ngの高さ0が残ると描画範囲から外れ、NG解除後もResItem自体が再マウントされない。
+    // レスごとの実効表示方式も実測値の条件に含め、解除対象だけを推定値へ戻して描画し直す。
+    controller.setItems(keys, (key) => {
+      const res = typeof key === "number" ? resByNum.get(key) : undefined;
+      const isNgActive =
+        !isNgTemporarilyDisabled && (res?.ng != null || res?.class?.includes("ng"));
+      const displayMode = isNgActive ? resolveNgDisplayMode(ngDisplayMode, res?.ng) : "visible";
+      return `${widthSignature}:${displayMode}`;
+    });
+  }, [controller, isNgTemporarilyDisabled, keys, ngDisplayMode, resByNum, widthSignature]);
 
   useLayoutEffect(() => {
     controller.setStickToEnd(stickToEnd);
