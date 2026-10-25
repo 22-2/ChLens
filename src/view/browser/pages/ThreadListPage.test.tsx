@@ -12,7 +12,10 @@ import type {
   IBoardService,
   IBoardTitleService,
   IBookmark,
+  IHistoryService,
   IThread,
+  IThreadLogService,
+  IToastService,
 } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
@@ -52,6 +55,14 @@ const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
 const { bookmarkGetMock } = vi.hoisted(() => ({
   bookmarkGetMock: vi.fn(),
 }));
+const { deleteLogMock, removeHistoryMock, toastErrorMock, toastInfoMock, toastSuccessMock } =
+  vi.hoisted(() => ({
+    deleteLogMock: vi.fn(),
+    removeHistoryMock: vi.fn(),
+    toastErrorMock: vi.fn(),
+    toastInfoMock: vi.fn(),
+    toastSuccessMock: vi.fn(),
+  }));
 
 vi.mock("src/features/thread-list/ui/thread-list-shared", async (importOriginal) => {
   const actual =
@@ -266,6 +277,25 @@ describe("ThreadListPage", () => {
       updateExpired: vi.fn(),
       getByBoard: vi.fn(() => []),
     } as unknown as IBookmark;
+    deleteLogMock.mockReset();
+    deleteLogMock.mockResolvedValue(1);
+    removeHistoryMock.mockReset();
+    removeHistoryMock.mockResolvedValue(undefined);
+    serviceContainer.threadLog = {
+      deleteLog: deleteLogMock,
+    } as unknown as IThreadLogService;
+    serviceContainer.history = {
+      remove: removeHistoryMock,
+    } as unknown as IHistoryService;
+    toastErrorMock.mockReset();
+    toastInfoMock.mockReset();
+    toastSuccessMock.mockReset();
+    serviceContainer.toast = {
+      notify: vi.fn(),
+      error: toastErrorMock,
+      info: toastInfoMock,
+      success: toastSuccessMock,
+    } as IToastService;
     serviceContainer.util = {
       isNewerReadState: (a: unknown, b: unknown) =>
         (b as { received?: number }).received !== (a as { received?: number }).received,
@@ -349,6 +379,51 @@ describe("ThreadListPage", () => {
     rerender(<ThreadListPage tabId="tab-1" page={resolvedPage} refreshKey={0} isActive />);
     await waitFor(() => expect(JSON.parse(saved)[0].lastVisited).toBe(200));
     vi.restoreAllMocks();
+  });
+
+  it("スレ一覧の右クリックメニューから選択したスレのログと閲覧履歴を削除する", async () => {
+    vi.useRealTimers();
+    render(
+      <ThreadListPage
+        tabId="tab-1"
+        page={{
+          type: "threadList",
+          title: "Software",
+          boardUrl: "https://egg.5ch.net/software/",
+          boardTitle: "Software",
+        }}
+        refreshKey={0}
+        isActive
+      />,
+    );
+    await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
+    const row = screen.getByText("B Thread").closest("tr");
+    if (!row) throw new Error("thread row was not rendered");
+
+    fireEvent.contextMenu(row, { clientX: 40, clientY: 50 });
+    const deleteLog = await screen.findByRole("button", { name: "スレログを削除" });
+    fireEvent.click(deleteLog);
+
+    await waitFor(() =>
+      expect(deleteLogMock).toHaveBeenCalledWith("https://egg.5ch.net/test/read.cgi/software/1/"),
+    );
+    expect(toastSuccessMock).toHaveBeenCalledWith("スレログを削除しました", {
+      targetWindow: window,
+    });
+
+    fireEvent.contextMenu(row, { clientX: 40, clientY: 50 });
+    const deleteHistory = await screen.findByRole("button", { name: "閲覧履歴を削除" });
+    fireEvent.click(deleteHistory);
+
+    await waitFor(() =>
+      expect(removeHistoryMock).toHaveBeenCalledWith(
+        "https://egg.5ch.net/test/read.cgi/software/1/",
+        null,
+      ),
+    );
+    expect(toastSuccessMock).toHaveBeenCalledWith("閲覧履歴を削除しました", {
+      targetWindow: window,
+    });
   });
 
   it("未保存の板名は取得結果から直接保存し、タブの描画更新を待たず閲覧日時を保つ", async () => {
@@ -1299,8 +1374,8 @@ describe("ThreadListPage", () => {
       expect(menu?.querySelector('[aria-label="進む"]')).not.toBeNull();
       expect(menu?.querySelector('[aria-label="更新"]')).not.toBeNull();
       expect(menu?.querySelector(".context-menu__header-actions")).not.toBeNull();
-      // NG・ブックマーク・タイトル・URL・タイトルとURLの5項目を共通定義から表示する。
-      expect(menu?.querySelectorAll(".context-menu__item .context-menu__icon")).toHaveLength(5);
+      // NG・ブックマーク・ログ/履歴削除・タイトル・URL・タイトルとURLの7項目を表示する。
+      expect(menu?.querySelectorAll(".context-menu__item .context-menu__icon")).toHaveLength(7);
     });
   });
 

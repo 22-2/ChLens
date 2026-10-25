@@ -1,5 +1,6 @@
 import {
   createThreadBookmarkMenuItem,
+  createThreadContextMenuItems,
   createThreadCopyMenuItems,
 } from "src/features/thread/ui/thread-context-menu-items";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
@@ -58,5 +59,27 @@ describe("thread-context-menu-items", () => {
         bookmarked: true,
       },
     });
+  });
+
+  it("一覧メニューに指定されたスレログ・閲覧履歴の削除操作を追加する", () => {
+    const onDeleteLog = vi.fn();
+    const onDeleteHistory = vi.fn();
+    const items = createThreadContextMenuItems({
+      target,
+      isBookmarked: false,
+      onRegisterTitleNg: vi.fn(),
+      runCommand: vi.fn(),
+      onDeleteLog,
+      onDeleteHistory,
+    });
+    const deleteLogItem = items.find((item) => item.id === "delete-thread-log");
+    const deleteHistoryItem = items.find((item) => item.id === "delete-thread-history");
+
+    expect(deleteLogItem?.label).toBe("スレログを削除");
+    expect(deleteHistoryItem?.label).toBe("閲覧履歴を削除");
+    deleteLogItem?.onSelect?.();
+    deleteHistoryItem?.onSelect?.();
+    expect(onDeleteLog).toHaveBeenCalledOnce();
+    expect(onDeleteHistory).toHaveBeenCalledOnce();
   });
 });

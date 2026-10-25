@@ -3,10 +3,6 @@ import { createOpenedBoards } from "src/core/board/OpenedBoards";
 import * as History from "src/core/history/History";
 import * as WriteHistory from "src/core/history/WriteHistory";
 import Cache from "src/core/storage/Cache";
-import {
-  deleteImgurImages,
-  getImgurDeletableImageUrls,
-} from "src/features/media/application/imgur-deletehash";
 import { container } from "src/service-container/Container";
 
 /**
@@ -41,12 +37,21 @@ export function setupBrowserViewServices(): void {
   container.threadLog = {
     listLogs: (...args) => Cache.listLogs(...args),
     searchLogsPage: (...args) => Cache.searchLogsPage(...args),
+    deleteLog: (url) => Cache.deleteLog(url),
     deleteLogs: () => Cache.deleteLogs(),
     getLogArchiveRecords: () => Cache.getLogArchiveRecords(),
     replaceLogArchiveRecords: (...args) => Cache.replaceLogArchiveRecords(...args),
   };
   container.imgurImages = {
-    getDeletableImageUrls: (imageUrls) => getImgurDeletableImageUrls(imageUrls),
-    deleteImages: (imageUrls) => deleteImgurImages(imageUrls),
+    getDeletableImageUrls: async (imageUrls) => {
+      // 変更理由: 投稿画像の削除は明示操作のときだけ読み込み、通常起動時にImgur API層を初期化しない。
+      const { getImgurDeletableImageUrls } =
+        await import("src/features/media/application/imgur-deletehash");
+      return getImgurDeletableImageUrls(imageUrls);
+    },
+    deleteImages: async (imageUrls) => {
+      const { deleteImgurImages } = await import("src/features/media/application/imgur-deletehash");
+      return deleteImgurImages(imageUrls);
+    },
   };
 }

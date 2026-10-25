@@ -42,6 +42,7 @@ const mocks = vi.hoisted(() => {
     askBoardTitleByUrl: vi.fn(async () => "板名"),
     replaceStrSet: vi.fn(async () => ({ ok: true })),
     listLogs: vi.fn(async () => []),
+    deleteLog: vi.fn(async () => 0),
     deleteLogs: vi.fn(async () => undefined),
     writeHistory: {
       add: vi.fn(async () => undefined),
@@ -133,6 +134,7 @@ vi.mock("src/core/board/BoardService", () => ({
 vi.mock("src/core/storage/Cache", () => ({
   default: class {
     static listLogs = mocks.listLogs;
+    static deleteLog = mocks.deleteLog;
     static deleteLogs = mocks.deleteLogs;
   },
 }));
@@ -239,6 +241,8 @@ describe("サービスコンテナの初期化", () => {
     expect(mocks.listLogs).toHaveBeenCalledWith(0, 10);
     await container.threadLog.deleteLogs();
     expect(mocks.deleteLogs).toHaveBeenCalled();
+    await container.threadLog.deleteLog("https://example.com/test/read.cgi/a/1/");
+    expect(mocks.deleteLog).toHaveBeenCalledWith("https://example.com/test/read.cgi/a/1/");
     await expect(container.boardTitle.askByUrl("https://example.com/board/")).resolves.toBe("板名");
     await container.replaceStr.set("rule");
     expect(mocks.replaceStrSet).toHaveBeenCalledWith("rule");

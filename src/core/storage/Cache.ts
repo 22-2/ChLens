@@ -274,6 +274,14 @@ export default class Cache {
     );
   }
 
+  /** 指定スレッドの閲覧ログだけを削除し、スレッド本文以外のキャッシュは残す。 */
+  static async deleteLog(threadUrl: string): Promise<number> {
+    const logs = await Cache.listLogs();
+    const targets = logs.filter((log) => log.threadUrl === threadUrl);
+    await Promise.all(targets.map((log) => new Cache(log.url).delete()));
+    return targets.length;
+  }
+
   /**
    * 閲覧ログ(kind==="thread")の本文を全文検索し、最終取得日時の降順で返します。
    * ブラウザは保存済み dat/parsed を線形スキャン、Tauri は SQL の LIKE で検索する。

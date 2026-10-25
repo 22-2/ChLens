@@ -1,4 +1,4 @@
-import { Ban, Bookmark, BookmarkX, Clipboard } from "lucide-react";
+import { Ban, Bookmark, BookmarkX, Clipboard, History, Trash2 } from "lucide-react";
 import {
   COMMAND_REQUEST_IDS,
   type CommandRequest,
@@ -16,6 +16,8 @@ export interface ThreadContextMenuOptions {
   isBookmarked: boolean;
   onRegisterTitleNg: () => void;
   runCommand: (request: CommandRequest) => void;
+  onDeleteLog?: () => void;
+  onDeleteHistory?: () => void;
 }
 
 function toThreadCommandTarget(target: ThreadMenuTarget): CommandTarget {
@@ -78,7 +80,32 @@ export function createThreadContextMenuItems({
   isBookmarked,
   onRegisterTitleNg,
   runCommand,
+  onDeleteLog,
+  onDeleteHistory,
 }: ThreadContextMenuOptions): ContextMenuItem[] {
+  const recordActions: ContextMenuItem[] = [];
+  if (onDeleteLog || onDeleteHistory) {
+    recordActions.push({ id: "thread-records-separator", separator: true });
+  }
+  if (onDeleteLog) {
+    recordActions.push({
+      id: "delete-thread-log",
+      label: "スレログを削除",
+      icon: <Trash2 size={14} />,
+      danger: true,
+      onSelect: onDeleteLog,
+    });
+  }
+  if (onDeleteHistory) {
+    recordActions.push({
+      id: "delete-thread-history",
+      label: "閲覧履歴を削除",
+      icon: <History size={14} />,
+      danger: true,
+      onSelect: onDeleteHistory,
+    });
+  }
+
   return [
     {
       id: "ng-title",
@@ -87,6 +114,7 @@ export function createThreadContextMenuItems({
       onSelect: onRegisterTitleNg,
     },
     createThreadBookmarkMenuItem({ target, isBookmarked, runCommand }),
+    ...recordActions,
     ...createThreadCopyMenuItems(target, runCommand),
   ];
 }

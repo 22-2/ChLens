@@ -78,7 +78,12 @@ export type IWriteHistoryService = Pick<
 /** スレのログの一覧・検索・削除・書き出し（Phase E、計画書 §3.6）。関数の形は core/storage/Cache の静的メソッドから取る。 */
 export type IThreadLogService = Pick<
   typeof Cache,
-  "listLogs" | "searchLogsPage" | "deleteLogs" | "getLogArchiveRecords" | "replaceLogArchiveRecords"
+  | "listLogs"
+  | "searchLogsPage"
+  | "deleteLog"
+  | "deleteLogs"
+  | "getLogArchiveRecords"
+  | "replaceLogArchiveRecords"
 >;
 
 /** 投稿済みImgur画像の削除機能。ビューから機能実装を直接参照しないための境界。 */

@@ -504,6 +504,39 @@ export const ThreadListPage: React.FC<Props> = ({
     [handleSort],
   );
 
+  const deleteThreadLog = useCallback(
+    async (thread: IThread) => {
+      try {
+        const deletedCount = await container.threadLog.deleteLog(thread.url);
+        if (deletedCount === 0) {
+          toast.info("このスレのログは保存されていません", { targetWindow: viewWindow });
+          return;
+        }
+        toast.success("スレログを削除しました", { targetWindow: viewWindow });
+      } catch (error) {
+        logger.error("スレログの削除に失敗しました", { url: thread.url, error });
+        toast.error("スレログを削除できませんでした", { targetWindow: viewWindow });
+      }
+    },
+    [toast, viewWindow],
+  );
+
+  const deleteThreadHistory = useCallback(
+    async (thread: IThread) => {
+      try {
+        const result = await container.history.remove(thread.url, null);
+        if (result instanceof Error) {
+          throw result;
+        }
+        toast.success("閲覧履歴を削除しました", { targetWindow: viewWindow });
+      } catch (error) {
+        logger.error("閲覧履歴の削除に失敗しました", { url: thread.url, error });
+        toast.error("閲覧履歴を削除できませんでした", { targetWindow: viewWindow });
+      }
+    },
+    [toast, viewWindow],
+  );
+
   const contextMenuItems = useMemo(() => {
     if (!contextMenuState) return [];
     const { thread } = contextMenuState;
@@ -514,8 +547,21 @@ export const ThreadListPage: React.FC<Props> = ({
       isBookmarked: readBookmarkStatus(thread.url),
       onRegisterTitleNg: () => openThreadTitleNgDialog(thread),
       runCommand: runTargetCommand,
+      onDeleteLog: () => {
+        void deleteThreadLog(thread);
+      },
+      onDeleteHistory: () => {
+        void deleteThreadHistory(thread);
+      },
     });
-  }, [bookmarkRevision, contextMenuState, openThreadTitleNgDialog, runTargetCommand]);
+  }, [
+    bookmarkRevision,
+    contextMenuState,
+    deleteThreadHistory,
+    deleteThreadLog,
+    openThreadTitleNgDialog,
+    runTargetCommand,
+  ]);
 
   const closeContextMenu = useCallback(() => setContextMenuState(null), []);
   const contextMenuNavigationActions = contextMenuState ? (

@@ -274,6 +274,33 @@ describe("Cache browser log branch", () => {
     expect(all[0]?.url).toBe("https://ex.com/b/subject.txt");
   });
 
+  it("deleteLog removes only the selected thread log", async () => {
+    const { default: Cache } = await import("src/core/storage/Cache");
+    const targetThreadUrl = "https://ex.com/test/read.cgi/b/1/";
+    const otherThreadUrl = "https://ex.com/test/read.cgi/b/2/";
+    await saveThreadLog({
+      key: "https://ex.com/b/dat/1.dat",
+      threadUrl: targetThreadUrl,
+      title: "target",
+      boardUrl: "https://ex.com/b/",
+      lastUpdated: 100,
+    });
+    await saveThreadLog({
+      key: "https://ex.com/b/dat/2.dat",
+      threadUrl: otherThreadUrl,
+      title: "other",
+      boardUrl: "https://ex.com/b/",
+      lastUpdated: 200,
+    });
+    await store.put({ url: "https://ex.com/b/subject.txt", kind: null, last_updated: 300 });
+
+    await expect(Cache.deleteLog(targetThreadUrl)).resolves.toBe(1);
+
+    const remainingLogs = await Cache.listLogs();
+    expect(remainingLogs.map((log) => log.threadUrl)).toEqual([otherThreadUrl]);
+    expect(await store.get("https://ex.com/b/subject.txt")).not.toBeNull();
+  });
+
   it("exports and restores the full log cache including body and parsed data", async () => {
     const { default: Cache } = await import("src/core/storage/Cache");
 
