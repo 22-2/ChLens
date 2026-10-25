@@ -12,6 +12,11 @@ import {
   toTwitterPostEmbed,
 } from "src/core/util/external-media";
 import { toViewerImageUrl } from "src/core/util/url-media";
+import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
+import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
+import { ConfirmableLink } from "src/view/browser/ui/ConfirmableLink";
+import { requestExternalLink } from "src/view/browser/utils/external-link";
+import { EXTERNAL_LINK_CONFIRM_CONFIG_KEY } from "src/view/browser/utils/external-link-analysis";
 
 import { imgurVideoResolver, isImgurVideoResolutionCandidate } from "../application/imgur-album";
 import {
@@ -49,9 +54,9 @@ function renderTwitterPostText(text: string): React.ReactNode[] {
     const key = `${index}-${token.type}`;
     if (token.type === "url") {
       return (
-        <a key={key} href={token.href} target="_blank" rel="noopener noreferrer">
+        <ConfirmableLink key={key} href={token.href} target="_blank" rel="noopener noreferrer">
           {token.value}
-        </a>
+        </ConfirmableLink>
       );
     }
 
@@ -265,9 +270,9 @@ function TwitterPostCard({
         )}
         <div className="res__twitter-post-author-text">
           <div className="res__twitter-post-author-name">
-            <a href={embed.externalUrl} target="_blank" rel="noopener noreferrer">
+            <ConfirmableLink href={embed.externalUrl} target="_blank" rel="noopener noreferrer">
               {post.author.name}
-            </a>
+            </ConfirmableLink>
             {post.author.verificationBadge && (
               <span
                 className={`res__twitter-post-verification res__twitter-post-verification--${post.author.verificationBadge.color}`}
@@ -318,7 +323,7 @@ function TwitterPostCard({
           {post.media.map((media, index) => {
             if (media.type === "image") {
               return (
-                <a
+                <ConfirmableLink
                   key={`${media.type}:${media.url}`}
                   href={media.url}
                   onClick={(event) => {
@@ -330,7 +335,7 @@ function TwitterPostCard({
                   onAuxClick={(event) => onAuxClick(event, media.url, imageUrls)}
                 >
                   <ExternalImage src={media.url} alt={media.altText ?? "投稿画像"} loading="lazy" />
-                </a>
+                </ConfirmableLink>
               );
             }
 
@@ -368,14 +373,14 @@ function TwitterPostCard({
                 : "日本語訳を表示"}
           </button>
         )}
-        <a
+        <ConfirmableLink
           className="res__twitter-post-external"
           href={embed.externalUrl}
           target="_blank"
           rel="noopener noreferrer"
         >
           Xで投稿を開く
-        </a>
+        </ConfirmableLink>
         {translationError && <span role="status">日本語訳を取得できませんでした</span>}
       </div>
     </div>
@@ -396,9 +401,9 @@ function TwitterPostFallback({
           ? "FxTwitterから投稿を取得しています…"
           : "FxTwitterから投稿を取得できませんでした"}
       </p>
-      <a href={embed.externalUrl} target="_blank" rel="noopener noreferrer">
+      <ConfirmableLink href={embed.externalUrl} target="_blank" rel="noopener noreferrer">
         元の投稿を開く
-      </a>
+      </ConfirmableLink>
     </div>
   );
 }
@@ -440,6 +445,8 @@ export function ResMediaGallery({
   isBlurred = false,
   imageBlurRadius = 4,
 }: ResMediaGalleryProps): React.ReactElement | null {
+  const { value: confirmExternal } = useConfigBooleanSetting(EXTERNAL_LINK_CONFIRM_CONFIG_KEY);
+  const { menu, openMenu } = useExternalLinkMenu();
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
   const [imgurVideoUrls, setImgurVideoUrls] = useState<ReadonlyMap<string, string>>(
@@ -587,7 +594,7 @@ export function ResMediaGallery({
         {mediaItems.map((item) => {
           if (item.type === "image") {
             return (
-              <a
+              <ConfirmableLink
                 key={`image:${item.rawUrl}`}
                 href={item.rawUrl}
                 className={`res__thumb res__thumb--image${isBlurred ? " res__thumb--blurred" : ""}`}
@@ -614,7 +621,7 @@ export function ResMediaGallery({
                 title={item.rawUrl}
               >
                 <ExternalImage src={item.src} alt={item.rawUrl} loading="lazy" />
-              </a>
+              </ConfirmableLink>
             );
           }
 
@@ -629,6 +636,10 @@ export function ResMediaGallery({
                 aria-pressed={isExpanded}
                 aria-label={`${item.providerLabel} を${isExpanded ? "閉じる" : "展開する"}`}
                 title={item.rawUrl}
+                onContextMenu={(event) => {
+                  // 動画サムネイル内の画像も、標準メニューから外部起動させない。
+                  if (confirmExternal) openMenu(item.rawUrl, event);
+                }}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -664,13 +675,22 @@ export function ResMediaGallery({
               aria-pressed={shouldOpenExternally ? undefined : isExpanded}
               aria-label={`${item.embed.providerLabel} を${shouldOpenExternally ? "新しいタブで開く" : isExpanded ? "閉じる" : "展開する"}`}
               title={item.embed.rawUrl}
+              onContextMenu={(event) => {
+                if (confirmExternal) openMenu(item.embed.externalUrl, event);
+              }}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
                 if (shouldOpenExternally) {
                   // 拡張ページの YouTube iframe は Referer 欠落と他拡張の介入で 153 が再発しやすい。
                   // 左クリックは失敗しない通常タブへ逃がして、壊れた埋め込み UI を見せない。
-                  window.open(item.embed.externalUrl, "_blank", "noopener,noreferrer");
+                  const sourceWindow = event.currentTarget.ownerDocument.defaultView ?? window;
+                  requestExternalLink(item.embed.externalUrl, {
+                    sourceWindow,
+                    open: (url) => {
+                      sourceWindow.open(url, "_blank", "noopener,noreferrer");
+                    },
+                  });
                   return;
                 }
 
@@ -775,6 +795,9 @@ export function ResMediaGallery({
             <video
               className="res__media-embed-player"
               src={expandedMediaItem.srcUrl}
+              onContextMenu={(event) => {
+                if (confirmExternal) openMenu(expandedMediaItem.rawUrl, event);
+              }}
               controls
               playsInline
               preload="metadata"
@@ -782,6 +805,7 @@ export function ResMediaGallery({
           ) : null}
         </div>
       )}
+      {confirmExternal && menu}
     </>
   );
 }

@@ -63,6 +63,7 @@ import {
   getOpenCompatibleThreadPages,
   removeExtensionTabs,
 } from "src/view/browser/utils/extension-tabs";
+import { requestExternalLink } from "src/view/browser/utils/external-link";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,
@@ -891,7 +892,13 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     run: (context) => {
       const target = getCommandPageTarget(context.viewPage);
       if (!target) return;
-      getCommandSurface(context).window.open(target.url, "_blank", "noopener,noreferrer");
+      const sourceWindow = getCommandSurface(context).window;
+      requestExternalLink(target.url, {
+        sourceWindow,
+        open: (url) => {
+          sourceWindow.open(url, "_blank", "noopener,noreferrer");
+        },
+      });
     },
   },
   {

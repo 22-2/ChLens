@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { createLogger } from "src/app/logger";
-import { platform } from "src/app/platform/index";
+import { isTauriRuntime } from "src/app/platform/runtime";
 import { toastStore } from "src/service-container/toast-store";
 import { ExternalLinkDialog } from "src/view/browser/ui/ExternalLinkDialog";
 import { readConfigValue, subscribeConfigKeys } from "src/view/browser/utils/config-setting";
@@ -20,6 +20,7 @@ export interface ExternalLinkOpenOptions {
   sourceWindow?: Window;
   active?: boolean;
   newWindow?: boolean;
+  returnFocus?: HTMLElement;
   /** 変更理由: 表示元の窓や既存のプラットフォーム固有の開き方を、承認後も維持する。 */
   open?: (url: string) => void | Promise<void>;
 }
@@ -28,11 +29,16 @@ export function requestExternalLink(url: string, options: ExternalLinkOpenOption
   const sourceWindow = options.sourceWindow ?? window;
   const performOpen = (destination: string) => {
     try {
+      // 変更理由: OFFの描画だけで拡張APIを初期化しない。Tauriは承認クリックのuser activationを保つ。
       const result = options.open
         ? options.open(destination)
-        : options.newWindow
-          ? platform.window.openWindow({ url: destination })
-          : platform.window.openUrlInTab(destination, options.active ?? true);
+        : isTauriRuntime()
+          ? sourceWindow.open(destination, "_blank", "noopener,noreferrer")
+          : import("src/app/platform/index").then(({ platform }) =>
+              options.newWindow
+                ? platform.window.openWindow({ url: destination })
+                : platform.window.openUrlInTab(destination, options.active ?? true),
+            );
       void Promise.resolve(result).catch(reportError);
     } catch (error) {
       reportError(error);
@@ -49,7 +55,7 @@ export function requestExternalLink(url: string, options: ExternalLinkOpenOption
   // 変更理由: ポップアップ・画像別窓でも操作元に確認を出す。連打では確認を置き換え、古い承認を残さない。
   pendingByWindow.get(sourceWindow)?.();
   const targetDocument = sourceWindow.document;
-  const previousFocus = targetDocument.activeElement as HTMLElement | null;
+  const previousFocus = options.returnFocus ?? (targetDocument.activeElement as HTMLElement | null);
   const host = targetDocument.createElement("div");
   targetDocument.body.append(host);
   const root = createRoot(host);

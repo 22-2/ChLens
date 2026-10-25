@@ -1,9 +1,14 @@
 import React, { useCallback, useMemo, useRef } from "react";
+import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
+import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ThreadSearchTarget } from "src/view/browser/types";
 import { hasMissingAnchorTarget, parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
 import { ANCHOR_SELECTOR, ID_LINK_SELECTOR } from "src/view/browser/utils/constants";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
+import { requestExternalLink } from "src/view/browser/utils/external-link";
+import { EXTERNAL_LINK_CONFIRM_CONFIG_KEY } from "src/view/browser/utils/external-link-analysis";
+import { parseInternalBrowserPageStrict } from "src/view/browser/utils/link-routing";
 import {
   type ResBodyUrlClickHandler,
   RESPECT_DEFAULT_EXTERNAL,
@@ -53,7 +58,7 @@ interface ResBodyProps {
   resMap?: ReadonlyMap<number, unknown>;
 }
 
-function getAnchorHoverKey(anchor: HTMLAnchorElement): string {
+function getAnchorHoverKey(anchor: HTMLElement): string {
   const label = anchor.textContent?.trim() ?? "";
   const rect = anchor.getBoundingClientRect();
   // hover中に親が再描画されると同じアンカーでもDOMノードが差し替わることがあるため、
@@ -64,21 +69,21 @@ function getAnchorHoverKey(anchor: HTMLAnchorElement): string {
 function getAnchorElement(
   target: EventTarget | null,
   targetWindow: Window = globalThis.window,
-): HTMLAnchorElement | null {
+): HTMLElement | null {
   const element = getEventTargetElement(target, targetWindow);
-  const anchor = element?.closest("a");
-  if (!anchor || anchor.tagName.toLowerCase() !== "a") {
+  const anchor = element?.closest<HTMLElement>("a, button[data-external-url]");
+  if (!anchor) {
     return null;
   }
 
   // 別窓のWindowProxyではHTMLAnchorElementのコンストラクタが取得できないことがある。
   // closest("a")で要素種別は確定しているため、constructor依存で操作を捨てず、
   // イベント元のDocumentに属するアンカーをそのまま扱う。
-  return anchor as HTMLAnchorElement;
+  return anchor;
 }
 
-function getNavigableHref(anchor: HTMLAnchorElement): string | null {
-  const href = anchor.getAttribute("href") ?? "";
+function getNavigableHref(anchor: HTMLElement): string | null {
+  const href = anchor.getAttribute("data-external-url") ?? anchor.getAttribute("href") ?? "";
   if (!href || href.startsWith("javascript:") || href.startsWith("#")) {
     return null;
   }
@@ -90,15 +95,15 @@ function stopEvent(event: EventConsumer): void {
   event.stopPropagation();
 }
 
-function isReplyAnchor(anchor: HTMLAnchorElement): boolean {
+function isReplyAnchor(anchor: HTMLElement): boolean {
   return anchor.matches(ANCHOR_SELECTOR);
 }
 
-function isIdAnchor(anchor: HTMLAnchorElement): boolean {
+function isIdAnchor(anchor: HTMLElement): boolean {
   return anchor.matches(ID_LINK_SELECTOR);
 }
 
-function isManagedAnchor(anchor: HTMLAnchorElement): boolean {
+function isManagedAnchor(anchor: HTMLElement): boolean {
   return isReplyAnchor(anchor) || isIdAnchor(anchor);
 }
 
@@ -145,8 +150,9 @@ function shouldHandleUrlClick(
   onUrlClick: ResBodyUrlClickHandler,
   href: string,
   button: 0 | 1,
+  confirmExternal = false,
 ): boolean {
-  return onUrlClick(href, button, RESPECT_DEFAULT_EXTERNAL) === true;
+  return onUrlClick(href, button, confirmExternal ? undefined : RESPECT_DEFAULT_EXTERNAL) === true;
 }
 
 function useResBodyInteractionHandlers({
@@ -159,8 +165,10 @@ function useResBodyInteractionHandlers({
   onAnchorHover,
   onAnchorLeave,
   viewWindow,
+  openExternalMenu,
 }: Omit<ResBodyProps, "messageHtml" | "ngResNums"> & {
   viewWindow: Window;
+  openExternalMenu: (url: string, event: React.MouseEvent<HTMLElement>) => void;
 }): ResBodyInteractionHandlers {
   const hoveredAnchorKeyRef = useRef<string | null>(null);
   const middleClickStateRef = useRef<MiddleClickState>({
@@ -169,8 +177,7 @@ function useResBodyInteractionHandlers({
   });
   const suppressNextAnchorLeaveRef = useRef(false);
 
-  // React view では本文リンクの右クリックを URL 種別に関係なく既定メニューへ委譲する。
-  // handler 型は共有しているため prop は受けるが、この hook では敢えて使わない。
+  // OFF時の既定メニューを維持し、ON時の外部リンクだけを共通の確認メニューへ渡す。
   void onUrlContextMenu;
 
   const notifyAnchorLeave = useCallback(() => {
@@ -245,7 +252,12 @@ function useResBodyInteractionHandlers({
         return;
       }
 
-      const handled = shouldHandleUrlClick(onUrlClick, href, MIDDLE_MOUSE_BUTTON);
+      const handled = shouldHandleUrlClick(
+        onUrlClick,
+        href,
+        MIDDLE_MOUSE_BUTTON,
+        anchor.hasAttribute("data-external-url"),
+      );
       rememberMiddleClick(middleClickStateRef, href, handled);
 
       if (handled) {
@@ -288,7 +300,23 @@ function useResBodyInteractionHandlers({
         return;
       }
 
-      if (shouldHandleUrlClick(onUrlClick, href, PRIMARY_MOUSE_BUTTON)) {
+      if (anchor.hasAttribute("data-external-url") && (e.ctrlKey || e.metaKey || e.shiftKey)) {
+        stopEvent(e);
+        requestExternalLink(href, {
+          sourceWindow: viewWindow,
+          active: !(e.ctrlKey || e.metaKey),
+          newWindow: e.shiftKey,
+        });
+        return;
+      }
+      if (
+        shouldHandleUrlClick(
+          onUrlClick,
+          href,
+          PRIMARY_MOUSE_BUTTON,
+          anchor.hasAttribute("data-external-url"),
+        )
+      ) {
         stopEvent(e);
       }
     },
@@ -343,7 +371,14 @@ function useResBodyInteractionHandlers({
         return;
       }
 
-      if (shouldHandleUrlClick(onUrlClick, href, MIDDLE_MOUSE_BUTTON)) {
+      if (
+        shouldHandleUrlClick(
+          onUrlClick,
+          href,
+          MIDDLE_MOUSE_BUTTON,
+          anchor.hasAttribute("data-external-url"),
+        )
+      ) {
         stopEvent(e);
       }
     },
@@ -357,13 +392,16 @@ function useResBodyInteractionHandlers({
         return;
       }
 
-      if (!getNavigableHref(anchor)) {
+      const href = getNavigableHref(anchor);
+      if (!href) {
         return;
       }
 
-      // 画像/リンクの右クリックは拡張内リンクでもネイティブメニューを優先する。
+      if (anchor.hasAttribute("data-external-url")) openExternalMenu(href, e);
+
+      // それ以外のリンクは従来どおりネイティブメニューを優先する。
     },
-    [viewWindow],
+    [openExternalMenu, viewWindow],
   );
 
   return {
@@ -396,6 +434,8 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     resMap,
   }) => {
     const { window: viewWindow, document: viewDocument } = useViewSurface();
+    const { value: confirmExternal } = useConfigBooleanSetting(EXTERNAL_LINK_CONFIRM_CONFIG_KEY);
+    const { menu, openMenu } = useExternalLinkMenu();
     const interactionHandlers = useResBodyInteractionHandlers({
       anchorPreviewDepth,
       onUrlClick,
@@ -406,6 +446,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       onAnchorHover,
       onAnchorLeave,
       viewWindow,
+      openExternalMenu: openMenu,
     });
     const highlightedMessageHtml = useMemo(() => {
       const searched =
@@ -420,7 +461,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       });
     }, [findActiveOccurrence, findQuery, messageHtml, searchQuery, searchTarget]);
     const decoratedMessageHtml = useMemo(() => {
-      if ((ngResNums == null || ngResNums.size === 0) && resMap == null) {
+      if (!confirmExternal && (ngResNums == null || ngResNums.size === 0) && resMap == null) {
         return highlightedMessageHtml;
       }
 
@@ -429,6 +470,24 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       // NG対象・欠損対象のアンカーを常に同じフレームで表示する。
       const template = viewDocument.createElement("template");
       template.innerHTML = highlightedMessageHtml;
+      if (confirmExternal) {
+        for (const anchor of template.content.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+          const href = anchor.getAttribute("href") ?? "";
+          if (
+            !/^https?:/i.test(href) ||
+            isManagedAnchor(anchor) ||
+            parseInternalBrowserPageStrict(href)
+          )
+            continue;
+          const button = viewDocument.createElement("button");
+          button.type = "button";
+          button.className = `${anchor.className} external-link-button`;
+          button.setAttribute("data-external-url", href);
+          button.title = anchor.title || href;
+          button.innerHTML = anchor.innerHTML;
+          anchor.replaceWith(button);
+        }
+      }
       for (const anchor of template.content.querySelectorAll<HTMLAnchorElement>(ANCHOR_SELECTOR)) {
         const targets = parseAnchorDisplayTargets(anchor.textContent?.trim() ?? "");
         // 範囲・複数参照も1つのアンカーとして操作されるため、1件でも欠損なら
@@ -441,14 +500,17 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
         anchor.classList.toggle("anchor--missing-target", hasMissingTarget);
       }
       return template.innerHTML;
-    }, [highlightedMessageHtml, ngResNums, resMap, viewDocument]);
+    }, [confirmExternal, highlightedMessageHtml, ngResNums, resMap, viewDocument]);
     // React 19 は dangerouslySetInnerHTML の object identity が変わると、
     // HTML文字列が同じでも innerHTML を再代入して選択中のText nodeを置換する。
     // 自動更新時の親再描画では同じHTMLを再利用し、ユーザーの選択範囲を保持する。
     const bodyMarkup = useMemo(() => ({ __html: decoratedMessageHtml }), [decoratedMessageHtml]);
 
     return (
-      <div className="res__body" dangerouslySetInnerHTML={bodyMarkup} {...interactionHandlers} />
+      <>
+        <div className="res__body" dangerouslySetInnerHTML={bodyMarkup} {...interactionHandlers} />
+        {confirmExternal && menu}
+      </>
     );
   },
 );

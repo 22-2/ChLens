@@ -17,6 +17,7 @@ export function ExternalLinkDialog({
   const [cleaned, setCleaned] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const destination = cleaned && analysis.cleanedUrl ? analysis.cleanedUrl : analysis.original;
+  const hostname = analysis.canOpen ? new URL(destination).hostname : analysis.hostname;
   const destinationId = useId();
   return (
     <Dialog.Root
@@ -29,6 +30,14 @@ export function ExternalLinkDialog({
         <Dialog.Overlay className="browser-dialog-overlay" />
         <Dialog.Content
           className="browser-dialog-content external-link-dialog"
+          onKeyDownCapture={(event) => {
+            // 別DocumentでもEscapeを処理し、背後の画像ビューアやポップアップへ伝播させない。
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+              onCancel();
+            }
+          }}
           onOpenAutoFocus={(event) => {
             event.preventDefault();
             cancelRef.current?.focus();
@@ -38,9 +47,7 @@ export function ExternalLinkDialog({
           <Dialog.Description className="browser-dialog-description">
             リンク先の安全性を保証するものではありません。開くURLを確認してください。
           </Dialog.Description>
-          {analysis.hostname && (
-            <strong className="external-link-dialog__domain">{analysis.hostname}</strong>
-          )}
+          {hostname && <strong className="external-link-dialog__domain">{hostname}</strong>}
           <label htmlFor={destinationId}>開くURL</label>
           <textarea id={destinationId} readOnly rows={3} value={destination} />
           {analysis.warnings.length > 0 && (

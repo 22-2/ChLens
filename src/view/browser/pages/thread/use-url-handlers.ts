@@ -10,6 +10,10 @@ import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import type { TabAction } from "src/view/browser/state/tabs/use-tab-store";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import {
+  isExternalLinkConfirmationEnabled,
+  requestExternalLink,
+} from "src/view/browser/utils/external-link";
+import {
   parseInternalBrowserPageStrict,
   resolveAbsoluteUrl,
   RESPECT_DEFAULT_EXTERNAL,
@@ -104,13 +108,24 @@ export function useUrlHandlers({
 
       if (button === 1) {
         // ミドルクリック時はバックグラウンドタブで開く
-        void platform.window.openUrlInTab(absoluteUrl, false);
+        requestExternalLink(absoluteUrl, {
+          sourceWindow: viewWindow,
+          active: false,
+          open: (url) => platform.window.openUrlInTab(url, false),
+        });
         return;
       }
 
-      openMediaFromUrl(absoluteUrl, resImages);
+      if (isExternalLinkConfirmationEnabled()) {
+        requestExternalLink(absoluteUrl, {
+          sourceWindow: viewWindow,
+          open: (url) => {
+            viewWindow.open(url, "_blank", "noopener,noreferrer");
+          },
+        });
+      } else openMediaFromUrl(absoluteUrl, resImages);
     },
-    [dispatch, openMediaFromUrl],
+    [dispatch, openMediaFromUrl, viewWindow],
   );
 
   const buildUrlContextMenuItems = useCallback(
@@ -139,7 +154,12 @@ export function useUrlHandlers({
           id: "open-in-browser",
           label: "ブラウザで開く",
           onSelect: () => {
-            viewWindow.open(absoluteUrl, "_blank", "noopener,noreferrer");
+            requestExternalLink(absoluteUrl, {
+              sourceWindow: viewWindow,
+              open: (url) => {
+                viewWindow.open(url, "_blank", "noopener,noreferrer");
+              },
+            });
           },
         },
       ];
@@ -157,7 +177,7 @@ export function useUrlHandlers({
       const absoluteUrl = resolveAbsoluteUrl(rawUrl, threadUrl);
       const internalPage = parseInternalBrowserPageStrict(absoluteUrl);
       if (mode === RESPECT_DEFAULT_EXTERNAL) {
-        if (!internalPage) return false;
+        if (!internalPage && !isExternalLinkConfirmationEnabled()) return false;
       }
       openResolvedUrl(absoluteUrl, button, resImages, internalPage);
       return true;
@@ -171,7 +191,7 @@ export function useUrlHandlers({
       const internalPage = parseInternalBrowserPageStrict(absoluteUrl);
       if (mode === RESPECT_DEFAULT_EXTERNAL) {
         // 非5ch互換URLはネイティブの右クリックメニューを優先する。
-        if (!internalPage) return false;
+        if (!internalPage && !isExternalLinkConfirmationEnabled()) return false;
       }
       addPopupContextMenu(
         e.clientX,

@@ -30,6 +30,7 @@ import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import type { Tab, ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
+import { requestExternalLink } from "src/view/browser/utils/external-link";
 import { buildKyodemoUrl } from "src/view/browser/utils/kyodemo-url";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { formatResForCopy, stripHtml } from "src/view/browser/utils/response-format";
@@ -213,7 +214,12 @@ export function useThreadResContextMenu({
         disabled: !kyodemoUrl,
         onSelect: () => {
           if (kyodemoUrl) {
-            viewSurface.window.open(kyodemoUrl, "_blank", "noopener,noreferrer");
+            requestExternalLink(kyodemoUrl, {
+              sourceWindow: viewSurface.window,
+              open: (url) => {
+                viewSurface.window.open(url, "_blank", "noopener,noreferrer");
+              },
+            });
           }
         },
       },
@@ -408,11 +414,12 @@ export function useThreadResContextMenu({
               icon: <Search size={14} />,
               onSelect: () => {
                 const encoded = encodeURIComponent(selectedText);
-                viewSurface.window.open(
-                  `https://www.google.co.jp/search?q=${encoded}`,
-                  "_blank",
-                  "noopener,noreferrer",
-                );
+                requestExternalLink(`https://www.google.co.jp/search?q=${encoded}`, {
+                  sourceWindow: viewSurface.window,
+                  open: (url) => {
+                    viewSurface.window.open(url, "_blank", "noopener,noreferrer");
+                  },
+                });
               },
             },
             {

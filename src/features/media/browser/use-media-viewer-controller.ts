@@ -11,6 +11,7 @@ import { platformDownloadManager } from "src/app/platform/DownloadManager";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { requestExternalLink } from "src/view/browser/utils/external-link";
 
 import { deleteImgurImage } from "../application/imgur-deletehash";
 import type { ViewerState } from "./media-viewer-types";
@@ -542,7 +543,13 @@ export function useMediaViewerController(
       // Tauri版では外部ブラウザへのフォールバックもWebView制約で失敗するため、
       // 取得失敗をログへ残して、意図しない別ウィンドウを開かない。
       if (!isTauriRuntime()) {
-        viewWindow.open(viewer.src, "_blank", "noopener,noreferrer");
+        // 保存失敗時の代替起動も、通常のリンクと同じ承認経路を通す。
+        requestExternalLink(viewer.src, {
+          sourceWindow: viewWindow,
+          open: (url) => {
+            viewWindow.open(url, "_blank", "noopener,noreferrer");
+          },
+        });
       }
     }
   };

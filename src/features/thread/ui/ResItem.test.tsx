@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 const ngMocks = vi.hoisted(() => ({
   configValue: "soft-ng",
   configUpdatedCallback: undefined as ((data: { key?: string }) => void) | undefined,
+  configUpdatedCallbacks: new Set<(data: { key?: string }) => void>(),
 }));
 
 vi.mock("src/service-container/index", () => ({
@@ -19,9 +20,14 @@ vi.mock("src/service-container/index", () => ({
     },
     message: {
       on: (_type: string, callback: (data: { key?: string }) => void) => {
-        ngMocks.configUpdatedCallback = callback;
+        ngMocks.configUpdatedCallbacks.add(callback);
+        ngMocks.configUpdatedCallback = (data) => {
+          for (const listener of ngMocks.configUpdatedCallbacks) listener(data);
+        };
       },
-      off: () => {},
+      off: (_type: string, callback: (data: { key?: string }) => void) => {
+        ngMocks.configUpdatedCallbacks.delete(callback);
+      },
     },
   },
 }));
@@ -30,6 +36,7 @@ afterEach(() => {
   cleanup();
   ngMocks.configValue = "soft-ng";
   ngMocks.configUpdatedCallback = undefined;
+  ngMocks.configUpdatedCallbacks.clear();
 });
 
 vi.mock("src/view/browser/utils/response-format", async () => {

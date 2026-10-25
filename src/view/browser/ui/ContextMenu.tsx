@@ -30,7 +30,8 @@ interface Props {
   onMouseEnter?: () => void;
   onPopupMouseDown?: () => void;
   closeDisabled?: boolean;
-  zIndex?: number;
+  zIndex?: number | string;
+  enableKeyboardNavigation?: boolean;
 }
 
 /** Radix ContextMenuを既存の座標・popup lifecycle APIへ適合させる共通wrapper。 */
@@ -48,6 +49,7 @@ export const ContextMenu: React.FC<Props> = ({
   onPopupMouseDown,
   closeDisabled,
   zIndex,
+  enableKeyboardNavigation = false,
 }) => {
   const { window: viewWindow, document: viewDocument } = useViewSurface();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -204,7 +206,7 @@ export const ContextMenu: React.FC<Props> = ({
               return <div key={item.id} className="context-menu__separator" />;
             }
 
-            return (
+            const button = (
               <button
                 key={item.id}
                 className={`context-menu__item${item.danger ? " context-menu__item--danger" : ""}${
@@ -239,6 +241,14 @@ export const ContextMenu: React.FC<Props> = ({
                   {item.label}
                 </span>
               </button>
+            );
+            // 外部リンク用の項目はRadixへ登録し、矢印キー・Enterでの選択も可能にする。
+            return enableKeyboardNavigation ? (
+              <RadixContextMenu.Item key={item.id} asChild disabled={item.disabled}>
+                {button}
+              </RadixContextMenu.Item>
+            ) : (
+              button
             );
           })}
         </div>

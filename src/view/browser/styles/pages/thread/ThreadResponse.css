@@ -564,9 +564,11 @@
 }
 
 .res__twitter-post-author a,
+.res__twitter-post-author .external-link-button,
 .res__twitter-post-external,
 .res__twitter-post-translation,
-.res__twitter-post-fallback a {
+.res__twitter-post-fallback a,
+.res__twitter-post-fallback .external-link-button {
   color: var(--sys-color-table-link);
   font-weight: 700;
 }
@@ -659,6 +661,7 @@
 }
 
 .res__twitter-post-media a,
+.res__twitter-post-media .external-link-button,
 .res__twitter-post-media img,
 .res__twitter-post-media video {
   display: block;

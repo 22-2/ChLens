@@ -1,4 +1,5 @@
 import { toOriginalImageUrl, toViewerImageUrl } from "src/core/util/url-media";
+import { requestExternalLink } from "src/view/browser/utils/external-link";
 import { create } from "zustand";
 
 import type { ViewerState } from "./media-viewer-types";
@@ -36,7 +37,11 @@ export const useMediaViewerStore = create<MediaViewerStoreState>((set, get) => (
   openMediaFromUrl: (url, resImages, scopeId) => {
     const imageUrl = toViewerImageUrl(url);
     if (!imageUrl) {
-      window.open(url, "_blank", "noopener,noreferrer");
+      requestExternalLink(url, {
+        open: (destination) => {
+          window.open(destination, "_blank", "noopener,noreferrer");
+        },
+      });
       return;
     }
 

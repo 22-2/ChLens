@@ -11,7 +11,7 @@ import { getEventTargetElement } from "src/view/browser/utils/dom";
 // リンク操作ではpopupを残したままブラウザ側の処理へ渡したいので、
 // popupの通常領域を閉じる操作と同じ扱いにしない対象をここでまとめる。
 export const POPUP_KEEP_OPEN_TARGET_SELECTOR =
-  "a, .res__link, .res__thumb, .res__media-embed, .context-menu";
+  "a, .external-link-button, .res__link, .res__thumb, .res__media-embed, .context-menu";
 
 export function isContextMenuPopupId(popupId: string | null): boolean {
   return popupId?.startsWith("contextMenu-") ?? false;
