@@ -179,6 +179,13 @@ const ALL_SETTINGS_SECTIONS = [
         options: HTTPS_MODE_OPTIONS,
         widget: "radio",
       },
+      {
+        kind: "boolean",
+        key: "confirm_external_links",
+        title: "外部リンクを開く前に確認する",
+        description:
+          "外部リンクをリンク風のボタンにし、開く前にURLと追跡パラメータの警告を表示します。画像のアプリ内表示は維持します。OFFにすると確認・警告・専用メニューをまとめて無効にします。",
+      },
       // 変更理由: 書き込み設定は書き込みパネルの歯車モーダルに集約し、
       // 全体設定画面で同じ項目を重複表示しない。
       // {

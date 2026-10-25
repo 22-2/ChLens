@@ -1,0 +1,61 @@
+/* 変更理由: ボタン化しても本文リンクの行高・折り返し・文字選択を維持する。 */
+.external-link-button {
+  display: inline;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sys-color-table-link);
+  font: inherit;
+  line-height: inherit;
+  text-align: start;
+  text-decoration: underline;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.external-link-button:focus-visible {
+  outline: var(--sys-border-width-strong) solid var(--sys-color-focus-ring);
+}
+
+.external-link-dialog {
+  gap: var(--sys-space-4);
+}
+
+.external-link-dialog__domain {
+  color: var(--sys-color-accent);
+  overflow-wrap: anywhere;
+}
+
+.external-link-dialog textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--sys-space-3);
+  border: var(--sys-border-width-thin) solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-dialog-surface);
+  color: var(--sys-color-text);
+  font: inherit;
+  overflow-wrap: anywhere;
+  resize: vertical;
+}
+
+.external-link-dialog__warnings {
+  margin: 0;
+  padding-inline-start: var(--sys-space-6);
+  color: var(--sys-color-text);
+}
+
+.external-link-dialog__choice {
+  display: flex;
+  align-items: start;
+  gap: var(--sys-space-2);
+}
+
+.external-link-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: var(--sys-space-3);
+}
