@@ -4,7 +4,10 @@ import {
   watchAuxiliaryWindow,
 } from "src/features/auxiliary-window/browser/auxiliary-window-watcher";
 import type { AuxiliaryWindowOptions } from "src/features/auxiliary-window/browser/use-auxiliary-window";
-import { openAuxiliaryWindow } from "src/features/auxiliary-window/browser/use-auxiliary-window";
+import {
+  focusAuxiliaryWindow,
+  openAuxiliaryWindow,
+} from "src/features/auxiliary-window/browser/use-auxiliary-window";
 import {
   useViewSurface,
   type ViewSurface,
@@ -37,6 +40,7 @@ export function MediaViewerContainer({
 }: MediaViewerContainerProps): React.ReactElement | null {
   const sourceSurface = useViewSurface();
   const viewerScopeId = useMediaViewerStore((state) => state.viewerScopeId);
+  const viewer = useMediaViewerStore((state) => state.viewer);
   const [detached, setDetached] = useState<DetachedMediaViewerWindow | null>(null);
   const detachedRef = useRef(detached);
   detachedRef.current = detached;
@@ -69,10 +73,18 @@ export function MediaViewerContainer({
     }
   }, [attachToSource, detached, scopeId, viewerScopeId]);
 
+  useEffect(() => {
+    if (!detached || detached.window.closed || viewerScopeId !== scopeId || !viewer) {
+      return;
+    }
+    // 変更理由: メイン画面で画像を開き直した時、表示内容だけ別窓へ渡って背面に残るのを防ぐ。
+    focusAuxiliaryWindow(detached.window, MEDIA_VIEWER_WINDOW_OPTIONS.logLabel);
+  }, [detached, scopeId, viewer, viewerScopeId]);
+
   const detach = useCallback(() => {
     const current = detachedRef.current;
     if (current && !current.window.closed) {
-      current.window.focus();
+      focusAuxiliaryWindow(current.window, MEDIA_VIEWER_WINDOW_OPTIONS.logLabel);
       return;
     }
 
@@ -106,7 +118,7 @@ export function MediaViewerContainer({
     };
     detachedRef.current = entry;
     setDetached(entry);
-    opened.window.focus();
+    focusAuxiliaryWindow(opened.window, MEDIA_VIEWER_WINDOW_OPTIONS.logLabel);
   }, [removeDetachedWindow, scopeId, sourceSurface.document, sourceSurface.window]);
 
   useEffect(() => {

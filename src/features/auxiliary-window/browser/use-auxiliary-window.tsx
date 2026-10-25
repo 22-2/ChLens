@@ -28,7 +28,7 @@ interface ManagedAuxiliaryWindowHandle extends AuxiliaryWindowHandle {
 // タブ別窓・画像ビューアと同じ間隔で、親窓から別窓のclosedを確認する。
 const CLOSED_MONITOR_INTERVAL_MS = 250;
 
-function focusAuxiliaryWindow(popup: Window, logLabel: string): void {
+export function focusAuxiliaryWindow(popup: Window, logLabel: string): void {
   popup.focus();
   if (platform.window.focusPopup) {
     void platform.window.focusPopup(popup).catch((error: unknown) => {

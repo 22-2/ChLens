@@ -15,6 +15,7 @@ import { useMediaViewerStore } from "../browser/use-media-viewer-store";
 import { MediaViewerContainer } from "./MediaViewerContainer";
 
 const mocks = vi.hoisted(() => ({
+  focusAuxiliaryWindow: vi.fn(),
   openAuxiliaryWindow: vi.fn(),
   createAuxiliaryWindowRoot: vi.fn(),
   popupClose: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("src/features/auxiliary-window/browser/use-auxiliary-window", () => ({
+  focusAuxiliaryWindow: mocks.focusAuxiliaryWindow,
   openAuxiliaryWindow: mocks.openAuxiliaryWindow,
 }));
 
@@ -57,6 +59,7 @@ vi.mock("./MediaViewer", () => ({
 }));
 
 const IMAGE_URL = "https://example.com/image.jpg";
+const NEXT_IMAGE_URL = "https://example.com/next-image.jpg";
 
 describe("MediaViewerContainer", () => {
   beforeEach(() => {
@@ -81,6 +84,7 @@ describe("MediaViewerContainer", () => {
       getListeners: () => listeners,
     } as unknown as Window;
     mocks.openAuxiliaryWindow.mockReset();
+    mocks.focusAuxiliaryWindow.mockReset();
     mocks.createAuxiliaryWindowRoot.mockReset();
     mocks.popupClose.mockReset();
     mocks.openAuxiliaryWindow.mockReturnValue({ window: mocks.popup, root: mocks.root });
@@ -136,6 +140,20 @@ describe("MediaViewerContainer", () => {
     expect(mocks.popupClose).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("media-viewer")).toHaveAttribute("data-detached", "false");
     expect(useMediaViewerStore.getState().viewer?.label).toBe(IMAGE_URL);
+  });
+
+  it("別窓表示中にメイン画面から別画像を開くと別窓を前面へ戻す", () => {
+    useMediaViewerStore.getState().openMediaFromUrl(IMAGE_URL, undefined, "thread-a");
+    render(<MediaViewerContainer scopeId="thread-a" />);
+    fireEvent.click(screen.getByRole("button", { name: "切り離す" }));
+    mocks.focusAuxiliaryWindow.mockClear();
+
+    act(() => {
+      useMediaViewerStore.getState().openMediaFromUrl(NEXT_IMAGE_URL, undefined, "thread-a");
+    });
+
+    expect(mocks.focusAuxiliaryWindow).toHaveBeenCalledWith(mocks.popup, "MediaViewer");
+    expect(useMediaViewerStore.getState().viewer?.label).toBe(NEXT_IMAGE_URL);
   });
 
   it("ビューアーを閉じると切り離した空窓も閉じる", () => {
