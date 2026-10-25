@@ -87,6 +87,47 @@ test("除去後URLを明示選択してから1回だけ開く", async ({ page },
     .toEqual([{ url: "https://example.com/article?id=42", active: true, newWindow: false }]);
 });
 
+for (const theme of ["light", "dark"]) {
+  test(`仮想レス一覧でも右クリックメニューを最前面に表示する (${theme})`, async ({
+    page,
+  }, info) => {
+    await page.evaluate((theme) => {
+      document.documentElement.dataset.theme = theme;
+      const section = document.querySelector<HTMLElement>('section[aria-label="本文"]')!;
+      // 仮想一覧の各レスと同じく、transformによる重なりコンテキストを作る。
+      section.style.transform = "translateY(0px)";
+      const nextResponse = document.createElement("div");
+      nextResponse.textContent = "次のレスの本文";
+      nextResponse.style.cssText = "position:relative; height:240px; margin-top:8px";
+      section.after(nextResponse);
+    }, theme);
+    await article(page).click({ button: "right" });
+    const menu = page.getByRole("menu");
+    await expect(menu).toBeVisible();
+    await expect(menu).toHaveCSS(
+      "background-color",
+      theme === "dark" ? "rgb(32, 33, 36)" : "rgb(255, 255, 255)",
+    );
+    const lastItem = page.getByRole("menuitem", {
+      name: "追跡情報を除いてURLをコピー",
+      exact: true,
+    });
+    await expect
+      .poll(() =>
+        lastItem.evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          return element.contains(
+            document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2),
+          );
+        }),
+      )
+      .toBe(true);
+    await page.screenshot({ path: info.outputPath(`context-menu-${theme}.png`) });
+    await page.getByRole("menuitem", { name: "開く", exact: true }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+  });
+}
+
 for (const action of ["開く", "新しいタブで開く", "新しいウィンドウで開く"]) {
   test(`右クリックの「${action}」も確認してから開く`, async ({ page }) => {
     await article(page).click({ button: "right" });

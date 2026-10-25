@@ -1,4 +1,5 @@
 import { type MouseEvent, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import { createLogger } from "src/app/logger";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -62,7 +63,8 @@ export function useExternalLinkMenu() {
         },
       },
     ];
-    menu = (
+    // 仮想レスのtransformによる座標系・重なり順から切り離し、別窓でも操作元へ表示する。
+    menu = createPortal(
       <ContextMenu
         enableKeyboardNavigation
         zIndex="calc(var(--sys-z-media-viewer) + var(--sys-z-local-raised))"
@@ -70,7 +72,8 @@ export function useExternalLinkMenu() {
         y={state.y}
         items={items}
         onClose={() => setState(null)}
-      />
+      />,
+      surface.document.body,
     );
   }
   return { openMenu, menu };
