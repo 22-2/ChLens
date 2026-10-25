@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { createLogger } from "src/app/logger";
 import { extractUrlsFromMessage, toViewerImageUrl } from "src/core/util/url-media";
 import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
+import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
 import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { useImgurUpload } from "src/features/write/browser/use-imgur-upload";
@@ -87,6 +88,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   portalContainer,
 }) => {
   const { viewPage } = useTabStore();
+  const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
   // 変更理由: 設定DialogのPortal先も書き込み窓と同じDocumentへ置き、別窓で
   // メイン窓のテーマ境界へ戻らないようにする。
   const viewSurface = useViewSurface();
@@ -669,7 +671,18 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                     title={url}
                     onClick={() => openMedia(url, previewImages, mediaViewerScopeId)}
                   >
-                    <ExternalImage src={toViewerImageUrl(url) ?? url} alt="" loading="lazy" />
+                    {manualImageLoading ? (
+                      <span className="external-image-placeholder">
+                        クリックして画像をプレビュー
+                      </span>
+                    ) : (
+                      <ExternalImage
+                        src={toViewerImageUrl(url) ?? url}
+                        alt=""
+                        loading="lazy"
+                        manualLoad={false}
+                      />
+                    )}
                   </button>
                 ))}
               </div>

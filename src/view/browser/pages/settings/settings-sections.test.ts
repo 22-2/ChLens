@@ -222,6 +222,24 @@ describe("設定項目の置き場所", () => {
     );
   });
 
+  it("画像の手動取得を外部リンク確認とは別の表示設定として扱う", () => {
+    const sections = getSettingsSections(false);
+    const display = sections.find((section) => section.id === "display");
+    const general = sections.find((section) => section.id === "general");
+    const manualImageSetting = display?.fields.find(
+      (field) => "key" in field && field.key === "manual_image_loading",
+    );
+
+    expect(manualImageSetting).toMatchObject({
+      kind: "boolean",
+      key: "manual_image_loading",
+      title: "画像をクリックしてから取得する",
+    });
+    expect(
+      general?.fields.some((field) => "key" in field && field.key === "manual_image_loading"),
+    ).toBe(false);
+  });
+
   it("ブックマークの保存先と設定の初期化をデータカテゴリへ置く", () => {
     const data = getSettingsSections(false).find((section) => section.id === "data");
 

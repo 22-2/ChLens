@@ -6,6 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 const loggerMock = vi.hoisted(() => ({ error: vi.fn(), warn: vi.fn(), debug: vi.fn() }));
 vi.mock("src/app/logger", () => ({ createLogger: () => loggerMock }));
 
+const manualImageLoadingMock = vi.hoisted(() => ({ value: false }));
+vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
+  useConfigBooleanSetting: (key: string) => ({
+    value: key === "manual_image_loading" && manualImageLoadingMock.value,
+    setValue: vi.fn(),
+  }),
+}));
+
 const { fetchTauriBinaryMock, isTauriRuntimeMock } = vi.hoisted(() => ({
   fetchTauriBinaryMock: vi.fn(),
   isTauriRuntimeMock: vi.fn(),
@@ -41,6 +49,7 @@ describe("ExternalImage", () => {
     fetchTauriBinaryMock.mockReset();
     isTauriRuntimeMock.mockReset();
     isTauriRuntimeMock.mockReturnValue(false);
+    manualImageLoadingMock.value = false;
 
     createObjectUrl = vi.fn(() => "blob:tauri-image");
     revokeObjectUrl = vi.fn();
@@ -63,6 +72,26 @@ describe("ExternalImage", () => {
 
     expect(screen.getByRole("img", { name: "テスト画像" })).toHaveAttribute("src", imageUrl);
     expect(fetchTauriBinaryMock).not.toHaveBeenCalled();
+  });
+
+  it("手動取得ではプレースホルダーをクリックするまで画像URLを設定しない", () => {
+    manualImageLoadingMock.value = true;
+
+    render(<ExternalImage src={imageUrl} alt="テスト画像" />);
+
+    expect(screen.queryByRole("img", { name: "テスト画像" })).toBeNull();
+    expect(fetchTauriBinaryMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "画像を読み込む: テスト画像" }));
+    expect(screen.getByRole("img", { name: "テスト画像" })).toHaveAttribute("src", imageUrl);
+  });
+
+  it("親側で明示的に読み込みを始めた画像は手動設定でも自動取得する", () => {
+    manualImageLoadingMock.value = true;
+
+    render(<ExternalImage src={imageUrl} alt="テスト画像" manualLoad={false} />);
+
+    expect(screen.getByRole("img", { name: "テスト画像" })).toHaveAttribute("src", imageUrl);
+    expect(screen.queryByRole("button", { name: /画像を読み込む/u })).toBeNull();
   });
 
   it("Tauri WebViewでの失敗時はHTTPプラグインのblob URLへ切り替える", async () => {

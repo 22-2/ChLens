@@ -3,15 +3,40 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+const manualImageLoadingMock = vi.hoisted(() => ({ value: false }));
+vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
+  useConfigBooleanSetting: (key: string) => ({
+    value: key === "manual_image_loading" && manualImageLoadingMock.value,
+    setValue: vi.fn(),
+  }),
+}));
+
 import { imgurVideoResolver } from "../application/imgur-album";
 import { twitterPostResolver } from "../application/twitter-post";
 import { ResMediaGallery } from "./ResMediaGallery";
 
 afterEach(() => {
   cleanup();
+  manualImageLoadingMock.value = false;
 });
 
 describe("ResMediaGallery", () => {
+  it("手動取得ではサムネイルをクリックするまで画像を取得しない", () => {
+    manualImageLoadingMock.value = true;
+    const imageUrl = "https://images.example.com/photo.jpg";
+    const onUrlClick = vi.fn();
+    render(<ResMediaGallery urls={[imageUrl]} onUrlClick={onUrlClick} />);
+
+    const placeholder = screen.getByRole("button", { name: "画像を読み込む" });
+    expect(screen.queryByRole("img", { name: imageUrl })).toBeNull();
+    fireEvent.click(placeholder);
+
+    expect(screen.getByRole("img", { name: imageUrl })).toHaveAttribute("src", imageUrl);
+    expect(onUrlClick).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("link", { name: imageUrl }));
+    expect(onUrlClick).toHaveBeenCalledWith(imageUrl, [imageUrl], 0);
+  });
+
   it("YouTube サムネイルをクリックするとレス内 iframe を開く", () => {
     const onUrlClick = vi.fn();
     render(<ResMediaGallery urls={["https://youtu.be/TestVideo01"]} onUrlClick={onUrlClick} />);

@@ -271,6 +271,7 @@ const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
     "application/imgur-deletehash",
     "application/imgur-upload",
     "browser/use-media-viewer-store",
+    "domain/media-settings",
     "ui/ExternalImage",
     "ui/MediaViewerContainer",
     "ui/ResMediaGallery",

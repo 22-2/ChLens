@@ -1,3 +1,5 @@
+import "./ExternalImage.css";
+
 import {
   forwardRef,
   type ImgHTMLAttributes,
@@ -9,6 +11,9 @@ import {
 import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { fetchTauriBinary } from "src/app/platform/tauri/HttpClient";
+import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
+
+import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "../domain/media-settings";
 
 const logger = createLogger("media");
 
@@ -16,6 +21,10 @@ const EXTERNAL_IMAGE_TIMEOUT_MS = 30_000;
 
 export type ExternalImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src"> & {
   src: string;
+  /** クリック後の親画面ですでに明示的な取得操作が行われた場合は、設定より優先して自動取得する。 */
+  manualLoad?: boolean;
+  "data-testid"?: string;
+  "data-image-key"?: string;
 };
 
 function isHttpUrl(url: string): boolean {
@@ -53,7 +62,10 @@ async function fetchTauriImage(url: string): Promise<string> {
  * 通常のimg読み込みを先に試すことで、ブラウザのlazy loadingと既存のキャッシュ挙動を維持する。
  */
 export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
-  function ExternalImage({ src, onError, onLoad, ...props }, ref) {
+  function ExternalImage({ src, onError, onLoad, manualLoad, ...props }, ref) {
+    const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
+    const shouldLoadManually = manualLoad ?? manualImageLoading;
+    const [isLoadRequested, setIsLoadRequested] = useState(() => !shouldLoadManually);
     const [sourceState, setSourceState] = useState<{ rawSrc: string; renderedSrc: string | null }>(
       () => ({
         rawSrc: src,
@@ -72,6 +84,7 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
       requestVersionRef.current += 1;
       fallbackStatusRef.current = "idle";
       setSourceState({ rawSrc: src, renderedSrc: src });
+      setIsLoadRequested(!shouldLoadManually);
 
       return () => {
         // 同じURLへ戻った場合も、前の表示で始めた取得結果は引き継がない。
@@ -81,7 +94,7 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
           objectUrlRef.current = null;
         }
       };
-    }, [src]);
+    }, [shouldLoadManually, src]);
 
     const handleError = (event: SyntheticEvent<HTMLImageElement, Event>) => {
       // src切替・フォールバック待機のために属性を外した際のエラーは、読込失敗ではない。
@@ -125,6 +138,37 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
           onError?.(event);
         });
     };
+
+    if (shouldLoadManually && !isLoadRequested) {
+      const alt = props.alt?.trim();
+      return (
+        <button
+          type="button"
+          className={[
+            "external-image-placeholder",
+            typeof props.className === "string" ? props.className : null,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          style={{
+            ...props.style,
+            width: props.style?.width ?? props.width ?? "100%",
+            height: props.style?.height ?? props.height ?? "100%",
+          }}
+          title={props.title ?? "クリックして画像を取得"}
+          aria-label={alt ? `画像を読み込む: ${alt}` : "画像を読み込む"}
+          data-testid={props["data-testid"]}
+          data-image-key={props["data-image-key"]}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setIsLoadRequested(true);
+          }}
+        >
+          <span>クリックして画像を取得</span>
+        </button>
+      );
+    }
 
     const renderedSrc = sourceState.rawSrc === src ? sourceState.renderedSrc : null;
     return (

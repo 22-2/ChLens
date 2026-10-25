@@ -25,6 +25,7 @@ import {
   twitterPostResolver,
   type TwitterVerificationBadgeColor,
 } from "../application/twitter-post";
+import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "../domain/media-settings";
 import { ExternalImage } from "./ExternalImage";
 
 const logger = createLogger("media");
@@ -165,18 +166,29 @@ function buildResMediaItem(rawUrl: string, resolvedVideoUrl?: string): ResMediaI
   return null;
 }
 
-function VideoThumbImage({ embed }: { embed: ExternalMediaEmbed }): React.ReactElement {
+function VideoThumbImage({
+  embed,
+  manualImageLoading,
+}: {
+  embed: ExternalMediaEmbed;
+  manualImageLoading: boolean;
+}): React.ReactElement {
   const [posterUrl, setPosterUrl] = useState(embed.thumbnailUrl);
 
   useEffect(() => {
     setPosterUrl(embed.thumbnailUrl);
   }, [embed.thumbnailUrl]);
 
+  if (manualImageLoading) {
+    return <span className="res__thumb-video-manual-placeholder">クリックして動画を展開</span>;
+  }
+
   return (
     <ExternalImage
       src={posterUrl}
       alt={`${embed.providerLabel} のサムネイル`}
       loading="lazy"
+      manualLoad={false}
       onError={() => {
         if (posterUrl !== embed.fallbackThumbnailUrl) {
           setPosterUrl(embed.fallbackThumbnailUrl);
@@ -189,12 +201,14 @@ function VideoThumbImage({ embed }: { embed: ExternalMediaEmbed }): React.ReactE
 function TwitterPostCard({
   embed,
   post,
+  manualImageLoading,
   onUrlClick,
   onMiddleMouseDown,
   onAuxClick,
 }: {
   embed: ExternalMediaEmbed;
   post: TwitterPost;
+  manualImageLoading: boolean;
   onUrlClick: MediaUrlClickHandler;
   onMiddleMouseDown: (
     event: React.MouseEvent<HTMLElement>,
@@ -216,6 +230,8 @@ function TwitterPostCard({
     .map((media) => media.url);
   const initialJapaneseTranslation =
     post.translation?.targetLang.toLowerCase() === "ja" ? post.translation : null;
+  const [isAvatarLoadRequested, setIsAvatarLoadRequested] = useState(false);
+  const [requestedMediaUrls, setRequestedMediaUrls] = useState<ReadonlySet<string>>(new Set());
   const [translation, setTranslation] = useState(initialJapaneseTranslation);
   const [isTranslationShown, setIsTranslationShown] = useState(initialJapaneseTranslation != null);
   const [isTranslationLoading, setIsTranslationLoading] = useState(false);
@@ -260,14 +276,25 @@ function TwitterPostCard({
   return (
     <div className="res__twitter-post">
       <div className="res__twitter-post-author">
-        {post.author.avatarUrl && (
-          <ExternalImage
-            className="res__twitter-post-avatar"
-            src={post.author.avatarUrl}
-            alt=""
-            loading="lazy"
-          />
-        )}
+        {post.author.avatarUrl &&
+          (manualImageLoading && !isAvatarLoadRequested ? (
+            <button
+              type="button"
+              className="res__twitter-post-avatar-placeholder"
+              aria-label="投稿者の画像を読み込む"
+              onClick={() => setIsAvatarLoadRequested(true)}
+            >
+              画像
+            </button>
+          ) : (
+            <ExternalImage
+              className="res__twitter-post-avatar"
+              src={post.author.avatarUrl}
+              alt=""
+              loading="lazy"
+              manualLoad={false}
+            />
+          ))}
         <div className="res__twitter-post-author-text">
           <div className="res__twitter-post-author-name">
             <ConfirmableLink href={embed.externalUrl} target="_blank" rel="noopener noreferrer">
@@ -322,6 +349,24 @@ function TwitterPostCard({
         <div className="res__twitter-post-media">
           {post.media.map((media, index) => {
             if (media.type === "image") {
+              if (manualImageLoading && !requestedMediaUrls.has(media.url)) {
+                return (
+                  <button
+                    key={`${media.type}:${media.url}`}
+                    type="button"
+                    className="res__twitter-post-media-placeholder"
+                    aria-label={`${media.altText ?? "投稿画像"}を読み込む`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setRequestedMediaUrls((current) => new Set(current).add(media.url));
+                    }}
+                  >
+                    クリックして画像を取得
+                  </button>
+                );
+              }
+
               return (
                 <ConfirmableLink
                   key={`${media.type}:${media.url}`}
@@ -334,7 +379,12 @@ function TwitterPostCard({
                   onMouseDown={(event) => onMiddleMouseDown(event, media.url, imageUrls)}
                   onAuxClick={(event) => onAuxClick(event, media.url, imageUrls)}
                 >
-                  <ExternalImage src={media.url} alt={media.altText ?? "投稿画像"} loading="lazy" />
+                  <ExternalImage
+                    src={media.url}
+                    alt={media.altText ?? "投稿画像"}
+                    loading="lazy"
+                    manualLoad={false}
+                  />
                 </ConfirmableLink>
               );
             }
@@ -408,20 +458,29 @@ function TwitterPostFallback({
   );
 }
 
-function NativeVideoThumb({ video }: { video: NativeVideoMediaItem }): React.ReactElement {
+function NativeVideoThumb({
+  video,
+  manualImageLoading,
+}: {
+  video: NativeVideoMediaItem;
+  manualImageLoading: boolean;
+}): React.ReactElement {
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const fallbackPosterUrl = getDirectVideoFallbackThumbnailUrl();
 
   return (
     <>
-      {!isPreviewReady && (
-        <img
-          src={fallbackPosterUrl}
-          alt="動画サムネイル"
-          loading="lazy"
-          className="res__thumb-video-fallback"
-        />
-      )}
+      {!isPreviewReady &&
+        (manualImageLoading ? (
+          <span className="res__thumb-video-manual-placeholder">クリックして動画を展開</span>
+        ) : (
+          <img
+            src={fallbackPosterUrl}
+            alt="動画サムネイル"
+            loading="lazy"
+            className="res__thumb-video-fallback"
+          />
+        ))}
       <video
         className={`res__thumb-video-preview${isPreviewReady ? " res__thumb-video-preview--ready" : ""}`}
         src={video.srcUrl}
@@ -446,9 +505,11 @@ export function ResMediaGallery({
   imageBlurRadius = 4,
 }: ResMediaGalleryProps): React.ReactElement | null {
   const { value: confirmExternal } = useConfigBooleanSetting(EXTERNAL_LINK_CONFIRM_CONFIG_KEY);
+  const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
   const { menu, openMenu } = useExternalLinkMenu();
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
+  const [requestedImageUrls, setRequestedImageUrls] = useState<ReadonlySet<string>>(new Set());
   const [imgurVideoUrls, setImgurVideoUrls] = useState<ReadonlyMap<string, string>>(
     () => new Map(),
   );
@@ -593,6 +654,31 @@ export function ResMediaGallery({
       <div className="res__thumbs">
         {mediaItems.map((item) => {
           if (item.type === "image") {
+            if (manualImageLoading && !requestedImageUrls.has(item.rawUrl)) {
+              return (
+                <button
+                  key={`image:${item.rawUrl}`}
+                  type="button"
+                  className={`res__thumb res__thumb--image res__thumb--manual${isBlurred ? " res__thumb--blurred" : ""}`}
+                  style={thumbStyle}
+                  aria-label="画像を読み込む"
+                  title={item.rawUrl}
+                  onContextMenu={(event) => {
+                    if (confirmExternal) openMenu(item.rawUrl, event);
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setRequestedImageUrls((current) => new Set(current).add(item.rawUrl));
+                  }}
+                  onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
+                  onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
+                >
+                  クリックして画像を取得
+                </button>
+              );
+            }
+
             return (
               <ConfirmableLink
                 key={`image:${item.rawUrl}`}
@@ -620,7 +706,7 @@ export function ResMediaGallery({
                 onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
                 title={item.rawUrl}
               >
-                <ExternalImage src={item.src} alt={item.rawUrl} loading="lazy" />
+                <ExternalImage src={item.src} alt={item.rawUrl} loading="lazy" manualLoad={false} />
               </ConfirmableLink>
             );
           }
@@ -650,7 +736,10 @@ export function ResMediaGallery({
                 onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, undefined)}
                 onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, undefined)}
               >
-                <NativeVideoThumb video={item} />
+                <NativeVideoThumb
+                  video={item}
+                  manualImageLoading={manualImageLoading && !isExpanded}
+                />
                 <span className="res__thumb-badge">{item.providerLabel}</span>
                 <span className="res__thumb-play" aria-hidden="true">
                   ▶
@@ -727,7 +816,10 @@ export function ResMediaGallery({
                 </>
               ) : (
                 <>
-                  <VideoThumbImage embed={item.embed} />
+                  <VideoThumbImage
+                    embed={item.embed}
+                    manualImageLoading={manualImageLoading && !isExpanded}
+                  />
                   <span className="res__thumb-badge">{item.embed.providerLabel}</span>
                   <span className="res__thumb-play" aria-hidden="true">
                     ▶
@@ -768,6 +860,7 @@ export function ResMediaGallery({
                 <TwitterPostCard
                   embed={expandedMediaItem.embed}
                   post={state.post}
+                  manualImageLoading={manualImageLoading}
                   onUrlClick={onUrlClick}
                   onMiddleMouseDown={handleMiddleMouseDown}
                   onAuxClick={handleMiddleAuxClick}

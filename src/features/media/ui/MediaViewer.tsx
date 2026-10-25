@@ -136,6 +136,7 @@ export function MediaViewer({
                 className="media-viewer__image"
                 src={viewer.src}
                 alt={viewer.label}
+                manualLoad={false}
                 onLoad={onImageLoad}
                 onError={onImageError}
                 draggable={false}

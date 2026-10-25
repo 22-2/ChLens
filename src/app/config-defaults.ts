@@ -17,6 +17,8 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   thread_display_mode: "normal",
   image_blur: "on",
   image_blur_word: ".{0,5}[^ァ-ヺ^ー]グロ(?:[^ァ-ヺ^ー].{0,5}|$)|.{0,5}死ね.{0,5}",
+  // 既定は従来どおり自動取得。手動取得は外部リンクの確認設定とは独立する。
+  manual_image_loading: "off",
   expand_short_url: "none",
   expand_short_url_timeout: "3000",
   // 変更理由: 既存利用者のリンク操作を維持し、確認・警告・ボタン化を一つの設定で切り替える。

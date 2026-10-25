@@ -1,3 +1,4 @@
+export { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "./media-settings";
 export type {
   ExternalMediaEmbed,
   ExternalVideoEmbed,

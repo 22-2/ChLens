@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { isTauriRuntime } from "src/app/platform/runtime";
+import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
 import { container } from "src/service-container/index";
 import {
   buildFieldSchema,
@@ -248,6 +249,18 @@ const ALL_SETTINGS_SECTIONS = [
         key: "image_blur_word",
         title: "ぼかし判定ワード",
         description: "正規表現で指定します。",
+      },
+      {
+        kind: "divider",
+        id: "external-images",
+        title: "外部画像",
+      },
+      {
+        kind: "boolean",
+        key: MANUAL_IMAGE_LOADING_CONFIG_KEY,
+        title: "画像をクリックしてから取得する",
+        description:
+          "ONにすると、画像やサムネイルはプレースホルダーで表示され、クリック後に取得します。外部リンクを開く前の確認設定とは独立しています。",
       },
     ],
     {
