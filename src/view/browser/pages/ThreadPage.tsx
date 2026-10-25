@@ -383,10 +383,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     stopped: isAutoRefreshStopped,
   });
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
-  // ポップアップを読んでいる間は、追従スクロールと新着のキュー再生を同じ条件で止める。
-  // 変更理由: 実況中だけ止めないと、ポップアップを読んでいる間も本文と実況の表示が流れて
-  // 読みにくくなる。Overlayへの配信は全レス配列を使うため、表示の一時停止の影響を受けない。
-  const isThreadDisplayPaused = pauseAutoScrollOnPopup && popups.length > 0;
+  // ポップアップを読む間は取得・追従・キュー再生を一緒に待機する。
+  // タブを離れた後のポップアップ状態で、非表示タブのOverlay実況を止めない。
+  const isThreadDisplayPaused = isActive && pauseAutoScrollOnPopup && popups.length > 0;
   const liveChat = useLiveChatResponses({
     responses: filteredResponses,
     scopeKey: `${tabId}\u0000${page.threadUrl}`,
@@ -483,6 +482,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     expired: shouldStopFetching,
     loading,
     pauseAutoScroll: isThreadDisplayPaused,
+    pauseRefresh: isThreadDisplayPaused,
     responseCount: responses.length,
     lastResponseNum: responses.at(-1)?.num ?? null,
     rootRef,

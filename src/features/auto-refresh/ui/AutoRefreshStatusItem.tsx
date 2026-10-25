@@ -241,7 +241,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
 
   // 変更理由: 全体の status-bar accent は StatusBarMode が source of truth なので、
   // スレ/スレ一覧の両方で同じ active 判定をここに集約する。
-  // ポップアップによる一時停止は追従だけを止めるため、色には反映せずアイコンで示す。
+  // ポップアップ中も自動更新のON状態は維持し、一時停止だけをアイコンで示す。
   const isStatusActive =
     panelKind === "thread"
       ? isEnabled && (canAutoScroll || isAutoScrolling)

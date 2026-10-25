@@ -70,6 +70,7 @@ function AutoRefreshHarness({
   scopeUrl = "https://example.com/test/read.cgi/board/thread-a/",
   loading = false,
   pauseAutoScroll = false,
+  pauseRefresh = false,
   onRequestRefresh,
   onNewResponses,
   onAutoStop,
@@ -90,6 +91,7 @@ function AutoRefreshHarness({
   scopeUrl?: string;
   loading?: boolean;
   pauseAutoScroll?: boolean;
+  pauseRefresh?: boolean;
   onRequestRefresh: () => void;
   onNewResponses?: (count: number, previousLastResponseNum: number | null) => void;
   onAutoStop?: () => void;
@@ -134,6 +136,7 @@ function AutoRefreshHarness({
     loading: isLoading,
     refreshController,
     pauseAutoScroll,
+    pauseRefresh,
     responseCount: responses.length,
     lastResponseNum: responses.length > 0 ? responses[responses.length - 1] : null,
     rootRef,
@@ -1657,6 +1660,70 @@ describe("useAutoRefresh", () => {
     });
 
     expect(screen.getByTestId("is-auto-scrolling")).toHaveTextContent("idle");
+  });
+
+  it.each([false, true])(
+    "ポップアップ中は取得を止め、閉じてから間隔を数え直す（ライブ=%s）",
+    (liveChatMode) => {
+      const onRequestRefresh = vi.fn();
+      const { rerender } = render(
+        <AutoRefreshHarness
+          enabled={false}
+          onRequestRefresh={onRequestRefresh}
+          liveChatMode={liveChatMode}
+        />,
+      );
+      rerender(
+        <AutoRefreshHarness
+          onRequestRefresh={onRequestRefresh}
+          liveChatMode={liveChatMode}
+          pauseAutoScroll
+          pauseRefresh
+        />,
+      );
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+      expect(onRequestRefresh).not.toHaveBeenCalled();
+      rerender(
+        <AutoRefreshHarness onRequestRefresh={onRequestRefresh} liveChatMode={liveChatMode} />,
+      );
+      expect(onRequestRefresh).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(3_000);
+      });
+      expect(onRequestRefresh).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("取得中にポップアップを開閉しても二重取得せず、OFFの後は再開しない", () => {
+    const onRequestRefresh = vi.fn();
+    const { rerender } = render(
+      <AutoRefreshHarness enabled={false} onRequestRefresh={onRequestRefresh} />,
+    );
+    rerender(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} />);
+    expect(onRequestRefresh).toHaveBeenCalledTimes(1);
+    rerender(
+      <AutoRefreshHarness
+        onRequestRefresh={onRequestRefresh}
+        loading
+        pauseRefresh
+        pauseAutoScroll
+      />,
+    );
+    act(() => {
+      vi.advanceTimersByTime(6_000);
+    });
+    rerender(<AutoRefreshHarness onRequestRefresh={onRequestRefresh} loading />);
+    act(() => {
+      vi.advanceTimersByTime(6_000);
+    });
+    expect(onRequestRefresh).toHaveBeenCalledTimes(1);
+    rerender(<AutoRefreshHarness enabled={false} onRequestRefresh={onRequestRefresh} />);
+    act(() => {
+      vi.advanceTimersByTime(6_000);
+    });
+    expect(onRequestRefresh).toHaveBeenCalledTimes(1);
   });
 
   it("ポップアップ表示中は自動更新を継続しつつ自動スクロールだけ停止する", () => {

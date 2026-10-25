@@ -30,6 +30,8 @@ export interface UseAutoRefreshOptions {
   loading: boolean;
   refreshController: ThreadRefreshController;
   pauseAutoScroll: boolean;
+  /** ポップアップを読んでいる間、新しい自動取得を開始しない。進行中の取得は完了させる。 */
+  pauseRefresh?: boolean;
   responseCount: number;
   lastResponseNum: number | null;
   rootRef: RefObject<HTMLDivElement | null>;
@@ -77,6 +79,7 @@ export function useAutoRefresh({
   loading,
   refreshController,
   pauseAutoScroll,
+  pauseRefresh = false,
   responseCount,
   lastResponseNum,
   rootRef,
@@ -108,6 +111,7 @@ export function useAutoRefresh({
   const expiredRef = useRef(expired);
   enabledRef.current = enabled;
   expiredRef.current = expired;
+  const pauseRefreshRef = useLatestRef(pauseRefresh);
   const loadingRef = useRef(loading);
   const prevLoadingRef = useRef(loading);
   const prevEnabledRef = useRef(enabled);
@@ -119,14 +123,14 @@ export function useAutoRefresh({
   }, []);
 
   const requestRefreshFromHook = useCallback(() => {
-    if (!enabledRef.current || expiredRef.current) {
+    if (!enabledRef.current || expiredRef.current || pauseRefreshRef.current) {
       return;
     }
     // タイマー・ON直後の更新はここで先にレス件数を保存しているため、
     // 後続の refreshKey 変化では同じ更新を二重に記録しない。
     markInternalRefreshRequest();
     requestRefreshRef.current();
-  }, [markInternalRefreshRequest, requestRefreshRef]);
+  }, [markInternalRefreshRequest, pauseRefreshRef, requestRefreshRef]);
 
   useThreadExpiryStop({
     enabled,
@@ -187,6 +191,7 @@ export function useAutoRefresh({
     if (
       !enabledRef.current ||
       expiredRef.current ||
+      pauseRefreshRef.current ||
       loadingRef.current ||
       pendingRefreshRef.current
     ) {
@@ -200,11 +205,11 @@ export function useAutoRefresh({
     // 手動更新と同じ RELOAD 経路を使って forceUpdate を一箇所に寄せる。
     // 取得条件が分岐すると「右クリック更新だけ別挙動」が起きやすいため。
     requestRefreshFromHook();
-  }, [capturePendingRefresh, requestRefreshFromHook]);
+  }, [capturePendingRefresh, pauseRefreshRef, requestRefreshFromHook]);
 
   const intervalMs = useAutoRefreshTimer({
     scopeUrl,
-    active: enabled && !expired,
+    active: enabled && !expired && !pauseRefresh,
     onTick: handleTimerTick,
   });
 
@@ -227,6 +232,9 @@ export function useAutoRefresh({
       return;
     }
 
+    // ポップアップ中のONでも本文を動かさず、閉じてから通常間隔で取得を再開する。
+    if (pauseRefresh) return;
+
     const scrollContainer = moveToThreadBottom();
     viewWindow.requestAnimationFrame(() => {
       syncCanAutoScroll();
@@ -246,6 +254,7 @@ export function useAutoRefresh({
     clearScrollingIndicator,
     discardPendingRefresh,
     enabled,
+    pauseRefresh,
     expired,
     moveToThreadBottom,
     requestRefreshFromHook,
