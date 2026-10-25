@@ -42,6 +42,7 @@ import {
   NG_DISPLAY_MODE_OPTIONS,
   normalizeNgDisplayMode,
 } from "src/view/browser/utils/ng-display-mode";
+import { POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY } from "src/view/browser/utils/popup-settings";
 
 const THEME_ID_OPTIONS = [
   { const: "system", title: "OSに合わせる" },
@@ -233,6 +234,18 @@ const ALL_SETTINGS_SECTIONS = [
         title: "スレを開いたときフィルタバーを開いたままにする",
         description:
           "ONにすると、スレッドを開いた直後からフィルタバーを常時表示します。閉じる操作とタイトルバーからの切り替えは受け付けません。入力欄へのフォーカスは移しません。",
+      },
+      {
+        kind: "divider",
+        id: "popup-close",
+        title: "ポップアップ",
+      },
+      {
+        kind: "boolean",
+        key: POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY,
+        title: "外側をクリックするまでポップアップを閉じない",
+        description:
+          "ONにすると、マウスをポップアップから外しても閉じず、外側をクリックしたときに閉じます。",
       },
       {
         kind: "divider",

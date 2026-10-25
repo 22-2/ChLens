@@ -9,6 +9,15 @@ import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-close-be
 import { ANCHOR_PREVIEW_HIDE_DELAY_MS } from "src/view/browser/utils/constants";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+const popupSetting = vi.hoisted(() => ({ closeOnlyOnOutsideClick: false }));
+
+vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
+  useConfigBooleanSetting: () => ({
+    value: popupSetting.closeOnlyOnOutsideClick,
+    setValue: vi.fn(),
+  }),
+}));
+
 function createRes(num: number): IRes {
   return {
     num,
@@ -82,6 +91,7 @@ function PopupContractHarness({
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
+  popupSetting.closeOnlyOnOutsideClick = false;
 });
 
 describe("usePopupCore Phase 0 contracts", () => {
@@ -290,6 +300,24 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
     expect(vi.getTimerCount()).toBe(1);
     unmount();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("外側クリックまで閉じない設定ではanchor previewのmouseleave timerを作らない", () => {
+    popupSetting.closeOnlyOnOutsideClick = true;
+    vi.useFakeTimers();
+    const { result, unmount } = createThreadPopupHook("contract-anchor-pinned-until-outside");
+
+    act(() => {
+      result.current.showAnchorPreview([1], createAnchorRect(), ">>1", 0);
+      result.current.hideAnchorPreview();
+    });
+
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => {
+      vi.advanceTimersByTime(ANCHOR_PREVIEW_HIDE_DELAY_MS * 2);
+    });
+    expect(result.current.anchorPreviews).toHaveLength(1);
+    unmount();
   });
 
   it("sourcePopupIdの祖先anchorを残したまま、新しいanchor previewを追加する", () => {

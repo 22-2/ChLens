@@ -240,6 +240,19 @@ describe("設定項目の置き場所", () => {
     ).toBe(false);
   });
 
+  it("ポップアップの閉じ方を表示設定から切り替えられる", () => {
+    const display = getSettingsSections(false).find((section) => section.id === "display");
+    const setting = display?.fields.find(
+      (field) => "key" in field && field.key === "popup_close_outside_only",
+    );
+
+    expect(setting).toMatchObject({
+      kind: "boolean",
+      key: "popup_close_outside_only",
+      title: "外側をクリックするまでポップアップを閉じない",
+    });
+  });
+
   it("ブックマークの保存先と設定の初期化をデータカテゴリへ置く", () => {
     const data = getSettingsSections(false).find((section) => section.id === "data");
 

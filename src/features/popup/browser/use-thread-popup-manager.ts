@@ -10,6 +10,7 @@ import type {
 } from "src/features/popup/browser/popup-types";
 import { usePopupCore } from "src/features/popup/browser/use-popup-core";
 import type { IRes } from "src/service-container/interfaces";
+import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   ANCHOR_PREVIEW_GUTTER,
@@ -17,6 +18,7 @@ import {
   ANCHOR_PREVIEW_MAX_WIDTH,
   ANCHOR_PREVIEW_OFFSET,
 } from "src/view/browser/utils/constants";
+import { POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY } from "src/view/browser/utils/popup-settings";
 import { getPopupViewportBounds } from "src/view/browser/utils/use-adjust-overflow";
 
 const DEFAULT_POPUP_SCOPE_ID = "default";
@@ -81,6 +83,9 @@ export function useThreadPopupManager({
   resMap,
 }: ThreadPopupManagerParams): ThreadPopupManagerResult {
   const { window: viewWindow, document: viewDocument } = useViewSurface();
+  const { value: closeOnlyOnOutsideClick } = useConfigBooleanSetting(
+    POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY,
+  );
   const {
     popups,
     addPopup,
@@ -154,12 +159,16 @@ export function useThreadPopupManager({
   const hideAnchorPreview = useCallback(
     (fromDepth = 0) => {
       clearAnchorPreviewHideTimer();
+      if (closeOnlyOnOutsideClick) {
+        // 変更理由: hover由来のanchor previewも共通設定に従わせ、mouseleave経路だけ残らないようにする。
+        return;
+      }
       anchorPreviewHideTimerRef.current = viewWindow.setTimeout(() => {
         anchorPreviewHideTimerRef.current = null;
         hideAnchorPreviewsFromDepth(fromDepth);
       }, ANCHOR_PREVIEW_HIDE_DELAY_MS);
     },
-    [clearAnchorPreviewHideTimer, hideAnchorPreviewsFromDepth, viewWindow],
+    [clearAnchorPreviewHideTimer, closeOnlyOnOutsideClick, hideAnchorPreviewsFromDepth, viewWindow],
   );
 
   const showAnchorPreview = useCallback(

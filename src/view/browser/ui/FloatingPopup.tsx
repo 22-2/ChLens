@@ -1,6 +1,8 @@
 import type { CSSProperties, MouseEventHandler, ReactNode } from "react";
 import React, { useRef } from "react";
+import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-close-behavior";
+import { POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY } from "src/view/browser/utils/popup-settings";
 import { useAdjustOverflow } from "src/view/browser/utils/use-adjust-overflow";
 
 export interface FloatingPopupRenderProps {
@@ -52,6 +54,9 @@ export const FloatingPopup: React.FC<FloatingPopupProps> = ({
   children,
 }) => {
   const popupRef = useRef<HTMLDivElement>(null);
+  const { value: closeOnlyOnOutsideClick } = useConfigBooleanSetting(
+    POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY,
+  );
   const {
     armMouseLeaveCloseSuppression,
     handleAuxClickCapture,
@@ -64,7 +69,7 @@ export const FloatingPopup: React.FC<FloatingPopupProps> = ({
     isPopupDescendantOf,
     onEnterFromDescendant,
     closeDisabled,
-    closeOnMouseLeave,
+    closeOnMouseLeave: closeOnMouseLeave && !closeOnlyOnOutsideClick,
     closeOnOutsideClick,
     onClose,
     onPopupMouseDown,

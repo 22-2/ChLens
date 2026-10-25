@@ -4,8 +4,18 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+const popupSetting = vi.hoisted(() => ({ closeOnlyOnOutsideClick: false }));
+
+vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
+  useConfigBooleanSetting: () => ({
+    value: popupSetting.closeOnlyOnOutsideClick,
+    setValue: vi.fn(),
+  }),
+}));
+
 afterEach(() => {
   cleanup();
+  popupSetting.closeOnlyOnOutsideClick = false;
 });
 
 describe("FloatingPopup", () => {
@@ -76,5 +86,26 @@ describe("FloatingPopup", () => {
     fireEvent.click(screen.getByRole("button", { name: "arm guard" }));
     fireEvent.mouseLeave(popup, { relatedTarget: null });
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("外側クリックまで閉じない設定ではmouseleaveを無視し、外側クリックで閉じる", () => {
+    popupSetting.closeOnlyOnOutsideClick = true;
+    const onClose = vi.fn();
+    render(
+      <>
+        <FloatingPopup className="res-popup" x={0} y={0} onClose={onClose}>
+          popup
+        </FloatingPopup>
+        <button type="button">outside</button>
+      </>,
+    );
+
+    const popup = screen.getByText("popup").parentElement;
+    if (!popup) throw new Error("FloatingPopup popup was not rendered");
+    fireEvent.mouseLeave(popup, { relatedTarget: null });
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.mouseDown(screen.getByRole("button", { name: "outside" }));
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });
