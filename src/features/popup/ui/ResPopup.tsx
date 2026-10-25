@@ -1,5 +1,6 @@
 import { Copy, Image as ImageIcon, Pin, PinOff } from "lucide-react";
 import React, { useCallback } from "react";
+import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
@@ -208,33 +209,35 @@ export const ResPopup: React.FC<{
             onTogglePinned={onTogglePinned}
             onClose={onClose}
           />
-          <div className="res-popup__body">
-            {items.map((res) => (
-              <PopupResCard
-                key={res.num}
-                res={res}
-                messageProtocol={messageProtocol}
-                anchorPreviewDepth={0}
-                repIndex={repIndex}
-                idIndex={idIndex}
-                onUrlClick={onUrlClick}
-                onUrlContextMenu={onUrlContextMenu}
-                onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
-                onIdLinkClick={onIdLinkClick}
-                onRepClick={onRepClick}
-                onAnchorClick={onAnchorClick}
-                onAnchorHover={onAnchorHover}
-                onAnchorLeave={onAnchorLeave}
-                onContextMenu={handleResContextMenu}
-                isImageBlurred={blurredResNums?.has(res.num)}
-                ngResNums={ngResNums}
-                isOwn={ownResNums?.has(res.num)}
-                isReplyToOwn={replyToOwnResNums?.has(res.num)}
-                resMap={resMap}
-                threadKey={threadKey}
-              />
-            ))}
-          </div>
+          <RepeatedReplyProvider responses={items}>
+            <div className="res-popup__body">
+              {items.map((res) => (
+                <PopupResCard
+                  key={res.num}
+                  res={res}
+                  messageProtocol={messageProtocol}
+                  anchorPreviewDepth={0}
+                  repIndex={repIndex}
+                  idIndex={idIndex}
+                  onUrlClick={onUrlClick}
+                  onUrlContextMenu={onUrlContextMenu}
+                  onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
+                  onIdLinkClick={onIdLinkClick}
+                  onRepClick={onRepClick}
+                  onAnchorClick={onAnchorClick}
+                  onAnchorHover={onAnchorHover}
+                  onAnchorLeave={onAnchorLeave}
+                  onContextMenu={handleResContextMenu}
+                  isImageBlurred={blurredResNums?.has(res.num)}
+                  ngResNums={ngResNums}
+                  isOwn={ownResNums?.has(res.num)}
+                  isReplyToOwn={replyToOwnResNums?.has(res.num)}
+                  resMap={resMap}
+                  threadKey={threadKey}
+                />
+              ))}
+            </div>
+          </RepeatedReplyProvider>
           {menuPosition && items.length > 0 && (
             <ContextMenu
               x={menuPosition.x}

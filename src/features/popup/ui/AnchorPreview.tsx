@@ -1,5 +1,6 @@
 import { Copy, Image as ImageIcon, Pin, PinOff } from "lucide-react";
 import React, { useCallback } from "react";
+import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
@@ -219,36 +220,38 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
             onTogglePinned={onTogglePinned}
             onClose={handleClose}
           />
-          <div className="anchor-preview__body">
-            {items.slice(0, 8).map((res) => (
-              /* hard-ngでも空のアンカーポップアップにせず、利用者が明示操作で本文を確認できるようにする。 */
-              <PopupResCard
-                key={res.num}
-                res={res}
-                messageProtocol={messageProtocol}
-                anchorPreviewDepth={depth + 1}
-                repIndex={repIndex}
-                idIndex={idIndex}
-                onUrlClick={onUrlClick}
-                onUrlContextMenu={onUrlContextMenu}
-                onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
-                onIdLinkClick={onIdLinkClick}
-                onRepClick={onRepClick}
-                onOpenRootReplyTree={onOpenRootReplyTree}
-                onAnchorClick={onAnchorClick}
-                onAnchorHover={onAnchorHover}
-                onAnchorLeave={onAnchorLeave}
-                onContextMenu={handleResContextMenu}
-                isImageBlurred={blurredResNums?.has(res.num)}
-                ngResNums={ngResNums}
-                isOwn={ownResNums?.has(res.num)}
-                isReplyToOwn={replyToOwnResNums?.has(res.num)}
-                resMap={resMap}
-                threadKey={threadKey}
-                allowHardNgReveal
-              />
-            ))}
-          </div>
+          <RepeatedReplyProvider responses={items.slice(0, 8)}>
+            <div className="anchor-preview__body">
+              {items.slice(0, 8).map((res) => (
+                /* hard-ngでも空のアンカーポップアップにせず、利用者が明示操作で本文を確認できるようにする。 */
+                <PopupResCard
+                  key={res.num}
+                  res={res}
+                  messageProtocol={messageProtocol}
+                  anchorPreviewDepth={depth + 1}
+                  repIndex={repIndex}
+                  idIndex={idIndex}
+                  onUrlClick={onUrlClick}
+                  onUrlContextMenu={onUrlContextMenu}
+                  onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
+                  onIdLinkClick={onIdLinkClick}
+                  onRepClick={onRepClick}
+                  onOpenRootReplyTree={onOpenRootReplyTree}
+                  onAnchorClick={onAnchorClick}
+                  onAnchorHover={onAnchorHover}
+                  onAnchorLeave={onAnchorLeave}
+                  onContextMenu={handleResContextMenu}
+                  isImageBlurred={blurredResNums?.has(res.num)}
+                  ngResNums={ngResNums}
+                  isOwn={ownResNums?.has(res.num)}
+                  isReplyToOwn={replyToOwnResNums?.has(res.num)}
+                  resMap={resMap}
+                  threadKey={threadKey}
+                  allowHardNgReveal
+                />
+              ))}
+            </div>
+          </RepeatedReplyProvider>
           {menuPosition && items.length > 0 && (
             <ContextMenu
               x={menuPosition.x}

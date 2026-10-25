@@ -38,6 +38,29 @@ export interface ReplyTreeProps {
 /** 再帰しても変わらない、ツリー全体で共有する props。 */
 type ReplyTreeSharedProps = Omit<ReplyTreeProps, "resNum">;
 
+/** 深さ上限・循環・複数経路の重複を、描画と同じ順序で除いたレス一覧。 */
+export function collectReplyTreeResponses(
+  resNum: number,
+  repIndex: Map<number, Set<number>>,
+  resMap: Map<number, IRes>,
+): IRes[] {
+  const result: IRes[] = [];
+  const visited = new Set<number>();
+  const visit = (num: number, depth: number) => {
+    if (depth >= MAX_TREE_DEPTH) return;
+    const replies = [...(repIndex.get(num) ?? [])]
+      .sort((a, b) => a - b)
+      .filter((n) => !visited.has(n) && resMap.has(n));
+    for (const reply of replies) {
+      visited.add(reply);
+      result.push(resMap.get(reply)!);
+      visit(reply, depth + 1);
+    }
+  };
+  visit(resNum, 0);
+  return result;
+}
+
 interface ReplyTreeBranchProps {
   shared: ReplyTreeSharedProps;
   resNum: number;

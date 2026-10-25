@@ -128,6 +128,33 @@ describe("ReplyTreePopup", () => {
     vi.restoreAllMocks();
   });
 
+  it("単一ツリー内の同じ宛先への複数返信だけIDを強調し、別の枝は合算しない", () => {
+    const resMap = new Map([
+      [1, createRes(1, "起点", "root")],
+      [2, createRes(2, ">>1", "A")],
+      [3, createRes(3, ">>1", "A")],
+      [4, createRes(4, ">>2", "A")],
+      [5, createRes(5, ">>8", "A")],
+    ]);
+    const { container, rerender } = render(<ReplyTreePopup {...BASE_PROPS} resMap={resMap} />);
+    expect(container.querySelectorAll(".res__id--repeated-reply")).toHaveLength(2);
+    expect(screen.getAllByTitle("このポップアップ内で同じレスに複数回返信したID")).toHaveLength(2);
+    // ライブチャットで入場していないレスは索引にも集計にも入れない。
+    rerender(<ReplyTreePopup {...BASE_PROPS} resMap={resMap} replySourceNums={new Set([2, 4])} />);
+    expect(container.querySelectorAll(".res__id--repeated-reply")).toHaveLength(0);
+  });
+
+  it("NGレスを強調の根拠として使わない", () => {
+    const hidden = { ...createRes(3, ">>1", "A"), class: ["ng"] };
+    const resMap = new Map([
+      [1, createRes(1, "起点")],
+      [2, createRes(2, ">>1", "A")],
+      [3, hidden],
+    ]);
+    const { container } = render(<ReplyTreePopup {...BASE_PROPS} resMap={resMap} />);
+    expect(container.querySelectorAll(".res__id--repeated-reply")).toHaveLength(0);
+  });
+
   it("参照元レスと返信レスを分けて表示する", () => {
     render(<ReplyTreePopup {...BASE_PROPS} />);
 

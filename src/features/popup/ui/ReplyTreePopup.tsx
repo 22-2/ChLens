@@ -1,11 +1,12 @@
 import type React from "react";
 import { useCallback, useMemo } from "react";
 import { buildReplyIndexes } from "src/core/thread/reply-index";
+import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
 import { useReplyTreeMenus } from "src/features/popup/browser/use-reply-tree-menus";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
-import { ReplyTree } from "src/features/popup/ui/ReplyTree";
+import { collectReplyTreeResponses, ReplyTree } from "src/features/popup/ui/ReplyTree";
 import type { IRes } from "src/service-container";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
@@ -119,6 +120,13 @@ export const ReplyTreePopup: React.FC<{
       onTogglePinned,
     });
   const sourceRes = resMap.get(resNum) ?? null;
+  const popupResponses = useMemo(
+    () => [
+      ...(sourceRes ? [sourceRes] : []),
+      ...collectReplyTreeResponses(resNum, treeRepIndex, resMap),
+    ],
+    [sourceRes, resNum, treeRepIndex, resMap],
+  );
 
   const handleResContextMenu = useCallback(
     (event: React.MouseEvent, targetRes: IRes) => {
@@ -164,19 +172,48 @@ export const ReplyTreePopup: React.FC<{
             onTogglePinned={onTogglePinned}
             onClose={onClose}
           />
-          <div className="res-popup__body">
-            {sourceRes && (
+          <RepeatedReplyProvider responses={popupResponses}>
+            <div className="res-popup__body">
+              {sourceRes && (
+                <section className="res-popup__section">
+                  <div className="res-popup__section-title">参照元レス</div>
+                  <PopupResCard
+                    res={sourceRes}
+                    messageProtocol={messageProtocol}
+                    anchorPreviewDepth={anchorPreviewDepth}
+                    repIndex={repIndex}
+                    idIndex={idIndex}
+                    // 参照元レスの「返信」を押すと同じツリーを重ね続けるだけなので無効化する。
+                    disableRepClick={true}
+                    isHighlighted={true}
+                    onUrlClick={onUrlClick}
+                    onUrlContextMenu={onUrlContextMenu}
+                    onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
+                    onIdLinkClick={onIdLinkClick}
+                    onRepClick={onRepClick}
+                    onAnchorClick={onAnchorClick}
+                    onAnchorHover={onAnchorHover}
+                    onAnchorLeave={onAnchorLeave}
+                    onContextMenu={handleResContextMenu}
+                    isImageBlurred={blurredResNums?.has(sourceRes.num)}
+                    ngResNums={ngResNums}
+                    isOwn={ownResNums?.has(sourceRes.num)}
+                    isReplyToOwn={replyToOwnResNums?.has(sourceRes.num)}
+                    resMap={resMap}
+                    threadKey={threadKey}
+                    allowHardNgReveal
+                  />
+                </section>
+              )}
               <section className="res-popup__section">
-                <div className="res-popup__section-title">参照元レス</div>
-                <PopupResCard
-                  res={sourceRes}
+                <div className="res-popup__section-title">返信レス</div>
+                <ReplyTree
+                  resNum={resNum}
+                  repIndex={treeRepIndex}
+                  idIndex={idIndex}
+                  resMap={resMap}
                   messageProtocol={messageProtocol}
                   anchorPreviewDepth={anchorPreviewDepth}
-                  repIndex={repIndex}
-                  idIndex={idIndex}
-                  // 参照元レスの「返信」を押すと同じツリーを重ね続けるだけなので無効化する。
-                  disableRepClick={true}
-                  isHighlighted={true}
                   onUrlClick={onUrlClick}
                   onUrlContextMenu={onUrlContextMenu}
                   onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
@@ -185,45 +222,18 @@ export const ReplyTreePopup: React.FC<{
                   onAnchorClick={onAnchorClick}
                   onAnchorHover={onAnchorHover}
                   onAnchorLeave={onAnchorLeave}
-                  onContextMenu={handleResContextMenu}
-                  isImageBlurred={blurredResNums?.has(sourceRes.num)}
+                  onResContextMenu={handleResContextMenu}
+                  blurredResNums={blurredResNums}
                   ngResNums={ngResNums}
-                  isOwn={ownResNums?.has(sourceRes.num)}
-                  isReplyToOwn={replyToOwnResNums?.has(sourceRes.num)}
-                  resMap={resMap}
-                  threadKey={threadKey}
+                  ownResNums={ownResNums}
+                  replyToOwnResNums={replyToOwnResNums}
                   allowHardNgReveal
+                  threadKey={threadKey}
+                  onSubTreeMenu={handleSubTreeMenuClick}
                 />
               </section>
-            )}
-            <section className="res-popup__section">
-              <div className="res-popup__section-title">返信レス</div>
-              <ReplyTree
-                resNum={resNum}
-                repIndex={treeRepIndex}
-                idIndex={idIndex}
-                resMap={resMap}
-                messageProtocol={messageProtocol}
-                anchorPreviewDepth={anchorPreviewDepth}
-                onUrlClick={onUrlClick}
-                onUrlContextMenu={onUrlContextMenu}
-                onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
-                onIdLinkClick={onIdLinkClick}
-                onRepClick={onRepClick}
-                onAnchorClick={onAnchorClick}
-                onAnchorHover={onAnchorHover}
-                onAnchorLeave={onAnchorLeave}
-                onResContextMenu={handleResContextMenu}
-                blurredResNums={blurredResNums}
-                ngResNums={ngResNums}
-                ownResNums={ownResNums}
-                replyToOwnResNums={replyToOwnResNums}
-                allowHardNgReveal
-                threadKey={threadKey}
-                onSubTreeMenu={handleSubTreeMenuClick}
-              />
-            </section>
-          </div>
+            </div>
+          </RepeatedReplyProvider>
           {menuPosition && treeMenuItems.length > 0 && (
             <ContextMenu
               x={menuPosition.x}

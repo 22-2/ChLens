@@ -225,6 +225,12 @@
   margin-left: var(--sys-space-4);
 }
 
+/* IDの出現回数による色を保ち、同じ宛先への複数返信は形でも区別する。 */
+.res__id--repeated-reply {
+  font-weight: 700;
+  text-decoration: underline double;
+}
+
 .res__rep--link {
   color: var(--sys-color-res-reply-link);
   cursor: pointer;

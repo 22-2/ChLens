@@ -7,6 +7,7 @@ import {
   useNgDisplayMode,
 } from "src/features/ng/browser/use-ng-status";
 import { NgBadge } from "src/features/ng/ui/NgBadge";
+import { useIsRepeatedReply } from "src/features/popup/browser/repeated-reply-context";
 import { ResBody } from "src/features/thread/ui/ResBody";
 import type { IRes } from "src/service-container";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -69,6 +70,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           : " res__rep--link"
     }`;
     // idIndex が渡された場合のみ同一IDのレス数を表示してクリック可能にする
+    const isRepeatedReply = useIsRepeatedReply(res.num);
     const idCount = res.id ? (idIndex?.get(res.id)?.size ?? 0) : 0;
 
     // NG 判定は ResItem と同じロジック
@@ -158,7 +160,8 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           ) : null}
           {res.id && (
             <span
-              className={`res__id${
+              title={isRepeatedReply ? "このポップアップ内で同じレスに複数回返信したID" : undefined}
+              className={`res__id${isRepeatedReply ? " res__id--repeated-reply" : ""}${
                 idCount >= 5 ? " res__id--freq" : idCount >= 2 ? " res__id--link" : ""
               }`}
               // popup側も本文と同じ色スケールを使い、ID密度の見え方を統一する。
