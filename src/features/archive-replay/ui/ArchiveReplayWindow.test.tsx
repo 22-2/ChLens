@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { CommentOverlayWindowPlatform } from "src/features/comment-overlay/platform";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -118,11 +118,13 @@ describe("過去実況再生ウィンドウ", () => {
         playbackAt: Date.parse("2026-09-16T23:30:10+09:00"),
       }),
     );
-    expect(
-      archiveReplayEventBus.events.some(
-        (event) => event.type === "comment" && event.comment.responseNumber === 2,
-      ),
-    ).toBe(true);
+    await waitFor(() => {
+      expect(
+        archiveReplayEventBus.events.some(
+          (event) => event.type === "comment" && event.comment.responseNumber === 2,
+        ),
+      ).toBe(true);
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "最初から" }));
     expect(archiveReplayEventBus.events.filter((event) => event.type === "reset")).not.toHaveLength(
@@ -132,6 +134,53 @@ describe("過去実況再生ウィンドウ", () => {
     fireEvent.click(screen.getByRole("button", { name: "過去実況再生を閉じる" }));
     expect(overlayPlatform.hide).toHaveBeenCalled();
     expect(archiveReplayEventBus.events.some((event) => event.type === "stop")).toBe(true);
+  });
+
+  it("Overlayの再接続完了後にresetを送り、最初のコメントを取りこぼさない", async () => {
+    const archiveReplayEventBus = new MemoryArchiveReplayOverlayEventBus();
+    let finishShow: (() => void) | undefined;
+    const showOverlay = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishShow = resolve;
+        }),
+    );
+    const overlayPlatform = {
+      show: showOverlay,
+      hide: vi.fn(async () => {}),
+    } as unknown as CommentOverlayWindowPlatform;
+    render(
+      <ArchiveReplayWindow
+        archiveReplayEventBus={archiveReplayEventBus}
+        mainThreadSyncPublisher={mainThreadSyncPublisher}
+        overlayPlatform={overlayPlatform}
+        seekRequestSubscriber={async () => () => {}}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("実況スレッドURL"), {
+      target: { value: "https://example.com/thread-a/" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "複数スレを読み込む" }));
+    expect(await screen.findByText("スレ1: 架空の実況")).toBeInTheDocument();
+    await waitFor(() => expect(showOverlay).toHaveBeenCalled());
+    expect(archiveReplayEventBus.events.some((event) => event.type === "comment")).toBe(false);
+
+    await act(async () => finishShow?.());
+    await waitFor(() => {
+      expect(
+        archiveReplayEventBus.events.some(
+          (event) => event.type === "comment" && event.comment.responseNumber === 1,
+        ),
+      ).toBe(true);
+    });
+
+    const resetIndex = archiveReplayEventBus.events.findIndex((event) => event.type === "reset");
+    const commentIndex = archiveReplayEventBus.events.findIndex(
+      (event) => event.type === "comment",
+    );
+    expect(resetIndex).toBeGreaterThanOrEqual(0);
+    expect(commentIndex).toBeGreaterThan(resetIndex);
   });
 
   it("Main追従を有効にするとスレ境界で同期先を切り替える", async () => {

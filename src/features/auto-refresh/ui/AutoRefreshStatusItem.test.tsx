@@ -232,6 +232,20 @@ describe("AutoRefreshStatusItem", () => {
     expect(screen.queryByRole("button", { name: /自動更新/ })).toBeNull();
   });
 
+  it("過去実況の読み取り専用スレッドでは自動更新の操作を表示しない", () => {
+    mocks.autoRefreshPanel = {
+      ...mocks.autoRefreshPanel,
+      panelKind: null,
+      isOnThread: false,
+      isEnabled: false,
+    };
+
+    renderItem();
+
+    expect(screen.queryByRole("button", { name: /自動更新/ })).toBeNull();
+    expect(screen.queryByText("スレッド自動更新")).toBeNull();
+  });
+
   it("ポップアップ表示中の一時停止状態をホバーラベルで示す", () => {
     mocks.autoRefreshPanel = {
       panelKind: "thread",

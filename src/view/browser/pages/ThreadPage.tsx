@@ -2,8 +2,10 @@ import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useStat
 import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import { recordDebugEvent } from "src/app/debug/debug-log";
 import { createLogger } from "src/app/logger";
-import { useArchiveReplayPositionStore } from "src/features/archive-replay/browser/position-store";
-import { normalizeArchiveReplayThreadUrl } from "src/features/archive-replay/domain";
+import {
+  isArchiveReplayThread,
+  useArchiveReplayPositionStore,
+} from "src/features/archive-replay/browser/position-store";
 import {
   ArchiveReplayPositionLine,
   getReplayBoundaryIndex,
@@ -110,13 +112,17 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   refreshKey,
   isActive,
   isOverlayTarget = isActive,
-  isAutoRefreshEnabled,
+  isAutoRefreshEnabled: tabAutoRefreshEnabled,
   startAutoRefreshAtBottom,
   scrollContainerRef,
 }) => {
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const runTabCommand = useTabCommandRunner(tabId);
   const { window: viewWindow } = viewSurface;
+  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
+  const isArchiveReplay = isArchiveReplayThread(replayPosition, tabId, page.threadUrl);
+  // 過去実況の専用ThreadViewは再生位置を表示する読み取り専用画面として扱い、更新を止める。
+  const isAutoRefreshEnabled = tabAutoRefreshEnabled && !isArchiveReplay;
   const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const rootRef = useRef<HTMLDivElement>(null);
   // 変更理由: refの代入だけでは再描画されないため、別窓の初回描画でもPortal先を
@@ -151,10 +157,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
-  const requestManualRefresh = useCallback(
-    () => runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD)),
-    [manualRefreshScopeKey, runTabCommand],
-  );
+  const requestManualRefresh = useCallback(() => {
+    if (isArchiveReplay) return;
+    runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
+  }, [isArchiveReplay, manualRefreshScopeKey, runTabCommand]);
   useEffect(
     () =>
       subscribeThreadResJump((jump) => {
@@ -257,7 +263,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。RELOADへ集約することで、
   // ホイール更新も自動更新・更新ボタンと同じsubject.txt再確認の対象にする。
   const wheelPagination = useWheelPagination({
-    isEnabled: isActive,
+    isEnabled: isActive && !isArchiveReplay,
     isLoading: loading,
     cooldownScopeKey: manualRefreshScopeKey,
     containerRef: effectiveScrollContainerRef,
@@ -366,6 +372,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 変更理由: 画面上はいずれも dat 落ち案内を表示する状態であり、
   // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
   const autoRefreshPageKey = getAutoRefreshPageKey(page);
+  useEffect(() => {
+    if (!isArchiveReplay || !tabAutoRefreshEnabled || autoRefreshPageKey == null) return;
+    // 既存タブが自動更新中でも、過去実況の位置へ切り替わった時点で保存状態も解除する。
+    dispatch(tabActions.setAutoRefreshEnabled(false, autoRefreshPageKey));
+  }, [autoRefreshPageKey, dispatch, isArchiveReplay, tabAutoRefreshEnabled]);
   const isAutoRefreshStopped = tab ? isAutoRefreshStoppedForPage(tab, page) : false;
   // dat落ちや探索終了の停止記録は、不確定subject応答や別窓再マウントでも保持する。
   // 本文タイマーと次スレ探索を同時に止めるため、ThreadDataの取得結果とは別に扱う。
@@ -422,14 +433,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const handleEnableAutoRefresh = useCallback(() => {
     const pageKey = getAutoRefreshPageKey(page);
-    if (pageKey == null) {
+    if (isArchiveReplay || pageKey == null) {
       return;
     }
 
     // 既存の自動更新トグルと同じ状態経路を使い、フローティングボタンだけが
     // 別の更新条件を持たないようにする。ON直後の再取得と最下部同期はhookへ委譲する。
     dispatch(tabActions.setAutoRefreshEnabled(true, pageKey));
-  }, [dispatch, page]);
+  }, [dispatch, isArchiveReplay, page]);
 
   const handleNextThreadSearchExhausted = useCallback(() => {
     if (autoRefreshPageKey == null) {
@@ -556,7 +567,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     selectPendingCandidate,
   } = useAutoNextThread({
     autoRefreshEnabled: isActiveAutoRefreshEnabled,
-    featureEnabled: isAutoNextThreadEnabled,
+    featureEnabled: isAutoNextThreadEnabled && !isArchiveReplay,
     threadUrl: page.threadUrl,
     threadTitle: page.title,
     responseCount: responses.length,
@@ -620,11 +631,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const imageBlurConfig = useImageBlurConfig();
 
-  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
   const replayBoundary =
-    replayPosition?.tabId === tabId &&
-    normalizeArchiveReplayThreadUrl(replayPosition.threadUrl) ===
-      normalizeArchiveReplayThreadUrl(page.threadUrl)
+    isArchiveReplay && replayPosition
       ? getReplayBoundaryIndex(
           displayedResponses,
           replayPosition.playbackAt,
@@ -757,7 +765,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       <ContextMenuNavigationActions
         canGoBack={canGoBack(navigationTab)}
         canGoForward={canGoForward(navigationTab)}
-        canRefresh={isPageRefreshable(page)}
+        canRefresh={!isArchiveReplay && isPageRefreshable(page)}
         onBack={() => {
           runTabCommand(TAB_COMMAND_IDS.BACK);
           closePopupById(menu.id);
@@ -772,7 +780,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         }}
       />
     ),
-    [closePopupById, navigationTab, page, requestManualRefresh, runTabCommand],
+    [closePopupById, isArchiveReplay, navigationTab, page, requestManualRefresh, runTabCommand],
   );
 
   // 空白部分のダブルクリックによる更新。
@@ -789,11 +797,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       }
 
       // テキスト選択中はリロードしない
-      if (viewWindow.getSelection()?.toString()) return;
+      if (isArchiveReplay || viewWindow.getSelection()?.toString()) return;
 
       requestManualRefresh();
     },
-    [requestManualRefresh, viewWindow],
+    [isArchiveReplay, requestManualRefresh, viewWindow],
   );
 
   const replayLine =
@@ -1031,6 +1039,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             rootRef={rootRef}
             isActive={isActive}
             isAutoRefreshEnabled={isAutoRefreshEnabled}
+            readOnly={isArchiveReplay}
             isFilterEnabled={isFilterEnabled}
             loading={loading}
             expired={autoRefreshExpired}

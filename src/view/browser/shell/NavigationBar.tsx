@@ -16,6 +16,10 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  isArchiveReplayThread,
+  useArchiveReplayPositionStore,
+} from "src/features/archive-replay/browser/position-store";
 import { usePageBookmark } from "src/features/bookmark/browser/use-page-bookmark";
 import { useNavHistoryMenuItems } from "src/features/tabs/browser/use-nav-history-menu-items";
 import { useTabBarOrientation } from "src/features/tabs/browser/use-tab-bar-orientation";
@@ -176,7 +180,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const hideInactiveChrome =
     tabBarOrientation === "horizontal" && !isActivePane && !useTitleBarSlot;
 
-  const currentAutoRefreshPageKey = getAutoRefreshPageKey(viewPage);
+  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
+  const isArchiveReplay =
+    viewPage.type === "thread" &&
+    isArchiveReplayThread(replayPosition, viewTab.id, viewPage.threadUrl);
+  const currentAutoRefreshPageKey = isArchiveReplay ? null : getAutoRefreshPageKey(viewPage);
   const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(viewTab, viewPage);
 
   const {
@@ -202,6 +210,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       closedTabs: state.closedTabs,
       isTwoPane,
       isWritePanelOpen: isPanelOpen,
+      isArchiveReplay,
       dispatch,
       toggleWritePanel: () => togglePanel(BOTTOM_PANEL_WRITE_TAB_ID),
       openResponseJumpDialog,
@@ -214,6 +223,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     }),
     [
       dispatch,
+      isArchiveReplay,
       isPanelOpen,
       isTwoPane,
       openNextThreadSearchDialog,
@@ -302,9 +312,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   );
 
   const handleRefresh = useCallback(() => {
+    if (isArchiveReplay) return;
     setRefreshMenuPosition(null);
     runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
-  }, [manualRefreshScopeKey, runTabCommand]);
+  }, [isArchiveReplay, manualRefreshScopeKey, runTabCommand]);
 
   const openQuickAccessPage = useCallback(
     (page: QuickAccessPage) => {
@@ -486,6 +497,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
               icon: <ListIcon size={14} />,
               onSelect: () => togglePanel(BOTTOM_PANEL_THREAD_LIST_TAB_ID),
             },
+          ]
+        : []),
+      ...(viewPage.type === "thread" && !isArchiveReplay
+        ? [
             {
               id: "open-write-panel",
               label:
@@ -544,6 +559,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     ],
     [
       viewPage.type,
+      isArchiveReplay,
       activePanelTabId,
       canToggleFilter,
       openQuickAccessPage,
@@ -618,7 +634,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         ref={refreshButtonRef}
         type="button"
         className="nav-bar__menu-action"
-        disabled={!isPageRefreshable(viewPage) || refreshCoolingDown}
+        disabled={!isPageRefreshable(viewPage) || isArchiveReplay || refreshCoolingDown}
         onClick={handleMenuRefresh}
         onContextMenu={handleRefreshContextMenu}
         title="更新"

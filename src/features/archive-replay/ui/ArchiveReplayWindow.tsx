@@ -101,6 +101,8 @@ export function ArchiveReplayWindow({
   const [stageKey, setStageKey] = useState(0);
   const replaySessionIdRef = useRef(createReplaySessionId());
   const overlaySessionActiveRef = useRef(false);
+  const overlaySessionReadyRef = useRef<Promise<void>>(Promise.resolve());
+  const overlaySessionGenerationRef = useRef(0);
   const emittedCommentKeysRef = useRef(new Set<string>());
   const pendingSeekRequestRef = useRef<ArchiveReplaySeekRequest | null>(null);
   const lastMainThreadUrlRef = useRef<string | null>(null);
@@ -124,8 +126,13 @@ export function ArchiveReplayWindow({
     if (!overlaySessionActiveRef.current) return;
     overlaySessionActiveRef.current = false;
     emittedCommentKeysRef.current.clear();
+    overlaySessionGenerationRef.current += 1;
+    const stoppedSessionId = replaySessionIdRef.current;
+    // 表示再接続中に閉じた場合、遅れて届くreset/commentが停止後のOverlayを復活させない。
+    replaySessionIdRef.current = createReplaySessionId();
+    overlaySessionReadyRef.current = Promise.resolve();
     void archiveReplayEventBus
-      .publish({ version: 1, type: "stop", sessionId: replaySessionIdRef.current })
+      .publish({ version: 1, type: "stop", sessionId: stoppedSessionId })
       .catch((publishError: unknown) => {
         logger.error("Overlay停止通知に失敗しました", publishError);
       });
@@ -150,8 +157,8 @@ export function ArchiveReplayWindow({
     setStageKey((current) => current + 1);
   }, [overlayPlatform, stopOverlay]);
 
-  const resetOverlaySession = useCallback(() => {
-    if (!loadedReplay) return;
+  const resetOverlaySession = useCallback((): Promise<void> => {
+    if (!loadedReplay) return Promise.resolve();
 
     // 再生窓を閉じて再表示した場合も、停止済みのsessionを使い回さずOverlayを再接続する。
     if (!overlaySessionActiveRef.current) {
@@ -159,26 +166,26 @@ export function ArchiveReplayWindow({
       overlaySessionActiveRef.current = true;
     }
     emittedCommentKeysRef.current.clear();
-    void overlayPlatform
-      .show()
-      .then(() =>
-        archiveReplayEventBus.publish({
-          version: 1,
-          type: "reset",
-          sessionId: replaySessionIdRef.current,
-        }),
-      )
-      .then(() =>
-        archiveReplayEventBus.publish({
-          version: 1,
-          type: "playback",
-          sessionId: replaySessionIdRef.current,
-          playing: playingRef.current,
-        }),
-      )
-      .catch((publishError: unknown) => {
-        logger.error("コメントOverlayの再接続に失敗しました", publishError);
+    const sessionId = replaySessionIdRef.current;
+    const sessionGeneration = ++overlaySessionGenerationRef.current;
+    const ready = overlayPlatform.show().then(async () => {
+      if (
+        sessionId !== replaySessionIdRef.current ||
+        sessionGeneration !== overlaySessionGenerationRef.current
+      ) {
+        return;
+      }
+      await archiveReplayEventBus.publish({ version: 1, type: "reset", sessionId });
+      if (sessionGeneration !== overlaySessionGenerationRef.current) return;
+      await archiveReplayEventBus.publish({
+        version: 1,
+        type: "playback",
+        sessionId,
+        playing: playingRef.current,
       });
+    });
+    overlaySessionReadyRef.current = ready;
+    return ready;
   }, [archiveReplayEventBus, loadedReplay, overlayPlatform]);
 
   const load = useCallback(async () => {
@@ -280,7 +287,6 @@ export function ArchiveReplayWindow({
         titles: loadedThreads.map(({ title }) => title),
         errors: settled.filter((result): result is string => typeof result === "string"),
       });
-      setStageKey((current) => current + 1);
     } catch (loadError: unknown) {
       logger.error("過去ログの読み込みに失敗しました", loadError);
       setError(loadError instanceof Error ? loadError.message : "スレッドの取得に失敗しました");
@@ -424,14 +430,18 @@ export function ArchiveReplayWindow({
 
   useEffect(() => {
     if (!loadedReplay) return;
-    resetOverlaySession();
+    void resetOverlaySession().catch((publishError: unknown) => {
+      logger.error("コメントOverlayの再接続に失敗しました", publishError);
+    });
   }, [loadedReplay, resetOverlaySession, stageKey]);
 
   useEffect(() => {
     if (!loadedReplay) return;
     if (!overlaySessionActiveRef.current) {
       if (!playing) return;
-      resetOverlaySession();
+      void resetOverlaySession().catch((publishError: unknown) => {
+        logger.error("コメントOverlayの再接続に失敗しました", publishError);
+      });
       return;
     }
     void archiveReplayEventBus
@@ -448,25 +458,42 @@ export function ArchiveReplayWindow({
 
   useEffect(() => {
     if (!loadedReplay) return;
+    const sessionId = replaySessionIdRef.current;
+    const sessionGeneration = overlaySessionGenerationRef.current;
     const currentPosition = position;
     const lowerBound = seekStartPosition - 0.000_001;
-    for (const comment of loadedReplay.timeline.comments) {
+    const commentsToPublish = loadedReplay.timeline.comments.filter((comment) => {
       const effectiveOffset = comment.replayOffsetSeconds + syncOffset;
-      if (effectiveOffset < lowerBound || effectiveOffset > currentPosition + 0.000_001) continue;
+      if (effectiveOffset < lowerBound || effectiveOffset > currentPosition + 0.000_001) {
+        return false;
+      }
       const identity = `${comment.sourceThreadUrl}\u0000${comment.responseNumber}`;
-      if (emittedCommentKeysRef.current.has(identity)) continue;
+      if (emittedCommentKeysRef.current.has(identity)) return false;
       emittedCommentKeysRef.current.add(identity);
-      void archiveReplayEventBus
-        .publish({
-          version: 1,
-          type: "comment",
-          sessionId: replaySessionIdRef.current,
-          comment,
-        })
-        .catch((publishError: unknown) => {
-          logger.error("コメントOverlayへの投入に失敗しました", publishError);
-        });
-    }
+      return true;
+    });
+    void overlaySessionReadyRef.current
+      .then(() => {
+        if (
+          sessionId !== replaySessionIdRef.current ||
+          sessionGeneration !== overlaySessionGenerationRef.current
+        ) {
+          return;
+        }
+        return Promise.all(
+          commentsToPublish.map((comment) =>
+            archiveReplayEventBus.publish({
+              version: 1,
+              type: "comment",
+              sessionId,
+              comment,
+            }),
+          ),
+        );
+      })
+      .catch((publishError: unknown) => {
+        logger.error("コメントOverlayへの投入に失敗しました", publishError);
+      });
   }, [archiveReplayEventBus, loadedReplay, position, seekStartPosition, stageKey, syncOffset]);
 
   useEffect(() => {

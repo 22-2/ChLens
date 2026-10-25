@@ -417,11 +417,10 @@ export function OverlayApp({
         // EdgeLiveViewerと同様に透過度はOverlay全体へ適用し、文字・画像で差が出ないようにする。
         commentOpacity={1}
         maxQueueSize={settings.maxQueueSize}
-        // 変更理由: Tauriの横長・低い初期Overlayではadaptiveの循環laneが同時に
-        // 同じ行へ入るため、実機では文字が重なる。実況の遅延より重なり防止を優先し、
-        // 空きlaneができるまでqueueで待たせる。
-        collisionMode="strict"
-        backlogPolicy={settings.maxQueueSize > 0 ? "queue" : "drop"}
+        // 過去実況は投稿時刻に合わせて流すため、laneが埋まってもqueueへ積み残さない。
+        // 通常実況は重なりより衝突防止を優先し、空きlaneができるまで待たせる。
+        collisionMode={isArchiveReplay ? "adaptive" : "strict"}
+        backlogPolicy={isArchiveReplay ? "drop" : settings.maxQueueSize > 0 ? "queue" : "drop"}
         scaleToContainer
         scaleReferenceWidth={DEFAULT_COMMENT_OVERLAY_GEOMETRY.width}
         scaleReferenceHeight={DEFAULT_COMMENT_OVERLAY_GEOMETRY.height}

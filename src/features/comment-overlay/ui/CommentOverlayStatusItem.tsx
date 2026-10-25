@@ -2,6 +2,10 @@ import { AlertTriangle, MessagesCircle, Move } from "lucide-react";
 import React, { useCallback, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
+import {
+  isArchiveReplayThread,
+  useArchiveReplayPositionStore,
+} from "src/features/archive-replay/browser/position-store";
 import { toggleCommentOverlayFlow } from "src/features/comment-overlay/application/flow-toggle";
 import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
 import { useOpenOverlayPlacementWindow } from "src/features/comment-overlay/ui/OverlayPlacementWindow";
@@ -25,13 +29,16 @@ interface CommentOverlayStatusItemProps {
 
 /** Tauri版のスレッドだけに実況操作を表示し、Browser版のUI契約を変えない。 */
 export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> = ({ isActive }) => {
-  const { viewPage } = useTabStore();
+  const { viewPage, viewTab } = useTabStore();
+  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
   const { controller, snapshot } = useCommentOverlay();
   const openOverlayPlacementWindow = useOpenOverlayPlacementWindow();
   const [isFlowChanging, setIsFlowChanging] = useState(false);
   const flowChangingRef = useRef(false);
   const isTauri = isTauriRuntime();
   const threadUrl = viewPage.type === "thread" ? viewPage.threadUrl : null;
+  const isArchiveReplay =
+    threadUrl != null && isArchiveReplayThread(replayPosition, viewTab.id, threadUrl);
   // 変更理由: 別スレッドへ移動した後に、直前のスレッド向け操作が開いたままに
   // 見えないよう、ステータス項目の対象が変わるタイミングで小窓を閉じる。
   const {
@@ -70,7 +77,7 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
     openOverlayPlacementWindow(sourceWindow);
   }, [closeMiniWindow, miniWindowTriggerRef, openOverlayPlacementWindow]);
 
-  if (!isTauri || !isActive || (threadUrl == null && !isRunning)) return null;
+  if (!isTauri || !isActive || isArchiveReplay || (threadUrl == null && !isRunning)) return null;
 
   const flowLabel = isFlowing ? "コメントを画面に流す: ON" : "コメントを画面に流す: OFF";
   const statusLabel =

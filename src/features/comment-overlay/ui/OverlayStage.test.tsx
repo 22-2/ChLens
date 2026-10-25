@@ -260,6 +260,27 @@ describe("OverlayStage", () => {
     const activeComment = screen.getByText("テストコメント");
     expect(activeComment.style.fontSize).toBe(`${COMMENT_OVERLAY_FONT_SIZE * 2}px`);
     expect(activeComment.style.animationDelay).toBe("-3s");
+    expect(activeComment.style.animationDuration).toBe("6s");
+    expect(activeComment.style.left).toBe("1800px");
+
+    rerender(
+      <OverlayStage
+        comments={[comment]}
+        stageWidth={900}
+        stageHeight={506}
+        containerWidth={900}
+        containerHeight={506}
+        durationSeconds={6}
+        scaleToContainer
+        playing
+      />,
+    );
+
+    const commentAfterSecondResize = screen.getByText("テストコメント");
+    expect(commentAfterSecondResize).toBeVisible();
+    expect(commentAfterSecondResize.style.animationDelay).toBe("-3s");
+    expect(commentAfterSecondResize.style.animationDuration).toBe("6s");
+    expect(commentAfterSecondResize.style.left).toBe("900px");
   });
 
   it("ホバーやフォーカスでは流れ続け、右クリックで停止してメニューを閉じると再開する", () => {

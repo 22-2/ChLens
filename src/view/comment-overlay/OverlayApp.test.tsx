@@ -283,6 +283,22 @@ describe("OverlayApp", () => {
     const renderedComment = screen.getByText("過去実況");
     expect(renderedComment).toHaveStyle({ animationPlayState: "paused" });
     expect(screen.queryByText("前回の実況")).not.toBeInTheDocument();
+    expect(screen.getByTestId("comment-overlay-stage")).toHaveAttribute(
+      "data-collision-mode",
+      "adaptive",
+    );
+
+    await act(async () => {
+      await archiveReplayEventBus.publish({
+        version: 1,
+        type: "stop",
+        sessionId: "replay-1",
+      });
+    });
+    expect(screen.getByTestId("comment-overlay-stage")).toHaveAttribute(
+      "data-collision-mode",
+      "strict",
+    );
   });
 
   it("通常実況の右クリックメニューから元レスへジャンプできる", async () => {

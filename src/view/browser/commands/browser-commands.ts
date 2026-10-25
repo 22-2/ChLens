@@ -121,6 +121,8 @@ export interface BrowserCommandContext {
   closedTabs: readonly Tab[];
   isTwoPane: boolean;
   isWritePanelOpen: boolean;
+  /** 過去実況の専用ThreadViewでは書き込みパネルを開かない。 */
+  isArchiveReplay?: boolean;
   dispatch: Dispatch<ScopedTabAction>;
   toggleWritePanel: () => void;
   openResponseJumpDialog: () => void;
@@ -510,7 +512,7 @@ const THREAD_FILTER_MODE_COMMANDS: readonly BrowserCommandDefinition[] = [
     keywords: ["人気", "popular", "絞り込み", "フィルタ"],
     group: "page",
     icon: Filter,
-    when: ({ viewPage }) => viewPage.type === "thread",
+    when: ({ viewPage, isArchiveReplay }) => viewPage.type === "thread" && !isArchiveReplay,
     run: (context) => dispatchThreadFilterModeToggle(context, "popular"),
   },
   {

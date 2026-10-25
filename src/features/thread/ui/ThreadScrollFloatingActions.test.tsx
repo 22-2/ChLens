@@ -45,7 +45,7 @@ describe("ThreadScrollFloatingActions", () => {
     vi.restoreAllMocks();
   });
 
-  function renderActions(isAutoRefreshEnabled = false) {
+  function renderActions(isAutoRefreshEnabled = false, readOnly = false) {
     const panel = document.createElement("div");
     panel.className = "content-area__tab-panel";
     panel.dataset.active = "true";
@@ -89,6 +89,7 @@ describe("ThreadScrollFloatingActions", () => {
         rootRef={rootRef}
         isActive
         isAutoRefreshEnabled={isAutoRefreshEnabled}
+        readOnly={readOnly}
         isFilterEnabled={false}
         loading={false}
         expired={false}
@@ -108,6 +109,12 @@ describe("ThreadScrollFloatingActions", () => {
     fireEvent.click(button);
     expect(onEnableAutoRefresh).toHaveBeenCalledOnce();
     expect(screen.queryByRole("button", { name: "下へジャンプ" })).not.toBeInTheDocument();
+  });
+
+  it("読み取り専用スレッドでは自動読み込みを開始できない", () => {
+    renderActions(false, true);
+
+    expect(screen.queryByRole("button", { name: "自動読み込みを開始" })).toBeNull();
   });
 
   it("最下部から大きく上ではミニマップの左側に下へジャンプを表示する", () => {

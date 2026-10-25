@@ -9,6 +9,8 @@ const THREAD_URL = "https://example.com/test/read.cgi/software/1/";
 
 const mocks = vi.hoisted(() => ({
   isTauri: true,
+  replayPosition: null as unknown,
+  viewTab: { id: "tab-1" },
   viewPage: {
     type: "thread",
     title: "スレッド",
@@ -36,7 +38,13 @@ vi.mock("src/app/platform/runtime", () => ({
 }));
 
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
-  useTabStore: () => ({ viewPage: mocks.viewPage }),
+  useTabStore: () => ({ viewPage: mocks.viewPage, viewTab: mocks.viewTab }),
+}));
+
+vi.mock("src/features/archive-replay/browser/position-store", () => ({
+  isArchiveReplayThread: (position: unknown) => position != null,
+  useArchiveReplayPositionStore: (selector: (state: { position: unknown }) => unknown) =>
+    selector({ position: mocks.replayPosition }),
 }));
 
 vi.mock("src/features/comment-overlay/application/use-comment-overlay", () => ({
@@ -65,6 +73,8 @@ function renderItem(): void {
 describe("CommentOverlayStatusItem", () => {
   beforeEach(() => {
     mocks.isTauri = true;
+    mocks.replayPosition = null;
+    mocks.viewTab = { id: "tab-1" };
     mocks.viewPage = {
       type: "thread",
       title: "スレッド",
@@ -98,6 +108,14 @@ describe("CommentOverlayStatusItem", () => {
 
   it("スレッド以外では実況操作を表示しない", () => {
     mocks.viewPage = { type: "boardList", title: "ホーム" };
+
+    renderItem();
+
+    expect(screen.queryByRole("button", { name: /コメントOverlay制御/ })).toBeNull();
+  });
+
+  it("過去実況スレッドでは通常実況の操作を表示しない", () => {
+    mocks.replayPosition = { threadUrl: THREAD_URL, tabId: "tab-1" };
 
     renderItem();
 

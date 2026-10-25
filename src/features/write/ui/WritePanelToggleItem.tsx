@@ -1,5 +1,9 @@
 import { PenLine } from "lucide-react";
 import React from "react";
+import {
+  isArchiveReplayThread,
+  useArchiveReplayPositionStore,
+} from "src/features/archive-replay/browser/position-store";
 import { useWriteSessionControls } from "src/features/write/browser/use-write-session";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
@@ -8,12 +12,16 @@ import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 
 export const WritePanelToggleItem: React.FC = () => {
   const { isOpen, activePanelTabId, togglePanel, requestWritePanelFocus } = useBottomPanel();
-  const { viewPage } = useTabStore();
+  const { viewPage, viewTab } = useTabStore();
+  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
   const { isWindowOpen, openWriteWindow, selectThread, requestWriteWindowFocus } =
     useWriteSessionControls();
 
-  // 書き込み UI はスレッド専用なので、他ページではステータスバーに出さない。
-  if (viewPage.type !== "thread") {
+  // 書き込みUIは通常スレッド専用とし、過去実況の読み取り専用ThreadViewでも出さない。
+  if (
+    viewPage.type !== "thread" ||
+    isArchiveReplayThread(replayPosition, viewTab.id, viewPage.threadUrl)
+  ) {
     return null;
   }
 

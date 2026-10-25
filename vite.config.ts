@@ -259,6 +259,7 @@ function staticCopyPlugin(
  * 新しく他の機能から使うときは、ここへ追加してレビューで公開してよいかを確認する。
  */
 const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
+  "archive-replay": ["browser/position-store"],
   "auto-refresh": ["browser/use-auto-scroll-state"],
   "auxiliary-window": ["browser/auxiliary-window-watcher", "browser/use-auxiliary-window"],
   bookmark: ["browser/use-bookmark-revision"],
