@@ -396,6 +396,7 @@ export function OverlayApp({
       ref={overlayRootRef}
       className="comment-overlay-window"
       data-testid="comment-overlay-window"
+      style={{ opacity: settings.opacity }}
     >
       {placementGuideActive && (
         <div
@@ -413,7 +414,8 @@ export function OverlayApp({
         containerHeight={overlayGeometry.height}
         bottomPadding={imageLaneBottomPadding}
         durationSeconds={settings.durationSeconds}
-        commentOpacity={settings.opacity}
+        // EdgeLiveViewerと同様に透過度はOverlay全体へ適用し、文字・画像で差が出ないようにする。
+        commentOpacity={1}
         maxQueueSize={settings.maxQueueSize}
         // 変更理由: Tauriの横長・低い初期Overlayではadaptiveの循環laneが同時に
         // 同じ行へ入るため、実機では文字が重なる。実況の遅延より重なり防止を優先し、

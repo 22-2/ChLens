@@ -422,9 +422,10 @@ describe("OverlayApp", () => {
     const renderedComment = screen.getByText("前回の実況");
     expect(renderedComment).toHaveStyle({
       fontSize: `${COMMENT_OVERLAY_FONT_SIZE}px`,
-      opacity: "0.5",
+      opacity: "1",
       animationDuration: "4s",
     });
+    expect(screen.getByTestId("comment-overlay-window")).toHaveStyle({ opacity: "0.5" });
     // native geometryを明示する実機Overlayでは、DOM測定を使わず保存geometryを倍率へ使う。
     expect(resizeObserverConstructed).toBe(false);
 
@@ -442,8 +443,9 @@ describe("OverlayApp", () => {
 
     expect(screen.getByText("前回の実況")).toHaveStyle({
       fontSize: `${COMMENT_OVERLAY_FONT_SIZE}px`,
-      opacity: "0.4",
+      opacity: "1",
     });
+    expect(screen.getByTestId("comment-overlay-window")).toHaveStyle({ opacity: "0.4" });
   });
 
   it("本流確定時は未表示の候補コメントだけをqueueから除外する", async () => {
