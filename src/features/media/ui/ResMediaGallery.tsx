@@ -15,6 +15,7 @@ import { toViewerImageUrl } from "src/core/util/url-media";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
 import { ConfirmableLink } from "src/view/browser/ui/ConfirmableLink";
+import { Spinner } from "src/view/browser/ui/Spinner";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
 import { EXTERNAL_LINK_CONFIRM_CONFIG_KEY } from "src/view/browser/utils/external-link-analysis";
 
@@ -29,6 +30,54 @@ import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "../domain/media-settings";
 import { ExternalImage } from "./ExternalImage";
 
 const logger = createLogger("media");
+
+type ManualLoadExternalImageProps = React.ComponentProps<typeof ExternalImage> & {
+  containerClassName?: string;
+  errorLabel?: string;
+};
+
+/** 手動取得を選んだ画像は、読み込み完了まで同じ枠内に状態を表示する。 */
+function ManualLoadExternalImage({
+  containerClassName,
+  errorLabel = "画像の取得に失敗しました",
+  onLoad,
+  onError,
+  ...imageProps
+}: ManualLoadExternalImageProps): React.ReactElement {
+  const [loadState, setLoadState] = useState<{
+    src: string;
+    state: "loading" | "loaded" | "error";
+  }>(() => ({ src: imageProps.src, state: "loading" }));
+  const currentLoadState = loadState.src === imageProps.src ? loadState.state : "loading";
+
+  return (
+    <span className={`res__manual-image-load${containerClassName ? ` ${containerClassName}` : ""}`}>
+      <ExternalImage
+        {...imageProps}
+        manualLoad={false}
+        onLoad={(event) => {
+          setLoadState({ src: imageProps.src, state: "loaded" });
+          onLoad?.(event);
+        }}
+        onError={(event) => {
+          logger.error("手動取得した画像を表示できませんでした", { url: imageProps.src });
+          setLoadState({ src: imageProps.src, state: "error" });
+          onError?.(event);
+        }}
+      />
+      {currentLoadState === "loading" ? (
+        <span className="res__manual-image-load__status" role="status" aria-label="画像を取得中">
+          <Spinner size="sm" aria-hidden="true" />
+          <span>取得中</span>
+        </span>
+      ) : currentLoadState === "error" ? (
+        <span className="res__manual-image-load__status" role="status">
+          {errorLabel}
+        </span>
+      ) : null}
+    </span>
+  );
+}
 
 // ギャラリーはThreadViewやPopupのURLルーティング実装を知らず、クリック時の引数だけを契約にする。
 export type MediaUrlClickHandler = (
@@ -286,6 +335,15 @@ function TwitterPostCard({
             >
               画像
             </button>
+          ) : manualImageLoading ? (
+            <ManualLoadExternalImage
+              containerClassName="res__manual-image-load--avatar"
+              errorLabel="×"
+              className="res__twitter-post-avatar"
+              src={post.author.avatarUrl}
+              alt=""
+              loading="lazy"
+            />
           ) : (
             <ExternalImage
               className="res__twitter-post-avatar"
@@ -379,12 +437,20 @@ function TwitterPostCard({
                   onMouseDown={(event) => onMiddleMouseDown(event, media.url, imageUrls)}
                   onAuxClick={(event) => onAuxClick(event, media.url, imageUrls)}
                 >
-                  <ExternalImage
-                    src={media.url}
-                    alt={media.altText ?? "投稿画像"}
-                    loading="lazy"
-                    manualLoad={false}
-                  />
+                  {manualImageLoading ? (
+                    <ManualLoadExternalImage
+                      src={media.url}
+                      alt={media.altText ?? "投稿画像"}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <ExternalImage
+                      src={media.url}
+                      alt={media.altText ?? "投稿画像"}
+                      loading="lazy"
+                      manualLoad={false}
+                    />
+                  )}
                 </ConfirmableLink>
               );
             }
@@ -706,7 +772,16 @@ export function ResMediaGallery({
                 onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
                 title={item.rawUrl}
               >
-                <ExternalImage src={item.src} alt={item.rawUrl} loading="lazy" manualLoad={false} />
+                {manualImageLoading ? (
+                  <ManualLoadExternalImage src={item.src} alt={item.rawUrl} loading="lazy" />
+                ) : (
+                  <ExternalImage
+                    src={item.src}
+                    alt={item.rawUrl}
+                    loading="lazy"
+                    manualLoad={false}
+                  />
+                )}
               </ConfirmableLink>
             );
           }
