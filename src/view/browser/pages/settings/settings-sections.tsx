@@ -401,6 +401,12 @@ const ALL_SETTINGS_SECTIONS = [
       },
       {
         kind: "boolean",
+        key: "ng_exclude_first_response",
+        title: ">>1をNG対象から除外する",
+        description: "有効にすると、NGルールや自動NG、連鎖NGを1レス目には適用しません。",
+      },
+      {
+        kind: "boolean",
         key: "use_siki_guard",
         title: "しきい値ガードを有効にする（非推奨）",
         description:

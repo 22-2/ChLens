@@ -57,6 +57,7 @@ export function evaluateThreadNg(
   const existsSlipAtFirstResponse = Boolean(first?.slip);
 
   const results = new Map<number, INGResult>();
+  const excludeFirstResponse = deps.config.get("ng_exclude_first_response") === "on";
   const chainedIds = new Set<string>();
   const chainedSlips = new Set<string>();
   const repeatedMessages = new Map<string, Set<number>>();
@@ -86,6 +87,8 @@ export function evaluateThreadNg(
     if (res.id) seenIds.add(res.id);
     if (res.slip) seenSlips.add(res.slip);
     if (isOverThousand(res.num)) continue;
+    // 変更理由: >>1を除外する場合、通常ルールと自動NGの起点にもならないよう両方を飛ばす。
+    if (excludeFirstResponse && res.num === 1) continue;
 
     const ruleNg = deps.ng.isNGThread(
       {
@@ -120,6 +123,7 @@ export function evaluateThreadNg(
   // 連鎖NGは新しくNGになったレスがさらに連鎖を生むため、増えなくなるまで繰り返す。
   const markChain = (num: number, ng: INGResult): boolean => {
     const res = byNum.get(num);
+    if (excludeFirstResponse && num === 1) return false;
     if (!res || results.has(num) || isOverThousand(num)) return false;
     recordNg(res, ng);
     return true;

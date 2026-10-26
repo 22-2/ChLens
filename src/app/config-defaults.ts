@@ -36,6 +36,8 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   nothing_slip_ng: "off",
   how_to_judgment_id: "first_res",
   repeat_message_ng_count: "0",
+  // 変更理由: >>1はスレの立て主の投稿なので、利用者が選んだ場合だけNG対象から外す。
+  ng_exclude_first_response: "off",
   use_siki_guard: "off",
   debug_log: "off",
   default_name: "",
