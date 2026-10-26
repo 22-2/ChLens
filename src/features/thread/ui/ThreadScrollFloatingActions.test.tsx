@@ -45,7 +45,7 @@ describe("ThreadScrollFloatingActions", () => {
     vi.restoreAllMocks();
   });
 
-  function renderActions(isAutoRefreshEnabled = false, readOnly = false) {
+  function renderActions(isAutoRefreshEnabled = false, readOnly = false, loading = false) {
     const panel = document.createElement("div");
     panel.className = "content-area__tab-panel";
     panel.dataset.active = "true";
@@ -91,7 +91,7 @@ describe("ThreadScrollFloatingActions", () => {
         isAutoRefreshEnabled={isAutoRefreshEnabled}
         readOnly={readOnly}
         isFilterEnabled={false}
-        loading={false}
+        loading={loading}
         expired={false}
         responseCount={10}
         onEnableAutoRefresh={onEnableAutoRefresh}
@@ -140,5 +140,19 @@ describe("ThreadScrollFloatingActions", () => {
     renderActions(true);
 
     expect(screen.queryByRole("button", { name: "自動読み込みを開始" })).not.toBeInTheDocument();
+  });
+
+  it("自動更新中の読み込みでは上へジャンプを表示し続ける", () => {
+    renderActions(true, false, true);
+
+    expect(screen.getByRole("button", { name: "上へジャンプ" })).toBeInTheDocument();
+  });
+
+  it("読み込み中は自動読み込み開始を出さず、上へジャンプは残す", () => {
+    scrollTop = 500;
+    renderActions(false, false, true);
+
+    expect(screen.queryByRole("button", { name: "自動読み込みを開始" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "上へジャンプ" })).toBeInTheDocument();
   });
 });

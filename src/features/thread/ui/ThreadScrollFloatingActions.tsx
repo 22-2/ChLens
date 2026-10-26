@@ -207,7 +207,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
     scrollContainer.scrollTo({ top: 0, behavior: "auto" });
   }, [rootRef, viewWindow]);
 
-  if (!layout || !isActive || isFilterEnabled || loading || expired || responseCount === 0) {
+  if (!layout || !isActive || isFilterEnabled || expired || responseCount === 0) {
     return null;
   }
 
@@ -225,7 +225,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
 
   return (
     <>
-      {layout.isAtBottom && !isAutoRefreshEnabled && !readOnly && (
+      {layout.isAtBottom && !loading && !isAutoRefreshEnabled && !readOnly && (
         <button
           type="button"
           className="thread-page__floating-action thread-page__floating-action--auto-load"
