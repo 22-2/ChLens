@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useArchiveReplayPositionStore } from "src/features/archive-replay/browser/position-store";
 import { IkioiStatusItem } from "src/features/thread/ui/IkioiStatusItem";
 import { container } from "src/service-container/index";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
@@ -8,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const mocks = vi.hoisted(() => ({
   viewTab: {
+    id: "tab-1",
     reloadKey: 0,
   },
   viewPage: {
@@ -49,7 +51,9 @@ function createRect(): DOMRect {
 
 describe("IkioiStatusItem", () => {
   beforeEach(() => {
+    useArchiveReplayPositionStore.setState({ position: null });
     mocks.viewTab = {
+      id: "tab-1",
       reloadKey: 0,
     };
     mocks.viewPage = {
@@ -86,6 +90,7 @@ describe("IkioiStatusItem", () => {
 
   afterEach(() => {
     cleanup();
+    useArchiveReplayPositionStore.setState({ position: null });
     vi.clearAllMocks();
   });
 
@@ -125,5 +130,29 @@ describe("IkioiStatusItem", () => {
     renderItem();
 
     expect(screen.queryByLabelText(/勢い/)).toBeNull();
+  });
+
+  it("過去実況では表示せず、勢い計算のためのスレ再取得もしない", () => {
+    const threadUrl = "https://example.com/test/read.cgi/software/1/";
+    mocks.viewTab = { id: "tab-replay", reloadKey: 0 };
+    mocks.viewPage = { type: "thread", title: "スレッド", threadUrl };
+    const getThread = vi.spyOn(container.thread, "getThread");
+    useArchiveReplayPositionStore.setState({
+      position: {
+        version: 1,
+        sessionId: "replay-1",
+        generation: 1,
+        threadUrl,
+        responseNumber: 10,
+        title: "スレッド",
+        playbackAt: Date.now(),
+        tabId: "tab-replay",
+      },
+    });
+
+    renderItem();
+
+    expect(screen.queryByLabelText(/勢い/)).toBeNull();
+    expect(getThread).not.toHaveBeenCalled();
   });
 });

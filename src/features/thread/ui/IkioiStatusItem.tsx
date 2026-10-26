@@ -1,5 +1,9 @@
 import { Flame } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  isArchiveReplayThread,
+  useArchiveReplayPositionStore,
+} from "src/features/archive-replay/browser/position-store";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { MiniWindow } from "src/view/browser/components/MiniWindow";
@@ -245,26 +249,28 @@ const MomentumLineChart: React.FC<MomentumLineChartProps> = ({ data, loading }) 
 
 export const IkioiStatusItem: React.FC = () => {
   const { viewTab, viewPage } = useTabStore();
+  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
   const [ikioi, setIkioi] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [momentumData, setMomentumData] = useState<MomentumGraphData | null>(null);
 
   const threadUrl = viewPage.type === "thread" ? viewPage.threadUrl : null;
+  const isArchiveReplay =
+    threadUrl != null && isArchiveReplayThread(replayPosition, viewTab.id, threadUrl);
   const reloadKey = viewTab.reloadKey;
   const {
     triggerRef: miniWindowTriggerRef,
     anchor: miniWindowAnchor,
     toggle: toggleMiniWindow,
     close: closeMiniWindow,
-  } = useMiniWindowTrigger(threadUrl);
+  } = useMiniWindowTrigger(isArchiveReplay ? null : threadUrl);
 
   useEffect(() => {
     if (threadUrl == null) {
-      setIkioi(null);
-      setMomentumData(null);
-      setLoading(false);
       return;
     }
+    // 変更理由: 過去実況はログを表示する読み取り専用画面なので、勢い計算用の再取得を行わない。
+    if (isArchiveReplay) return;
 
     let alive = true;
 
@@ -304,7 +310,7 @@ export const IkioiStatusItem: React.FC = () => {
     return () => {
       alive = false;
     };
-  }, [reloadKey, threadUrl]);
+  }, [isArchiveReplay, reloadKey, threadUrl]);
 
   const displayValue = useMemo(() => {
     if (loading && ikioi == null) {
@@ -316,7 +322,7 @@ export const IkioiStatusItem: React.FC = () => {
     return ikioi.toLocaleString();
   }, [ikioi, loading]);
 
-  if (threadUrl == null) {
+  if (threadUrl == null || isArchiveReplay) {
     return null;
   }
 
