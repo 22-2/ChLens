@@ -46,6 +46,7 @@ export function ExternalLinkDialog({
           <Dialog.Title className="browser-dialog-title">外部リンクを開きますか？</Dialog.Title>
           <Dialog.Description className="browser-dialog-description">
             リンク先の安全性を保証するものではありません。開くURLを確認してください。
+            この確認は、設定の「一般」→「通信」→「外部リンクを開く前に確認する」からオフにできます。
           </Dialog.Description>
           {hostname && <strong className="external-link-dialog__domain">{hostname}</strong>}
           <label htmlFor={destinationId}>開くURL</label>
