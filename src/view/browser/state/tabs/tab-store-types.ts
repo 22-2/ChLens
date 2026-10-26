@@ -57,7 +57,7 @@ export type TabAction =
       type: typeof TAB_ACTION_TYPES.CLOSE_TAB;
       tabId: string;
       preserveActivePane?: boolean;
-      // 別窓の最後のタブを閉じる時だけ、ペインを空にしない代替タブを作る。
+      // trueの場合、複数ペインでも対象ペインを閉じずホームへ置き換える。
       replaceLastTab?: boolean;
     }
   | { type: typeof TAB_ACTION_TYPES.CLOSE_OTHER_TABS; tabId: string }

@@ -98,20 +98,16 @@ export function executeTabCommandRequest(
       }
       dispatchForTab(runtime, location, tabActions.reload());
       return true;
-    case TAB_COMMAND_IDS.CLOSE:
-      // 変更理由: 2ペインなら最後のタブを閉じてそのペインへ戻せるが、
-      // 単一ペインでは空のワークスペースを避けるため代替タブを維持する。
-      if (
-        !canCloseTab(location.tab, location.tabCount, {
-          canCloseLastTab: runtime.state.panes.length > 1,
-        })
-      ) {
+    case TAB_COMMAND_IDS.CLOSE: {
+      // 変更理由: 最後の通常タブも閉じ、単一ペインはホームへ、2ペインは対象ペインを閉じる。
+      if (!canCloseTab(location.tab)) {
         return false;
       }
       // 変更理由: CLOSE_TABはpaneId内だけを検索するため、別ペインの対象を
       // 選択中ペインへ誤送信しないよう所有ペインも明示する。
       dispatchForTab(runtime, location, tabActions.closeTab(location.tab.id), true);
       return true;
+    }
     case TAB_COMMAND_IDS.PIN_SET:
       // 変更理由: 固定状態を「切り替える」ではなく「指定状態にする」ことで、
       // メニューの連打や二重イベントでも意図しない反転を起こさない。

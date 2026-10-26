@@ -34,7 +34,7 @@ import {
   TAB_ACTION_TYPES,
   type TabStoreState,
 } from "src/view/browser/state/tabs/tab-store-types";
-import { getCurrentPage, type Pane, type Tab } from "src/view/browser/types";
+import { createHomeTab, getCurrentPage, type Pane, type Tab } from "src/view/browser/types";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
 
 // タブストア全体の reducer。
@@ -133,13 +133,7 @@ export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabSt
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);
       const target = pane.tabs.find((t) => t.id === action.tabId);
-      if (
-        !target ||
-        !canCloseTab(target, pane.tabs.length, {
-          replaceLastTab: action.replaceLastTab,
-          canCloseLastTab: state.panes.length > 1,
-        })
-      ) {
+      if (!target || !canCloseTab(target)) {
         return state;
       }
       // 2ペイン時は最後のタブを閉じる操作で空ペインを残さず、もう片方へ戻す。
@@ -154,9 +148,9 @@ export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabSt
           closedTabs: pushClosed(state.closedTabs, target),
         };
       }
-      // 単一ペインを空にしないため、最後のタブは同じページの代替タブへ置き換える。
+      // 単一ペインを空にせず、設定した新規タブページにも依存しないようホームを明示する。
       if (pane.tabs.length <= 1) {
-        const replacement = createTab(getCurrentPage(target), target);
+        const replacement = createHomeTab();
         return {
           ...updatePane(state, paneId, (p) => ({
             ...p,

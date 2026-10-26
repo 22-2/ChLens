@@ -206,6 +206,37 @@ describe("通常タブのホームと閲覧履歴", () => {
     expect(getCurrentPage(stateRef.current.panes[1].tabs[0]).type).toBe("home");
   });
 
+  it("最後のタブを閉じると設定に関係なくホームへ置き換え、閉じたタブから復元できる", async () => {
+    localStorage.setItem("config_new_tab_page_mode", "custom_board");
+    localStorage.setItem("config_new_tab_page_board_url", "https://example.com/custom/");
+    const threadPage = {
+      type: "thread" as const,
+      title: "サンプルスレ",
+      threadUrl: "https://example.com/test/read.cgi/sample/1/",
+    };
+    const threadTab: Tab = {
+      ...createHomeTab("thread-tab"),
+      history: [threadPage],
+      currentIndex: 0,
+    };
+    await mount({
+      panes: [{ id: "pane", tabs: [threadTab], activeTabId: threadTab.id }],
+      activePaneId: "pane",
+      closedTabs: [],
+    });
+
+    act(() => dispatch({ type: "CLOSE_TAB", tabId: threadTab.id }));
+
+    expect(stateRef.current.panes[0].tabs).toHaveLength(1);
+    expect(getCurrentPage(activeTab())).toEqual({ type: "home", title: "ホーム" });
+    expect(stateRef.current.closedTabs[0]).toMatchObject({ id: threadTab.id });
+    expect(getCurrentPage(stateRef.current.closedTabs[0]!)).toEqual(threadPage);
+
+    act(() => dispatch({ type: "REOPEN_CLOSED_TAB" }));
+    expect(getCurrentPage(activeTab())).toEqual(threadPage);
+    expect(stateRef.current.closedTabs).toHaveLength(0);
+  });
+
   it("ホームもピン留めと終了ができ、全終了後は通常ホームを一つ開く", async () => {
     await mount();
     const id = activeTab().id;

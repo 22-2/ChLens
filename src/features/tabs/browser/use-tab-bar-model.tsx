@@ -224,8 +224,8 @@ export function useTabBarModel(isVertical: boolean): TabBarModel {
     width,
     setCollapsed,
     setWidth,
-    // 最後のタブを残す規則はページ種別によらず共通にする。
-    canCloseTab: visibleTabs.length > 1 || stateRef.current.panes.length > 1,
+    // 最後の通常タブも閉じられるため、単一ペインでも閉じるボタンを表示する。
+    canCloseTab: visibleTabs.some((tab) => !tab.pinned),
     barMenuItems,
     onSelectTab,
     onCloseTab,

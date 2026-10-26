@@ -33,21 +33,9 @@ export function findTabAcrossPanes(state: TabStoreState, tabId: string): Tab | n
   return findTabLocation(state, tabId)?.tab ?? null;
 }
 
-/**
- * 固定タブではなく、最後の1枚を閉じられる状態かを判定する。
- *
- * 最後の1枚を閉じてペイン自体を取り除く場合と、別窓終了時の代替タブを作る場合を
- * 呼び出し側から明示できるようにし、通常の単一ペインでは空状態を避ける。
- */
-export function canCloseTab(
-  tab: Tab,
-  tabCount: number,
-  options: { replaceLastTab?: boolean; canCloseLastTab?: boolean } = {},
-): boolean {
-  return (
-    !tab.pinned &&
-    (tabCount > 1 || options.replaceLastTab === true || options.canCloseLastTab === true)
-  );
+/** 固定タブ以外は最後の1枚も閉じられる。閉じた後のペイン処理はreducerが決める。 */
+export function canCloseTab(tab: Tab): boolean {
+  return !tab.pinned;
 }
 
 /** 対象タブ以外に閉じられる通常タブがあるかを判定する。 */

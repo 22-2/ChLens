@@ -129,7 +129,20 @@ describe("tab-command-runtime", () => {
     expect(runtime.dispatch).toHaveBeenCalledTimes(1);
   });
 
-  it("固定タブとペイン最後のタブは閉じない", () => {
+  it("単一ペインの最後の通常タブも閉じる", () => {
+    const runtime = createRuntime(createTab());
+
+    expect(
+      executeTabCommandRequest({ id: TAB_COMMAND_IDS.CLOSE, args: { tabId: "tab-1" } }, runtime),
+    ).toBe(true);
+    expect(runtime.dispatch).toHaveBeenCalledWith({
+      ...tabActions.closeTab("tab-1"),
+      paneId: "pane-1",
+      tabId: "tab-1",
+    });
+  });
+
+  it("固定タブは閉じない", () => {
     const pinnedRuntime = createRuntime(createTab({ pinned: true }));
     expect(
       executeTabCommandRequest(
@@ -138,15 +151,21 @@ describe("tab-command-runtime", () => {
       ),
     ).toBe(false);
     expect(pinnedRuntime.dispatch).not.toHaveBeenCalled();
+  });
 
-    const lastTabRuntime = createRuntime(createTab());
+  it("2ペインの最後のタブはホームへ置き換えず、ペインを閉じる", () => {
+    const target = createTab({ id: "right-tab" });
+    const runtime = createRuntime(createTab({ id: "left-tab" }));
+    runtime.state.panes.push({ id: "pane-2", tabs: [target], activeTabId: target.id });
+
     expect(
-      executeTabCommandRequest(
-        { id: TAB_COMMAND_IDS.CLOSE, args: { tabId: "tab-1" } },
-        lastTabRuntime,
-      ),
-    ).toBe(false);
-    expect(lastTabRuntime.dispatch).not.toHaveBeenCalled();
+      executeTabCommandRequest({ id: TAB_COMMAND_IDS.CLOSE, args: { tabId: target.id } }, runtime),
+    ).toBe(true);
+    expect(runtime.dispatch).toHaveBeenCalledWith({
+      ...tabActions.closeTab(target.id),
+      paneId: "pane-2",
+      tabId: target.id,
+    });
   });
 
   it("他のタブを閉じる時は対象タブの所有ペインを指定する", () => {
