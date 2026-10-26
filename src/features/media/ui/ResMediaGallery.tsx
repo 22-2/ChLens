@@ -26,6 +26,7 @@ import {
   twitterPostResolver,
   type TwitterVerificationBadgeColor,
 } from "../application/twitter-post";
+import { useMediaImageStore } from "../browser/use-media-image-store";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "../domain/media-settings";
 import { ExternalImage } from "./ExternalImage";
 
@@ -277,10 +278,9 @@ function TwitterPostCard({
         media.type === "image",
     )
     .map((media) => media.url);
+  const imageStates = useMediaImageStore((state) => state.images);
   const initialJapaneseTranslation =
     post.translation?.targetLang.toLowerCase() === "ja" ? post.translation : null;
-  const [isAvatarLoadRequested, setIsAvatarLoadRequested] = useState(false);
-  const [requestedMediaUrls, setRequestedMediaUrls] = useState<ReadonlySet<string>>(new Set());
   const [translation, setTranslation] = useState(initialJapaneseTranslation);
   const [isTranslationShown, setIsTranslationShown] = useState(initialJapaneseTranslation != null);
   const [isTranslationLoading, setIsTranslationLoading] = useState(false);
@@ -326,12 +326,16 @@ function TwitterPostCard({
     <div className="res__twitter-post">
       <div className="res__twitter-post-author">
         {post.author.avatarUrl &&
-          (manualImageLoading && !isAvatarLoadRequested ? (
+          (manualImageLoading &&
+          imageStates.get(post.author.avatarUrl)?.status !== "requested" &&
+          imageStates.get(post.author.avatarUrl)?.status !== "loaded" ? (
             <button
               type="button"
               className="res__twitter-post-avatar-placeholder"
               aria-label="投稿者の画像を読み込む"
-              onClick={() => setIsAvatarLoadRequested(true)}
+              onClick={() =>
+                useMediaImageStore.getState().requestImage(post.author.avatarUrl as string)
+              }
             >
               画像
             </button>
@@ -341,6 +345,7 @@ function TwitterPostCard({
               errorLabel="×"
               className="res__twitter-post-avatar"
               src={post.author.avatarUrl}
+              data-image-key={post.author.avatarUrl}
               alt=""
               loading="lazy"
             />
@@ -348,6 +353,7 @@ function TwitterPostCard({
             <ExternalImage
               className="res__twitter-post-avatar"
               src={post.author.avatarUrl}
+              data-image-key={post.author.avatarUrl}
               alt=""
               loading="lazy"
               manualLoad={false}
@@ -407,7 +413,12 @@ function TwitterPostCard({
         <div className="res__twitter-post-media">
           {post.media.map((media, index) => {
             if (media.type === "image") {
-              if (manualImageLoading && !requestedMediaUrls.has(media.url)) {
+              const imageState = imageStates.get(media.url);
+              if (
+                manualImageLoading &&
+                imageState?.status !== "requested" &&
+                imageState?.status !== "loaded"
+              ) {
                 return (
                   <button
                     key={`${media.type}:${media.url}`}
@@ -417,7 +428,7 @@ function TwitterPostCard({
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
-                      setRequestedMediaUrls((current) => new Set(current).add(media.url));
+                      useMediaImageStore.getState().requestImage(media.url);
                     }}
                   >
                     クリックして画像を取得
@@ -440,12 +451,14 @@ function TwitterPostCard({
                   {manualImageLoading ? (
                     <ManualLoadExternalImage
                       src={media.url}
+                      data-image-key={media.url}
                       alt={media.altText ?? "投稿画像"}
                       loading="lazy"
                     />
                   ) : (
                     <ExternalImage
                       src={media.url}
+                      data-image-key={media.url}
                       alt={media.altText ?? "投稿画像"}
                       loading="lazy"
                       manualLoad={false}
@@ -573,9 +586,9 @@ export function ResMediaGallery({
   const { value: confirmExternal } = useConfigBooleanSetting(EXTERNAL_LINK_CONFIRM_CONFIG_KEY);
   const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
   const { menu, openMenu } = useExternalLinkMenu();
+  const imageStates = useMediaImageStore((state) => state.images);
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
-  const [requestedImageUrls, setRequestedImageUrls] = useState<ReadonlySet<string>>(new Set());
   const [imgurVideoUrls, setImgurVideoUrls] = useState<ReadonlyMap<string, string>>(
     () => new Map(),
   );
@@ -720,7 +733,12 @@ export function ResMediaGallery({
       <div className="res__thumbs">
         {mediaItems.map((item) => {
           if (item.type === "image") {
-            if (manualImageLoading && !requestedImageUrls.has(item.rawUrl)) {
+            const imageState = imageStates.get(item.rawUrl);
+            if (
+              manualImageLoading &&
+              imageState?.status !== "requested" &&
+              imageState?.status !== "loaded"
+            ) {
               return (
                 <button
                   key={`image:${item.rawUrl}`}
@@ -735,7 +753,7 @@ export function ResMediaGallery({
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    setRequestedImageUrls((current) => new Set(current).add(item.rawUrl));
+                    useMediaImageStore.getState().requestImage(item.rawUrl);
                   }}
                   onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
                   onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
@@ -773,10 +791,16 @@ export function ResMediaGallery({
                 title={item.rawUrl}
               >
                 {manualImageLoading ? (
-                  <ManualLoadExternalImage src={item.src} alt={item.rawUrl} loading="lazy" />
+                  <ManualLoadExternalImage
+                    src={item.src}
+                    data-image-key={item.rawUrl}
+                    alt={item.rawUrl}
+                    loading="lazy"
+                  />
                 ) : (
                   <ExternalImage
                     src={item.src}
+                    data-image-key={item.rawUrl}
                     alt={item.rawUrl}
                     loading="lazy"
                     manualLoad={false}

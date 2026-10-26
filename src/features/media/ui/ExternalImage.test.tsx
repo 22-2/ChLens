@@ -27,6 +27,7 @@ vi.mock("src/app/platform/tauri/HttpClient", () => ({
   fetchTauriBinary: fetchTauriBinaryMock,
 }));
 
+import { useMediaImageStore } from "../browser/use-media-image-store";
 import { ExternalImage } from "./ExternalImage";
 
 const imageUrl = "https://images.example.com/photo.jpg";
@@ -50,6 +51,7 @@ describe("ExternalImage", () => {
     isTauriRuntimeMock.mockReset();
     isTauriRuntimeMock.mockReturnValue(false);
     manualImageLoadingMock.value = false;
+    useMediaImageStore.setState({ images: new Map() });
 
     createObjectUrl = vi.fn(() => "blob:tauri-image");
     revokeObjectUrl = vi.fn();
@@ -116,7 +118,33 @@ describe("ExternalImage", () => {
     expect(createObjectUrl).toHaveBeenCalledOnce();
 
     unmount();
-    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:tauri-image");
+    expect(revokeObjectUrl).not.toHaveBeenCalled();
+  });
+
+  it("同じTauri画像のフォールバック取得結果を複数表示面で共有する", async () => {
+    isTauriRuntimeMock.mockReturnValue(true);
+    fetchTauriBinaryMock.mockResolvedValue(imageResponse());
+
+    render(
+      <>
+        <ExternalImage src={imageUrl} alt="一枚目" />
+        <ExternalImage src={imageUrl} alt="二枚目" />
+      </>,
+    );
+    fireEvent.error(screen.getByRole("img", { name: "一枚目" }));
+    fireEvent.error(screen.getByRole("img", { name: "二枚目" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: "一枚目" })).toHaveAttribute(
+        "src",
+        "blob:tauri-image",
+      );
+      expect(screen.getByRole("img", { name: "二枚目" })).toHaveAttribute(
+        "src",
+        "blob:tauri-image",
+      );
+    });
+    expect(fetchTauriBinaryMock).toHaveBeenCalledOnce();
   });
 
   it("Tauri側でも失敗した場合は元のonErrorへ通知する", async () => {
@@ -166,7 +194,7 @@ describe("ExternalImage", () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
-  it("同じURLへ戻っても前の表示の取得結果を新画像へ混ぜない", async () => {
+  it("別画像へ切り替えた後に古いTauri取得結果が表示へ混ざらない", async () => {
     isTauriRuntimeMock.mockReturnValue(true);
     const resolves: Array<(response: ReturnType<typeof imageResponse>) => void> = [];
     fetchTauriBinaryMock.mockImplementation(
@@ -175,34 +203,25 @@ describe("ExternalImage", () => {
           resolves.push(resolve);
         }),
     );
-    createObjectUrl
-      .mockReturnValueOnce("blob:old-a")
-      .mockReturnValueOnce("blob:new-a")
-      .mockReturnValueOnce("blob:old-b");
+    createObjectUrl.mockReturnValueOnce("blob:old-a").mockReturnValueOnce("blob:new-b");
     const { rerender, unmount } = render(<ExternalImage src={imageUrl} alt="テスト画像" />);
     const image = screen.getByRole("img", { name: "テスト画像" });
     fireEvent.error(image);
-    rerender(<ExternalImage src="https://images.example.com/next.jpg" alt="テスト画像" />);
+    const nextImageUrl = "https://images.example.com/next.jpg";
+    rerender(<ExternalImage src={nextImageUrl} alt="テスト画像" />);
     fireEvent.error(image);
-    rerender(<ExternalImage src={imageUrl} alt="テスト画像" />);
-    fireEvent.error(image);
-    expect(resolves).toHaveLength(3);
+    expect(resolves).toHaveLength(2);
     await act(async () => {
       resolves[0](imageResponse());
     });
-    expect(image).not.toHaveAttribute("src");
-    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:old-a");
-    await act(async () => {
-      resolves[2](imageResponse());
-    });
-    expect(image).toHaveAttribute("src", "blob:new-a");
+    expect(image).not.toHaveAttribute("src", "blob:old-a");
     await act(async () => {
       resolves[1](imageResponse());
     });
-    expect(image).toHaveAttribute("src", "blob:new-a");
-    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:old-b");
+    expect(image).toHaveAttribute("src", "blob:new-b");
+    expect(useMediaImageStore.getState().images.get(imageUrl)?.fallbackSrc).toBe("blob:old-a");
     unmount();
-    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:new-a");
+    expect(revokeObjectUrl).not.toHaveBeenCalled();
   });
 
   it("取得後のblobを表示できない場合は最終エラーを一度だけ通知する", async () => {

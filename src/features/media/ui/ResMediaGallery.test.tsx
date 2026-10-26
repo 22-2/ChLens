@@ -13,11 +13,13 @@ vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
 
 import { imgurVideoResolver } from "../application/imgur-album";
 import { twitterPostResolver } from "../application/twitter-post";
+import { useMediaImageStore } from "../browser/use-media-image-store";
 import { ResMediaGallery } from "./ResMediaGallery";
 
 afterEach(() => {
   cleanup();
   manualImageLoadingMock.value = false;
+  useMediaImageStore.setState({ images: new Map() });
 });
 
 describe("ResMediaGallery", () => {
@@ -38,6 +40,27 @@ describe("ResMediaGallery", () => {
     expect(onUrlClick).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("link", { name: imageUrl }));
     expect(onUrlClick).toHaveBeenCalledWith(imageUrl, [imageUrl], 0);
+  });
+
+  it("別のギャラリーでも取得済み状態を共有する", async () => {
+    manualImageLoadingMock.value = true;
+    const imageUrl = "https://images.example.com/shared-photo.jpg";
+    const { container } = render(
+      <>
+        <ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />
+        <ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />
+      </>,
+    );
+
+    const placeholders = screen.getAllByRole("button", { name: "画像を読み込む" });
+    expect(placeholders).toHaveLength(2);
+    fireEvent.click(placeholders[0]);
+
+    await waitFor(() => {
+      expect(container.querySelectorAll(`img[alt="${imageUrl}"]`)).toHaveLength(2);
+    });
+    fireEvent.load(container.querySelector("img") as HTMLImageElement);
+    expect(useMediaImageStore.getState().images.get(imageUrl)?.status).toBe("loaded");
   });
 
   it("YouTube サムネイルをクリックするとレス内 iframe を開く", () => {
