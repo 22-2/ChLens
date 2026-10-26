@@ -1,5 +1,7 @@
 import { type MessageToken, parseMessage } from "@chlen/chlib";
 
+import { sanitizeMessageHtml } from "./sanitize-message-html";
+
 interface DecodedMessage {
   nameHtml: string;
   isNameAnchor: boolean;
@@ -113,10 +115,13 @@ export default class MessageProcessor {
     parts.otherHtml = otherHtml;
 
     // 本文の意味解析は共有ライブラリに集約し、ここではアプリ固有のHTML表示だけを担当する。
-    parts.messageHtml = renderMessageTokens(
-      parseMessage(res.message || "", {
-        protocol,
-      }),
+    // 意図: chlib はタグをそのままトークン化するため、描画前に許可リストでサニタイズする。
+    parts.messageHtml = sanitizeMessageHtml(
+      renderMessageTokens(
+        parseMessage(res.message || "", {
+          protocol,
+        }),
+      ),
     );
 
     return parts;

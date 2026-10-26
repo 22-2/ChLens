@@ -80,6 +80,7 @@
     "@url-sanitize/merged": "2.0.2",
     "buffer": "^6.0.3",
     "consola": "^3.4.2",
+    "dompurify": "^3.4.17",
     "drizzle-kit": "^0.31.11",
     "drizzle-orm": "^0.45.4",
     "escape-html": "^1.0.3",

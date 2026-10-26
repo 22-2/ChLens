@@ -49,7 +49,7 @@ describe("レス本文の表示処理", () => {
       const anchorText = result.messageHtml.match(
         /<a\b[^>]*class="anchor[^"]*"[^>]*>([\s\S]*?)<\/a>/,
       )?.[1];
-      expect(anchorText).toBe(">>3");
+      expect(anchorText).toBe("&gt;&gt;3");
     });
 
     it("短縮プロトコルのURLを復元する", () => {
@@ -137,7 +137,7 @@ describe("レス本文の表示処理", () => {
       expect(result.messageHtml).toContain(
         '<a href="https://example.com/project?a=1&amp;b=2#section"',
       );
-      expect(result.messageHtml).toContain(`>${target}</a>`);
+      expect(result.messageHtml).toContain(">https://example.com/project?a=1&amp;b=2#section</a>");
     });
 
     it("全角括弧で囲まれたURLを解析する", () => {
@@ -309,7 +309,7 @@ describe("レス本文の表示処理", () => {
         "https:",
       );
 
-      expect(result.messageHtml).toContain('class="anchor "');
+      expect(result.messageHtml).toContain('class="anchor"');
       expect(result.messageHtml).toContain('class="anchor disabled"');
       expect(result.messageHtml).toContain("指定されたレスの量が極端に多いため");
       expect(result.messageHtml).toContain(
