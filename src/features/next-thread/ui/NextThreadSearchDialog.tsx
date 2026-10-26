@@ -111,7 +111,8 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
             ) : (
               <>
                 「{state.sourceThread?.title ?? "現在のスレ"}」を基準に、
-                {isSimilarSearch ? "タイトルが似ているスレ" : "積極判定の次スレ候補"}を表示します
+                {isSimilarSearch ? "タイトルが似ているスレと次スレ候補" : "積極判定の次スレ候補"}
+                を表示します
               </>
             )}
           </Dialog.Description>
@@ -135,7 +136,7 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
           {isReady && state.candidates.length > 0 ? (
             <ol
               className="next-thread-search-dialog__candidate-list"
-              aria-label={isSimilarSearch ? "類似スレ一覧" : "次スレ候補一覧"}
+              aria-label={isSimilarSearch ? "類似スレ・次スレ候補一覧" : "次スレ候補一覧"}
             >
               {state.candidates.map((candidate, index) => {
                 const evidenceLabels = getEvidenceLabels(candidate);
@@ -182,7 +183,7 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
             <div className="next-thread-search-dialog__status">
               <span>
                 {isSimilarSearch
-                  ? "類似スレは見つかりませんでした。"
+                  ? "類似スレも次スレ候補も見つかりませんでした。"
                   : "次スレ候補は見つかりませんでした。"}
               </span>
               {state.boardMessage ? <span>{state.boardMessage}</span> : null}

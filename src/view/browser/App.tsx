@@ -131,7 +131,11 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const paneBody = (
     <>
       <ActiveThreadBridgeState isActive={isActive} />
-      <ContentArea isOverlayTarget={isActive} />
+      <ContentArea
+        isOverlayTarget={isActive}
+        onSearchNextThread={searchNextThread}
+        onSearchSimilarThreads={searchSimilarThreads}
+      />
       <BottomPanel />
       {/* コマンドとナビゲーションを同じオムニバーへ集約し、
           操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}

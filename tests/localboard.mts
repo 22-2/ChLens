@@ -30,13 +30,29 @@ export async function startLocalBoard() {
     },
   ];
   const requests: string[] = [];
+  const requestMethods: string[] = [];
+  const hiddenSubjectThreadIds = new Set<string>();
+  const imageContentLengthOverrides = new Map<string, number | null>();
+  const imageHeadStatusOverrides = new Map<string, number>();
   const server = createServer((request, response) => {
     const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
     requests.push(pathname);
+    requestMethods.push(request.method ?? "GET");
     if (/^\/img\/\d+\.png$/u.test(pathname)) {
-      // 大きなスレッドの画像URL用。外部の画像サーバーへ通信せずにサムネイルを表示させる。
-      response.writeHead(200, { "Content-Type": "image/png", "Cache-Control": "no-store" });
-      response.end(TINY_PNG);
+      // 実画像は小さい固定PNGを使い、HEADのサイズだけ境界値へ調整して事前警告を検証する。
+      const headStatus = imageHeadStatusOverrides.get(pathname) ?? 200;
+      const headers: Record<string, string> = {
+        "Content-Type": "image/png",
+        "Cache-Control": "no-store",
+      };
+      const contentLength = imageContentLengthOverrides.has(pathname)
+        ? imageContentLengthOverrides.get(pathname)
+        : TINY_PNG.byteLength;
+      if (request.method === "HEAD" && contentLength != null) {
+        headers["Content-Length"] = String(contentLength);
+      }
+      response.writeHead(request.method === "HEAD" ? headStatus : 200, headers);
+      response.end(request.method === "HEAD" ? undefined : TINY_PNG);
       return;
     }
     const resources: Record<string, string> = {
@@ -44,6 +60,7 @@ export async function startLocalBoard() {
         '<html><head><title>テスト板メニュー</title></head><body>\n<br><br><b>テストカテゴリ</b><br>\n<a href="/local/">ローカルテスト板</a><br>\n</body></html>',
       "/local/SETTING.TXT": "BBS_TITLE=ローカルテスト板\n",
       "/local/subject.txt": `${threads
+        .filter((thread) => !hiddenSubjectThreadIds.has(thread.id))
         .map((thread) => `${thread.id}.dat<>${thread.title} (${thread.posts.length})`)
         .join("\n")}\n`,
     };
@@ -75,6 +92,7 @@ export async function startLocalBoard() {
     boardUrl: `${origin}/local/`,
     threadUrl: `${origin}/test/read.cgi/local/1000000001/`,
     requests,
+    requestMethods,
     setDat(source: string, threadId = threads[0]!.id) {
       // 添付DATの再現でも、外部掲示板へ通信せず同じ文字コード・取得経路を通す。
       const thread = threads.find((item) => item.id === threadId);
@@ -88,6 +106,19 @@ export async function startLocalBoard() {
         threads.length,
         ...nextThreads.map((thread) => ({ ...thread, posts: [...thread.posts] })),
       );
+      hiddenSubjectThreadIds.clear();
+    },
+    setThreadSubjectVisible(threadId: string, visible: boolean) {
+      if (visible) hiddenSubjectThreadIds.delete(threadId);
+      else hiddenSubjectThreadIds.add(threadId);
+    },
+    setImageContentLength(imageNumber: number, contentLength: number | null) {
+      imageContentLengthOverrides.set(`/img/${imageNumber}.png`, contentLength);
+    },
+    setImageHeadStatus(imageNumber: number, status: number | null) {
+      const pathname = `/img/${imageNumber}.png`;
+      if (status == null) imageHeadStatusOverrides.delete(pathname);
+      else imageHeadStatusOverrides.set(pathname, status);
     },
     appendPost(threadId = threads[0]!.id) {
       const thread = threads.find((item) => item.id === threadId);

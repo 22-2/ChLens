@@ -5,6 +5,8 @@ import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 
 interface ContentAreaProps {
   isOverlayTarget?: boolean;
+  onSearchNextThread?: () => Promise<void>;
+  onSearchSimilarThreads?: () => Promise<void>;
 }
 
 /**
@@ -13,7 +15,11 @@ interface ContentAreaProps {
  * 変更理由: タブ本体の描画と一覧の配置を分けることで、別窓用の表示ホストを追加しても
  * ページ選択・再マウント・スクロール領域の規則を二重実装せずに済む。
  */
-export const ContentArea: FC<ContentAreaProps> = ({ isOverlayTarget = true }) => {
+export const ContentArea: FC<ContentAreaProps> = ({
+  isOverlayTarget = true,
+  onSearchNextThread,
+  onSearchSimilarThreads,
+}) => {
   const { state } = useTabStore();
   const { isDetachedTab } = useDetachedTabController();
   const selectedTabId = state.selectedTabId;
@@ -31,6 +37,8 @@ export const ContentArea: FC<ContentAreaProps> = ({ isOverlayTarget = true }) =>
           tab={tab}
           isActive={tab.id === selectedTabId}
           isOverlayTarget={isOverlayTarget}
+          onSearchNextThread={onSearchNextThread}
+          onSearchSimilarThreads={onSearchSimilarThreads}
         />
       ))}
     </div>

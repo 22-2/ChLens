@@ -97,11 +97,20 @@ export function useNextThreadSearch({
           return;
         }
 
-        // 次スレ検索は積極判定を一覧表示し、類似スレ検索は後続条件なしでタイトルの近さを並べる。
+        // 「類似」検索ではタイトル一致に加え、連番・本文リンクから見つかる次スレも含める。
+        // 次スレ検索は次スレ判定の結果だけに絞り、類似タイトルを広げすぎない。
+        const nextCandidates = findNextThreadCandidates(result.threads, sourceThread, {
+          mode: "aggressive",
+        });
+        const similarCandidates = findSimilarThreadCandidates(result.threads, sourceThread);
+        const nextCandidateUrls = new Set(nextCandidates.map(({ thread }) => thread.url));
         const candidates =
           searchType === "next"
-            ? findNextThreadCandidates(result.threads, sourceThread, { mode: "aggressive" })
-            : findSimilarThreadCandidates(result.threads, sourceThread);
+            ? nextCandidates
+            : [
+                ...nextCandidates,
+                ...similarCandidates.filter(({ thread }) => !nextCandidateUrls.has(thread.url)),
+              ];
         setState({
           status: "ready",
           searchType,

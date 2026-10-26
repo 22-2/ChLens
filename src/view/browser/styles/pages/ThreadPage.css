@@ -33,6 +33,20 @@
   border-bottom: 1px solid var(--sys-color-warning-border);
 }
 
+.thread-page__notice--expired {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sys-space-3) var(--sys-space-5);
+}
+
+.thread-page__expiry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sys-space-2);
+}
+
 /*
  * 変更理由: dat落ち通知を本文のスクロール中も表示し続ける。ただしfixedにすると
  * 2ペイン時にペイン境界を越えるため、検索バーと一緒にスクロール領域内で固定する。
