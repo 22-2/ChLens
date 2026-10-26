@@ -55,6 +55,7 @@ export type ThreadListSortPreference = {
 const THREAD_LIST_SORT_STORAGE_KEY = "chlens_browser_thread_list_sort_by_site";
 export const THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY =
   "chlens_browser_thread_list_columns_visibility";
+export const THREAD_LIST_COLUMN_ORDER_STORAGE_KEY = "chlens_browser_thread_list_columns_order";
 export const THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 const DEFAULT_THREAD_LIST_SORT: ThreadListSortPreference = { column: null, direction: "asc" };
 

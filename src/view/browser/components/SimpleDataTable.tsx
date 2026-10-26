@@ -5,8 +5,9 @@ import {
   useLegacyTable,
 } from "@tanstack/react-table/legacy";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
+import { useColumnOrder } from "src/view/browser/components/use-column-order";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 
@@ -50,6 +51,7 @@ interface Props<TRow> {
   getRowTooltip?: (row: TRow) => string;
   columnVisibilityStorageKey?: string;
   columnVisibilityLockedKeys?: readonly string[];
+  columnOrderStorageKey?: string;
 }
 
 // 変更理由: TanStack Table v9 の RowData 制約（オブジェクトか配列）を満たすため TRow を object に制限する。
@@ -69,15 +71,28 @@ export function SimpleDataTable<TRow extends object>({
   getRowTooltip,
   columnVisibilityStorageKey,
   columnVisibilityLockedKeys,
+  columnOrderStorageKey,
 }: Props<TRow>): React.ReactElement {
   const { show, move, hide, tooltip } = useCursorTooltip();
+  const { columnOrder, moveColumnBy, resetColumnOrder } = useColumnOrder(
+    columns,
+    columnOrderStorageKey,
+  );
+  const orderedColumns = useMemo(() => {
+    const orderIndex = new Map(columnOrder.map((key, index) => [key, index]));
+    return [...columns].sort(
+      (left, right) =>
+        (orderIndex.get(left.key) ?? Number.MAX_SAFE_INTEGER) -
+        (orderIndex.get(right.key) ?? Number.MAX_SAFE_INTEGER),
+    );
+  }, [columnOrder, columns]);
   const {
     visibleColumns,
     columnVisibilityMenuItems,
     openHeaderContextMenu,
     closeHeaderContextMenu,
     headerContextMenuState,
-  } = useColumnVisibility(columns, {
+  } = useColumnVisibility(orderedColumns, {
     storageKey: columnVisibilityStorageKey,
     lockedColumnKeys: columnVisibilityLockedKeys,
   });
@@ -112,6 +127,49 @@ export function SimpleDataTable<TRow extends object>({
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(
     () => new Set(sections?.filter((section) => !section.defaultCollapsed).map(({ key }) => key)),
   );
+  const [contextMenuColumnKey, setContextMenuColumnKey] = useState<string | null>(null);
+  const [dropTargetColumnKey, setDropTargetColumnKey] = useState<string | null>(null);
+  const draggedColumnKeyRef = useRef<string | null>(null);
+  const suppressHeaderClickRef = useRef(false);
+
+  const headerContextMenuItems = useMemo(() => {
+    if (!columnOrderStorageKey || contextMenuColumnKey == null) {
+      return columnVisibilityMenuItems;
+    }
+
+    const columnIndex = columnOrder.indexOf(contextMenuColumnKey);
+    const isDefaultOrder = columnOrder.every((key, index) => key === columns[index]?.key);
+    return [
+      {
+        id: "column-move-left",
+        label: "列を左へ移動",
+        disabled: columnIndex <= 0,
+        onSelect: () => moveColumnBy(contextMenuColumnKey, -1),
+      },
+      {
+        id: "column-move-right",
+        label: "列を右へ移動",
+        disabled: columnIndex < 0 || columnIndex >= columnOrder.length - 1,
+        onSelect: () => moveColumnBy(contextMenuColumnKey, 1),
+      },
+      {
+        id: "column-order-reset",
+        label: "列順を初期化",
+        disabled: isDefaultOrder,
+        onSelect: resetColumnOrder,
+      },
+      { id: "column-order-separator", separator: true },
+      ...columnVisibilityMenuItems,
+    ];
+  }, [
+    columnOrder,
+    columnOrderStorageKey,
+    columnVisibilityMenuItems,
+    columns,
+    contextMenuColumnKey,
+    moveColumnBy,
+    resetColumnOrder,
+  ]);
 
   const sortIndicator = (key: string): string => {
     if (sortColumn !== key) return "";
@@ -147,15 +205,94 @@ export function SimpleDataTable<TRow extends object>({
                 return (
                   <th
                     key={header.id}
-                    className={cn}
-                    onClick={colDef?.sortable && onSort ? () => onSort(header.id) : undefined}
+                    className={
+                      columnOrderStorageKey ? `${cn} simple-data-table__th--reorderable` : cn
+                    }
+                    draggable={Boolean(columnOrderStorageKey)}
+                    data-drop-target={dropTargetColumnKey === header.id ? "true" : undefined}
+                    title={
+                      columnOrderStorageKey
+                        ? `${typeof colDef?.header === "string" ? colDef.header : header.id}（ドラッグして列を並べ替え）`
+                        : undefined
+                    }
+                    tabIndex={columnOrderStorageKey ? 0 : undefined}
+                    onClick={() => {
+                      if (suppressHeaderClickRef.current) {
+                        suppressHeaderClickRef.current = false;
+                        return;
+                      }
+                      if (colDef?.sortable && onSort) onSort(header.id);
+                    }}
                     onContextMenu={(event) => {
-                      if (!columnVisibilityStorageKey) {
+                      if (!columnVisibilityStorageKey && !columnOrderStorageKey) {
                         return;
                       }
 
                       event.preventDefault();
+                      setContextMenuColumnKey(header.id);
                       openHeaderContextMenu(event.clientX, event.clientY);
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        !columnOrderStorageKey ||
+                        !(event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey))
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      setContextMenuColumnKey(header.id);
+                      openHeaderContextMenu(rect.left, rect.bottom);
+                    }}
+                    onDragStart={(event) => {
+                      if (!columnOrderStorageKey) return;
+                      draggedColumnKeyRef.current = header.id;
+                      suppressHeaderClickRef.current = true;
+                      event.dataTransfer.effectAllowed = "move";
+                      event.dataTransfer.setData("text/plain", header.id);
+                    }}
+                    onDragEnter={() => {
+                      if (draggedColumnKeyRef.current !== header.id) {
+                        setDropTargetColumnKey(header.id);
+                      }
+                    }}
+                    onDragOver={(event) => {
+                      if (!columnOrderStorageKey || draggedColumnKeyRef.current == null) return;
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                    }}
+                    onDragLeave={() => {
+                      setDropTargetColumnKey((current) => (current === header.id ? null : current));
+                    }}
+                    onDrop={(event) => {
+                      if (!columnOrderStorageKey) return;
+                      event.preventDefault();
+                      const sourceKey =
+                        event.dataTransfer.getData("text/plain") || draggedColumnKeyRef.current;
+                      if (!sourceKey || sourceKey === header.id) return;
+
+                      const sourceIndex = columnOrder.indexOf(sourceKey);
+                      const targetIndex = columnOrder.indexOf(header.id);
+                      const isDroppingAfter =
+                        event.clientX >
+                        event.currentTarget.getBoundingClientRect().left +
+                          event.currentTarget.getBoundingClientRect().width / 2;
+                      const targetIndexAfterRemoval =
+                        targetIndex - (sourceIndex < targetIndex ? 1 : 0);
+                      const destinationIndex = Math.max(
+                        0,
+                        Math.min(
+                          columnOrder.length - 1,
+                          targetIndexAfterRemoval + (isDroppingAfter ? 1 : 0),
+                        ),
+                      );
+                      moveColumnBy(sourceKey, destinationIndex - sourceIndex);
+                      setDropTargetColumnKey(null);
+                    }}
+                    onDragEnd={() => {
+                      draggedColumnKeyRef.current = null;
+                      setDropTargetColumnKey(null);
                     }}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
@@ -254,8 +391,11 @@ export function SimpleDataTable<TRow extends object>({
         <ContextMenu
           x={headerContextMenuState.x}
           y={headerContextMenuState.y}
-          items={columnVisibilityMenuItems}
-          onClose={closeHeaderContextMenu}
+          items={headerContextMenuItems}
+          onClose={() => {
+            setContextMenuColumnKey(null);
+            closeHeaderContextMenu();
+          }}
         />
       ) : null}
     </>

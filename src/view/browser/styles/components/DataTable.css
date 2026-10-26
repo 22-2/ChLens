@@ -106,6 +106,23 @@
   text-align: right;
 }
 
+.simple-data-table__th--reorderable {
+  cursor: grab;
+}
+
+.simple-data-table__th--reorderable:active {
+  cursor: grabbing;
+}
+
+.simple-data-table__th--reorderable:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: -2px;
+}
+
+.simple-data-table__th--reorderable[data-drop-target="true"] {
+  box-shadow: inset 0 -2px var(--sys-color-accent);
+}
+
 .simple-data-table__heat,
 .thread-list__heat {
   width: 80px;

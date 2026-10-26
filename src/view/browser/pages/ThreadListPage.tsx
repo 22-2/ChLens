@@ -28,6 +28,7 @@ import {
   isThreadVisited,
   readThreadListSortPreference,
   setThreadListCache,
+  THREAD_LIST_COLUMN_ORDER_STORAGE_KEY,
   THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS,
   THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY,
   THREAD_LIST_COLUMNS,
@@ -759,6 +760,7 @@ export const ThreadListPage: React.FC<Props> = ({
         onSort={handleTableSort}
         columnVisibilityStorageKey={THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY}
         columnVisibilityLockedKeys={THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS}
+        columnOrderStorageKey={THREAD_LIST_COLUMN_ORDER_STORAGE_KEY}
       />
       {contextMenuState && (
         <ContextMenu
