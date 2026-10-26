@@ -118,7 +118,7 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
         // 同じURLへ戻った場合も、前の表示で始めた取得結果は引き継がない。
         requestVersionRef.current += 1;
       };
-    }, [src]);
+    }, [imageState?.version, src]);
 
     const handleError = (event: SyntheticEvent<HTMLImageElement, Event>) => {
       // src切替・フォールバック待機のために属性を外した際のエラーは、読込失敗ではない。
@@ -148,19 +148,22 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
       setSourceState({ rawSrc: src, renderedSrc: null });
 
       void fetchSharedTauriImage(imageKey, src, imageRequestVersion)
-        .then((objectUrl) => {
+        .then(() => {
           if (
             currentSrcRef.current !== src ||
-            requestVersionRef.current !== componentRequestVersion
+            requestVersionRef.current !== componentRequestVersion ||
+            (useMediaImageStore.getState().images.get(imageKey)?.version ?? 0) !==
+              imageRequestVersion
           )
             return;
           fallbackStatusRef.current = "loaded";
-          setSourceState({ rawSrc: src, renderedSrc: objectUrl });
         })
         .catch((error: unknown) => {
           if (
             currentSrcRef.current !== src ||
-            requestVersionRef.current !== componentRequestVersion
+            requestVersionRef.current !== componentRequestVersion ||
+            (useMediaImageStore.getState().images.get(imageKey)?.version ?? 0) !==
+              imageRequestVersion
           )
             return;
           // WebView側とRust側の両方で失敗したURLを記録し、画像だけを黙って消さない。
@@ -174,17 +177,18 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
         });
     };
 
-    if (
-      shouldLoadManually &&
-      imageState?.status !== "requested" &&
-      imageState?.status !== "loaded"
-    ) {
+    const isImageLoadStarted =
+      imageState?.status === "requested" || imageState?.status === "loaded";
+    if (imageState?.status === "discarded" || (shouldLoadManually && !isImageLoadStarted)) {
       const alt = props.alt?.trim();
+      const placeholderText =
+        imageState?.status === "discarded" ? "削除されました" : "クリックして画像を取得";
       return (
         <button
           type="button"
           className={[
             "external-image-placeholder",
+            imageState?.status === "discarded" ? "external-image-placeholder--deleted" : null,
             typeof props.className === "string" ? props.className : null,
           ]
             .filter(Boolean)
@@ -194,17 +198,26 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
             width: props.style?.width ?? props.width ?? "100%",
             height: props.style?.height ?? props.height ?? "100%",
           }}
-          title={props.title ?? "クリックして画像を取得"}
-          aria-label={alt ? `画像を読み込む: ${alt}` : "画像を読み込む"}
+          title={
+            imageState?.status === "discarded" ? placeholderText : (props.title ?? placeholderText)
+          }
+          aria-label={
+            imageState?.status === "discarded"
+              ? placeholderText
+              : alt
+                ? `画像を読み込む: ${alt}`
+                : "画像を読み込む"
+          }
           data-testid={props["data-testid"]}
           data-image-key={props["data-image-key"]}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
+            setSourceState({ rawSrc: src, renderedSrc: src });
             useMediaImageStore.getState().requestImage(imageKey);
           }}
         >
-          <span>クリックして画像を取得</span>
+          <span>{placeholderText}</span>
         </button>
       );
     }

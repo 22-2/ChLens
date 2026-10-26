@@ -19,16 +19,23 @@ export function useExternalLinkMenu() {
     x: number;
     y: number;
     trigger: HTMLElement;
+    additionalItems: ContextMenuItem[];
   } | null>(null);
   const openMenu = useCallback(
-    (url: string, event: MouseEvent<HTMLElement>) => {
+    (url: string, event: MouseEvent<HTMLElement>, additionalItems: ContextMenuItem[] = []) => {
       event.preventDefault();
       event.stopPropagation();
       const rect = event.currentTarget.getBoundingClientRect();
       const trigger =
         getEventTargetElement(event.target, surface.window)?.closest<HTMLElement>("button, a") ??
         event.currentTarget;
-      setState({ url, x: event.clientX || rect.left, y: event.clientY || rect.bottom, trigger });
+      setState({
+        url,
+        x: event.clientX || rect.left,
+        y: event.clientY || rect.bottom,
+        trigger,
+        additionalItems,
+      });
     },
     [surface.window],
   );
@@ -62,6 +69,9 @@ export function useExternalLinkMenu() {
           if (cleanedUrl) copy(cleanedUrl);
         },
       },
+      ...(state.additionalItems.length > 0
+        ? [{ id: "additional-separator", separator: true }, ...state.additionalItems]
+        : []),
     ];
     // 仮想レスのtransformによる座標系・重なり順から切り離し、別窓でも操作元へ表示する。
     menu = createPortal(

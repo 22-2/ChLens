@@ -5,6 +5,7 @@ import { ConfirmableLink } from "src/view/browser/ui/ConfirmableLink";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { EXTERNAL_LINK_CONFIRM_CONFIG_KEY } from "src/view/browser/utils/external-link-analysis";
 
+import { useMediaImageStore } from "../browser/use-media-image-store";
 import type { MediaViewerProps } from "../browser/use-media-viewer-controller";
 import { ExternalImage } from "./ExternalImage";
 
@@ -38,6 +39,8 @@ export function MediaViewer({
 }: MediaViewerProps & MediaViewerWindowProps) {
   const { value: confirmExternal } = useConfigBooleanSetting(EXTERNAL_LINK_CONFIRM_CONFIG_KEY);
   const { openMenu, menu } = useExternalLinkMenu();
+  const imageState = useMediaImageStore((state) => state.images.get(viewer.label));
+  const imageIsLoaded = imageState?.status === "loaded";
   return (
     <>
       <div
@@ -49,7 +52,21 @@ export function MediaViewer({
         }}
         onClick={onOverlayClick}
         onContextMenu={(event) => {
-          if (confirmExternal) openMenu(viewer.label, event);
+          if (!confirmExternal && !imageIsLoaded) return;
+          openMenu(
+            viewer.label,
+            event,
+            imageIsLoaded
+              ? [
+                  {
+                    id: "discard-image",
+                    label: "画像を破棄",
+                    danger: true,
+                    onSelect: () => useMediaImageStore.getState().discardImage(viewer.label),
+                  },
+                ]
+              : [],
+          );
         }}
       >
         <div className="media-viewer__chrome" onClick={onChromeClick}>
@@ -135,6 +152,7 @@ export function MediaViewer({
                 ref={viewerImageRef}
                 className="media-viewer__image"
                 src={viewer.src}
+                data-image-key={viewer.label}
                 alt={viewer.label}
                 manualLoad={false}
                 onLoad={onImageLoad}
@@ -151,7 +169,7 @@ export function MediaViewer({
           </div>
         </div>
       </div>
-      {confirmExternal && menu}
+      {(confirmExternal || imageIsLoaded) && menu}
     </>
   );
 }

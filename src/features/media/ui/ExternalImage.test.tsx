@@ -147,6 +147,34 @@ describe("ExternalImage", () => {
     expect(fetchTauriBinaryMock).toHaveBeenCalledOnce();
   });
 
+  it("取得済み画像を破棄すると表示を隠し、クリックで再取得する", async () => {
+    isTauriRuntimeMock.mockReturnValue(true);
+    fetchTauriBinaryMock.mockResolvedValue(imageResponse());
+
+    render(<ExternalImage src={imageUrl} alt="テスト画像" />);
+    const image = screen.getByRole("img", { name: "テスト画像" });
+    fireEvent.error(image);
+    await waitFor(() => expect(image).toHaveAttribute("src", "blob:tauri-image"));
+    fireEvent.load(image);
+
+    expect(useMediaImageStore.getState().images.get(imageUrl)?.status).toBe("loaded");
+    act(() => {
+      useMediaImageStore.getState().discardImage(imageUrl);
+    });
+
+    const deletedPlaceholder = screen.getByRole("button", { name: "削除されました" });
+    expect(revokeObjectUrl).toHaveBeenCalledWith("blob:tauri-image");
+    fireEvent.click(deletedPlaceholder);
+
+    const retryImage = screen.getByRole("img", { name: "テスト画像" });
+    expect(retryImage).toHaveAttribute("src", imageUrl);
+    expect(useMediaImageStore.getState().images.get(imageUrl)?.status).toBe("requested");
+
+    fireEvent.error(retryImage);
+    await waitFor(() => expect(retryImage).toHaveAttribute("src", "blob:tauri-image"));
+    expect(fetchTauriBinaryMock).toHaveBeenCalledTimes(2);
+  });
+
   it("Tauri側でも失敗した場合は元のonErrorへ通知する", async () => {
     isTauriRuntimeMock.mockReturnValue(true);
     fetchTauriBinaryMock.mockRejectedValue(new Error("network failure"));

@@ -12,6 +12,7 @@ type Props = Pick<
   onClick?: MouseEventHandler<HTMLElement>;
   onMouseDown?: MouseEventHandler<HTMLElement>;
   onAuxClick?: MouseEventHandler<HTMLElement>;
+  onContextMenu?: MouseEventHandler<HTMLElement>;
 };
 
 /** ON時だけ実URLを持たないボタンへ変え、標準リンクメニューによる確認迂回をなくす。 */
@@ -23,6 +24,7 @@ export function ConfirmableLink({
   onClick,
   onMouseDown,
   onAuxClick,
+  onContextMenu,
   children,
   ...props
 }: Props) {
@@ -40,6 +42,7 @@ export function ConfirmableLink({
         onClick={onClick}
         onMouseDown={onMouseDown}
         onAuxClick={onAuxClick}
+        onContextMenu={onContextMenu}
       >
         {children}
       </a>
@@ -74,7 +77,10 @@ export function ConfirmableLink({
           if (onAuxClick) onAuxClick(event);
           else requestExternalLink(href, { sourceWindow: surface.window, active: false });
         }}
-        onContextMenu={(event) => openMenu(href, event)}
+        onContextMenu={(event) => {
+          if (onContextMenu) onContextMenu(event);
+          else openMenu(href, event);
+        }}
       >
         {children}
       </button>

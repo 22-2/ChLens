@@ -63,6 +63,36 @@ describe("ResMediaGallery", () => {
     expect(useMediaImageStore.getState().images.get(imageUrl)?.status).toBe("loaded");
   });
 
+  it("取得済み画像の右クリックで破棄し、クリックで再取得する", async () => {
+    manualImageLoadingMock.value = true;
+    const imageUrl = "https://images.example.com/removable-photo.jpg";
+    const { container } = render(
+      <>
+        <ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />
+        <ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />
+      </>,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "画像を読み込む" })[0]);
+    const images = await waitFor(() => {
+      const loadedImages = container.querySelectorAll("img");
+      expect(loadedImages).toHaveLength(2);
+      return loadedImages;
+    });
+    fireEvent.load(images[0]);
+    fireEvent.contextMenu(screen.getAllByRole("link", { name: imageUrl })[0]);
+
+    fireEvent.click(await screen.findByRole("menuitem", { name: "画像を破棄" }));
+
+    expect(useMediaImageStore.getState().images.get(imageUrl)?.status).toBe("discarded");
+    expect(screen.getAllByRole("button", { name: "削除されました" })).toHaveLength(2);
+    expect(container.querySelectorAll("img")).toHaveLength(0);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "削除されました" })[0]);
+    await waitFor(() => expect(container.querySelectorAll("img")).toHaveLength(2));
+    expect(useMediaImageStore.getState().images.get(imageUrl)?.status).toBe("requested");
+  });
+
   it("YouTube サムネイルをクリックするとレス内 iframe を開く", () => {
     const onUrlClick = vi.fn();
     render(<ResMediaGallery urls={["https://youtu.be/TestVideo01"]} onUrlClick={onUrlClick} />);

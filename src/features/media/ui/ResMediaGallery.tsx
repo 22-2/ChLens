@@ -26,7 +26,7 @@ import {
   twitterPostResolver,
   type TwitterVerificationBadgeColor,
 } from "../application/twitter-post";
-import { useMediaImageStore } from "../browser/use-media-image-store";
+import { type MediaImageStatus, useMediaImageStore } from "../browser/use-media-image-store";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "../domain/media-settings";
 import { ExternalImage } from "./ExternalImage";
 
@@ -182,6 +182,10 @@ function formatTwitterPostDate(createdTimestamp: number | null): string | null {
   return `${twitterPostDateFormatter.format(date)} ${twitterPostWeekdayFormatter.format(date)} ${twitterPostTimeFormatter.format(date)}`;
 }
 
+function isImageLoadStarted(status: MediaImageStatus | undefined): boolean {
+  return status === "requested" || status === "loaded";
+}
+
 function buildResMediaItem(rawUrl: string, resolvedVideoUrl?: string): ResMediaItem | null {
   // ImgurのMP4直リンクをサムネイル変換より先に動画として認識する。
   if (resolvedVideoUrl || isDirectVideoUrl(rawUrl)) {
@@ -255,6 +259,7 @@ function TwitterPostCard({
   onUrlClick,
   onMiddleMouseDown,
   onAuxClick,
+  onImageContextMenu,
 }: {
   embed: ExternalMediaEmbed;
   post: TwitterPost;
@@ -270,6 +275,7 @@ function TwitterPostCard({
     url: string,
     resImages: string[] | undefined,
   ) => void;
+  onImageContextMenu: (url: string, event: React.MouseEvent<HTMLElement>) => void;
 }): React.ReactElement {
   // 変更理由: FxTwitterが返す写真も同じレス内の画像として扱い、専ブラの画像ビューアで前後移動できるようにする。
   const imageUrls = post.media
@@ -285,6 +291,8 @@ function TwitterPostCard({
   const [isTranslationShown, setIsTranslationShown] = useState(initialJapaneseTranslation != null);
   const [isTranslationLoading, setIsTranslationLoading] = useState(false);
   const [translationError, setTranslationError] = useState(false);
+  const avatarUrl = post.author.avatarUrl;
+  const avatarImageState = avatarUrl ? imageStates.get(avatarUrl) : undefined;
   const sourceLang = post.lang?.toLowerCase() ?? "";
   const canTranslateToJapanese =
     initialJapaneseTranslation != null ||
@@ -325,38 +333,42 @@ function TwitterPostCard({
   return (
     <div className="res__twitter-post">
       <div className="res__twitter-post-author">
-        {post.author.avatarUrl &&
-          (manualImageLoading &&
-          imageStates.get(post.author.avatarUrl)?.status !== "requested" &&
-          imageStates.get(post.author.avatarUrl)?.status !== "loaded" ? (
+        {avatarUrl &&
+          (avatarImageState?.status === "discarded" ||
+          (manualImageLoading && !isImageLoadStarted(avatarImageState?.status)) ? (
             <button
               type="button"
               className="res__twitter-post-avatar-placeholder"
-              aria-label="投稿者の画像を読み込む"
-              onClick={() =>
-                useMediaImageStore.getState().requestImage(post.author.avatarUrl as string)
+              aria-label={
+                avatarImageState?.status === "discarded"
+                  ? "削除されました"
+                  : "投稿者の画像を読み込む"
               }
+              onContextMenu={(event) => onImageContextMenu(avatarUrl, event)}
+              onClick={() => useMediaImageStore.getState().requestImage(avatarUrl)}
             >
-              画像
+              {avatarImageState?.status === "discarded" ? "削除されました" : "画像"}
             </button>
           ) : manualImageLoading ? (
             <ManualLoadExternalImage
               containerClassName="res__manual-image-load--avatar"
               errorLabel="×"
               className="res__twitter-post-avatar"
-              src={post.author.avatarUrl}
-              data-image-key={post.author.avatarUrl}
+              src={avatarUrl}
+              data-image-key={avatarUrl}
               alt=""
               loading="lazy"
+              onContextMenu={(event) => onImageContextMenu(avatarUrl, event)}
             />
           ) : (
             <ExternalImage
               className="res__twitter-post-avatar"
-              src={post.author.avatarUrl}
-              data-image-key={post.author.avatarUrl}
+              src={avatarUrl}
+              data-image-key={avatarUrl}
               alt=""
               loading="lazy"
               manualLoad={false}
+              onContextMenu={(event) => onImageContextMenu(avatarUrl, event)}
             />
           ))}
         <div className="res__twitter-post-author-text">
@@ -415,23 +427,26 @@ function TwitterPostCard({
             if (media.type === "image") {
               const imageState = imageStates.get(media.url);
               if (
-                manualImageLoading &&
-                imageState?.status !== "requested" &&
-                imageState?.status !== "loaded"
+                imageState?.status === "discarded" ||
+                (manualImageLoading && !isImageLoadStarted(imageState?.status))
               ) {
+                const wasDiscarded = imageState?.status === "discarded";
                 return (
                   <button
                     key={`${media.type}:${media.url}`}
                     type="button"
                     className="res__twitter-post-media-placeholder"
-                    aria-label={`${media.altText ?? "投稿画像"}を読み込む`}
+                    aria-label={
+                      wasDiscarded ? "削除されました" : `${media.altText ?? "投稿画像"}を読み込む`
+                    }
+                    onContextMenu={(event) => onImageContextMenu(media.url, event)}
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
                       useMediaImageStore.getState().requestImage(media.url);
                     }}
                   >
-                    クリックして画像を取得
+                    {wasDiscarded ? "削除されました" : "クリックして画像を取得"}
                   </button>
                 );
               }
@@ -440,6 +455,7 @@ function TwitterPostCard({
                 <ConfirmableLink
                   key={`${media.type}:${media.url}`}
                   href={media.url}
+                  onContextMenu={(event) => onImageContextMenu(media.url, event)}
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -598,6 +614,25 @@ export function ResMediaGallery({
       { status: "loading" } | { status: "loaded"; post: TwitterPost } | { status: "error" }
     >
   >(new Map());
+  const openImageContextMenu = (url: string, event: React.MouseEvent<HTMLElement>) => {
+    const imageIsLoaded = useMediaImageStore.getState().images.get(url)?.status === "loaded";
+    if (!confirmExternal && !imageIsLoaded) return;
+
+    openMenu(
+      url,
+      event,
+      imageIsLoaded
+        ? [
+            {
+              id: "discard-image",
+              label: "画像を破棄",
+              danger: true,
+              onSelect: () => useMediaImageStore.getState().discardImage(url),
+            },
+          ]
+        : [],
+    );
+  };
   const thumbStyle: ThumbStyle | undefined = isBlurred
     ? {
         "--res-thumb-blur-radius": `${imageBlurRadius}px`,
@@ -735,21 +770,19 @@ export function ResMediaGallery({
           if (item.type === "image") {
             const imageState = imageStates.get(item.rawUrl);
             if (
-              manualImageLoading &&
-              imageState?.status !== "requested" &&
-              imageState?.status !== "loaded"
+              imageState?.status === "discarded" ||
+              (manualImageLoading && !isImageLoadStarted(imageState?.status))
             ) {
+              const wasDiscarded = imageState?.status === "discarded";
               return (
                 <button
                   key={`image:${item.rawUrl}`}
                   type="button"
                   className={`res__thumb res__thumb--image res__thumb--manual${isBlurred ? " res__thumb--blurred" : ""}`}
                   style={thumbStyle}
-                  aria-label="画像を読み込む"
+                  aria-label={wasDiscarded ? "削除されました" : "画像を読み込む"}
                   title={item.rawUrl}
-                  onContextMenu={(event) => {
-                    if (confirmExternal) openMenu(item.rawUrl, event);
-                  }}
+                  onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -758,7 +791,7 @@ export function ResMediaGallery({
                   onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
                   onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
                 >
-                  クリックして画像を取得
+                  {wasDiscarded ? "削除されました" : "クリックして画像を取得"}
                 </button>
               );
             }
@@ -769,6 +802,7 @@ export function ResMediaGallery({
                 href={item.rawUrl}
                 className={`res__thumb res__thumb--image${isBlurred ? " res__thumb--blurred" : ""}`}
                 style={thumbStyle}
+                onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
@@ -963,6 +997,7 @@ export function ResMediaGallery({
                   onUrlClick={onUrlClick}
                   onMiddleMouseDown={handleMiddleMouseDown}
                   onAuxClick={handleMiddleAuxClick}
+                  onImageContextMenu={openImageContextMenu}
                 />
               ) : (
                 <TwitterPostFallback
@@ -997,7 +1032,7 @@ export function ResMediaGallery({
           ) : null}
         </div>
       )}
-      {confirmExternal && menu}
+      {menu}
     </>
   );
 }
