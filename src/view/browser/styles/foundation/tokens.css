@@ -73,6 +73,8 @@
 
   /* Reference palette: dark theme. Semantic tokens select these in themes.css. */
   --ref-color-dark-neutral-0: #202124;
+  /* dark-neutral-0 に白を5%混ぜた面の色。ホバーで面をわずかに明るくする。 */
+  --ref-color-dark-surface-hover: #2b2c2f;
   --ref-color-dark-neutral-50: #292a2d;
   --ref-color-dark-neutral-100: #35363a;
   --ref-color-dark-neutral-200: #292a2d;

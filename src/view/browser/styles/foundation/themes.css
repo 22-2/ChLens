@@ -19,6 +19,7 @@
   --sys-debate-blue-glow: var(--ref-debate-blue-glow);
   --sys-debate-red-glow: var(--ref-debate-red-glow);
   --sys-color-surface: var(--ref-color-neutral-0);
+  --sys-color-surface-hover: var(--ref-color-neutral-0);
   --sys-color-surface-muted: var(--ref-color-neutral-100);
   --sys-color-dialog-surface: var(--ref-color-neutral-0);
   --sys-color-dialog-backdrop: var(--ref-color-alpha-black-40);
@@ -39,6 +40,8 @@
   --sys-color-placeholder: var(--ref-color-neutral-500);
   --sys-color-selection: var(--ref-color-blue-100);
   --sys-color-accent: var(--ref-color-blue-600);
+  /* タブ列で選択中のタブを示す下線。暗い背景でも見えるよう、テーマごとに明るさを決める。 */
+  --sys-color-tab-indicator: var(--ref-color-blue-600);
   --sys-color-accent-hover: var(--ref-color-blue-700);
   --sys-color-evidence: var(--ref-color-blue-700);
   --sys-color-accent-fg: var(--ref-color-neutral-0);
@@ -138,6 +141,7 @@
 :root[data-theme="dark"],
 .browser-shell[data-theme="dark"] {
   --sys-color-surface: var(--ref-color-dark-neutral-0);
+  --sys-color-surface-hover: var(--ref-color-dark-surface-hover);
   --sys-color-surface-muted: var(--ref-color-dark-neutral-100);
   --sys-color-dialog-surface: var(--ref-color-dark-neutral-50);
   --sys-color-dialog-backdrop: var(--ref-color-alpha-black-60);
@@ -158,6 +162,7 @@
   --sys-color-placeholder: var(--ref-color-dark-neutral-400);
   --sys-color-selection: var(--ref-color-alpha-dark-blue-40);
   --sys-color-accent: var(--ref-color-dark-blue-600);
+  --sys-color-tab-indicator: var(--ref-color-dark-blue-300);
   --sys-color-accent-hover: var(--ref-color-dark-blue-700);
   --sys-color-evidence: var(--ref-color-dark-blue-300);
   --sys-color-accent-fg: var(--ref-color-neutral-0);

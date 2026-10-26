@@ -58,14 +58,31 @@
   gap: 0;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: none;
+  /* 変更理由: 大量のタブは、ホイールの切り替えと競合しない明示的なスクロール手段が必要なため、
+     水平・垂直どちらでも細いスクロールバーを出して、見えないタブへ移動できるようにする。 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--sys-color-border) transparent;
   padding-right: 4px;
 }
 
+/* 変更理由: 同じ要素で縦スクロール（width）と横スクロール（height）を使い分ける。
+   水平はバーの高さを削ると見えるタブが増えるため細く、垂直は掴みやすいよう太くする。 */
 .tab-list::-webkit-scrollbar {
+  width: var(--sys-space-3);
+  height: var(--sys-space-1);
+}
+
+.tab-list::-webkit-scrollbar-button {
   display: none;
-  width: 0;
-  height: 0;
+}
+
+.tab-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tab-list::-webkit-scrollbar-thumb {
+  border-radius: var(--sys-radius-pill);
+  background: var(--sys-color-border);
 }
 
 .tab {
@@ -75,7 +92,9 @@
   align-items: center;
   min-width: 72px;
   max-width: 180px;
-  height: var(--sys-space-12);
+  /* 変更理由: 固定高さだと横スクロールバーの分だけタブが下へはみ出し、下線がバーに隠れる。
+     一覧の内側の高さに合わせて、スクロールバーの上でタブが収まるようにする。 */
+  align-self: stretch;
   padding: 0 var(--sys-space-4) 0 var(--sys-space-5);
   border: 0;
   border-right: 1px solid var(--sys-color-border);
@@ -96,7 +115,7 @@
   flex-grow: 0;
   max-width: 240px;
   background: var(--sys-color-surface);
-  border-bottom-color: var(--sys-color-accent);
+  border-bottom-color: var(--sys-color-tab-indicator);
   color: var(--sys-color-text);
 }
 
@@ -300,7 +319,7 @@
 .tab-bar--vertical .tab--active {
   max-width: 100%;
   border-bottom-color: var(--sys-color-border);
-  border-left-color: var(--sys-color-accent);
+  border-left-color: var(--sys-color-tab-indicator);
 }
 
 .tab-bar--vertical .tab--dragging {
