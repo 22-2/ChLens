@@ -15,11 +15,13 @@ import { useMediaViewerStore } from "../browser/use-media-viewer-store";
 import { MediaViewerContainer } from "./MediaViewerContainer";
 
 const mocks = vi.hoisted(() => ({
+  focusAuxiliaryWindow: vi.fn(),
   openAuxiliaryWindow: vi.fn(),
   createAuxiliaryWindowRoot: vi.fn(),
 }));
 
 vi.mock("src/features/auxiliary-window/browser/use-auxiliary-window", () => ({
+  focusAuxiliaryWindow: mocks.focusAuxiliaryWindow,
   openAuxiliaryWindow: mocks.openAuxiliaryWindow,
 }));
 
