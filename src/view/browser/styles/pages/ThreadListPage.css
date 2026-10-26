@@ -49,6 +49,30 @@
   font-size: var(--sys-font-size-md);
   border-bottom: 1px solid var(--sys-color-warning-border);
 }
+
+.thread-list-page__snapshots {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sys-space-3);
+  padding: var(--sys-space-2) var(--sys-space-4);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+
+.thread-list-page__snapshots label {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+}
+
+.thread-list-page__snapshots select {
+  padding: var(--sys-space-1) var(--sys-space-3);
+  border: 1px solid var(--sys-color-input-border);
+  border-radius: var(--sys-radius-sm);
+  background: var(--sys-color-input-bg);
+  color: var(--sys-color-text);
+}
 .thread-list-view {
   min-height: 100%;
 }

@@ -5,6 +5,7 @@ import {
   getThreadListCache,
   setThreadListCache,
 } from "src/features/thread-list/ui/thread-list-shared";
+import { saveThreadListSnapshot } from "src/features/thread-list/ui/thread-list-snapshots";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import { consumeManualRefresh } from "src/view/browser/utils/manual-refresh";
@@ -16,6 +17,7 @@ interface UseThreadListDataOptions {
   refreshKey: number;
   manualRefreshScopeKey: string;
   autoRefreshRequestRef: MutableRefObject<{ boardUrl: string; refreshKey: number } | null>;
+  onSnapshotSaved: () => void;
   /** 板を開いた時刻。取得完了の時刻で閲覧日時を進めないために参照する。 */
   visitedBoardRef: MutableRefObject<{ url: string; lastVisited: number } | null>;
   /** 取得確認後の保存へ引き継ぐ、解決済みの板名。 */
@@ -33,6 +35,7 @@ export function useThreadListData({
   refreshKey,
   manualRefreshScopeKey,
   autoRefreshRequestRef,
+  onSnapshotSaved,
   visitedBoardRef,
   resolvedBoardTitlesRef,
 }: UseThreadListDataOptions) {
@@ -82,6 +85,8 @@ export function useThreadListData({
         // 変更理由: 注意メッセージ付きの空結果で直前の正常キャッシュを上書きすると、
         // 戻る操作時に復元できず誤警告だけが残るため、失敗相当の空結果は保存しない。
         void setThreadListCache(boardUrl, result.threads);
+        // 取得できた一覧だけを履歴に残し、警告付きの空結果は保存しない。
+        void saveThreadListSnapshot(boardUrl, result.threads).then(onSnapshotSaved);
       }
       // 戻る操作直後は「取得成功 + 注意メッセージ」が返る場合があるため、
       // 一覧を描画できる件数がある間はエラー文言を出さずUIの連続性を優先する。
@@ -119,6 +124,7 @@ export function useThreadListData({
   }, [
     autoRefreshRequestRef,
     manualRefreshScopeKey,
+    onSnapshotSaved,
     boardUrl,
     refreshKey,
     visitedBoardRef,

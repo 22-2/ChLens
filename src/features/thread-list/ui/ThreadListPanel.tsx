@@ -28,6 +28,7 @@ import {
   type ThreadListSortPreference,
   writeThreadListSortPreference,
 } from "src/features/thread-list/ui/thread-list-shared";
+import { saveThreadListSnapshot } from "src/features/thread-list/ui/thread-list-snapshots";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
@@ -236,6 +237,10 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       }
       setThreads(result.threads);
       void setThreadListCache(descriptor.boardUrl, result.threads);
+      if (result.threads.length > 0 || !result.message) {
+        // 下部パネルからの更新も同じ板の履歴に残す。
+        void saveThreadListSnapshot(descriptor.boardUrl, result.threads);
+      }
       if (result.message && result.threads.length === 0) {
         setError(result.message);
       }
