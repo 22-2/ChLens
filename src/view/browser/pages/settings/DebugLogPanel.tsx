@@ -12,6 +12,7 @@ import { container } from "src/service-container/index";
 import { SettingsGroup, SettingsGroupActions } from "src/view/browser/pages/settings/SettingsGroup";
 import { Button } from "src/view/browser/ui/Button";
 import { SettingRow } from "src/view/browser/ui/FormControls";
+import { downloadBlob } from "src/view/browser/utils/blob-download";
 import { copyText } from "src/view/browser/utils/clipboard";
 
 const logger = createLogger("view/settings");
@@ -78,12 +79,7 @@ export function DebugLogPanel() {
     setBusy(true);
     try {
       const blob = new Blob([await readAllText()], { type: "text/plain;charset=utf-8" });
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = buildDebugLogFilename();
-      anchor.click();
-      URL.revokeObjectURL(objectUrl);
+      downloadBlob(blob, buildDebugLogFilename());
       container.toast.success("デバッグログを保存しました");
     } catch (error) {
       logger.error("デバッグログの保存に失敗しました", error);

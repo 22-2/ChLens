@@ -14,6 +14,7 @@ import {
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
+import { downloadBlob } from "src/view/browser/utils/blob-download";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
@@ -410,15 +411,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
       );
       const blobBytes = new Uint8Array(encoded);
       const blob = new Blob([blobBytes.buffer], { type: "text/plain;charset=shift_jis" });
-      const objectUrl = URL.createObjectURL(blob);
-      try {
-        const anchor = document.createElement("a");
-        anchor.href = objectUrl;
-        anchor.download = "kakikomi.txt";
-        anchor.click();
-      } finally {
-        URL.revokeObjectURL(objectUrl);
-      }
+      downloadBlob(blob, "kakikomi.txt");
       container.toast.success("書き込み履歴をkakikomi.txtへエクスポートしました");
     } catch (error) {
       logger.error("kakikomi.txtのエクスポートに失敗しました", error);

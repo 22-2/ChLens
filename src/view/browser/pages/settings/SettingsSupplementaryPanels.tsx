@@ -17,6 +17,7 @@ import { Button } from "src/view/browser/ui/Button";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { SettingRow } from "src/view/browser/ui/FormControls";
 import { Spinner } from "src/view/browser/ui/Spinner";
+import { downloadBlob } from "src/view/browser/utils/blob-download";
 import {
   readBookmarkFolderName,
   readConfiguredBookmarkFolderId,
@@ -124,12 +125,7 @@ export function SettingsSupplementaryPanels({
         includeSession: includeSessionInExport,
       });
 
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = buildDataExportFilename();
-      anchor.click();
-      URL.revokeObjectURL(objectUrl);
+      downloadBlob(blob, buildDataExportFilename());
 
       container.toast.success("データをzipでエクスポートしました");
     } catch (error) {
