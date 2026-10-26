@@ -47,6 +47,12 @@ function adjustPopupOverflow(
   targetDocument: Document,
 ): void {
   const rect = el.getBoundingClientRect();
+  // 変更理由: 非表示タブ（display:none）の中では寸法も座標も0になり、左上にはみ出していると誤判定して
+  // 位置を margin へ書き換えていた。表示された時のResizeObserverで正しい寸法を測り直せば足りるので、
+  // 寸法が無い間は補正せず、保存されている位置をそのまま残す。
+  if (rect.width === 0 && rect.height === 0) {
+    return;
+  }
   const viewport = getPopupViewportBounds(targetWindow, targetDocument);
   // offsetParent の viewport 上の位置を取得し、absolute 座標系での補正量を計算する。
   // offsetParent が null (body 直下など) の場合は {left:0, top:0} とみなす。

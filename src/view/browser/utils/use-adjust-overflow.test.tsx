@@ -283,4 +283,79 @@ describe("useAdjustOverflow", () => {
     expect(popup.style.top).toBe("588px");
     getBoundingClientRectSpy.mockRestore();
   });
+
+  it("非表示の間は位置を書き換えず、表示後も元の位置を保つ", () => {
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: 1280,
+    });
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 720,
+    });
+
+    // 変更理由: タブ切り替えで display:none になると、寸法0のrectが返り左上にはみ出していると誤判定されていた。
+    let hidden = false;
+    let triggerResizeObserver: (() => void) | undefined;
+    class ResizeObserverStub {
+      constructor(callback: ResizeObserverCallback) {
+        triggerResizeObserver = () => callback([], this as unknown as ResizeObserver);
+      }
+
+      observe(): void {}
+
+      disconnect(): void {}
+    }
+    vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+
+    const getBoundingClientRectSpy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function mockGetBoundingClientRect(this: HTMLElement) {
+        if (this.dataset.testid === "popup" && hidden) {
+          return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 } as DOMRect;
+        }
+        if (this.dataset.testid === "popup") {
+          const left = Number.parseFloat(this.style.left);
+          const top = Number.parseFloat(this.style.top);
+          return {
+            left,
+            top,
+            right: left + 200,
+            bottom: top + 100,
+            width: 200,
+            height: 100,
+          } as DOMRect;
+        }
+        return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 } as DOMRect;
+      });
+
+    function Harness() {
+      const ref = useRef<HTMLDivElement>(null);
+      useAdjustOverflow(ref, 8);
+
+      return <div ref={ref} data-testid="popup" style={{ left: 300, top: 400 }} />;
+    }
+
+    const { getByTestId } = render(<Harness />);
+    const popup = getByTestId("popup") as HTMLDivElement;
+    expect(popup.style.left).toBe("300px");
+    expect(popup.style.top).toBe("400px");
+
+    // タブを切り替えて非表示になり、寸法0でResizeObserverが通知される。
+    hidden = true;
+    act(() => {
+      triggerResizeObserver?.();
+    });
+    expect(popup.style.left).toBe("300px");
+    expect(popup.style.top).toBe("400px");
+
+    // 表示に戻ると、元の位置のまま再測定されて位置は変わらない。
+    hidden = false;
+    act(() => {
+      triggerResizeObserver?.();
+    });
+    expect(popup.style.left).toBe("300px");
+    expect(popup.style.top).toBe("400px");
+    getBoundingClientRectSpy.mockRestore();
+  });
 });
