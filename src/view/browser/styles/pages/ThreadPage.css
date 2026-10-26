@@ -163,21 +163,22 @@
   outline-offset: 2px;
 }
 
+/* 変更理由: スクロール操作を見つけやすくするため、下へジャンプも青い主操作色に揃える。 */
 .thread-page__floating-action--jump {
   width: 40px;
   height: 40px;
   min-height: 40px;
   padding: 0;
-  border-color: var(--sys-color-border);
-  background: var(--sys-color-surface);
-  color: var(--sys-color-text-muted);
+  border-color: var(--sys-color-accent);
+  background: var(--sys-color-accent);
+  color: var(--sys-color-accent-fg);
   transform: translateX(-100%);
 }
 
 .thread-page__floating-action--jump:hover {
-  border-color: var(--sys-color-accent);
-  background: var(--sys-color-surface-muted);
-  color: var(--sys-color-accent);
+  border-color: var(--sys-color-accent-hover);
+  background: var(--sys-color-accent-hover);
+  color: var(--sys-color-accent-fg);
 }
 
 /*

@@ -1,4 +1,4 @@
-import { ArrowDown, RefreshCw } from "lucide-react";
+import { ArrowDown, ArrowUp, RefreshCw } from "lucide-react";
 import React, { type RefObject, useCallback, useEffect, useState } from "react";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
@@ -19,6 +19,7 @@ interface ScrollFloatingLayout {
   panelLeft: number;
   panelRight: number;
   panelBottom: number;
+  isFarFromTop: boolean;
   distanceToBottom: number;
   isAtBottom: boolean;
   isSlightlyAboveBottom: boolean;
@@ -62,6 +63,7 @@ function isSameLayout(left: ScrollFloatingLayout | null, right: ScrollFloatingLa
     left.panelLeft === right.panelLeft &&
     left.panelRight === right.panelRight &&
     left.panelBottom === right.panelBottom &&
+    left.isFarFromTop === right.isFarFromTop &&
     left.distanceToBottom === right.distanceToBottom &&
     left.isAtBottom === right.isAtBottom &&
     left.isSlightlyAboveBottom === right.isSlightlyAboveBottom &&
@@ -135,6 +137,8 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         panelLeft: rect.left,
         panelRight: rect.right,
         panelBottom: rect.bottom,
+        // 上端から十分離れた位置でだけ戻りボタンを出し、短いスクロールでは本文を隠さない。
+        isFarFromTop: currentScrollContainer.scrollTop > NEAR_BOTTOM_DISTANCE,
         distanceToBottom,
         isAtBottom,
         // 「ちょっとだけ上」は固定値とviewport高さの大きい方にして、
@@ -193,6 +197,16 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
     scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: "auto" });
   }, [rootRef, viewWindow]);
 
+  const scrollToTop = useCallback(() => {
+    const root = rootRef.current;
+    const scrollContainer = root ? getScrollContainer(root, viewWindow) : null;
+    if (!scrollContainer) {
+      return;
+    }
+
+    scrollContainer.scrollTo({ top: 0, behavior: "auto" });
+  }, [rootRef, viewWindow]);
+
   if (!layout || !isActive || isFilterEnabled || loading || expired || responseCount === 0) {
     return null;
   }
@@ -236,6 +250,19 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
           onClick={scrollToBottom}
         >
           <ArrowDown size={18} aria-hidden="true" />
+        </button>
+      )}
+
+      {layout.isFarFromTop && (
+        <button
+          type="button"
+          className="thread-page__floating-action thread-page__floating-action--jump"
+          style={{ left: `${jumpLeft}px`, bottom: `${jumpBottom + 48}px` }}
+          aria-label="上へジャンプ"
+          title="上へジャンプ"
+          onClick={scrollToTop}
+        >
+          <ArrowUp size={18} aria-hidden="true" />
         </button>
       )}
     </>
