@@ -1,21 +1,28 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  clampTabBarWidth,
+  TAB_BAR_WIDTH_DEFAULT,
+  type TabBarOrientation,
+} from "src/features/tabs/browser/tab-bar-layout";
+import {
   persistConfigValue,
   readConfigValue,
   subscribeConfigKeys,
 } from "src/view/browser/utils/config-setting";
 
-export type TabBarOrientation = "horizontal" | "vertical";
+// 配置・幅の定数は表示部品からも使うため tab-bar-layout に置き、ここからも従来どおり参照できるようにする。
+export {
+  clampTabBarWidth,
+  TAB_BAR_COLLAPSED_WIDTH,
+  TAB_BAR_WIDTH_DEFAULT,
+  TAB_BAR_WIDTH_MAX,
+  TAB_BAR_WIDTH_MIN,
+  type TabBarOrientation,
+} from "src/features/tabs/browser/tab-bar-layout";
 
 export const TAB_BAR_ORIENTATION_CONFIG_KEY = "tab_bar_orientation";
 export const TAB_BAR_COLLAPSED_CONFIG_KEY = "tab_bar_collapsed";
 export const TAB_BAR_WIDTH_CONFIG_KEY = "tab_bar_width";
-
-export const TAB_BAR_WIDTH_DEFAULT = 208;
-export const TAB_BAR_WIDTH_MIN = 160;
-export const TAB_BAR_WIDTH_MAX = 280;
-// 変更理由: 簡易表示の固定幅。縮小中のリサイズ開始位置やドラッグ上限の基準にする。
-export const TAB_BAR_COLLAPSED_WIDTH = 48;
 
 function parseOrientation(raw: string | null | undefined): TabBarOrientation {
   // 変更理由: 垂直タブバー導入前の既存環境や未知値では水平として扱い、
@@ -45,14 +52,6 @@ export function useTabBarOrientation(): TabBarOrientation {
   );
 
   return orientation;
-}
-
-export function clampTabBarWidth(raw: number): number {
-  // 変更理由: ドラッグ中や手動編集で範囲外の値が来ても、レイアウトが破綻しない幅に丸める。
-  if (!Number.isFinite(raw)) {
-    return TAB_BAR_WIDTH_DEFAULT;
-  }
-  return Math.min(TAB_BAR_WIDTH_MAX, Math.max(TAB_BAR_WIDTH_MIN, Math.round(raw)));
 }
 
 function parseTabBarWidth(raw: string | null | undefined): number {
