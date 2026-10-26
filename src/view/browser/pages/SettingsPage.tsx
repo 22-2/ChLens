@@ -64,10 +64,10 @@ function toBooleanValue(value: SettingsFormValue): boolean {
   return value === true;
 }
 
-// 統合してなくなったカテゴリの古い保存値とページリンクを、移った先のカテゴリへ案内する。
-// サムネイルは表示へ、「その他」の中心だった bbsmenu は板へ移した。
+// 統合・分割でなくなったカテゴリの古い保存値とページリンクを、移った先のカテゴリへ案内する。
+// 旧サムネイルカテゴリの設定は画像カテゴリへ、「その他」の中心だった bbsmenu は板へ移した。
 const LEGACY_SECTION_IDS: Readonly<Record<string, SettingsSectionId>> = {
-  thumbnail: "display",
+  thumbnail: "images",
   other: "site-board",
 };
 

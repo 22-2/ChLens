@@ -222,11 +222,12 @@ describe("設定項目の置き場所", () => {
     );
   });
 
-  it("画像の手動取得を外部リンク確認とは別の表示設定として扱う", () => {
+  it("画像の取得とぼかし設定を画像カテゴリにまとめる", () => {
     const sections = getSettingsSections(false);
+    const images = sections.find((section) => section.id === "images");
     const display = sections.find((section) => section.id === "display");
     const general = sections.find((section) => section.id === "general");
-    const manualImageSetting = display?.fields.find(
+    const manualImageSetting = images?.fields.find(
       (field) => "key" in field && field.key === "manual_image_loading",
     );
 
@@ -235,6 +236,12 @@ describe("設定項目の置き場所", () => {
       key: "manual_image_loading",
       title: "画像をクリックしてから取得する",
     });
+    expect(images?.fields.map((field) => ("key" in field ? field.key : field.id))).toEqual(
+      expect.arrayContaining(["image_blur", "image_blur_word", "manual_image_loading"]),
+    );
+    expect(display?.fields.some((field) => "key" in field && field.key.startsWith("image_"))).toBe(
+      false,
+    );
     expect(
       general?.fields.some((field) => "key" in field && field.key === "manual_image_loading"),
     ).toBe(false);
@@ -301,6 +308,7 @@ describe("設定カテゴリの見出しごとのまとめ", () => {
     expect(getSettingsSections(true).map((section) => section.title)).toEqual([
       "一般",
       "表示",
+      "画像",
       "自動更新・次スレ",
       "NG",
       "実況",

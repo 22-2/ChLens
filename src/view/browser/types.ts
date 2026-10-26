@@ -94,6 +94,7 @@ export type Page =
 export type SettingsSectionId =
   | "general"
   | "display"
+  | "images"
   | "site-board"
   | "reload"
   | "overlay"

@@ -4,6 +4,7 @@ import {
   Bug,
   Eye,
   Globe2,
+  Image,
   MessageCircle,
   RefreshCw,
   Settings,
@@ -185,11 +186,11 @@ const ALL_SETTINGS_SECTIONS = [
       // },
     ],
   ),
-  // 変更理由: タブバーの配置・密度も画面の見た目に関わるため、テーマやサムネイルと同じ場所へまとめる。
+  // 変更理由: 画面全体の見た目や操作に関する設定を、メディアの取得・ぼかし設定から分けて見つけやすくする。
   defineSection(
     "display",
     "表示",
-    "テーマやタブバー、タイトルバー、サムネイルなど画面の見た目を調整します。",
+    "テーマやタブバー、タイトルバーなど画面の見た目を調整します。",
     <Eye size={20} />,
     [
       {
@@ -247,6 +248,17 @@ const ALL_SETTINGS_SECTIONS = [
         description:
           "ONにすると、マウスをポップアップから外しても閉じず、外側をクリックしたときに閉じます。",
       },
+    ],
+    {
+      supplementaryPanelIds: ["titleBarButtonSettings"],
+    },
+  ),
+  defineSection(
+    "images",
+    "画像",
+    "画像の取得方法と、サムネイルに適用するぼかしを調整します。",
+    <Image size={20} />,
+    [
       {
         kind: "divider",
         id: "thumbnails",
@@ -276,9 +288,6 @@ const ALL_SETTINGS_SECTIONS = [
           "ONにすると、画像やサムネイルはプレースホルダーで表示され、クリック後に取得します。外部リンクを開く前の確認設定とは独立しています。",
       },
     ],
-    {
-      supplementaryPanelIds: ["titleBarButtonSettings"],
-    },
   ),
   defineSection(
     "reload",
@@ -508,6 +517,7 @@ export const SETTINGS_SECTIONS = getSettingsSections(isTauriRuntime());
 const SETTINGS_SECTION_GROUP_OF = {
   general: "app",
   display: "app",
+  images: "browsing",
   "site-board": "browsing",
   reload: "browsing",
   overlay: "browsing",
