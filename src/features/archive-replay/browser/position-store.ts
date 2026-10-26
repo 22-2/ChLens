@@ -22,3 +22,38 @@ export function isArchiveReplayThread(
       normalizeArchiveReplayThreadUrl(threadUrl)
   );
 }
+
+export interface ArchiveReplayThreadCapabilities {
+  /** 再生位置に対応する専用ThreadViewかどうか。 */
+  isReadOnly: boolean;
+  canRefresh: boolean;
+  canAutoRefresh: boolean;
+  canAutoAdvance: boolean;
+  canWrite: boolean;
+  canControlLiveOverlay: boolean;
+  canShowMomentum: boolean;
+}
+
+/**
+ * 過去実況スレッドで許可する操作を一か所で決める。
+ * 位置同期だけでは通常スレッドのタブ状態が残る場合があるため、
+ * タブとURLの一致を確認してから読み取り専用の能力を返す。
+ */
+export function getArchiveReplayThreadCapabilities(
+  position: ArchiveReplayPosition | null,
+  tabId: string,
+  threadUrl: string,
+): ArchiveReplayThreadCapabilities {
+  const isReadOnly = isArchiveReplayThread(position, tabId, threadUrl);
+  const canInteractWithLiveThread = !isReadOnly;
+
+  return {
+    isReadOnly,
+    canRefresh: canInteractWithLiveThread,
+    canAutoRefresh: canInteractWithLiveThread,
+    canAutoAdvance: canInteractWithLiveThread,
+    canWrite: canInteractWithLiveThread,
+    canControlLiveOverlay: canInteractWithLiveThread,
+    canShowMomentum: canInteractWithLiveThread,
+  };
+}

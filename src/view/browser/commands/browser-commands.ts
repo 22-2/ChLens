@@ -209,8 +209,8 @@ export interface BrowserCommandContext {
   closedTabs: readonly Tab[];
   isTwoPane: boolean;
   isWritePanelOpen: boolean;
-  /** 過去実況の専用ThreadViewでは書き込みパネルを開かない。 */
-  isArchiveReplay?: boolean;
+  /** 現在のスレッドへ書き込めるか。未指定なら通常のスレッドとして扱う。 */
+  canWriteToThread?: boolean;
   dispatch: Dispatch<ScopedTabAction>;
   toggleWritePanel: () => void;
   openResponseJumpDialog: () => void;
@@ -600,7 +600,7 @@ const THREAD_FILTER_MODE_COMMANDS: readonly BrowserCommandDefinition[] = [
     keywords: ["人気", "popular", "絞り込み", "フィルタ"],
     group: "page",
     icon: Filter,
-    when: ({ viewPage, isArchiveReplay }) => viewPage.type === "thread" && !isArchiveReplay,
+    when: ({ viewPage }) => viewPage.type === "thread",
     run: (context) => dispatchThreadFilterModeToggle(context, "popular"),
   },
   {
@@ -944,8 +944,12 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["投稿", "write", "レス"],
     group: "page",
     icon: PenLine,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: ({ toggleWritePanel }) => toggleWritePanel(),
+    when: ({ viewPage, canWriteToThread }) =>
+      viewPage.type === "thread" && canWriteToThread !== false,
+    run: ({ canWriteToThread, toggleWritePanel }) => {
+      if (canWriteToThread === false) return;
+      toggleWritePanel();
+    },
   },
   {
     id: "page.toggle-bookmark",

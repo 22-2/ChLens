@@ -1,7 +1,7 @@
 import { PenLine } from "lucide-react";
 import React from "react";
 import {
-  isArchiveReplayThread,
+  getArchiveReplayThreadCapabilities,
   useArchiveReplayPositionStore,
 } from "src/features/archive-replay/browser/position-store";
 import { useWriteSessionControls } from "src/features/write/browser/use-write-session";
@@ -14,14 +14,15 @@ export const WritePanelToggleItem: React.FC = () => {
   const { isOpen, activePanelTabId, togglePanel, requestWritePanelFocus } = useBottomPanel();
   const { viewPage, viewTab } = useTabStore();
   const replayPosition = useArchiveReplayPositionStore((state) => state.position);
+  const threadCapabilities =
+    viewPage.type === "thread"
+      ? getArchiveReplayThreadCapabilities(replayPosition, viewTab.id, viewPage.threadUrl)
+      : null;
   const { isWindowOpen, openWriteWindow, selectThread, requestWriteWindowFocus } =
     useWriteSessionControls();
 
   // 書き込みUIは通常スレッド専用とし、過去実況の読み取り専用ThreadViewでも出さない。
-  if (
-    viewPage.type !== "thread" ||
-    isArchiveReplayThread(replayPosition, viewTab.id, viewPage.threadUrl)
-  ) {
+  if (viewPage.type !== "thread" || threadCapabilities?.canWrite !== true) {
     return null;
   }
 

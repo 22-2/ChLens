@@ -987,6 +987,25 @@ describe("browser commands", () => {
     }
   });
 
+  it("読み取り専用スレッドでは書き込みパネルコマンドを表示せず実行も拒否する", async () => {
+    const { context } = createContext({
+      type: "thread",
+      title: "テスト",
+      threadUrl: "https://example.com/test/read.cgi/board/1/",
+    });
+    const toggleWritePanel = vi.fn();
+    context.canWriteToThread = false;
+    context.toggleWritePanel = toggleWritePanel;
+
+    const command = resolveBrowserCommands(context).find(
+      (item) => item.id === "page.toggle-write-panel",
+    );
+
+    expect(command).toBeUndefined();
+    await expect(executeBrowserCommand("page.toggle-write-panel", context)).resolves.toBe(false);
+    expect(toggleWritePanel).not.toHaveBeenCalled();
+  });
+
   it("自動更新の切り替えは表示中ページの有効状態を反転したactionを送る", async () => {
     const page: Page = {
       type: "threadList",

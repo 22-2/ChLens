@@ -42,7 +42,15 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
 }));
 
 vi.mock("src/features/archive-replay/browser/position-store", () => ({
-  isArchiveReplayThread: (position: unknown) => position != null,
+  getArchiveReplayThreadCapabilities: (position: unknown) => ({
+    isReadOnly: position != null,
+    canRefresh: position == null,
+    canAutoRefresh: position == null,
+    canAutoAdvance: position == null,
+    canWrite: position == null,
+    canControlLiveOverlay: position == null,
+    canShowMomentum: position == null,
+  }),
   useArchiveReplayPositionStore: (selector: (state: { position: unknown }) => unknown) =>
     selector({ position: mocks.replayPosition }),
 }));

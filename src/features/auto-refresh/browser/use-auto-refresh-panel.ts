@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
-  isArchiveReplayThread,
+  getArchiveReplayThreadCapabilities,
   useArchiveReplayPositionStore,
 } from "src/features/archive-replay/browser/position-store";
 import {
@@ -110,9 +110,10 @@ export interface UseAutoRefreshPanelResult {
 export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
   const { viewPage, viewTab, dispatch } = useTabStore();
   const replayPosition = useArchiveReplayPositionStore((state) => state.position);
-  const isArchiveReplay =
-    viewPage.type === "thread" &&
-    isArchiveReplayThread(replayPosition, viewTab.id, viewPage.threadUrl);
+  const threadCapabilities =
+    viewPage.type === "thread"
+      ? getArchiveReplayThreadCapabilities(replayPosition, viewTab.id, viewPage.threadUrl)
+      : null;
   const scopeUrl = useMemo(() => {
     if (viewPage.type === "thread") {
       return viewPage.threadUrl;
@@ -161,14 +162,16 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
 
   const idleStopTimeoutOption = findIdleStopTimeoutOption(idleStopTimeoutValue);
 
-  const panelKind: AutoRefreshPanelKind = isArchiveReplay
-    ? null
-    : viewPage.type === "thread"
-      ? "thread"
-      : viewPage.type === "threadList"
-        ? "threadList"
-        : null;
-  const currentPageKey = isArchiveReplay ? null : getAutoRefreshPageKey(viewPage);
+  const panelKind: AutoRefreshPanelKind =
+    threadCapabilities?.canAutoRefresh === false
+      ? null
+      : viewPage.type === "thread"
+        ? "thread"
+        : viewPage.type === "threadList"
+          ? "threadList"
+          : null;
+  const currentPageKey =
+    threadCapabilities?.canAutoRefresh === false ? null : getAutoRefreshPageKey(viewPage);
   const isOnThread = panelKind === "thread";
   const isEnabled = currentPageKey != null && isAutoRefreshEnabledForPage(viewTab, viewPage);
   const intervalSec =

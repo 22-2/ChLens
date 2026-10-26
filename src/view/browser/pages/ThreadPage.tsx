@@ -3,7 +3,7 @@ import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import { recordDebugEvent } from "src/app/debug/debug-log";
 import { createLogger } from "src/app/logger";
 import {
-  isArchiveReplayThread,
+  getArchiveReplayThreadCapabilities,
   useArchiveReplayPositionStore,
 } from "src/features/archive-replay/browser/position-store";
 import {
@@ -120,9 +120,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const runTabCommand = useTabCommandRunner(tabId);
   const { window: viewWindow } = viewSurface;
   const replayPosition = useArchiveReplayPositionStore((state) => state.position);
-  const isArchiveReplay = isArchiveReplayThread(replayPosition, tabId, page.threadUrl);
+  const threadCapabilities = getArchiveReplayThreadCapabilities(
+    replayPosition,
+    tabId,
+    page.threadUrl,
+  );
+  const isArchiveReplay = threadCapabilities.isReadOnly;
   // 過去実況の専用ThreadViewは再生位置を表示する読み取り専用画面として扱い、更新を止める。
-  const isAutoRefreshEnabled = tabAutoRefreshEnabled && !isArchiveReplay;
+  const isAutoRefreshEnabled = tabAutoRefreshEnabled && threadCapabilities.canAutoRefresh;
   const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const rootRef = useRef<HTMLDivElement>(null);
   // 変更理由: refの代入だけでは再描画されないため、別窓の初回描画でもPortal先を
@@ -158,9 +163,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
   const requestManualRefresh = useCallback(() => {
-    if (isArchiveReplay) return;
+    if (!threadCapabilities.canRefresh) return;
     runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
-  }, [isArchiveReplay, manualRefreshScopeKey, runTabCommand]);
+  }, [manualRefreshScopeKey, runTabCommand, threadCapabilities.canRefresh]);
   useEffect(
     () =>
       subscribeThreadResJump((jump) => {
@@ -263,7 +268,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。RELOADへ集約することで、
   // ホイール更新も自動更新・更新ボタンと同じsubject.txt再確認の対象にする。
   const wheelPagination = useWheelPagination({
-    isEnabled: isActive && !isArchiveReplay,
+    isEnabled: isActive && threadCapabilities.canRefresh,
     isLoading: loading,
     cooldownScopeKey: manualRefreshScopeKey,
     containerRef: effectiveScrollContainerRef,
@@ -373,10 +378,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
   const autoRefreshPageKey = getAutoRefreshPageKey(page);
   useEffect(() => {
-    if (!isArchiveReplay || !tabAutoRefreshEnabled || autoRefreshPageKey == null) return;
+    if (threadCapabilities.canAutoRefresh || !tabAutoRefreshEnabled || autoRefreshPageKey == null)
+      return;
     // 既存タブが自動更新中でも、過去実況の位置へ切り替わった時点で保存状態も解除する。
     dispatch(tabActions.setAutoRefreshEnabled(false, autoRefreshPageKey));
-  }, [autoRefreshPageKey, dispatch, isArchiveReplay, tabAutoRefreshEnabled]);
+  }, [autoRefreshPageKey, dispatch, tabAutoRefreshEnabled, threadCapabilities.canAutoRefresh]);
   const isAutoRefreshStopped = tab ? isAutoRefreshStoppedForPage(tab, page) : false;
   // dat落ちや探索終了の停止記録は、不確定subject応答や別窓再マウントでも保持する。
   // 本文タイマーと次スレ探索を同時に止めるため、ThreadDataの取得結果とは別に扱う。
@@ -433,14 +439,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
 
   const handleEnableAutoRefresh = useCallback(() => {
     const pageKey = getAutoRefreshPageKey(page);
-    if (isArchiveReplay || pageKey == null) {
+    if (!threadCapabilities.canAutoRefresh || pageKey == null) {
       return;
     }
 
     // 既存の自動更新トグルと同じ状態経路を使い、フローティングボタンだけが
     // 別の更新条件を持たないようにする。ON直後の再取得と最下部同期はhookへ委譲する。
     dispatch(tabActions.setAutoRefreshEnabled(true, pageKey));
-  }, [dispatch, isArchiveReplay, page]);
+  }, [dispatch, page, threadCapabilities.canAutoRefresh]);
 
   const handleNextThreadSearchExhausted = useCallback(() => {
     if (autoRefreshPageKey == null) {
@@ -567,7 +573,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     selectPendingCandidate,
   } = useAutoNextThread({
     autoRefreshEnabled: isActiveAutoRefreshEnabled,
-    featureEnabled: isAutoNextThreadEnabled && !isArchiveReplay,
+    featureEnabled: isAutoNextThreadEnabled && threadCapabilities.canAutoAdvance,
     threadUrl: page.threadUrl,
     threadTitle: page.title,
     responseCount: responses.length,
@@ -765,7 +771,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       <ContextMenuNavigationActions
         canGoBack={canGoBack(navigationTab)}
         canGoForward={canGoForward(navigationTab)}
-        canRefresh={!isArchiveReplay && isPageRefreshable(page)}
+        canRefresh={threadCapabilities.canRefresh && isPageRefreshable(page)}
         onBack={() => {
           runTabCommand(TAB_COMMAND_IDS.BACK);
           closePopupById(menu.id);
@@ -780,7 +786,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         }}
       />
     ),
-    [closePopupById, isArchiveReplay, navigationTab, page, requestManualRefresh, runTabCommand],
+    [
+      closePopupById,
+      navigationTab,
+      page,
+      requestManualRefresh,
+      runTabCommand,
+      threadCapabilities.canRefresh,
+    ],
   );
 
   // 空白部分のダブルクリックによる更新。
@@ -797,11 +810,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       }
 
       // テキスト選択中はリロードしない
-      if (isArchiveReplay || viewWindow.getSelection()?.toString()) return;
+      if (!threadCapabilities.canRefresh || viewWindow.getSelection()?.toString()) return;
 
       requestManualRefresh();
     },
-    [isArchiveReplay, requestManualRefresh, viewWindow],
+    [requestManualRefresh, threadCapabilities.canRefresh, viewWindow],
   );
 
   const replayLine =
@@ -1039,7 +1052,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             rootRef={rootRef}
             isActive={isActive}
             isAutoRefreshEnabled={isAutoRefreshEnabled}
-            readOnly={isArchiveReplay}
+            readOnly={threadCapabilities.isReadOnly}
             isFilterEnabled={isFilterEnabled}
             loading={loading}
             expired={autoRefreshExpired}

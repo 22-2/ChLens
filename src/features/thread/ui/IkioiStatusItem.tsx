@@ -1,7 +1,7 @@
 import { Flame } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  isArchiveReplayThread,
+  getArchiveReplayThreadCapabilities,
   useArchiveReplayPositionStore,
 } from "src/features/archive-replay/browser/position-store";
 import { container } from "src/service-container/index";
@@ -255,22 +255,24 @@ export const IkioiStatusItem: React.FC = () => {
   const [momentumData, setMomentumData] = useState<MomentumGraphData | null>(null);
 
   const threadUrl = viewPage.type === "thread" ? viewPage.threadUrl : null;
-  const isArchiveReplay =
-    threadUrl != null && isArchiveReplayThread(replayPosition, viewTab.id, threadUrl);
+  const threadCapabilities =
+    threadUrl == null
+      ? null
+      : getArchiveReplayThreadCapabilities(replayPosition, viewTab.id, threadUrl);
   const reloadKey = viewTab.reloadKey;
   const {
     triggerRef: miniWindowTriggerRef,
     anchor: miniWindowAnchor,
     toggle: toggleMiniWindow,
     close: closeMiniWindow,
-  } = useMiniWindowTrigger(isArchiveReplay ? null : threadUrl);
+  } = useMiniWindowTrigger(threadCapabilities?.canShowMomentum ? threadUrl : null);
 
   useEffect(() => {
     if (threadUrl == null) {
       return;
     }
     // 変更理由: 過去実況はログを表示する読み取り専用画面なので、勢い計算用の再取得を行わない。
-    if (isArchiveReplay) return;
+    if (!threadCapabilities?.canShowMomentum) return;
 
     let alive = true;
 
@@ -310,7 +312,7 @@ export const IkioiStatusItem: React.FC = () => {
     return () => {
       alive = false;
     };
-  }, [isArchiveReplay, reloadKey, threadUrl]);
+  }, [reloadKey, threadCapabilities?.canShowMomentum, threadUrl]);
 
   const displayValue = useMemo(() => {
     if (loading && ikioi == null) {
@@ -322,7 +324,7 @@ export const IkioiStatusItem: React.FC = () => {
     return ikioi.toLocaleString();
   }, [ikioi, loading]);
 
-  if (threadUrl == null || isArchiveReplay) {
+  if (!threadCapabilities?.canShowMomentum) {
     return null;
   }
 

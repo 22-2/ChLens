@@ -17,7 +17,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  isArchiveReplayThread,
+  getArchiveReplayThreadCapabilities,
   useArchiveReplayPositionStore,
 } from "src/features/archive-replay/browser/position-store";
 import { usePageBookmark } from "src/features/bookmark/browser/use-page-bookmark";
@@ -158,10 +158,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // 変更理由: オムニバーの入力欄はボタン群とは別に、タイトルバー中央のピルと同じ位置へ出す。
   const [commandCenterSlot, setCommandCenterSlot] = useState<HTMLElement | null>(null);
 
+  // oxlint-disable-next-line react/set-state-in-effect -- shellはReactのcommit後にDOMへ接続されるため、DOMの受け口をstateへ同期する。
   useEffect(() => {
     setPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
   }, []);
 
+  // oxlint-disable-next-line react/set-state-in-effect -- pane別の受け口はReactのcommit後にDOMへ接続されるため、DOMの受け口をstateへ同期する。
   useEffect(() => {
     setTitleBarSlot(
       document.querySelector<HTMLElement>(`.title-bar__nav-slot[data-pane-id="${paneId}"]`),
@@ -182,10 +184,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     tabBarOrientation === "horizontal" && !isActivePane && !useTitleBarSlot;
 
   const replayPosition = useArchiveReplayPositionStore((state) => state.position);
-  const isArchiveReplay =
-    viewPage.type === "thread" &&
-    isArchiveReplayThread(replayPosition, viewTab.id, viewPage.threadUrl);
-  const currentAutoRefreshPageKey = isArchiveReplay ? null : getAutoRefreshPageKey(viewPage);
+  const threadCapabilities =
+    viewPage.type === "thread"
+      ? getArchiveReplayThreadCapabilities(replayPosition, viewTab.id, viewPage.threadUrl)
+      : null;
+  const currentAutoRefreshPageKey =
+    threadCapabilities?.canAutoRefresh === false ? null : getAutoRefreshPageKey(viewPage);
   const isCurrentPageAutoRefreshEnabled = isAutoRefreshEnabledForPage(viewTab, viewPage);
 
   const {
@@ -211,7 +215,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       closedTabs: state.closedTabs,
       isTwoPane,
       isWritePanelOpen: isPanelOpen,
-      isArchiveReplay,
+      canWriteToThread: threadCapabilities?.canWrite ?? false,
       dispatch,
       toggleWritePanel: () => togglePanel(BOTTOM_PANEL_WRITE_TAB_ID),
       openResponseJumpDialog,
@@ -224,7 +228,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     }),
     [
       dispatch,
-      isArchiveReplay,
       isPanelOpen,
       isTwoPane,
       openNextThreadSearchDialog,
@@ -239,6 +242,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       viewPage,
       viewSurface,
       viewTab,
+      threadCapabilities?.canWrite,
     ],
   );
   const { runningCommandIds, recentCommandIds, executeCommand } = useBrowserCommandRunner({
@@ -313,10 +317,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   );
 
   const handleRefresh = useCallback(() => {
-    if (isArchiveReplay) return;
+    if (threadCapabilities?.canRefresh === false) return;
     setRefreshMenuPosition(null);
     runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
-  }, [isArchiveReplay, manualRefreshScopeKey, runTabCommand]);
+  }, [manualRefreshScopeKey, runTabCommand, threadCapabilities?.canRefresh]);
 
   const openQuickAccessPage = useCallback(
     (page: QuickAccessPage) => {
@@ -461,6 +465,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     }
   }, [viewTab.id, viewPage.type]);
 
+  // oxlint-disable-next-line react/set-state-in-effect -- スレッド以外へ移動した際に古い更新メニュー位置を破棄する。
   useEffect(() => {
     if (viewPage.type !== "thread") {
       setRefreshMenuPosition(null);
@@ -500,7 +505,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             },
           ]
         : []),
-      ...(viewPage.type === "thread" && !isArchiveReplay
+      ...(viewPage.type === "thread" && threadCapabilities?.canWrite
         ? [
             {
               id: "open-write-panel",
@@ -560,7 +565,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     ],
     [
       viewPage.type,
-      isArchiveReplay,
+      threadCapabilities?.canWrite,
       activePanelTabId,
       canToggleFilter,
       openQuickAccessPage,
@@ -635,7 +640,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         ref={refreshButtonRef}
         type="button"
         className="nav-bar__menu-action"
-        disabled={!isPageRefreshable(viewPage) || isArchiveReplay || refreshCoolingDown}
+        disabled={
+          !isPageRefreshable(viewPage) ||
+          threadCapabilities?.canRefresh === false ||
+          refreshCoolingDown
+        }
         onClick={handleMenuRefresh}
         onContextMenu={handleRefreshContextMenu}
         title="更新"

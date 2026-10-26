@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { type ArchiveReplayPosition, isArchiveReplayThread } from "./position-store";
+import {
+  type ArchiveReplayPosition,
+  getArchiveReplayThreadCapabilities,
+  isArchiveReplayThread,
+} from "./position-store";
 
 const position: ArchiveReplayPosition = {
   version: 1,
@@ -32,5 +36,31 @@ describe("過去実況スレッドの判定", () => {
 
   it("同期位置がないときは通常表示として扱う", () => {
     expect(isArchiveReplayThread(null, "tab-replay", position.threadUrl)).toBe(false);
+  });
+});
+
+describe("過去実況スレッドの操作ポリシー", () => {
+  it("一致する再生スレッドでは閲覧だけを許可する", () => {
+    expect(getArchiveReplayThreadCapabilities(position, "tab-replay", position.threadUrl)).toEqual({
+      isReadOnly: true,
+      canRefresh: false,
+      canAutoRefresh: false,
+      canAutoAdvance: false,
+      canWrite: false,
+      canControlLiveOverlay: false,
+      canShowMomentum: false,
+    });
+  });
+
+  it("通常のスレッドでは既存の操作を許可する", () => {
+    expect(getArchiveReplayThreadCapabilities(position, "tab-normal", position.threadUrl)).toEqual({
+      isReadOnly: false,
+      canRefresh: true,
+      canAutoRefresh: true,
+      canAutoAdvance: true,
+      canWrite: true,
+      canControlLiveOverlay: true,
+      canShowMomentum: true,
+    });
   });
 });

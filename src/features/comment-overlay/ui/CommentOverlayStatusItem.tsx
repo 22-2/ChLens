@@ -3,7 +3,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import {
-  isArchiveReplayThread,
+  getArchiveReplayThreadCapabilities,
   useArchiveReplayPositionStore,
 } from "src/features/archive-replay/browser/position-store";
 import { toggleCommentOverlayFlow } from "src/features/comment-overlay/application/flow-toggle";
@@ -37,8 +37,10 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
   const flowChangingRef = useRef(false);
   const isTauri = isTauriRuntime();
   const threadUrl = viewPage.type === "thread" ? viewPage.threadUrl : null;
-  const isArchiveReplay =
-    threadUrl != null && isArchiveReplayThread(replayPosition, viewTab.id, threadUrl);
+  const threadCapabilities =
+    threadUrl == null
+      ? null
+      : getArchiveReplayThreadCapabilities(replayPosition, viewTab.id, threadUrl);
   // 変更理由: 別スレッドへ移動した後に、直前のスレッド向け操作が開いたままに
   // 見えないよう、ステータス項目の対象が変わるタイミングで小窓を閉じる。
   const {
@@ -77,7 +79,14 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
     openOverlayPlacementWindow(sourceWindow);
   }, [closeMiniWindow, miniWindowTriggerRef, openOverlayPlacementWindow]);
 
-  if (!isTauri || !isActive || isArchiveReplay || (threadUrl == null && !isRunning)) return null;
+  if (
+    !isTauri ||
+    !isActive ||
+    threadCapabilities?.canControlLiveOverlay === false ||
+    (threadUrl == null && !isRunning)
+  ) {
+    return null;
+  }
 
   const flowLabel = isFlowing ? "コメントを画面に流す: ON" : "コメントを画面に流す: OFF";
   const statusLabel =
