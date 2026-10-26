@@ -1,0 +1,5 @@
+.write-history-list-page__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--sys-space-2) var(--sys-space-4);
+}

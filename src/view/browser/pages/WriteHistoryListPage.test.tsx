@@ -13,15 +13,21 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockUseTabStore = vi.fn();
-const { messageOn, messageOff, writeHistoryGet } = vi.hoisted(() => ({
-  messageOn: vi.fn(),
-  messageOff: vi.fn(),
-  writeHistoryGet: vi.fn<(offset?: number, count?: number) => Promise<unknown[]>>(),
-}));
+const { messageOn, messageOff, writeHistoryGet, writeHistoryGetAll, toastSuccess, toastError } =
+  vi.hoisted(() => ({
+    messageOn: vi.fn(),
+    messageOff: vi.fn(),
+    writeHistoryGet: vi.fn<(offset?: number, count?: number) => Promise<unknown[]>>(),
+    writeHistoryGetAll: vi.fn<() => Promise<unknown[]>>(),
+    toastSuccess: vi.fn(),
+    toastError: vi.fn(),
+  }));
 const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
   cacheGetMock: vi.fn(),
   cachePutMock: vi.fn(),
 }));
+let originalCreateObjectURLDescriptor: PropertyDescriptor | undefined;
+let originalRevokeObjectURLDescriptor: PropertyDescriptor | undefined;
 
 vi.mock("src/app", () => ({
   platform: {
@@ -55,6 +61,11 @@ vi.mock("src/service-container/index", () => ({
     // 画面は書き込み履歴をサービスコンテナから読む。
     writeHistory: {
       get: writeHistoryGet,
+      getAll: writeHistoryGetAll,
+    },
+    toast: {
+      success: toastSuccess,
+      error: toastError,
     },
   },
 }));
@@ -63,14 +74,31 @@ describe("WriteHistoryListPage", () => {
   afterEach(() => {
     consumePendingThreadResJump("https://egg.5ch.io/test/read.cgi/software/1/");
     cleanup();
+    vi.restoreAllMocks();
+    if (originalCreateObjectURLDescriptor) {
+      Object.defineProperty(URL, "createObjectURL", originalCreateObjectURLDescriptor);
+    } else {
+      Reflect.deleteProperty(URL, "createObjectURL");
+    }
+    if (originalRevokeObjectURLDescriptor) {
+      Object.defineProperty(URL, "revokeObjectURL", originalRevokeObjectURLDescriptor);
+    } else {
+      Reflect.deleteProperty(URL, "revokeObjectURL");
+    }
   });
 
   beforeEach(() => {
+    originalCreateObjectURLDescriptor = Object.getOwnPropertyDescriptor(URL, "createObjectURL");
+    originalRevokeObjectURLDescriptor = Object.getOwnPropertyDescriptor(URL, "revokeObjectURL");
     cacheGetMock.mockReset();
     cacheGetMock.mockResolvedValue(undefined);
     cachePutMock.mockReset();
     mockUseTabStore.mockReset();
     writeHistoryGet.mockReset();
+    writeHistoryGetAll.mockReset();
+    writeHistoryGetAll.mockResolvedValue([]);
+    toastSuccess.mockReset();
+    toastError.mockReset();
     messageOn.mockReset();
     messageOff.mockReset();
 
@@ -106,6 +134,50 @@ describe("WriteHistoryListPage", () => {
     expect(await screen.findByText("本文")).toBeInTheDocument();
     expect(screen.getByText("これは書き込み本文です")).toBeInTheDocument();
     expect(screen.getByText("2026/05/03 09:08")).toBeInTheDocument();
+  });
+
+  it("すべての書き込み履歴をkakikomi.txtとしてダウンロードする", async () => {
+    writeHistoryGet.mockResolvedValueOnce([]);
+    writeHistoryGetAll.mockResolvedValueOnce([
+      {
+        url: "http://example.com/test/read.cgi/sample/1/",
+        title: "サンプルスレ",
+        name: "名無しさん",
+        mail: "sage",
+        message: "本文です",
+        date: new Date(2026, 4, 3, 9, 8, 7).getTime(),
+      },
+    ]);
+    const createObjectURL = vi.fn(() => "blob:kakikomi");
+    const revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, "createObjectURL", { configurable: true, value: createObjectURL });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revokeObjectURL });
+    const anchorClick = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    const createElement = vi.spyOn(document, "createElement");
+
+    render(<WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+
+    const exportButton = await screen.findByRole("button", {
+      name: "kakikomi.txtをエクスポート",
+    });
+    await act(async () => fireEvent.click(exportButton));
+    await waitFor(() => expect(toastSuccess).toHaveBeenCalledOnce());
+
+    const anchor = createElement.mock.results
+      .map(({ value }) => value)
+      .find(
+        (element): element is HTMLAnchorElement =>
+          element instanceof HTMLAnchorElement && element.download === "kakikomi.txt",
+      );
+    expect(writeHistoryGetAll).toHaveBeenCalledOnce();
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+    expect(anchor).toBeDefined();
+    expect(anchor?.href).toBe("blob:kakikomi");
+    expect(anchorClick).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:kakikomi");
+    expect(toastSuccess).toHaveBeenCalledWith("書き込み履歴をkakikomi.txtへエクスポートしました");
   });
 
   it("書き込み履歴フィルターバーをメニューイベントで開閉できる", async () => {

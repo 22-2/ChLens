@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { platform } from "src/app";
 import { createLogger } from "src/app/logger";
@@ -10,6 +11,7 @@ import {
   useTabDispatch,
   useTabViewState,
 } from "src/view/browser/state/tabs/use-tab-store";
+import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
@@ -222,6 +224,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   });
   const [entries, setEntries] = useState<WriteHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isExportingKakikomi, setIsExportingKakikomi] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [contextMenuState, setContextMenuState] = useState<{
     entry: WriteHistoryEntry;
@@ -257,6 +260,8 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   });
 
   const loadEntries = useCallback(async () => {
+    // 変更理由: effectから呼び出す場合も、状態更新をeffectの同期処理から切り離す。
+    await Promise.resolve();
     setLoading(true);
     setError(null);
     try {
@@ -283,7 +288,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   useEffect(() => {
     // 変更理由: ナビバー更新ボタンの RELOAD を受けて、
     // 書き込み履歴一覧でも明示的に最新データを再取得できるようにする。
-    void loadEntries();
+    void Promise.resolve().then(loadEntries);
   }, [loadEntries, refreshKey]);
 
   useEffect(() => {
@@ -387,6 +392,44 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     }
   }, []);
 
+  const exportKakikomiTxt = useCallback(async () => {
+    setIsExportingKakikomi(true);
+    try {
+      const rows = await container.writeHistory.getAll();
+      // 変更理由: Shift-JIS変換表はエクスポート時だけ読み込み、通常の画面起動を重くしない。
+      const { encodeKakikomiTxt } = await import("src/features/write/browser/kakikomi-export");
+      const encoded = encodeKakikomiTxt(
+        rows.map(({ url, title, name, mail, message, date }) => ({
+          url,
+          title,
+          name,
+          mail,
+          message,
+          date,
+        })),
+      );
+      const blobBytes = new Uint8Array(encoded);
+      const blob = new Blob([blobBytes.buffer], { type: "text/plain;charset=shift_jis" });
+      const objectUrl = URL.createObjectURL(blob);
+      try {
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = "kakikomi.txt";
+        anchor.click();
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+      container.toast.success("書き込み履歴をkakikomi.txtへエクスポートしました");
+    } catch (error) {
+      logger.error("kakikomi.txtのエクスポートに失敗しました", error);
+      container.toast.error(
+        error instanceof Error ? error.message : "kakikomi.txtのエクスポートに失敗しました",
+      );
+    } finally {
+      setIsExportingKakikomi(false);
+    }
+  }, []);
+
   // 変更理由: 前回の結果がある場合は「読み込み中」ではなく古い結果を表示し続ける。
   // 新しいデータの取得が完了したら自動的に新しい結果に置き換わる。
   if (loading && entries.length === 0) {
@@ -410,8 +453,18 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   }
 
   return (
-    <div className="thread-list-page">
+    <div className="thread-list-page write-history-list-page">
       {error && <div className="thread-list-page__notice">{error}</div>}
+      <div className="write-history-list-page__toolbar">
+        <Button
+          variant="subtle"
+          loading={isExportingKakikomi}
+          onClick={() => void exportKakikomiTxt()}
+        >
+          <Download size={16} />
+          kakikomi.txtをエクスポート
+        </Button>
+      </div>
       {isFilterOpen ? (
         <SearchBar
           query={searchQuery}
