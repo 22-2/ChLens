@@ -448,6 +448,9 @@ export const ThreadListPage: React.FC<Props> = ({
           case "heat":
             cmp = a.heat - b.heat;
             break;
+          case "createdAt":
+            cmp = a.thread.createdAt - b.thread.createdAt;
+            break;
         }
         return sortDirection === "asc" ? cmp : -cmp;
       });

@@ -116,6 +116,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+.thread-list__th--created-at {
+  width: 112px;
+  padding-right: 12px;
+  text-align: right;
+}
+
+.thread-list__created-at {
+  width: 112px;
+  padding: 6px 12px 6px 4px;
+  text-align: right;
+  color: var(--sys-color-table-muted);
+  white-space: nowrap;
+}
+
 .simple-data-table__history-board,
 .simple-data-table__writehistory-name,
 .simple-data-table__writehistory-mail {
@@ -310,7 +324,9 @@
 .simple-data-table__row--highlight .simple-data-table__num,
 .simple-data-table__row--highlight .simple-data-table__title,
 .simple-data-table__row--highlight .simple-data-table__count,
-.simple-data-table__row--highlight .simple-data-table__heat {
+.simple-data-table__row--highlight .simple-data-table__heat,
+.simple-data-table__row--highlight .thread-list__created-at,
+.thread-list__row--highlight .thread-list__created-at {
   color: inherit;
 }
 
@@ -318,6 +334,7 @@
 .thread-list__row--visited .thread-list__num,
 .thread-list__row--visited .thread-list__title,
 .thread-list__row--visited .thread-list__count,
-.thread-list__row--visited .thread-list__heat {
+.thread-list__row--visited .thread-list__heat,
+.thread-list__row--visited .thread-list__created-at {
   color: var(--sys-color-text-muted);
 }

@@ -423,6 +423,9 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
           case "heat":
             comparison = left.heat - right.heat;
             break;
+          case "createdAt":
+            comparison = left.thread.createdAt - right.thread.createdAt;
+            break;
         }
         return sortDirection === "asc" ? comparison : -comparison;
       });

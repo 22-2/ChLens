@@ -39,7 +39,13 @@ export async function setThreadListCache(boardUrl: string, threads: IThread[]): 
   }
 }
 
-export type ThreadListSortColumn = "num" | "title" | "resCount" | "unreadCount" | "heat";
+export type ThreadListSortColumn =
+  | "num"
+  | "title"
+  | "resCount"
+  | "unreadCount"
+  | "heat"
+  | "createdAt";
 export type ThreadListSortDirection = "asc" | "desc";
 export type ThreadListSortPreference = {
   column: ThreadListSortColumn | null;
@@ -83,7 +89,8 @@ export function isSortColumn(value: string): value is ThreadListSortColumn {
     value === "title" ||
     value === "resCount" ||
     value === "unreadCount" ||
-    value === "heat"
+    value === "heat" ||
+    value === "createdAt"
   );
 }
 
@@ -140,6 +147,48 @@ export function calcHeat(now: number, created: number, resCount: number): string
   if (!Number.isFinite(created) || created > now) return "0.0";
   const elapsed = Math.max((now - created) / 1000, 1) / (24 * 60 * 60);
   return (resCount / elapsed).toFixed(1);
+}
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("ja-JP", { numeric: "auto" });
+
+/** スレ一覧は相対時間を短く表示し、正確な時刻は列のツールチップで確認できるようにする。 */
+export function formatThreadCreatedAt(createdAt: number, now = Date.now()): string {
+  if (!Number.isFinite(createdAt) || createdAt <= 0) return "-";
+
+  const difference = createdAt - now;
+  const absoluteDifference = Math.abs(difference);
+  if (absoluteDifference < 60_000) {
+    return difference < 0 ? "たった今" : "まもなく";
+  }
+
+  let unit: Intl.RelativeTimeFormatUnit;
+  let unitMs: number;
+  if (absoluteDifference < 3_600_000) {
+    unit = "minute";
+    unitMs = 60_000;
+  } else if (absoluteDifference < 86_400_000) {
+    unit = "hour";
+    unitMs = 3_600_000;
+  } else if (absoluteDifference < 2_592_000_000) {
+    unit = "day";
+    unitMs = 86_400_000;
+  } else if (absoluteDifference < 31_536_000_000) {
+    unit = "month";
+    unitMs = 2_592_000_000;
+  } else {
+    unit = "year";
+    unitMs = 31_536_000_000;
+  }
+
+  return relativeTimeFormatter.format(Math.round(difference / unitMs), unit);
+}
+
+export function formatExactThreadCreatedAt(createdAt: number): string {
+  const date = new Date(createdAt);
+  if (!Number.isFinite(createdAt) || Number.isNaN(date.getTime())) return "-";
+
+  const pad2 = (value: number): string => value.toString().padStart(2, "0");
+  return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 }
 
 export function isThreadVisited(thread: Pick<IThread, "readState">): boolean {
@@ -223,5 +272,17 @@ export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
     cellClassName: "thread-list__heat",
     sortable: true,
     cell: ({ heat }) => heat.toFixed(1),
+  },
+  {
+    key: "createdAt",
+    header: "作成日時",
+    headerClassName: "thread-list__th--created-at",
+    cellClassName: "thread-list__created-at",
+    sortable: true,
+    cell: ({ thread }) => (
+      <span title={formatExactThreadCreatedAt(thread.createdAt)}>
+        {formatThreadCreatedAt(thread.createdAt)}
+      </span>
+    ),
   },
 ];
