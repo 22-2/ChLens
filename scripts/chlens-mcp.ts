@@ -22,11 +22,17 @@ import {
 } from "../src/mcp/protocol.ts";
 import { readDebateInstructions } from "./debate-instructions.ts";
 import { normalizeDebateFormats, saveDebateResult } from "./debate-result.ts";
-import { type BridgeRequester, createSharedBridge } from "./shared-mcp-bridge.ts";
+import {
+  type BridgeRequester,
+  createSharedBridge,
+  DAEMON_FLAG,
+  runBridgeDaemon,
+} from "./shared-mcp-bridge.ts";
 
 const POLL_TIMEOUT_MS = 25_000;
 const REQUEST_TIMEOUT_MS = 45_000;
 const CLIENT_TIMEOUT_MS = 90_000;
+const CLIENT_WAIT_MS = 30_000;
 // TOONはレス本文を含むため、一般的な500レス程度を1回で返せる余裕を持たせる。
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 const MCP_PROTOCOL_VERSION = "2025-06-18";
@@ -367,11 +373,26 @@ class ChromeBridgeBroker {
     pending.resolve(response);
   }
 
-  request(
+  /**
+   * Chromeの接続を最大CLIENT_WAIT_MS待つ。
+   *
+   * 変更理由: サーバーはチャットの利用に合わせて起動するため、起動直後はChrome拡張が
+   * まだ再接続していない。即失敗にせず、拡張側の再接続周期を覆う時間だけ待つ。
+   */
+  private async waitForActiveClient(): Promise<{ clientId: string; client: BridgeClient } | null> {
+    const deadline = Date.now() + CLIENT_WAIT_MS;
+    for (;;) {
+      const active = this.getActiveClient();
+      if (active || Date.now() >= deadline) return active;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+
+  async request(
     operation: BridgeOperation,
     params: ThreadReadParams | LogSearchParams | WriteHistoryParams | BrowsingHistoryParams,
   ): Promise<BridgeResponse> {
-    const client = this.getActiveClient();
+    const client = this.getActiveClient() ?? (await this.waitForActiveClient());
     if (!client) {
       return Promise.reject(
         new Error(
@@ -854,17 +875,24 @@ async function handleRpc(broker: BridgeRequester, request: JsonRpcRequest): Prom
   }
 }
 
-async function main(): Promise<void> {
-  const broker = createSharedBridge(() => {
-    const localBroker = new ChromeBridgeBroker();
-    const server = createServer((request, response) => {
-      void handleBridgeHttp(localBroker, request, response);
-    });
-    server.on("upgrade", (request, socket, head) => {
-      handleWebSocketUpgrade(localBroker, request, socket, head);
-    });
-    return { server, broker: localBroker };
+function createBridgeService() {
+  const localBroker = new ChromeBridgeBroker();
+  const server = createServer((request, response) => {
+    void handleBridgeHttp(localBroker, request, response);
   });
+  server.on("upgrade", (request, socket, head) => {
+    handleWebSocketUpgrade(localBroker, request, socket, head);
+  });
+  return { server, broker: localBroker };
+}
+
+async function main(): Promise<void> {
+  // 切り離された待受プロセスはChromeブリッジだけを担当し、チャットのstdioは扱わない。
+  if (process.argv.includes(DAEMON_FLAG)) {
+    await runBridgeDaemon(createBridgeService);
+    return;
+  }
+  const broker = createSharedBridge();
   const input = createInterface({ input: process.stdin, crlfDelay: Infinity });
   const shutdown = (): void => {
     input.close();

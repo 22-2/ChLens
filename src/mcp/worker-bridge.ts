@@ -10,9 +10,12 @@ import {
 import { executeWorkerRequest, persistWorkerState } from "./worker-runtime";
 
 const HTTP_TIMEOUT_MS = 25_000;
-const HTTP_RETRY_ALARM_MINUTES = 1;
-const INITIAL_RECONNECT_DELAY_MS = 5_000;
-const MAX_RECONNECT_DELAY_MS = 60_000;
+// 変更理由: MCPサーバーはチャットの利用に合わせて起動・終了するため、起動後に素早く
+// 再接続できるよう、アラーム周期と再接続の上限を短くする（Chrome 120以降は30秒、
+// それ以前は1分に丸められる）。
+const HTTP_RETRY_ALARM_MINUTES = 0.5;
+const INITIAL_RECONNECT_DELAY_MS = 2_000;
+const MAX_RECONNECT_DELAY_MS = 15_000;
 const KEEPALIVE_INTERVAL_MS = 20_000;
 const WS_CONNECT_TIMEOUT_MS = 10_000;
 const CONNECTION_LOG_INTERVAL_MS = 30_000;
@@ -244,8 +247,8 @@ async function pollHttpOnce(): Promise<void> {
 async function ensureAlarm(): Promise<void> {
   if (!browser.alarms) return;
   const alarm = await browser.alarms.get(MCP_BRIDGE_ALARM_NAME);
-  if (!alarm) {
-    // Chrome 103までの互換性を保つため、アラームは1分間隔にする。
+  // 既存のアラームが旧周期（1分）のままなら作り直して新しい周期を反映する。
+  if (!alarm || alarm.periodInMinutes !== HTTP_RETRY_ALARM_MINUTES) {
     await browser.alarms.create(MCP_BRIDGE_ALARM_NAME, {
       periodInMinutes: HTTP_RETRY_ALARM_MINUTES,
     });
