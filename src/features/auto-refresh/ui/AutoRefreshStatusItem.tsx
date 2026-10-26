@@ -289,9 +289,6 @@ export const AutoRefreshStatusItem: React.FC = () => {
     return <Pause size={13} aria-hidden="true" />;
   };
 
-  const buttonClassName = `status-bar__btn${
-    panelKind === "threadList" && !isEnabled ? " status-bar__btn--muted" : ""
-  }`;
   const windowTitle = panelKind === "thread" ? "スレッド自動更新" : "スレ一覧自動更新";
 
   return (
@@ -305,9 +302,10 @@ export const AutoRefreshStatusItem: React.FC = () => {
         title={itemTitle}
         interactive
       >
+        {/* OFFでも設定を開けるため、無効な操作に見える薄い色にはしない。 */}
         <button
           ref={miniWindowTriggerRef}
-          className={buttonClassName}
+          className="status-bar__btn"
           onClick={toggleMiniWindow}
           title={itemTitle}
           aria-label={itemTitle}

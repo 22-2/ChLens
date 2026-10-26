@@ -198,6 +198,3 @@
   background: var(--sys-color-accent);
 }
 
-.status-bar__btn--muted {
-  opacity: 0.6;
-}
