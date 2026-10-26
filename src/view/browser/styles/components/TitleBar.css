@@ -213,7 +213,7 @@
 }
 
 .title-bar__title--command-center:hover {
- background-color: color-mix(in srgb, var(--sys-color-surface), #fff 5%);
+  background-color: var(--sys-color-surface-hover);
 }
 
 .title-bar__title--command-center:focus-visible {
