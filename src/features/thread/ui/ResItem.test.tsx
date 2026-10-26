@@ -15,7 +15,11 @@ const ngMocks = vi.hoisted(() => ({
 vi.mock("src/service-container/index", () => ({
   container: {
     config: {
-      get: (key: string) => (key === "display_ng" ? ngMocks.configValue : null),
+      // 変更理由: 既定値を外部リンク確認・画像の手動取得ありへ変えたため、リンクと画像の既定動作を見る本テストではoffにする。
+      get: (key: string) => {
+        if (key === "display_ng") return ngMocks.configValue;
+        return key === "confirm_external_links" || key === "manual_image_loading" ? "off" : null;
+      },
       ready: (callback: () => void) => callback(),
     },
     message: {

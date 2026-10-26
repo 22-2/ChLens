@@ -7,6 +7,20 @@ import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { RESPECT_DEFAULT_EXTERNAL } from "src/view/browser/utils/link-routing";
 import { describe, expect, it, vi } from "vite-plus/test";
 
+// 変更理由: 既定値を安全側（外部リンク確認・画像の手動取得）へ変えたため、
+// リンクや画像の直接表示を前提にした本テストでは両設定を明示的にoffにする。
+vi.mock("src/service-container/index", () => ({
+  container: {
+    config: {
+      get: (key: string) =>
+        key === "confirm_external_links" || key === "manual_image_loading" ? "off" : null,
+      set: () => {},
+      ready: (callback: () => void) => callback(),
+    },
+    message: { on: () => {}, off: () => {} },
+  },
+}));
+
 const ANCHOR_HTML = '<a class="anchor">&gt;&gt;5</a>';
 const URL_HTML = '<a href="https://example.com/thread/1">link</a>';
 const INTERNAL_URL_HTML =

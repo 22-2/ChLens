@@ -13,6 +13,20 @@ import {
   OverlayStage,
 } from "./OverlayStage";
 
+// 変更理由: 既定値を安全側（外部リンク確認・画像の手動取得）へ変えたため、
+// リンクや画像の直接表示を前提にした本テストでは両設定を明示的にoffにする。
+vi.mock("src/service-container/index", () => ({
+  container: {
+    config: {
+      get: (key: string) =>
+        key === "confirm_external_links" || key === "manual_image_loading" ? "off" : null,
+      set: () => {},
+      ready: (callback: () => void) => callback(),
+    },
+    message: { on: () => {}, off: () => {} },
+  },
+}));
+
 const comment: CommentCandidate = {
   responseNumber: 1,
   text: "テストコメント",

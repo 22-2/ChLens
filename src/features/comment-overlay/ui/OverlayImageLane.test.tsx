@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { CommentCandidate } from "../domain/comment-types";
 import {
@@ -11,6 +11,20 @@ import {
   OverlayImageLane,
   removeCompletedOverlayImage,
 } from "./OverlayImageLane";
+
+// 変更理由: 既定値を安全側（外部リンク確認・画像の手動取得）へ変えたため、
+// リンクや画像の直接表示を前提にした本テストでは両設定を明示的にoffにする。
+vi.mock("src/service-container/index", () => ({
+  container: {
+    config: {
+      get: (key: string) =>
+        key === "confirm_external_links" || key === "manual_image_loading" ? "off" : null,
+      set: () => {},
+      ready: (callback: () => void) => callback(),
+    },
+    message: { on: () => {}, off: () => {} },
+  },
+}));
 
 describe("OverlayImageLane", () => {
   afterEach(cleanup);

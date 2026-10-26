@@ -19,12 +19,14 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   thread_display_mode: "normal",
   image_blur: "on",
   image_blur_word: ".{0,5}[^ァ-ヺ^ー]グロ(?:[^ァ-ヺ^ー].{0,5}|$)|.{0,5}死ね.{0,5}",
-  // 既定は従来どおり自動取得。手動取得は外部リンクの確認設定とは独立する。
-  manual_image_loading: "off",
+  // 変更理由: 画像の自動取得はIP漏洩や不快な画像の即時表示につながるため、既定は手動取得にする。
+  // 手動取得は外部リンクの確認設定とは独立する。
+  manual_image_loading: "on",
   expand_short_url: "none",
   expand_short_url_timeout: "3000",
-  // 変更理由: 既存利用者のリンク操作を維持し、確認・警告・ボタン化を一つの設定で切り替える。
-  confirm_external_links: "off",
+  // 変更理由: 追跡パラメータや危険なURLを開く前に気づけるよう、既定で確認する。
+  // 確認・警告・ボタン化は一つの設定で切り替える。
+  confirm_external_links: "on",
   ngwords:
     'hide:\n  when title contains:\n    "5ちゃんねるへようこそ"\n    "【新着情報】5chブラウザがやってきた！"',
   chain_ng: "off",
@@ -75,8 +77,9 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   comment_overlay_always_on_top: "off",
   no_history: "off",
   no_writehistory: "off",
+  // 変更理由: 第三者が配信する板一覧を既定で信用しないよう、公式のbbsmenuだけを既定にする。
   bbsmenu:
-    "https://menu.5ch.io/bbsmenu.html\nhttps://menu.2ch.sc/bbsmenu.html\nhttps://fox-tools.pages.dev/html/hinan-bbsmenu.html\nhttps://fox-tools.pages.dev/html/tulip-hinan-bbsmenu.html\n// open2chは一度手動でbbsmenuのURLへアクセスする必要があります。\n// https://menu.open2ch.net/bbsmenu.html\n",
+    "https://menu.5ch.io/bbsmenu.html\nhttps://menu.2ch.sc/bbsmenu.html\n// open2chは一度手動でbbsmenuのURLへアクセスする必要があります。\n// https://menu.open2ch.net/bbsmenu.html\n",
   bbsmenu_option: "",
   other_board_titles: "{}",
   useragent: "",
