@@ -15,6 +15,7 @@ interface UseThreadListDataOptions {
   boardUrl: string;
   refreshKey: number;
   manualRefreshScopeKey: string;
+  autoRefreshRequestRef: MutableRefObject<{ boardUrl: string; refreshKey: number } | null>;
   /** 板を開いた時刻。取得完了の時刻で閲覧日時を進めないために参照する。 */
   visitedBoardRef: MutableRefObject<{ url: string; lastVisited: number } | null>;
   /** 取得確認後の保存へ引き継ぐ、解決済みの板名。 */
@@ -31,6 +32,7 @@ export function useThreadListData({
   boardUrl,
   refreshKey,
   manualRefreshScopeKey,
+  autoRefreshRequestRef,
   visitedBoardRef,
   resolvedBoardTitlesRef,
 }: UseThreadListDataOptions) {
@@ -38,17 +40,25 @@ export function useThreadListData({
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRefreshOverlay, setShowRefreshOverlay] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchThreads = useCallback(async () => {
     const startedAt = Date.now();
     const isRefresh = previousRefreshKeyRef.current !== refreshKey;
+    const wasManual = isRefresh && consumeManualRefresh(manualRefreshScopeKey);
+    const autoRequest = autoRefreshRequestRef.current;
+    // 手動更新が同時に入った場合は手動の表示を優先し、別の板への遷移には引き継がない。
+    const isAutoRefresh =
+      isRefresh &&
+      !wasManual &&
+      autoRequest?.boardUrl === boardUrl &&
+      autoRequest.refreshKey === previousRefreshKeyRef.current;
+    autoRefreshRequestRef.current = null;
     previousRefreshKeyRef.current = refreshKey;
-    if (isRefresh) consumeManualRefresh(manualRefreshScopeKey);
     setLoading(true);
-    if (isRefresh) {
-      setShowRefreshOverlay(true);
-    }
+    setIsAutoRefreshing(isAutoRefresh);
+    setShowRefreshOverlay(isRefresh && !isAutoRefresh);
     setError(null);
     try {
       // container経由でBoardサービスにアクセス
@@ -100,12 +110,20 @@ export function useThreadListData({
       }
     } finally {
       setLoading(false);
+      setIsAutoRefreshing(false);
       // 変更理由: 完了後のフェード用にスピナーを残すとロード時間より長く見えるため、
       // 成功・失敗のどちらでも取得完了と同時に更新表示を終了する。
       setShowRefreshOverlay(false);
     }
     // refreshKeyが変わったとき（更新ボタン押下）に再取得を走らせる
-  }, [manualRefreshScopeKey, boardUrl, refreshKey, visitedBoardRef, resolvedBoardTitlesRef]);
+  }, [
+    autoRefreshRequestRef,
+    manualRefreshScopeKey,
+    boardUrl,
+    refreshKey,
+    visitedBoardRef,
+    resolvedBoardTitlesRef,
+  ]);
 
   // 変更理由: IDBキャッシュから前回のスレ一覧を復元し、新しいデータの取得中は古い結果を表示し続ける。
   useEffect(() => {
@@ -150,5 +168,13 @@ export function useThreadListData({
     };
   }, [boardUrl]);
 
-  return { threads, setThreads, loading, showRefreshOverlay, error, fetchThreads };
+  return {
+    threads,
+    setThreads,
+    loading,
+    isAutoRefreshing,
+    showRefreshOverlay,
+    error,
+    fetchThreads,
+  };
 }

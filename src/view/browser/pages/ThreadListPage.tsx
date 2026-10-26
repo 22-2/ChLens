@@ -43,6 +43,7 @@ import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { deleteThreadLogAndClearReadState } from "src/view/browser/commands/thread-log-actions";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
+import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
   type DataTableSection,
@@ -157,14 +158,23 @@ export const ThreadListPage: React.FC<Props> = ({
   const { setPageCount } = usePageCountStatus();
   const pageCountKey = getThreadListPageCountKey(tabId, page.boardUrl);
   const bookmarkRevision = useBookmarkRevision();
-  const { threads, setThreads, loading, showRefreshOverlay, error, fetchThreads } =
-    useThreadListData({
-      boardUrl: page.boardUrl,
-      refreshKey,
-      manualRefreshScopeKey,
-      visitedBoardRef,
-      resolvedBoardTitlesRef,
-    });
+  const autoRefreshRequestRef = useRef<{ boardUrl: string; refreshKey: number } | null>(null);
+  const {
+    threads,
+    setThreads,
+    loading,
+    isAutoRefreshing,
+    showRefreshOverlay,
+    error,
+    fetchThreads,
+  } = useThreadListData({
+    boardUrl: page.boardUrl,
+    refreshKey,
+    manualRefreshScopeKey,
+    autoRefreshRequestRef,
+    visitedBoardRef,
+    resolvedBoardTitlesRef,
+  });
   useThreadListReadStateSync({ boardUrl: page.boardUrl, isActive, setThreads });
   const [boardAutoRefreshIntervalMs, setBoardAutoRefreshIntervalMs] = useState(() =>
     readBoardAutoRefreshIntervalMs(page.boardUrl),
@@ -359,7 +369,9 @@ export const ThreadListPage: React.FC<Props> = ({
 
       // タブを切り替えた瞬間に旧タブの更新が走ると体感が悪いため、
       // 一覧の自動更新は表示中タブの RELOAD 経路だけを使って発火する。
-      runTabCommand(TAB_COMMAND_IDS.RELOAD);
+      // 同じRELOAD経路を使う手動更新と区別し、自動更新だけ進捗をステータスバーへ出す。
+      autoRefreshRequestRef.current = { boardUrl: page.boardUrl, refreshKey };
+      if (!runTabCommand(TAB_COMMAND_IDS.RELOAD)) autoRefreshRequestRef.current = null;
     }, boardAutoRefreshIntervalMs);
 
     return () => {
@@ -371,6 +383,8 @@ export const ThreadListPage: React.FC<Props> = ({
     isAutoRefreshEnabled,
     isDocumentVisible,
     loading,
+    page.boardUrl,
+    refreshKey,
     runTabCommand,
     viewWindow,
   ]);
@@ -688,7 +702,7 @@ export const ThreadListPage: React.FC<Props> = ({
 
   // 条件付きで早期返却するとhooksの呼び出し数が変わってReactエラーになるため、
   // JSXレベルで条件分岐をして、すべてのhooksをレンダーパスの上部で呼び出す
-  if (loading && threads.length === 0) {
+  if (loading && threads.length === 0 && !isAutoRefreshing) {
     return (
       <div className="page-status">
         <Spinner size="sm" aria-label="スレ一覧を読み込み中" />
@@ -728,6 +742,12 @@ export const ThreadListPage: React.FC<Props> = ({
       }
       onDoubleClick={handleDoubleClick}
     >
+      <OperationStatusItem
+        id={`thread-list-fetch-status-${tabId}`}
+        message={loading && isAutoRefreshing ? "スレ一覧を読み込み中..." : null}
+        busy={loading && isAutoRefreshing}
+        visible={isActive}
+      />
       {showRefreshOverlay && (
         <div
           className={`thread-list-page__loading-overlay${loading ? " thread-list-page__loading-overlay--visible" : ""}`}
