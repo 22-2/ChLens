@@ -11,9 +11,11 @@ import { platformDownloadManager } from "src/app/platform/DownloadManager";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { copyPngImageWithNotice } from "src/view/browser/utils/clipboard";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
 
 import { deleteImgurImage } from "../application/imgur-deletehash";
+import { createViewerClipboardPng } from "./media-viewer-copy";
 import type { ViewerState } from "./media-viewer-types";
 import {
   approachViewerTransform,
@@ -51,6 +53,7 @@ export interface MediaViewerProps {
   onZoomReset: () => void;
   onZoomIn: () => void;
   onSave: () => void;
+  onCopy: () => void;
   canDeleteImage: boolean;
   onDeleteImage: () => void;
   onClose: () => void;
@@ -121,7 +124,8 @@ export function useMediaViewerController(
 ): MediaViewerProps | null {
   // 変更理由: 書き込み別窓でもキー操作・ドラッグ・リサイズのイベントを
   // ビューアが表示されている窓で受け取り、メイン窓への誤登録を防ぐ。
-  const { window: viewWindow } = useViewSurface();
+  const viewSurface = useViewSurface();
+  const { window: viewWindow } = viewSurface;
   const toast = useToast();
   const viewer = useMediaViewerStore((state) =>
     state.viewerScopeId === scopeId ? state.viewer : null,
@@ -597,6 +601,20 @@ export function useMediaViewerController(
     },
     onSave: () => {
       void saveViewerImage();
+    },
+    onCopy: () => {
+      void copyPngImageWithNotice(
+        async () => {
+          const image = viewerImageRef.current;
+          if (!image?.complete || image.naturalWidth === 0) {
+            throw new Error("表示中の画像はまだ読み込まれていません");
+          }
+          return createViewerClipboardPng(image.currentSrc || viewer.src, viewSurface);
+        },
+        viewSurface,
+        toast,
+        "画像",
+      );
     },
     canDeleteImage,
     onDeleteImage: () => {

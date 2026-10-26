@@ -143,6 +143,7 @@ function Probe() {
           onZoomReset={noop}
           onZoomIn={noop}
           onSave={noop}
+          onCopy={noop}
           canDeleteImage={false}
           onDeleteImage={noop}
           onClose={() => setViewer(null)}

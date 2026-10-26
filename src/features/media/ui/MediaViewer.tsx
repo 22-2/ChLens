@@ -28,6 +28,7 @@ export function MediaViewer({
   onNavigatePrev,
   onNavigateNext,
   onSave,
+  onCopy,
   canDeleteImage,
   onDeleteImage,
   onClose,
@@ -118,6 +119,15 @@ export function MediaViewer({
               </button>
               <button type="button" className="media-viewer__btn" onClick={onSave} title="保存">
                 保存
+              </button>
+              <button
+                type="button"
+                className="media-viewer__btn"
+                onClick={onCopy}
+                disabled={isLoading || !imageIsLoaded}
+                title="表示中の画像をコピー"
+              >
+                画像をコピー
               </button>
               {/* 変更理由: 削除キーを持つこのアプリの投稿画像だけ削除を出し、他人の画像に操作を出さない。 */}
               {canDeleteImage && (

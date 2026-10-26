@@ -10,6 +10,12 @@ vi.mock("src/app/platform", () => ({
     storage: { kv: { get: async () => null, set: async () => {}, remove: async () => {} } },
   },
 }));
+vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
+  useConfigBooleanSetting: () => ({ value: false }),
+}));
+vi.mock("src/view/browser/hooks/use-config-number-setting", () => ({
+  useConfigNumberSetting: () => ({ value: 5 }),
+}));
 
 import { useMediaImageStore } from "src/features/media/browser/use-media-image-store";
 
@@ -88,6 +94,7 @@ describe("別窓ビューアの表示サーフェス", () => {
 
   afterEach(() => {
     cleanup();
+    useMediaImageStore.setState({ images: new Map() });
     iframe.remove();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();

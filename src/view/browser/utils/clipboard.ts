@@ -91,6 +91,34 @@ export async function copyImageWithNotice(
   }
 }
 
+/** 通信とPNG変換をClipboardItemへ渡し、ユーザー操作中にコピーを開始する。 */
+export async function copyPngImageWithNotice(
+  createPng: () => Promise<Blob>,
+  surface: ClipboardSurface,
+  toast: IToastService,
+  label: string,
+): Promise<void> {
+  try {
+    if (!canCopyImageToClipboard(surface)) {
+      throw new Error("Image clipboard API is not available");
+    }
+    const targetWindow = surface.window as Window & typeof globalThis;
+    const png = createPng().then((blob) => {
+      if (blob.type !== "image/png" || blob.size === 0) {
+        throw new Error("コピーするPNG画像を作成できませんでした");
+      }
+      return blob;
+    });
+    await targetWindow.navigator.clipboard.write([
+      new targetWindow.ClipboardItem({ "image/png": png }),
+    ]);
+    toast.success(`${label}をコピーしました`);
+  } catch (error) {
+    logger.error(`${label}を画像としてコピーできませんでした`, error);
+    toast.error(`${label}をコピーできませんでした`);
+  }
+}
+
 /** クリップボードからImgurへ投稿できるラスター画像を取得する。 */
 export async function readClipboardImage(surface?: ClipboardSurface): Promise<Blob> {
   const targetWindow = surface?.window ?? globalThis.window;

@@ -1,10 +1,16 @@
 import { createLogger } from "src/app/logger";
+import { decodeBase64ArrayBuffer } from "src/app/platform/binary";
 import {
   serializeSharedHttpRequest,
   type SharedHttpResponseMessage,
 } from "src/app/platform/browser/shared-http-protocol";
 import { getHttpsMode } from "src/app/platform/https-mode";
-import { HttpClient, HttpRequestOptions, HttpResponse } from "src/app/platform/types";
+import {
+  BinaryHttpResponse,
+  HttpClient,
+  HttpRequestOptions,
+  HttpResponse,
+} from "src/app/platform/types";
 import browser from "webextension-polyfill";
 
 const logger = createLogger("platform");
@@ -103,7 +109,28 @@ export const BrowserHttpClient: HttpClient = {
     if (!result || !result.ok) {
       throw new Error(result?.error ?? "共有HTTPクライアントから応答がありません");
     }
+    if (result.responseType === "binary") {
+      throw new Error("共有HTTPクライアントから文字列応答を受け取れませんでした");
+    }
     return result.response;
+  },
+
+  async fetchBinary(url: string, options: HttpRequestOptions = {}): Promise<BinaryHttpResponse> {
+    const result = (await browser.runtime.sendMessage(
+      serializeSharedHttpRequest(
+        url,
+        { ...options, httpsMode: options.httpsMode ?? getHttpsMode() },
+        "binary",
+      ),
+    )) as SharedHttpResponseMessage;
+    if (!result || !result.ok) {
+      throw new Error(result?.error ?? "共有HTTPクライアントから応答がありません");
+    }
+    if (result.responseType !== "binary") {
+      throw new Error("共有HTTPクライアントからバイナリ応答を受け取れませんでした");
+    }
+    const { bodyBase64, ...metadata } = result.response;
+    return { ...metadata, body: decodeBase64ArrayBuffer(bodyBase64) };
   },
 
   setupWriteHeaders,

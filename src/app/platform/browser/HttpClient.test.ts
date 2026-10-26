@@ -103,6 +103,27 @@ describe("拡張機能版の書き込み認証", () => {
     );
   });
 
+  it("共有バックグラウンドから画像のバイト列を復元する", async () => {
+    browserApi.runtime.sendMessage.mockResolvedValue({
+      ok: true,
+      responseType: "binary",
+      response: {
+        status: 200,
+        headers: { "content-type": "image/png" },
+        bodyBase64: "AP+JUA==",
+        url: "https://example.com/image.png",
+      },
+    });
+
+    const response = await BrowserHttpClient.fetchBinary?.("https://example.com/image.png");
+
+    expect(response).toBeDefined();
+    expect(new Uint8Array(response!.body)).toEqual(new Uint8Array([0, 255, 137, 80]));
+    expect(browserApi.runtime.sendMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ responseType: "binary" }),
+    );
+  });
+
   it.each(["http:", "https:"])("短縮URLの%sを内部遷移から投稿まで維持する", (protocol) => {
     const page = resolveBoardUrl(`${protocol}//edge.example.com/sample-board/123/`, {
       mode: "strict",

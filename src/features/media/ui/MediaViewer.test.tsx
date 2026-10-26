@@ -1,12 +1,28 @@
 import "@testing-library/jest-dom/vitest";
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { type ComponentProps, createRef } from "react";
-import { describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+vi.mock("src/app/platform", () => ({
+  platform: { http: { fetch: vi.fn() } },
+}));
+vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
+  useConfigBooleanSetting: () => ({ value: false }),
+}));
+vi.mock("./ExternalImage", () => ({
+  ExternalImage: () => <img alt="テスト画像" />,
+}));
+
+import { useMediaImageStore } from "../browser/use-media-image-store";
 import { MediaViewer } from "./MediaViewer";
 
 describe("MediaViewer", () => {
+  afterEach(() => {
+    cleanup();
+    useMediaImageStore.setState({ images: new Map() });
+  });
+
   const renderMediaViewer = (overrides: Partial<ComponentProps<typeof MediaViewer>> = {}) =>
     render(
       <MediaViewer
@@ -28,6 +44,7 @@ describe("MediaViewer", () => {
         onZoomReset={() => {}}
         onZoomIn={() => {}}
         onSave={() => {}}
+        onCopy={() => {}}
         canDeleteImage={false}
         onDeleteImage={() => {}}
         onClose={() => {}}
@@ -48,6 +65,50 @@ describe("MediaViewer", () => {
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
     expect(onSave).toHaveBeenCalledOnce();
+  });
+
+  it("読込済みの画像をコピーでき、読込中は操作を無効にする", () => {
+    useMediaImageStore.setState({
+      images: new Map([
+        ["https://example.com/image.jpg", { status: "loaded", version: 1, fallbackSrc: null }],
+      ]),
+    });
+    const onCopy = vi.fn();
+    const { rerender } = renderMediaViewer({ onCopy });
+    const copyButton = screen.getByRole("button", { name: "画像をコピー" });
+    expect(copyButton).toBeEnabled();
+    fireEvent.click(copyButton);
+    expect(onCopy).toHaveBeenCalledOnce();
+
+    rerender(
+      <MediaViewer
+        viewer={{ src: "https://example.com/image.jpg", label: "https://example.com/image.jpg" }}
+        viewerStageRef={createRef<HTMLDivElement>()}
+        viewerCanvasRef={createRef<HTMLDivElement>()}
+        viewerImageRef={createRef<HTMLImageElement>()}
+        canNavigateViewerPrev={false}
+        canNavigateViewerNext={false}
+        isLoading
+        onOverlayClick={() => {}}
+        onChromeClick={() => {}}
+        onNavigatePrev={() => {}}
+        onNavigateNext={() => {}}
+        onZoomOut={() => {}}
+        onZoomReset={() => {}}
+        onZoomIn={() => {}}
+        onSave={() => {}}
+        onCopy={onCopy}
+        canDeleteImage={false}
+        onDeleteImage={() => {}}
+        onClose={() => {}}
+        isDetached={false}
+        onDetach={() => {}}
+        onAttach={() => {}}
+        onImageLoad={() => {}}
+        onImageError={() => {}}
+      />,
+    );
+    expect(copyButton).toBeDisabled();
   });
 
   it("このアプリから投稿した画像では削除ボタンから onDeleteImage を呼ぶ", () => {
@@ -90,6 +151,7 @@ describe("MediaViewer", () => {
         onZoomReset={() => {}}
         onZoomIn={() => {}}
         onSave={() => {}}
+        onCopy={() => {}}
         canDeleteImage={false}
         onDeleteImage={() => {}}
         onClose={() => {}}

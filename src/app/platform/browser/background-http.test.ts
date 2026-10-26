@@ -63,6 +63,30 @@ describe("拡張機能全ウィンドウ共有HTTPキュー", () => {
     );
   });
 
+  it("画像のバイナリ応答を文字列へ変換せずBase64で渡す", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => ({
+        status: 200,
+        headers: new Headers({ "content-type": "image/png" }),
+        arrayBuffer: async () => new Uint8Array([0, 255, 137, 80]).buffer,
+        url,
+      })),
+    );
+
+    await expect(
+      handleSharedHttpRequest({
+        type: "shared-http-request",
+        url: "https://example.com/image.png",
+        responseType: "binary",
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      responseType: "binary",
+      response: { bodyBase64: "AP+JUA==", headers: { "content-type": "image/png" } },
+    });
+  });
+
   it("共有対象外のメッセージは処理しない", async () => {
     await expect(
       handleSharedHttpRequest({ type: "open-new-ui", url: "about:blank" }),

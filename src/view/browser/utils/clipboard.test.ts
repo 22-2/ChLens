@@ -1,5 +1,9 @@
 import type { IToastService } from "src/service-container/interfaces";
-import { copyImageWithNotice, copyText } from "src/view/browser/utils/clipboard";
+import {
+  copyImageWithNotice,
+  copyPngImageWithNotice,
+  copyText,
+} from "src/view/browser/utils/clipboard";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 function createDetachedSurface(writeText: () => Promise<void>) {
@@ -85,6 +89,47 @@ describe("clipboard", () => {
 
     expect(write).toHaveBeenCalledTimes(1);
     expect(toastSuccess).toHaveBeenCalledWith("レス画像をコピーしました");
+  });
+
+  it("PNGの生成を待つ間も別窓のクリップボードへコピー要求を渡す", async () => {
+    const detachedWindow = Object.create(window) as Window & typeof globalThis;
+    let resolvePng: ((blob: Blob) => void) | undefined;
+    const createPng = vi.fn(
+      () =>
+        new Promise<Blob>((resolve) => {
+          resolvePng = resolve;
+        }),
+    );
+    const write = vi.fn(async (items: { data: Record<string, Promise<Blob>> }[]) => {
+      expect(await items[0]?.data["image/png"]).toBeInstanceOf(Blob);
+    });
+    Object.defineProperty(detachedWindow, "navigator", {
+      configurable: true,
+      value: { clipboard: { write } } as unknown as Navigator,
+    });
+    Object.defineProperty(detachedWindow, "ClipboardItem", {
+      configurable: true,
+      value: class ClipboardItemMock {
+        constructor(public readonly data: Record<string, Promise<Blob>>) {}
+      },
+    });
+    const toast: IToastService = {
+      notify: vi.fn(),
+      success: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+    };
+
+    const operation = copyPngImageWithNotice(
+      createPng,
+      { window: detachedWindow, document },
+      toast,
+      "画像",
+    );
+    expect(write).toHaveBeenCalledOnce();
+    resolvePng?.(new Blob(["png"], { type: "image/png" }));
+    await operation;
+    expect(toast.success).toHaveBeenCalledWith("画像をコピーしました");
   });
 
   it("画像コピーの失敗時にtoastで知らせる", async () => {

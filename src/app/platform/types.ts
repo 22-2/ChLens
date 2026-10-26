@@ -90,8 +90,8 @@ export interface HttpRequestOptions {
 export interface HttpClient {
   fetch(url: string, options?: HttpRequestOptions): Promise<HttpResponse>;
   /**
-   * 画像などのバイナリ本文を取得する。ブラウザ拡張では未使用だが、
-   * Tauri WebViewで外部リソースをblob URLへ変換するために実装する。
+   * 画像などのバイナリ本文を取得する。
+   * Tauri WebViewで外部リソースをblob URLへ変換するときにも使う。
    */
   fetchBinary?: (url: string, options?: HttpRequestOptions) => Promise<BinaryHttpResponse>;
   /**

@@ -1,25 +1,33 @@
 import { encodeBase64 } from "src/app/platform/binary";
-import type { HttpRequestOptions, HttpResponse } from "src/app/platform/types";
+import type { BinaryHttpResponse, HttpRequestOptions, HttpResponse } from "src/app/platform/types";
 
 export const SHARED_HTTP_MESSAGE_TYPE = "shared-http-request";
 
 export interface SharedHttpRequestMessage {
   type: typeof SHARED_HTTP_MESSAGE_TYPE;
   url: string;
+  responseType?: "binary";
   options?: Omit<HttpRequestOptions, "body"> & { body?: string; bodyBase64?: string };
 }
 
 export type SharedHttpResponseMessage =
-  | { ok: true; response: HttpResponse }
+  | { ok: true; responseType?: undefined; response: HttpResponse }
+  | {
+      ok: true;
+      responseType: "binary";
+      response: Omit<BinaryHttpResponse, "body"> & { bodyBase64: string };
+    }
   | { ok: false; error: string };
 
 export function serializeSharedHttpRequest(
   url: string,
   options?: HttpRequestOptions,
+  responseType?: "binary",
 ): SharedHttpRequestMessage {
   return {
     type: SHARED_HTTP_MESSAGE_TYPE,
     url,
+    ...(responseType ? { responseType } : {}),
     options: options
       ? {
           method: options.method,
