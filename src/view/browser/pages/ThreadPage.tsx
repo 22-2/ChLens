@@ -114,7 +114,6 @@ interface ThreadPageProps {
   isOverlayTarget?: boolean;
   isAutoRefreshEnabled: boolean;
   startAutoRefreshAtBottom: boolean;
-  onSearchNextThread?: () => Promise<void>;
   onSearchSimilarThreads?: () => Promise<void>;
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
@@ -128,7 +127,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   isOverlayTarget = isActive,
   isAutoRefreshEnabled: tabAutoRefreshEnabled,
   startAutoRefreshAtBottom,
-  onSearchNextThread,
   onSearchSimilarThreads,
   scrollContainerRef,
 }) => {
@@ -1025,27 +1023,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             {(expired || missingFromSubject) && (
               <div className="thread-page__notice thread-page__notice--expired" role="status">
                 <span>このスレッドはdat落ちしています</span>
-                {onSearchSimilarThreads || onSearchNextThread ? (
-                  <div className="thread-page__expiry-actions">
-                    {onSearchSimilarThreads ? (
-                      <button
-                        type="button"
-                        className="browser-button"
-                        onClick={() => void onSearchSimilarThreads()}
-                      >
-                        類似スレを探す
-                      </button>
-                    ) : null}
-                    {onSearchNextThread ? (
-                      <button
-                        type="button"
-                        className="browser-button"
-                        onClick={() => void onSearchNextThread()}
-                      >
-                        次スレを探す
-                      </button>
-                    ) : null}
-                  </div>
+                {onSearchSimilarThreads ? (
+                  <button
+                    type="button"
+                    className="browser-button"
+                    onClick={() => void onSearchSimilarThreads()}
+                  >
+                    類似スレを探す
+                  </button>
                 ) : null}
               </div>
             )}

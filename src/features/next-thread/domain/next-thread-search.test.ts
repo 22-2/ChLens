@@ -4,6 +4,7 @@ import {
   findMainstreamThreadMatch,
   findNextThreadCandidates,
   findNextThreadMatch,
+  findSimilarThreadCandidates,
 } from "src/features/next-thread/domain/next-thread-search";
 import type { IThread } from "src/service-container/interfaces";
 import { describe, expect, it } from "vite-plus/test";
@@ -25,6 +26,38 @@ function createThread(
 }
 
 describe("next-thread-search", () => {
+  it("【朗報】などの定型タグだけが共通する別話題を類似候補に含めない", () => {
+    const currentThread = {
+      title: "【朗報】声優の鬼頭明里さん、絵が上手い",
+      url: "https://example.com/test/read.cgi/live/1700000000/",
+    };
+    const unrelatedSameBadge = createThread({
+      title: "【朗報】日本の男さん、人生イージーモードになるｗｗｗｗｗ",
+      url: "https://example.com/test/read.cgi/live/1700000001/",
+      resCount: 52,
+      createdAt: 1_700_000_001_000,
+    });
+    const unrelatedDifferentBadge = createThread({
+      title: "【悲報】配信者さん、大量の動画を突然非公開に",
+      url: "https://example.com/test/read.cgi/live/1700000002/",
+      resCount: 122,
+      createdAt: 1_700_000_002_000,
+    });
+    const relatedDifferentBadge = createThread({
+      title: "【悲報】声優の鬼頭明里さん、絵が上手すぎる",
+      url: "https://example.com/test/read.cgi/live/1700000003/",
+      resCount: 8,
+      createdAt: 1_700_000_003_000,
+    });
+
+    expect(
+      findSimilarThreadCandidates(
+        [unrelatedSameBadge, unrelatedDifferentBadge, relatedDifferentBadge],
+        currentThread,
+      ).map(({ thread }) => thread.url),
+    ).toEqual([relatedDifferentBadge.url]);
+  });
+
   it.each(["", " ★1"])(
     "積極判定では番組一覧%sから最後の番組だけを残した次の連番へ移動する",
     (sequence) => {

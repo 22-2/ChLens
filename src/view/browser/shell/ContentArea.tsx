@@ -5,7 +5,6 @@ import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 
 interface ContentAreaProps {
   isOverlayTarget?: boolean;
-  onSearchNextThread?: () => Promise<void>;
   onSearchSimilarThreads?: () => Promise<void>;
 }
 
@@ -17,7 +16,6 @@ interface ContentAreaProps {
  */
 export const ContentArea: FC<ContentAreaProps> = ({
   isOverlayTarget = true,
-  onSearchNextThread,
   onSearchSimilarThreads,
 }) => {
   const { state } = useTabStore();
@@ -37,7 +35,6 @@ export const ContentArea: FC<ContentAreaProps> = ({
           tab={tab}
           isActive={tab.id === selectedTabId}
           isOverlayTarget={isOverlayTarget}
-          onSearchNextThread={onSearchNextThread}
           onSearchSimilarThreads={onSearchSimilarThreads}
         />
       ))}

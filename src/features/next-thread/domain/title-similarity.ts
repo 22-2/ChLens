@@ -1,6 +1,7 @@
 const TITLE_DECORATION_PATTERN =
   / ?(?:\[(?:無断)?転載禁止\]|(?:\(c\)|©|�|&copy;|&#169;)(?:2ch\.net|@?bbspink\.com)) ?/g;
 const KATAKANA_PATTERN = /[\u30a1-\u30f6]/g;
+const NEWS_BADGE_PATTERN = /^(?:【[^】\s]{1,4}報】\s*)+/u;
 // 番号後の放送情報などは連番の一部ではないため、括弧書きを残して番号だけを取り出す。
 export const EXPLICIT_SEQUENCE_PATTERN =
   /(★|Part\.?)\s*(\d+)((?:\s*(?:【[^】]*】|\[[^\]]*\]|\([^)]*\)))*\s*)$/i;
@@ -20,11 +21,13 @@ function stripSequenceDecoration(title: string): string {
     .trim();
 }
 
+function stripNewsBadge(title: string): string {
+  return stripSequenceDecoration(title).replace(NEWS_BADGE_PATTERN, "");
+}
+
 export function calculateBaseTitleSimilarity(leftTitle: string, rightTitle: string): number {
-  return calculateTitleSimilarity(
-    stripSequenceDecoration(leftTitle),
-    stripSequenceDecoration(rightTitle),
-  );
+  // 【朗報】などの定型タグだけで別の話題を類似候補に押し上げない。
+  return calculateTitleSimilarity(stripNewsBadge(leftTitle), stripNewsBadge(rightTitle));
 }
 
 export function hasProgramTitleContinuation(currentTitle: string, candidateTitle: string): boolean {

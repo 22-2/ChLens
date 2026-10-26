@@ -914,7 +914,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     id: "page.search-similar-threads",
     label: "類似スレを検索",
     englishLabel: "Find Similar Threads",
-    description: "現在のスレとタイトルが似ているスレを板一覧から検索します",
+    description: "次スレ候補とタイトルが似ているスレを板一覧から検索します",
     keywords: ["類似スレ", "似たスレ", "関連スレ", "similar", "thread", "search"],
     group: "page",
     icon: Search,

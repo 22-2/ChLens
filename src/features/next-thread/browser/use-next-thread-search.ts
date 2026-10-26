@@ -102,15 +102,16 @@ export function useNextThreadSearch({
         const nextCandidates = findNextThreadCandidates(result.threads, sourceThread, {
           mode: "aggressive",
         });
-        const similarCandidates = findSimilarThreadCandidates(result.threads, sourceThread);
-        const nextCandidateUrls = new Set(nextCandidates.map(({ thread }) => thread.url));
-        const candidates =
-          searchType === "next"
-            ? nextCandidates
-            : [
-                ...nextCandidates,
-                ...similarCandidates.filter(({ thread }) => !nextCandidateUrls.has(thread.url)),
-              ];
+        let candidates: ThreadSearchCandidate[] = nextCandidates;
+        if (searchType === "similar") {
+          const nextCandidateUrls = new Set(nextCandidates.map(({ thread }) => thread.url));
+          candidates = [
+            ...nextCandidates,
+            ...findSimilarThreadCandidates(result.threads, sourceThread).filter(
+              ({ thread }) => !nextCandidateUrls.has(thread.url),
+            ),
+          ];
+        }
         setState({
           status: "ready",
           searchType,
