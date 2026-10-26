@@ -9,7 +9,7 @@ import {
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import {
-  THREAD_FILTER_TOOLBAR_OPEN_EVENT,
+  THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
   type ThreadFilterToolbarToggleDetail,
 } from "src/view/browser/utils/filter-toolbar-events";
 
@@ -54,13 +54,13 @@ export const PageCountStatusItem: React.FC = () => {
       return;
     }
 
-    // 変更理由: 件数表示はバーを開く導線として扱い、常時表示中に誤って閉じないようtoggleと分ける。
+    // 変更理由: 開閉ボタンごとにイベントを分けず、常時表示設定の無効化も同じハンドラーへ集約する。
     // ステータスバーはThreadPageの外にあるため、イベントで対象タブを明示する。
     // CustomEventのコンストラクタを本窓から借りず、表示先Documentのイベントとして生成する。
     const event = viewDocument.createEvent(
       "CustomEvent",
     ) as CustomEvent<ThreadFilterToolbarToggleDetail>;
-    event.initCustomEvent(THREAD_FILTER_TOOLBAR_OPEN_EVENT, false, false, {
+    event.initCustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, false, false, {
       tabId: viewTab.id,
     });
     viewWindow.dispatchEvent(event);
@@ -71,7 +71,7 @@ export const PageCountStatusItem: React.FC = () => {
       id="page-count-status"
       alignment="left"
       priority={STATUS_BAR_PRIORITY.left.pageCount}
-      title={isThreadPage ? `${accessibleLabel}（クリックでフィルターを開く）` : accessibleLabel}
+      title={isThreadPage ? `${accessibleLabel}（クリックでフィルターを開閉）` : accessibleLabel}
       interactive={isThreadPage}
     >
       {isThreadPage ? (
@@ -80,7 +80,7 @@ export const PageCountStatusItem: React.FC = () => {
           className="status-bar__btn"
           onClick={handleThreadCountClick}
           aria-label={accessibleLabel}
-          title={`${accessibleLabel}（クリックでフィルターを開く）`}
+          title={`${accessibleLabel}（クリックでフィルターを開閉）`}
         >
           <span className="status-bar__count" aria-hidden="true">
             {label}

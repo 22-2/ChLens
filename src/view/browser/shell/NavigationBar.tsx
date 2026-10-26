@@ -54,6 +54,7 @@ import { Dialog } from "src/view/browser/ui/Dialog";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,
+  THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
 } from "src/view/browser/utils/filter-toolbar-events";
 import {
   useFilterToolbarOpen,
@@ -438,7 +439,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     // フィルタUIはメニュー項目からのみ開くことで、
     // メニューボタン押下そのものをトリガーにしない。
     if (viewPage.type === "thread") {
-      window.dispatchEvent(new window.CustomEvent("thread-filter-toolbar-toggle"));
+      window.dispatchEvent(new window.CustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT));
       return;
     }
 

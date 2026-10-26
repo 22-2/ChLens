@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
-  THREAD_FILTER_TOOLBAR_OPEN_EVENT,
   THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
   type ThreadFilterToolbarToggleDetail,
 } from "src/view/browser/utils/filter-toolbar-events";
@@ -139,22 +138,12 @@ export function useThreadTopBar({
       }
       toggleFilterToolbar();
     };
-    const handleFilterOpen = (event: Event) => {
-      const detail = (event as CustomEvent<ThreadFilterToolbarToggleDetail>).detail;
-      if (detail?.tabId != null && (!isActive || detail.tabId !== tabId)) {
-        return;
-      }
-      openFilterToolbar();
-    };
-
     viewWindow.addEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
     viewWindow.addEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
-    viewWindow.addEventListener(THREAD_FILTER_TOOLBAR_OPEN_EVENT, handleFilterOpen);
 
     return () => {
       viewWindow.removeEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
       viewWindow.removeEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
-      viewWindow.removeEventListener(THREAD_FILTER_TOOLBAR_OPEN_EVENT, handleFilterOpen);
     };
   }, [
     isActive,

@@ -4,10 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { useState } from "react";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import type { ThreadFilter } from "src/view/browser/types";
-import {
-  THREAD_FILTER_TOOLBAR_OPEN_EVENT,
-  THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
-} from "src/view/browser/utils/filter-toolbar-events";
+import { THREAD_FILTER_TOOLBAR_TOGGLE_EVENT } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 function TopBarHarness({
@@ -90,20 +87,6 @@ describe("useThreadTopBar", () => {
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
   });
 
-  it("常時表示の設定のときは件数表示相当のopenイベントでも開いた状態を保つ", () => {
-    render(<TopBarHarness pinnedOpen />);
-
-    act(() => {
-      window.dispatchEvent(
-        new window.CustomEvent(THREAD_FILTER_TOOLBAR_OPEN_EVENT, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
-    });
-
-    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
-  });
-
   it("設定が無いときは閉じた状態で始まる", () => {
     render(<TopBarHarness />);
 
@@ -144,17 +127,6 @@ describe("useThreadTopBar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "open filter" }));
     fireEvent.click(screen.getByRole("button", { name: "open filter" }));
-
-    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
-  });
-
-  it("openイベントを繰り返しても開いた状態を保つ", () => {
-    render(<TopBarHarness />);
-
-    act(() => {
-      window.dispatchEvent(new window.CustomEvent(THREAD_FILTER_TOOLBAR_OPEN_EVENT));
-      window.dispatchEvent(new window.CustomEvent(THREAD_FILTER_TOOLBAR_OPEN_EVENT));
-    });
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
   });
