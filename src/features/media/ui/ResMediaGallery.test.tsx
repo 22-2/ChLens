@@ -31,7 +31,10 @@ describe("ResMediaGallery", () => {
     expect(screen.queryByRole("img", { name: imageUrl })).toBeNull();
     fireEvent.click(placeholder);
 
-    expect(screen.getByRole("img", { name: imageUrl })).toHaveAttribute("src", imageUrl);
+    const image = screen.getByRole("img", { name: imageUrl });
+    expect(image).toHaveAttribute("src", imageUrl);
+    // 読み込み中は「画像を取得中」の表示がリンク名に加わるため、読み込み完了を通知してから操作する。
+    fireEvent.load(image);
     expect(onUrlClick).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("link", { name: imageUrl }));
     expect(onUrlClick).toHaveBeenCalledWith(imageUrl, [imageUrl], 0);

@@ -57,7 +57,10 @@ describe("DebugLogPanel", () => {
 
     const log = (await screen.findByLabelText("デバッグログ（直近）")) as HTMLTextAreaElement;
     await waitFor(() => expect(log.value).toContain("保存に失敗しました"));
-    expect(log.value).toContain("2026-10-17T00:00:00.000Z [error] (/view/index.html) console:");
+    // 時刻は実行環境のタイムゾーンに依存させず、常に日本時間（+09:00）で表示する。
+    expect(log.value).toContain(
+      "2026-10-17T09:00:00.000+09:00 [error] (/view/index.html) console:",
+    );
   });
 
   it("すべてコピーは表示件数ではなく保存済みの全件を対象にする", async () => {
