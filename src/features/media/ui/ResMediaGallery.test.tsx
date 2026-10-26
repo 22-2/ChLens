@@ -1,20 +1,38 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const manualImageLoadingMock = vi.hoisted(() => ({ value: false }));
+const requestMediaImageDownloadMock = vi.hoisted(() =>
+  vi.fn<(key: string, url: string) => Promise<void>>(),
+);
 vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
   useConfigBooleanSetting: (key: string) => ({
     value: key === "manual_image_loading" && manualImageLoadingMock.value,
     setValue: vi.fn(),
   }),
 }));
+vi.mock("src/view/browser/hooks/use-config-number-setting", () => ({
+  useConfigNumberSetting: () => ({ value: 5, setValue: vi.fn() }),
+}));
+vi.mock("../browser/image-download-preflight", () => ({
+  allowImageWithinCurrentLimit: vi.fn(),
+  requestMediaImageDownload: requestMediaImageDownloadMock,
+}));
 
 import { imgurVideoResolver } from "../application/imgur-album";
 import { twitterPostResolver } from "../application/twitter-post";
 import { useMediaImageStore } from "../browser/use-media-image-store";
 import { ResMediaGallery } from "./ResMediaGallery";
+
+beforeEach(() => {
+  requestMediaImageDownloadMock.mockReset();
+  requestMediaImageDownloadMock.mockImplementation((key, url) => {
+    useMediaImageStore.getState().requestImage(key, url);
+    return Promise.resolve();
+  });
+});
 
 afterEach(() => {
   cleanup();

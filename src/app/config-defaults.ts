@@ -22,6 +22,7 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   // 変更理由: 画像の自動取得はIP漏洩や不快な画像の即時表示につながるため、既定は手動取得にする。
   // 手動取得は外部リンクの確認設定とは独立する。
   manual_image_loading: "on",
+  image_auto_download_limit_mb: "5",
   expand_short_url: "none",
   expand_short_url_timeout: "3000",
   // 変更理由: 追跡パラメータや危険なURLを開く前に気づけるよう、既定で確認する。

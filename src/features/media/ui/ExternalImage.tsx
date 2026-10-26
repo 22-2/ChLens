@@ -4,6 +4,7 @@ import {
   forwardRef,
   type ImgHTMLAttributes,
   type SyntheticEvent,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -12,9 +13,19 @@ import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { fetchTauriBinary } from "src/app/platform/tauri/HttpClient";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
+import { useConfigNumberSetting } from "src/view/browser/hooks/use-config-number-setting";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
+import {
+  allowImageWithinCurrentLimit,
+  requestMediaImageDownload,
+} from "../browser/image-download-preflight";
 import { useMediaImageStore } from "../browser/use-media-image-store";
-import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "../domain/media-settings";
+import {
+  DEFAULT_IMAGE_AUTO_DOWNLOAD_LIMIT_MB,
+  IMAGE_AUTO_DOWNLOAD_LIMIT_CONFIG_KEY,
+  MANUAL_IMAGE_LOADING_CONFIG_KEY,
+} from "../domain/media-settings";
 
 const logger = createLogger("media");
 
@@ -92,6 +103,11 @@ function fetchSharedTauriImage(key: string, url: string, version: number): Promi
 export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
   function ExternalImage({ src, onError, onLoad, manualLoad, ...props }, ref) {
     const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
+    const { value: imageAutoDownloadLimitMb } = useConfigNumberSetting(
+      IMAGE_AUTO_DOWNLOAD_LIMIT_CONFIG_KEY,
+      DEFAULT_IMAGE_AUTO_DOWNLOAD_LIMIT_MB,
+    );
+    const { window: viewWindow } = useViewSurface();
     const shouldLoadManually = manualLoad ?? manualImageLoading;
     const imageKey = props["data-image-key"] ?? src;
     const imageState = useMediaImageStore((state) => state.images.get(imageKey));
@@ -105,8 +121,60 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
     const fallbackStatusRef = useRef<"idle" | "pending" | "loaded" | "failed">("idle");
     const requestVersionRef = useRef(0);
     const currentSrcRef = useRef(src);
+    const placeholderRef = useRef<HTMLButtonElement>(null);
 
     currentSrcRef.current = src;
+
+    useEffect(() => {
+      if (shouldLoadManually || imageState?.status === "discarded") return;
+      if (imageState?.status === "awaiting-confirmation") {
+        allowImageWithinCurrentLimit(imageKey);
+        return;
+      }
+      if (
+        imageState?.status === "checking" ||
+        imageState?.status === "requested" ||
+        imageState?.status === "loaded"
+      ) {
+        return;
+      }
+
+      const beginPreflight = () => {
+        void requestMediaImageDownload(imageKey, src, viewWindow).catch((error: unknown) => {
+          logger.error("画像サイズ確認の開始に失敗しました", { url: src, error });
+        });
+      };
+
+      if (props.loading !== "lazy" || typeof IntersectionObserver === "undefined") {
+        beginPreflight();
+        return;
+      }
+
+      const placeholder = placeholderRef.current;
+      if (!placeholder) return;
+
+      // 変更理由: `loading="lazy"` の画像をすべて先にHEAD確認すると、画面外にも通信が増える。
+      // ブラウザーのlazy loadingと同じく表示領域へ近づいてからサイズを確認する。
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            observer.disconnect();
+            beginPreflight();
+          }
+        },
+        { rootMargin: "200px" },
+      );
+      observer.observe(placeholder);
+      return () => observer.disconnect();
+    }, [
+      imageAutoDownloadLimitMb,
+      imageKey,
+      imageState?.status,
+      props.loading,
+      shouldLoadManually,
+      src,
+      viewWindow,
+    ]);
 
     // WebViewではCSPエラーが通常のeffectより先に届くため、取得世代を描画直後に確定する。
     useLayoutEffect(() => {
@@ -179,12 +247,23 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
 
     const isImageLoadStarted =
       imageState?.status === "requested" || imageState?.status === "loaded";
-    if (imageState?.status === "discarded" || (shouldLoadManually && !isImageLoadStarted)) {
+    if (imageState?.status === "discarded" || !isImageLoadStarted) {
       const alt = props.alt?.trim();
-      const placeholderText =
-        imageState?.status === "discarded" ? "削除されました" : "クリックして画像を取得";
+      const placeholderText = (() => {
+        if (imageState?.status === "discarded") return "削除されました";
+        if (imageState?.status === "checking") return "画像サイズを確認中...";
+        if (imageState?.status === "awaiting-confirmation") {
+          if (imageState.contentLength == null)
+            return "画像サイズを確認できません。クリックして確認";
+          const imageSizeMb = (imageState.contentLength / 1_000_000).toFixed(2);
+          const maxSizeMb = ((imageState.maxBytes ?? 0) / 1_000_000).toFixed(2);
+          return `${imageSizeMb} MBの画像（上限 ${maxSizeMb} MB）。クリックして確認`;
+        }
+        return shouldLoadManually ? "クリックして画像を取得" : "画像サイズを確認中...";
+      })();
       return (
         <button
+          ref={placeholderRef}
           type="button"
           className={[
             "external-image-placeholder",
@@ -204,17 +283,20 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
           aria-label={
             imageState?.status === "discarded"
               ? placeholderText
-              : alt
-                ? `画像を読み込む: ${alt}`
-                : "画像を読み込む"
+              : imageState?.status === "awaiting-confirmation"
+                ? placeholderText
+                : alt
+                  ? `画像を読み込む: ${alt}`
+                  : "画像を読み込む"
           }
           data-testid={props["data-testid"]}
           data-image-key={props["data-image-key"]}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            setSourceState({ rawSrc: src, renderedSrc: src });
-            useMediaImageStore.getState().requestImage(imageKey);
+            void requestMediaImageDownload(imageKey, src, viewWindow).catch((error: unknown) => {
+              logger.error("画像取得の事前確認に失敗しました", { url: src, error });
+            });
           }}
         >
           <span>{placeholderText}</span>

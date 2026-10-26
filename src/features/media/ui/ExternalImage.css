@@ -19,3 +19,12 @@
   outline: var(--sys-border-width-strong) solid var(--sys-color-focus-ring);
   outline-offset: var(--sys-space-1);
 }
+
+.external-image-placeholder:disabled {
+  cursor: wait;
+}
+
+.external-image-placeholder > span {
+  overflow-wrap: anywhere;
+  text-align: center;
+}

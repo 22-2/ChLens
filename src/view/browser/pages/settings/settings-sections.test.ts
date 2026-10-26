@@ -230,14 +230,28 @@ describe("設定項目の置き場所", () => {
     const manualImageSetting = images?.fields.find(
       (field) => "key" in field && field.key === "manual_image_loading",
     );
+    const imageSizeLimitSetting = images?.fields.find(
+      (field) => "key" in field && field.key === "image_auto_download_limit_mb",
+    );
 
     expect(manualImageSetting).toMatchObject({
       kind: "boolean",
       key: "manual_image_loading",
       title: "画像をクリックしてから取得する",
     });
+    expect(imageSizeLimitSetting).toMatchObject({
+      kind: "number",
+      key: "image_auto_download_limit_mb",
+      title: "画像の自動取得上限（MB）",
+      minimum: 1,
+    });
     expect(images?.fields.map((field) => ("key" in field ? field.key : field.id))).toEqual(
-      expect.arrayContaining(["image_blur", "image_blur_word", "manual_image_loading"]),
+      expect.arrayContaining([
+        "image_blur",
+        "image_blur_word",
+        "manual_image_loading",
+        "image_auto_download_limit_mb",
+      ]),
     );
     expect(display?.fields.some((field) => "key" in field && field.key.startsWith("image_"))).toBe(
       false,

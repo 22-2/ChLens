@@ -26,11 +26,44 @@ import {
   twitterPostResolver,
   type TwitterVerificationBadgeColor,
 } from "../application/twitter-post";
-import { type MediaImageStatus, useMediaImageStore } from "../browser/use-media-image-store";
+import { requestMediaImageDownload } from "../browser/image-download-preflight";
+import {
+  type MediaImageState,
+  type MediaImageStatus,
+  useMediaImageStore,
+} from "../browser/use-media-image-store";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "../domain/media-settings";
 import { ExternalImage } from "./ExternalImage";
 
 const logger = createLogger("media");
+
+function requestImageDownload(url: string): void {
+  void requestMediaImageDownload(url, url).catch((error: unknown) => {
+    logger.error("画像取得の事前確認に失敗しました", { url, error });
+  });
+}
+
+function getImagePlaceholderText(imageState: MediaImageState | undefined): string {
+  if (imageState?.status === "discarded") return "削除されました";
+  if (imageState?.status === "checking") return "画像サイズを確認中...";
+  if (imageState?.status === "awaiting-confirmation") {
+    if (imageState.contentLength == null) return "サイズを確認できません。クリックして確認";
+    return `画像サイズ ${(imageState.contentLength / 1_000_000).toFixed(2)} MB・クリックして確認`;
+  }
+  return "クリックして画像を取得";
+}
+
+function getImagePlaceholderLabel(
+  imageState: MediaImageState | undefined,
+  defaultLabel: string,
+): string {
+  if (imageState?.status === "discarded") return "削除されました";
+  if (imageState?.status === "checking") return "画像サイズを確認中";
+  if (imageState?.status === "awaiting-confirmation") {
+    return getImagePlaceholderText(imageState);
+  }
+  return defaultLabel;
+}
 
 type ManualLoadExternalImageProps = React.ComponentProps<typeof ExternalImage> & {
   containerClassName?: string;
@@ -339,15 +372,11 @@ function TwitterPostCard({
             <button
               type="button"
               className="res__twitter-post-avatar-placeholder"
-              aria-label={
-                avatarImageState?.status === "discarded"
-                  ? "削除されました"
-                  : "投稿者の画像を読み込む"
-              }
+              aria-label={getImagePlaceholderLabel(avatarImageState, "投稿者の画像を読み込む")}
               onContextMenu={(event) => onImageContextMenu(avatarUrl, event)}
-              onClick={() => useMediaImageStore.getState().requestImage(avatarUrl)}
+              onClick={() => requestImageDownload(avatarUrl)}
             >
-              {avatarImageState?.status === "discarded" ? "削除されました" : "画像"}
+              {getImagePlaceholderText(avatarImageState)}
             </button>
           ) : manualImageLoading ? (
             <ManualLoadExternalImage
@@ -430,23 +459,23 @@ function TwitterPostCard({
                 imageState?.status === "discarded" ||
                 (manualImageLoading && !isImageLoadStarted(imageState?.status))
               ) {
-                const wasDiscarded = imageState?.status === "discarded";
                 return (
                   <button
                     key={`${media.type}:${media.url}`}
                     type="button"
                     className="res__twitter-post-media-placeholder"
-                    aria-label={
-                      wasDiscarded ? "削除されました" : `${media.altText ?? "投稿画像"}を読み込む`
-                    }
+                    aria-label={getImagePlaceholderLabel(
+                      imageState,
+                      `${media.altText ?? "投稿画像"}を読み込む`,
+                    )}
                     onContextMenu={(event) => onImageContextMenu(media.url, event)}
                     onClick={(event) => {
                       event.preventDefault();
                       event.stopPropagation();
-                      useMediaImageStore.getState().requestImage(media.url);
+                      requestImageDownload(media.url);
                     }}
                   >
-                    {wasDiscarded ? "削除されました" : "クリックして画像を取得"}
+                    {getImagePlaceholderText(imageState)}
                   </button>
                 );
               }
@@ -773,25 +802,24 @@ export function ResMediaGallery({
               imageState?.status === "discarded" ||
               (manualImageLoading && !isImageLoadStarted(imageState?.status))
             ) {
-              const wasDiscarded = imageState?.status === "discarded";
               return (
                 <button
                   key={`image:${item.rawUrl}`}
                   type="button"
                   className={`res__thumb res__thumb--image res__thumb--manual${isBlurred ? " res__thumb--blurred" : ""}`}
                   style={thumbStyle}
-                  aria-label={wasDiscarded ? "削除されました" : "画像を読み込む"}
+                  aria-label={getImagePlaceholderLabel(imageState, "画像を読み込む")}
                   title={item.rawUrl}
                   onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    useMediaImageStore.getState().requestImage(item.rawUrl);
+                    requestImageDownload(item.rawUrl);
                   }}
                   onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
                   onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
                 >
-                  {wasDiscarded ? "削除されました" : "クリックして画像を取得"}
+                  {getImagePlaceholderText(imageState)}
                 </button>
               );
             }

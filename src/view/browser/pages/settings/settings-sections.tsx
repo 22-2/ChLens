@@ -13,6 +13,7 @@ import {
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
+import { IMAGE_AUTO_DOWNLOAD_LIMIT_CONFIG_KEY } from "src/features/media/domain/media-settings";
 import { container } from "src/service-container/index";
 import {
   buildFieldSchema,
@@ -286,6 +287,16 @@ const ALL_SETTINGS_SECTIONS = [
         title: "画像をクリックしてから取得する",
         description:
           "ONにすると、画像やサムネイルはプレースホルダーで表示され、クリック後に取得します。外部リンクを開く前の確認設定とは独立しています。",
+      },
+      {
+        kind: "number",
+        key: IMAGE_AUTO_DOWNLOAD_LIMIT_CONFIG_KEY,
+        title: "画像の自動取得上限（MB）",
+        description:
+          "上限を超える画像は自動取得せず、取得前に確認します。サイズを事前に確認できない画像も確認対象です。既定値は5MBです。",
+        minimum: 1,
+        maximum: 1000,
+        step: 1,
       },
     ],
   ),

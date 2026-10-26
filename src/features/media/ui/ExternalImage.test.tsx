@@ -7,11 +7,22 @@ const loggerMock = vi.hoisted(() => ({ error: vi.fn(), warn: vi.fn(), debug: vi.
 vi.mock("src/app/logger", () => ({ createLogger: () => loggerMock }));
 
 const manualImageLoadingMock = vi.hoisted(() => ({ value: false }));
+const { requestMediaImageDownloadMock, allowImageWithinCurrentLimitMock } = vi.hoisted(() => ({
+  requestMediaImageDownloadMock: vi.fn<(key: string, url: string) => Promise<void>>(),
+  allowImageWithinCurrentLimitMock: vi.fn(),
+}));
 vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
   useConfigBooleanSetting: (key: string) => ({
     value: key === "manual_image_loading" && manualImageLoadingMock.value,
     setValue: vi.fn(),
   }),
+}));
+vi.mock("src/view/browser/hooks/use-config-number-setting", () => ({
+  useConfigNumberSetting: () => ({ value: 5, setValue: vi.fn() }),
+}));
+vi.mock("../browser/image-download-preflight", () => ({
+  allowImageWithinCurrentLimit: allowImageWithinCurrentLimitMock,
+  requestMediaImageDownload: requestMediaImageDownloadMock,
 }));
 
 const { fetchTauriBinaryMock, isTauriRuntimeMock } = vi.hoisted(() => ({
@@ -52,6 +63,12 @@ describe("ExternalImage", () => {
     isTauriRuntimeMock.mockReturnValue(false);
     manualImageLoadingMock.value = false;
     useMediaImageStore.setState({ images: new Map() });
+    requestMediaImageDownloadMock.mockReset();
+    requestMediaImageDownloadMock.mockImplementation((key, url) => {
+      useMediaImageStore.getState().requestImage(key, url);
+      return Promise.resolve();
+    });
+    allowImageWithinCurrentLimitMock.mockReset();
 
     createObjectUrl = vi.fn(() => "blob:tauri-image");
     revokeObjectUrl = vi.fn();
@@ -233,20 +250,27 @@ describe("ExternalImage", () => {
     );
     createObjectUrl.mockReturnValueOnce("blob:old-a").mockReturnValueOnce("blob:new-b");
     const { rerender, unmount } = render(<ExternalImage src={imageUrl} alt="テスト画像" />);
-    const image = screen.getByRole("img", { name: "テスト画像" });
+    const image = await screen.findByRole("img", { name: "テスト画像" });
+    await waitFor(() =>
+      expect(useMediaImageStore.getState().images.get(imageUrl)?.status).toBe("requested"),
+    );
     fireEvent.error(image);
     const nextImageUrl = "https://images.example.com/next.jpg";
     rerender(<ExternalImage src={nextImageUrl} alt="テスト画像" />);
-    fireEvent.error(image);
+    await waitFor(() =>
+      expect(useMediaImageStore.getState().images.get(nextImageUrl)?.status).toBe("requested"),
+    );
+    const nextImage = await screen.findByRole("img", { name: "テスト画像" });
+    fireEvent.error(nextImage);
     expect(resolves).toHaveLength(2);
     await act(async () => {
       resolves[0](imageResponse());
     });
-    expect(image).not.toHaveAttribute("src", "blob:old-a");
+    expect(nextImage).not.toHaveAttribute("src", "blob:old-a");
     await act(async () => {
       resolves[1](imageResponse());
     });
-    expect(image).toHaveAttribute("src", "blob:new-b");
+    expect(nextImage).toHaveAttribute("src", "blob:new-b");
     expect(useMediaImageStore.getState().images.get(imageUrl)?.fallbackSrc).toBe("blob:old-a");
     unmount();
     expect(revokeObjectUrl).not.toHaveBeenCalled();
@@ -257,8 +281,17 @@ describe("ExternalImage", () => {
     fetchTauriBinaryMock.mockResolvedValue(imageResponse());
     const onError = vi.fn();
     render(<ExternalImage src={imageUrl} alt="テスト画像" onError={onError} />);
-    const image = screen.getByRole("img", { name: "テスト画像" });
+    const image = await screen.findByRole("img", { name: "テスト画像" });
+    await waitFor(() =>
+      expect(useMediaImageStore.getState().images.get(imageUrl)?.status).toBe("requested"),
+    );
     fireEvent.error(image);
+    await waitFor(() => expect(fetchTauriBinaryMock).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(useMediaImageStore.getState().images.get(imageUrl)?.fallbackSrc).toBe(
+        "blob:tauri-image",
+      ),
+    );
     await waitFor(() => expect(image).toHaveAttribute("src", "blob:tauri-image"));
     fireEvent.error(image);
     fireEvent.error(image);

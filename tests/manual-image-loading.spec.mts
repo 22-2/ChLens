@@ -20,12 +20,20 @@ test("手動画像取得ではサムネイルをクリックするまで画像�
 
   const response = page.locator('[data-res-num="1"]');
   await expect(response).toContainText("クリック前には取得しない");
-  await expect(response.getByRole("button", { name: "画像を読み込む" })).toBeVisible();
+  await expect(response.getByRole("button", { name: /画像を読み込む/u }).last()).toBeVisible();
   expect(localBoard.requests).not.toContain("/img/1.png");
 
-  await response.getByRole("button", { name: "画像を読み込む" }).click();
+  await response
+    .getByRole("button", { name: /画像を読み込む/u })
+    .last()
+    .click();
   await expect
     .poll(() => localBoard.requests.filter((path) => path === "/img/1.png").length)
-    .toBe(1);
+    .toBeGreaterThanOrEqual(2);
+  expect(
+    localBoard.requestMethods
+      .filter((_, index) => localBoard.requests[index] === "/img/1.png")
+      .slice(0, 2),
+  ).toEqual(["HEAD", "GET"]);
   await expect(response.locator(`img[src="${imageUrl}"]`)).toBeVisible();
 });
