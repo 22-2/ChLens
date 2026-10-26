@@ -1,10 +1,39 @@
 import "@testing-library/jest-dom/vitest";
 
+import MessageProcessor from "src/core/thread/MessageProcessor";
 import { describe, expect, it } from "vite-plus/test";
 
 import { extractUrlsFromMessage, toOriginalImageUrl, toViewerImageUrl } from "./url-media";
 
 describe("url-media", () => {
+  it("HTML化した3件の画像URLを文字参照の違いで重複させない", () => {
+    const urls = ["first", "second", "third"].map(
+      (id) => `https://images.example.com/${id}.jpg?format=jpg&name=large`,
+    );
+    const decoded = MessageProcessor.decode(
+      { name: "名無し", mail: "", message: urls.join("<br>") },
+      "https:",
+    );
+
+    expect(extractUrlsFromMessage(decoded.messageHtml)).toEqual(urls);
+  });
+
+  it("リンクでない本文の文字参照も一度だけ復元し、改行ごとにURLを抽出する", () => {
+    expect(
+      extractUrlsFromMessage(
+        "https://example.com/first.jpg?a=1&amp;b=2<br>https://example.com/second.jpg?a=1&#38;b=2",
+      ),
+    ).toEqual(["https://example.com/first.jpg?a=1&b=2", "https://example.com/second.jpg?a=1&b=2"]);
+  });
+
+  it("URL中の文字参照に似た文字列を二重にデコードしない", () => {
+    expect(
+      extractUrlsFromMessage(
+        '<a href="https://example.com/image.jpg?q=&amp;amp;value">https://example.com/image.jpg?q=&amp;amp;value</a>',
+      ),
+    ).toEqual(["https://example.com/image.jpg?q=&amp;value"]);
+  });
+
   it("先頭を削ったURLを復元して重複なく抽出する", () => {
     const message = [
       "s://pbs.twimg.com/media/TestTwitterImageA.jpg",

@@ -19,19 +19,19 @@ export function extractUrlsFromMessage(message: string): string[] {
     result.push(trimmed);
   };
 
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(message, "text/html");
-    for (const a of Array.from(doc.querySelectorAll("a[href]"))) {
-      pushUrl(a.getAttribute("href") ?? "");
-    }
-  } catch {
-    // HTMLパースに失敗した場合でも正規表現抽出で継続
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(message, "text/html");
+  for (const a of Array.from(doc.querySelectorAll("a[href]"))) {
+    pushUrl(a.getAttribute("href") ?? "");
   }
 
-  const textMatch = message.match(URL_LIKE_PATTERN) ?? [];
-  for (const url of textMatch) {
-    pushUrl(url);
+  // 生のHTMLを再検索すると、hrefでは復元された & が &amp; の別URLとして重複する。
+  // DOMで一度だけ復元した本文を検索し、brなどで区切られたURLの連結も避ける。
+  const textNodes = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+  for (let node = textNodes.nextNode(); node; node = textNodes.nextNode()) {
+    for (const url of node.textContent?.match(URL_LIKE_PATTERN) ?? []) {
+      pushUrl(url);
+    }
   }
 
   return result;
