@@ -10,6 +10,7 @@ import {
   useTabDispatch,
   useTabViewState,
 } from "src/view/browser/state/tabs/use-tab-store";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
@@ -222,6 +223,11 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   const [entries, setEntries] = useState<WriteHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [contextMenuState, setContextMenuState] = useState<{
+    entry: WriteHistoryEntry;
+    x: number;
+    y: number;
+  } | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [sortState, setSortState] = useState<SortState>(() => {
     const column = persistedViewState.sortColumn;
@@ -369,6 +375,18 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     [dispatch],
   );
 
+  const removeWriteHistoryEntry = useCallback(async (entry: WriteHistoryEntry) => {
+    try {
+      await container.writeHistory.remove(entry.url, entry.writtenRes);
+      container.toast.success("書き込み履歴から削除しました");
+    } catch (error) {
+      logger.error("書き込み履歴の削除に失敗しました", error);
+      container.toast.error(
+        error instanceof Error ? error.message : "書き込み履歴の削除に失敗しました",
+      );
+    }
+  }, []);
+
   // 変更理由: 前回の結果がある場合は「読み込み中」ではなく古い結果を表示し続ける。
   // 新しいデータの取得が完了したら自動的に新しい結果に置き換わる。
   if (loading && entries.length === 0) {
@@ -409,12 +427,28 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
         getRowTooltip={(row) => row.title}
         onRowClick={openEntry}
         onRowMiddleClick={openEntryInNewTab}
+        onRowContextMenu={(entry, x, y) => setContextMenuState({ entry, x, y })}
         sortColumn={sortState.column ?? undefined}
         sortDirection={sortState.direction}
         onSort={handleSort}
         columnVisibilityStorageKey={COLUMN_VISIBILITY_STORAGE_KEY}
         columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
       />
+      {contextMenuState && isActive ? (
+        <ContextMenu
+          x={contextMenuState.x}
+          y={contextMenuState.y}
+          items={[
+            {
+              id: "remove-write-history-entry",
+              label: "書き込み履歴から削除",
+              danger: true,
+              onSelect: () => void removeWriteHistoryEntry(contextMenuState.entry),
+            },
+          ]}
+          onClose={() => setContextMenuState(null)}
+        />
+      ) : null}
     </div>
   );
 };

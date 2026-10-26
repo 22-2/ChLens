@@ -9,6 +9,7 @@ import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDat
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabDispatch, useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
@@ -242,6 +243,11 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [contextMenuState, setContextMenuState] = useState<{
+    entry: HistoryEntry;
+    x: number;
+    y: number;
+  } | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [sortState, setSortState] = useState<SortState>(() => {
     const column = persistedViewState.sortColumn;
@@ -577,6 +583,18 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     [dispatch],
   );
 
+  const removeHistoryEntry = useCallback(async (entry: HistoryEntry) => {
+    try {
+      await container.history.remove(entry.url);
+      container.toast.success("閲覧履歴から削除しました");
+    } catch (error) {
+      logger.error("閲覧履歴の削除に失敗しました", error);
+      container.toast.error(
+        error instanceof Error ? error.message : "閲覧履歴の削除に失敗しました",
+      );
+    }
+  }, []);
+
   const handleEndReached = useCallback(() => {
     if (shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
       return;
@@ -624,6 +642,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
           getRowTooltip={(row) => row.title}
           onRowClick={openEntry}
           onRowMiddleClick={openEntryInNewTab}
+          onRowContextMenu={(entry, x, y) => setContextMenuState({ entry, x, y })}
           sortColumn={sortState.column ?? undefined}
           sortDirection={sortState.direction}
           onSort={handleSort}
@@ -635,6 +654,21 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
           columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
         />
       </div>
+      {contextMenuState && isActive ? (
+        <ContextMenu
+          x={contextMenuState.x}
+          y={contextMenuState.y}
+          items={[
+            {
+              id: "remove-history-entry",
+              label: "閲覧履歴から削除",
+              danger: true,
+              onSelect: () => void removeHistoryEntry(contextMenuState.entry),
+            },
+          ]}
+          onClose={() => setContextMenuState(null)}
+        />
+      ) : null}
     </div>
   );
 };
