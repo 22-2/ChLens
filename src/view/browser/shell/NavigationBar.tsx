@@ -31,7 +31,15 @@ import {
   resolveBrowserCommands,
 } from "src/view/browser/commands/browser-commands";
 import { commandPalette } from "src/view/browser/commands/command-palette-store";
+import {
+  COMMAND_REQUEST_IDS,
+  type CommandRequest,
+  type CommandTarget,
+  runCommandRequest,
+} from "src/view/browser/commands/command-runtime";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
+import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log-actions";
+import { useZenMode } from "src/view/browser/commands/zen-mode-store";
 import { Omnibar } from "src/view/browser/components/Omnibar";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
@@ -50,7 +58,7 @@ import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabPanes, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { canGoBack, canGoForward, getCurrentPage, getDisplayUrl } from "src/view/browser/types";
 import { Button } from "src/view/browser/ui/Button";
-import { ContextMenu } from "src/view/browser/ui/ContextMenu";
+import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
@@ -63,10 +71,15 @@ import {
 } from "src/view/browser/utils/filter-toolbar-open-state";
 import { isPageFilterable } from "src/view/browser/utils/filterable-pages";
 import {
+  getBoardUrlFromThreadUrl,
+  parseInternalBrowserPage,
+} from "src/view/browser/utils/link-routing";
+import {
   getManualRefreshScopeKey,
   runManualRefresh,
   useManualRefreshCooldown,
 } from "src/view/browser/utils/manual-refresh";
+import type { OmnibarSuggestion } from "src/view/browser/utils/omnibar";
 import { loadOmnibarSources } from "src/view/browser/utils/omnibar-sources";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
@@ -81,6 +94,10 @@ import { useOmnibarNavigation } from "./use-omnibar-navigation";
 interface MenuPosition {
   x: number;
   y: number;
+}
+
+interface SuggestionMenuState extends MenuPosition {
+  suggestion: OmnibarSuggestion;
 }
 
 const OMNIBAR_MAX_SUGGESTIONS = 8;
@@ -112,6 +129,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const isTwoPane = panes.length >= 2;
   const isActivePane = activePaneId === paneId;
   const { isOpen: isPanelOpen, activePanelTabId, togglePanel } = useBottomPanel();
+  const isZenMode = useZenMode();
 
   const back = canGoBack(viewTab);
   const forward = canGoForward(viewTab);
@@ -127,6 +145,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(null);
   const [refreshMenuPosition, setRefreshMenuPosition] = useState<MenuPosition | null>(null);
   const [forwardMenuPosition, setForwardMenuPosition] = useState<MenuPosition | null>(null);
+  const [suggestionMenuState, setSuggestionMenuState] = useState<SuggestionMenuState | null>(null);
   // 変更理由: URL入力はタイトルのピルをクリックした間だけ、ピルと入れ替わる形で表示する。
   // 常時の行を持たないので、タブと本文に使える高さは変わらない。
   const [isUrlEditing, setIsUrlEditing] = useState(false);
@@ -195,6 +214,175 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     urlInputRef,
   });
 
+  const runSuggestionCommand = useCallback(
+    (request: CommandRequest) => {
+      void runCommandRequest(request, { surface: viewSurface, toast });
+    },
+    [toast, viewSurface],
+  );
+  const suggestionContextMenuItems = useMemo<ContextMenuItem[]>(() => {
+    const state = suggestionMenuState;
+    if (!state) return [];
+
+    const { suggestion } = state;
+    const resolvedPage = parseInternalBrowserPage(suggestion.url);
+    const targetPage =
+      resolvedPage?.type === "thread"
+        ? { ...resolvedPage, title: suggestion.title }
+        : resolvedPage?.type === "threadList"
+          ? {
+              ...resolvedPage,
+              title: suggestion.title,
+              boardTitle: suggestion.boardTitle || suggestion.title,
+            }
+          : null;
+    const target: CommandTarget | null =
+      resolvedPage?.type === "thread"
+        ? { kind: "thread", title: suggestion.title, url: resolvedPage.threadUrl }
+        : resolvedPage?.type === "threadList"
+          ? {
+              kind: "board",
+              title: suggestion.boardTitle || suggestion.title,
+              url: resolvedPage.boardUrl,
+            }
+          : null;
+    const items: ContextMenuItem[] = [];
+
+    if (targetPage) {
+      items.push(
+        {
+          id: "open-current",
+          label: "このタブで開く",
+          onSelect: () => openSuggestion(suggestion),
+        },
+        {
+          id: "open-new-tab",
+          label: "新しいタブで開く",
+          onSelect: () => dispatch(tabActions.openInNewTabForce(targetPage, { focus: true })),
+        },
+      );
+    }
+
+    if (target) {
+      items.push({ id: "suggestion-actions-separator", separator: true });
+      items.push({
+        id: "bookmark-toggle",
+        label: "ブックマークを切り替え",
+        onSelect: () =>
+          runSuggestionCommand({
+            id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_TOGGLE,
+            args: { target },
+          }),
+      });
+      items.push(
+        {
+          id: "copy-title",
+          label: target.kind === "thread" ? "スレタイをコピー" : "板名をコピー",
+          onSelect: () =>
+            runSuggestionCommand({
+              id: COMMAND_REQUEST_IDS.TARGET_COPY,
+              args: { target, format: "title" },
+            }),
+        },
+        {
+          id: "copy-url",
+          label: "URLをコピー",
+          onSelect: () =>
+            runSuggestionCommand({
+              id: COMMAND_REQUEST_IDS.TARGET_COPY,
+              args: { target, format: "url" },
+            }),
+        },
+        {
+          id: "copy-title-url",
+          label: target.kind === "thread" ? "スレタイ＆URLをコピー" : "板名＆URLをコピー",
+          onSelect: () =>
+            runSuggestionCommand({
+              id: COMMAND_REQUEST_IDS.TARGET_COPY,
+              args: { target, format: "title-url" },
+            }),
+        },
+      );
+    } else {
+      items.push({
+        id: "copy-url",
+        label: "URLをコピー",
+        onSelect: () =>
+          runSuggestionCommand({
+            id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT,
+            args: { text: suggestion.url },
+          }),
+      });
+    }
+
+    if (resolvedPage?.type === "thread") {
+      const boardUrl = getBoardUrlFromThreadUrl(resolvedPage.threadUrl);
+      const threadUrl = resolvedPage.threadUrl;
+      const openThreadTabIds = panes
+        .flatMap((pane) => pane.tabs)
+        .filter((tab) => {
+          const page = getCurrentPage(tab);
+          return !tab.pinned && page.type === "thread" && page.threadUrl === threadUrl;
+        })
+        .map((tab) => tab.id);
+
+      items.push(
+        { id: "thread-actions-separator", separator: true },
+        {
+          id: "open-board",
+          label: "板を新しいタブで開く",
+          onSelect: () =>
+            dispatch(
+              tabActions.openInNewTabForce(
+                {
+                  type: "threadList",
+                  title: suggestion.boardTitle || boardUrl,
+                  boardUrl,
+                  boardTitle: suggestion.boardTitle || boardUrl,
+                },
+                { focus: true },
+              ),
+            ),
+        },
+        {
+          id: "delete-thread-log",
+          label: openThreadTabIds.length > 0 ? "スレログを削除してタブを閉じる" : "スレログを削除",
+          danger: true,
+          onSelect: () => {
+            void deleteThreadLogAndCloseTab({
+              threadUrl,
+              closeTab: () => {
+                let didCloseTab = false;
+                for (const tabId of openThreadTabIds) {
+                  didCloseTab = runTabCommand(TAB_COMMAND_IDS.CLOSE, { tabId }) || didCloseTab;
+                }
+                return didCloseTab;
+              },
+              clearCachedReadState: clearCachedThreadReadState,
+              toast,
+            });
+          },
+        },
+      );
+    }
+
+    items.push({
+      id: "open-in-browser",
+      label: "ブラウザで開く",
+      onSelect: () => viewSurface.window.open(suggestion.url, "_blank", "noopener,noreferrer"),
+    });
+    return items;
+  }, [
+    dispatch,
+    openSuggestion,
+    panes,
+    runSuggestionCommand,
+    runTabCommand,
+    suggestionMenuState,
+    toast,
+    viewSurface,
+  ]);
+
   const context = useMemo<BrowserCommandContext>(
     () => ({
       viewPage,
@@ -202,6 +390,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       tabs: state.tabs,
       closedTabs: state.closedTabs,
       isTwoPane,
+      isZenMode,
       isWritePanelOpen: isPanelOpen,
       canWriteToThread: threadCapabilities?.canWrite ?? false,
       clearCachedThreadReadState,
@@ -219,6 +408,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       dispatch,
       isPanelOpen,
       isTwoPane,
+      isZenMode,
       openNextThreadSearchDialog,
       openSimilarThreadSearchDialog,
       openArchiveReplayWindow,
@@ -681,6 +871,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       onBlur={handleOmnibarBlur}
       onSuggestionHover={setActiveSuggestionIndex}
       onSuggestionSelect={handleSelectSuggestion}
+      onSuggestionContextMenu={(suggestion, x, y) => setSuggestionMenuState({ suggestion, x, y })}
       onCommandSelect={(command) => void executeCommand(command)}
       trailingAction={
         bookmarkTarget ? (
@@ -726,7 +917,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           <Filter size={13} />
         </button>
       ) : null}
-      {isUrlEditing && !commandCenterSlot ? omnibar : null}
+      {isUrlEditing && !commandCenterSlot && !isZenMode ? omnibar : null}
 
       <button
         ref={menuButtonRef}
@@ -794,7 +985,20 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           : chrome}
       {/* 変更理由: 入力欄はタイトルバー中央のピルと同じ位置へ出す。受け口がない環境
           （テスト等）では上のボタン群と同じ場所へインライン表示する。 */}
-      {isUrlEditing && commandCenterSlot ? createPortal(omnibar, commandCenterSlot) : null}
+      {isUrlEditing && isZenMode && portalContainer
+        ? createPortal(<div className="zen-mode__palette">{omnibar}</div>, portalContainer)
+        : null}
+      {isUrlEditing && !isZenMode && commandCenterSlot
+        ? createPortal(omnibar, commandCenterSlot)
+        : null}
+      {suggestionMenuState ? (
+        <ContextMenu
+          x={suggestionMenuState.x}
+          y={suggestionMenuState.y}
+          items={suggestionContextMenuItems}
+          onClose={() => setSuggestionMenuState(null)}
+        />
+      ) : null}
 
       <Dialog.Root
         open={isResponseJumpDialogOpen}

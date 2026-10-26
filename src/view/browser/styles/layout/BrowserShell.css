@@ -16,3 +16,29 @@
 .browser-shell > .content-area {
   min-height: 0;
 }
+
+/* 変更理由: Zenモードでは本文の閲覧領域を広げ、操作が必要な時だけパレットを戻す。 */
+.browser-shell[data-zen-mode="true"] > .title-bar,
+.browser-shell[data-zen-mode="true"] .pane-column__chrome,
+.browser-shell[data-zen-mode="true"] .status-bar,
+.browser-shell[data-zen-mode="true"] .bottom-panel,
+.browser-shell[data-zen-mode="true"] .thread-page__top-bar,
+.browser-shell[data-zen-mode="true"] .search-bar {
+  display: none;
+}
+
+.zen-mode__palette {
+  position: fixed;
+  z-index: var(--sys-z-omnibar);
+  inset-block-start: var(--sys-space-4);
+  inset-inline: 0;
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--sys-space-4);
+  pointer-events: none;
+}
+
+.zen-mode__palette .nav-bar__url {
+  width: min(800px, calc(100vw - var(--sys-space-10)));
+  pointer-events: auto;
+}

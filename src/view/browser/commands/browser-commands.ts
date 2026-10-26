@@ -5,6 +5,7 @@ import {
   Clipboard,
   Columns2,
   ExternalLink,
+  Eye,
   FileJson,
   Filter,
   Hash,
@@ -50,6 +51,7 @@ import {
 } from "src/view/browser/commands/response-jump-command";
 import { TAB_COMMAND_IDS, type TabCommandId } from "src/view/browser/commands/tab-command-runtime";
 import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log-actions";
+import { toggleZenMode } from "src/view/browser/commands/zen-mode-store";
 import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   getAutoRefreshPageKey,
@@ -209,6 +211,7 @@ export interface BrowserCommandContext {
   tabs: readonly Tab[];
   closedTabs: readonly Tab[];
   isTwoPane: boolean;
+  isZenMode?: boolean;
   isWritePanelOpen: boolean;
   /** 現在のスレッドへ書き込めるか。未指定なら通常のスレッドとして扱う。 */
   canWriteToThread?: boolean;
@@ -1258,6 +1261,16 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "page",
     icon: Search,
     run: () => toggleConfigSwitch("auto_next_thread"),
+  },
+  {
+    id: "layout.toggle-zen-mode",
+    label: ({ isZenMode }) => (isZenMode ? "Zenモードを終了" : "Zenモードを開始"),
+    englishLabel: ({ isZenMode }) => (isZenMode ? "Exit Zen Mode" : "Enter Zen Mode"),
+    description: "タブバーやステータスバーを隠して、表示領域を広げます",
+    keywords: ["zen", "zen mode", "集中", "全画面", "表示領域"],
+    group: "layout",
+    icon: Eye,
+    run: toggleZenMode,
   },
   {
     id: "layout.toggle-image-blur",

@@ -24,6 +24,7 @@ import { WriteSessionProvider } from "src/features/write/browser/use-write-sessi
 import { WritePanelToggleItem } from "src/features/write/ui/WritePanelToggleItem";
 import { WriteWindowHost } from "src/features/write/ui/WriteWindowHost";
 import { container } from "src/service-container/index";
+import { useZenMode } from "src/view/browser/commands/zen-mode-store";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { BottomPanelProvider } from "src/view/browser/hooks/use-bottom-panel";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
@@ -228,6 +229,7 @@ const PaneRow: React.FC = () => {
 
 export const BrowserApp: React.FC = () => {
   const theme = useTheme();
+  const isZenMode = useZenMode();
   // 変更理由: 垂直モードではタイトルバーをペイン単位にするため、シェル側の共通表示を切り替える。
   const shellTabBarOrientation = useTabBarOrientation();
   useNotificationListener();
@@ -266,6 +268,7 @@ export const BrowserApp: React.FC = () => {
                 className="browser-shell"
                 data-theme={theme}
                 data-tab-orientation={shellTabBarOrientation}
+                data-zen-mode={isZenMode ? "true" : "false"}
               >
                 <WindowNavigationBridge />
                 {/* 変更理由: 本文を覆う範囲を減らし、通知を上部バー直下の右端へ寄せる。

@@ -23,6 +23,7 @@ interface OmnibarProps {
   onBlur: (e: React.FocusEvent<HTMLDivElement>) => void;
   onSuggestionHover: (index: number) => void;
   onSuggestionSelect: (suggestion: OmnibarSuggestion) => void;
+  onSuggestionContextMenu?: (suggestion: OmnibarSuggestion, x: number, y: number) => void;
   onCommandSelect: (command: ResolvedBrowserCommand) => void;
   trailingAction?: ReactNode;
 }
@@ -66,6 +67,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   onBlur,
   onSuggestionHover,
   onSuggestionSelect,
+  onSuggestionContextMenu,
   onCommandSelect,
   trailingAction,
 }) => {
@@ -115,10 +117,15 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   aria-selected={index === activeSuggestionIndex}
                   onMouseDown={(e) => {
                     // blur が先に発火して候補クリックが失われるのを防ぐ。
-                    e.preventDefault();
+                    if (e.button === 0) e.preventDefault();
                   }}
                   onMouseEnter={() => onSuggestionHover(index)}
                   onClick={() => onSuggestionSelect(suggestion)}
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onSuggestionContextMenu?.(suggestion, event.clientX, event.clientY);
+                  }}
                   title={`${suggestion.title} ${suggestion.url}`}
                 >
                   <SourceIcons sources={suggestion.sources} />
