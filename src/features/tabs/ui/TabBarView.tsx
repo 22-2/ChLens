@@ -379,39 +379,17 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
     scrollSelectedTabIntoView(selectedTabId);
   }, [scrollSelectedTabIntoView, selectedTabId]);
 
-  // ホイールで選択タブを前後に切り替える
+  // ホイールは一覧のスクロールに使わず、選択タブを前後に切り替えるためだけに使う。
+  // 一覧のスクロールはスクロールバーで行う。
   const handleWheel = useCallback(
     (e: WheelEvent) => {
+      // 変更理由: 閾値未満や冷却中の入力でも既定のスクロールを起こさないよう、
+      // 切り替えの判定より前に既定の動作を止める。
+      e.preventDefault();
       const normalizedWheel = normalizeWheel(e);
       const wheelDistance = normalizedWheel.pixelX + normalizedWheel.pixelY;
       if (Math.abs(wheelDistance) < TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD) {
         return;
-      }
-
-      // 変更理由: 垂直モードでは縦スクロールを優先しつつ、ホイールでのタブ送りも可能にする。
-      // 縦方向のホイールは一覧がその方向へスクロールできる間は既定スクロールへ任せ、
-      // 端まで到達済みやスクロール不要な場合はタブ切り替えへ回す。
-      // 横方向のホイール（Shift+ホイール含む）は常にタブ切り替えに使う。
-      if (isVertical) {
-        const isHorizontalWheel =
-          Math.abs(normalizedWheel.pixelX) > Math.abs(normalizedWheel.pixelY);
-        if (!isHorizontalWheel) {
-          const tabList = tabListRef.current;
-          if (tabList) {
-            const maxScrollTop = Math.max(0, tabList.scrollHeight - tabList.clientHeight);
-            if (maxScrollTop > 1) {
-              const goingDown = normalizedWheel.pixelY > 0;
-              const canScrollInDirection = goingDown
-                ? tabList.scrollTop < maxScrollTop - 1
-                : tabList.scrollTop > 1;
-              if (canScrollInDirection) {
-                return;
-              }
-            }
-          } else {
-            return;
-          }
-        }
       }
 
       const now = Date.now();
@@ -430,10 +408,9 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       if (!onStepTab(delta)) {
         return;
       }
-      e.preventDefault();
       lastWheelSwitchAtRef.current = now;
     },
-    [isVertical, onStepTab],
+    [onStepTab],
   );
 
   useEffect(() => {

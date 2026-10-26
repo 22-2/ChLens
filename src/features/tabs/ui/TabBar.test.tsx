@@ -1074,7 +1074,7 @@ describe("TabBar vertical", () => {
     expect(tabList.lastElementChild).toBe(addButton);
   });
 
-  it("垂直ではスクロール可能な間は縦スクロールへ任せてタブを切り替えない", () => {
+  it("垂直ではスクロール可能な間でもホイールで一覧をスクロールせず、タブを切り替える", () => {
     const { container } = render(<TabBar orientation="vertical" />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
     const tabList = container.querySelector(".tab-list") as HTMLDivElement;
@@ -1084,9 +1084,12 @@ describe("TabBar vertical", () => {
     });
     tabList.scrollTop = 0;
 
-    fireEvent.wheel(tabBar, { deltaY: 40 });
+    const wheelEvent = new WheelEvent("wheel", { deltaY: 40, bubbles: true, cancelable: true });
+    tabBar.dispatchEvent(wheelEvent);
 
-    expect(dispatchMock).not.toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_TAB" }));
+    // 既定のスクロールを止めたうえで、ホイールはタブ切り替えだけに使う。
+    expect(wheelEvent.defaultPrevented).toBe(true);
+    expect(dispatchMock).toHaveBeenCalledWith(expect.objectContaining({ type: "SELECT_TAB" }));
   });
 
   it("垂直ではスクロール端やスクロール不要時はホイールでタブを切り替える", () => {
