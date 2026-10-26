@@ -72,6 +72,7 @@ import {
   type QuickAccessFilterPageType,
   THREAD_FILTER_MODE_TOGGLE_EVENT,
 } from "src/view/browser/utils/filter-toolbar-events";
+import { isPageFilterable } from "src/view/browser/utils/filterable-pages";
 import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
@@ -266,16 +267,6 @@ function getCommandToast(context: BrowserCommandContext): IToastService {
 const RELOADABLE_PAGE_TYPES = new Set<Page["type"]>([
   "thread",
   "threadList",
-  "historyList",
-  "writeHistoryList",
-  "logList",
-]);
-
-const FILTERABLE_PAGE_TYPES = new Set<Page["type"]>([
-  "thread",
-  "boardList",
-  "threadList",
-  "bookmarkList",
   "historyList",
   "writeHistoryList",
   "logList",
@@ -932,7 +923,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     keywords: ["検索", "絞り込み", "filter"],
     group: "page",
     icon: Filter,
-    when: ({ viewPage }) => FILTERABLE_PAGE_TYPES.has(viewPage.type),
+    when: ({ viewPage }) => isPageFilterable(viewPage.type),
     run: toggleFilter,
   },
   {

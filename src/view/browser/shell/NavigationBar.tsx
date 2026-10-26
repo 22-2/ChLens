@@ -60,6 +60,7 @@ import {
   useFilterToolbarOpen,
   useFilterToolbarPinned,
 } from "src/view/browser/utils/filter-toolbar-open-state";
+import { isPageFilterable } from "src/view/browser/utils/filterable-pages";
 import {
   getManualRefreshScopeKey,
   runManualRefresh,
@@ -91,20 +92,6 @@ interface NavigationBarProps {
   openNextThreadSearchDialog?: () => Promise<void>;
   openSimilarThreadSearchDialog?: () => Promise<void>;
   openArchiveReplayWindow?: () => void;
-}
-
-const FILTERABLE_PAGE_TYPES = new Set<string>([
-  "thread",
-  "boardList",
-  "threadList",
-  "bookmarkList",
-  "historyList",
-  "writeHistoryList",
-  "logList",
-]);
-
-function isFilterablePageType(pageType: string): boolean {
-  return FILTERABLE_PAGE_TYPES.has(pageType);
 }
 
 export const NavigationBar: React.FC<NavigationBarProps> = ({
@@ -437,7 +424,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const isFilterToolbarPinned = useFilterToolbarPinned(viewTab.id);
   // 変更理由: 常時表示のスレはフィルタバーを閉じられないため、開閉の導線を出さない。
   const canToggleFilter =
-    isFilterablePageType(viewPage.type) && !(viewPage.type === "thread" && isFilterToolbarPinned);
+    isPageFilterable(viewPage.type) && !(viewPage.type === "thread" && isFilterToolbarPinned);
 
   const toggleFilterFromMenu = useCallback(() => {
     // フィルタUIはメニュー項目からのみ開くことで、
