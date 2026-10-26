@@ -7,6 +7,7 @@ import {
   appendPersistedLogs,
   clearPersistedLogs,
   flushPersistedLogs,
+  formatJstTimestamp,
   formatPersistedLog,
   installLogPersistence,
   MAX_PERSISTED_ENTRIES,
@@ -109,6 +110,11 @@ describe("ログの永続化", () => {
 });
 
 describe("ログの表示形式", () => {
+  it("時刻は日本時間（+09:00）で表示する", () => {
+    // 1970-01-01T00:00:01.001Z は日本時間では 09:00:01.001
+    expect(formatJstTimestamp(1_000 + 1)).toBe("1970-01-01T09:00:01.001+09:00");
+  });
+
   it("時刻・レベル・出所・本文を1行にし、データとスタックは続く行へ字下げして足す", () => {
     const text = formatPersistedLog(
       entry(1, {
@@ -121,7 +127,7 @@ describe("ログの表示形式", () => {
     );
 
     expect(text.split("\n")).toEqual([
-      "1970-01-01T00:00:01.001Z [event] (/view/index.html) auto-refresh: 停止",
+      "1970-01-01T09:00:01.001+09:00 [event] (/view/index.html) auto-refresh: 停止",
       '  data: {"tabId":"t1"}',
       "  at foo",
       "  at bar",

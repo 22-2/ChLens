@@ -88,10 +88,24 @@ export async function clearPersistedLogs(): Promise<void> {
   await db.clear(STORE_NAME);
 }
 
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/**
+ * 時刻を日本時間（UTC+9）のISO 8601形式にする。
+ *
+ * 変更理由: 原因調査で時刻を見る利用者が日本にいるため、UTCのままだと頭の中で9時間ずらす必要があった。
+ * 日本には夏時間がないので固定オフセットで足りる。Intl を使わないのは、環境によって
+ * タイムゾーンのデータが無いとき時刻が黙ってUTCへ戻るのを避けるため。
+ */
+export function formatJstTimestamp(time: number): string {
+  const jst = new Date(time + JST_OFFSET_MS).toISOString();
+  return `${jst.slice(0, -1)}+09:00`;
+}
+
 /** 画面に見せる・コピーする・書き出す、いずれも同じ形式の1件分の文字列にする。 */
 export function formatPersistedLog(entry: PersistedLogEntry): string {
   const lines = [
-    `${new Date(entry.time).toISOString()} [${entry.level}] (${entry.page}) ${entry.category}: ${entry.message}`,
+    `${formatJstTimestamp(entry.time)} [${entry.level}] (${entry.page}) ${entry.category}: ${entry.message}`,
   ];
   if (entry.data !== undefined) {
     lines.push(`  data: ${JSON.stringify(entry.data)}`);
