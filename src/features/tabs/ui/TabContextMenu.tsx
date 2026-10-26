@@ -1,4 +1,4 @@
-import { ExternalLink, List, Pin, PinOff, RotateCcw, X } from "lucide-react";
+import { ExternalLink, List, Pin, PinOff, RotateCcw, Trash2, X } from "lucide-react";
 import React, { useCallback, useMemo } from "react";
 import {
   readBookmarkStatus,
@@ -13,6 +13,7 @@ import {
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
 import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
+import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log-actions";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -155,6 +156,20 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         onSelect: () => {
           // 別窓のタブから実行しても、その窓を起点に外部ページを開く。
           viewWindow.open(threadPage.threadUrl, "_blank", "noopener,noreferrer");
+        },
+      });
+      result.push({
+        id: "delete-thread-log",
+        label: "スレログを削除してタブを閉じる",
+        icon: <Trash2 />,
+        danger: true,
+        disabled: tab.pinned,
+        onSelect: () => {
+          void deleteThreadLogAndCloseTab({
+            threadUrl: threadPage.threadUrl,
+            closeTab: () => runTabCommand(TAB_COMMAND_IDS.CLOSE),
+            toast,
+          });
         },
       });
       result.push({ id: "sep-2", separator: true });

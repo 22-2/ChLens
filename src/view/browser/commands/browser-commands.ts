@@ -49,6 +49,7 @@ import {
   RESPONSE_JUMP_COMMAND_ID,
 } from "src/view/browser/commands/response-jump-command";
 import { TAB_COMMAND_IDS, type TabCommandId } from "src/view/browser/commands/tab-command-runtime";
+import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log-actions";
 import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   getAutoRefreshPageKey,
@@ -1178,6 +1179,25 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       getCommandToast(context).success(
         `スレ全体をTOON形式でコピーしました（推定 ${tokenCount.toLocaleString("ja-JP")} トークン）`,
       );
+    },
+  },
+  {
+    id: "page.delete-thread-log",
+    label: "現在のスレログを削除してタブを閉じる",
+    englishLabel: "Delete Current Thread Log and Close Tab",
+    description: "現在のスレの保存済みログを削除して、このタブを閉じます",
+    keywords: ["スレログ", "ログ削除", "過去ログ", "delete log"],
+    group: "page",
+    icon: Trash2,
+    when: ({ viewPage, viewTab, runTabCommand }) =>
+      viewPage.type === "thread" && !viewTab.pinned && runTabCommand != null,
+    run: async (context) => {
+      if (context.viewPage.type !== "thread" || !context.runTabCommand) return;
+      await deleteThreadLogAndCloseTab({
+        threadUrl: context.viewPage.threadUrl,
+        closeTab: () => context.runTabCommand?.(TAB_COMMAND_IDS.CLOSE) ?? false,
+        toast: getCommandToast(context),
+      });
     },
   },
   {
