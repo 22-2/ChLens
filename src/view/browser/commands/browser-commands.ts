@@ -212,6 +212,8 @@ export interface BrowserCommandContext {
   isWritePanelOpen: boolean;
   /** 現在のスレッドへ書き込めるか。未指定なら通常のスレッドとして扱う。 */
   canWriteToThread?: boolean;
+  /** スレログ削除後、板ごとの一覧キャッシュからも既読表示を除く。 */
+  clearCachedThreadReadState: (threadUrl: string) => Promise<void>;
   dispatch: Dispatch<ScopedTabAction>;
   toggleWritePanel: () => void;
   openResponseJumpDialog: () => void;
@@ -1191,6 +1193,7 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       await deleteThreadLogAndCloseTab({
         threadUrl: context.viewPage.threadUrl,
         closeTab: () => context.runTabCommand?.(TAB_COMMAND_IDS.CLOSE) ?? false,
+        clearCachedReadState: context.clearCachedThreadReadState,
         toast: getCommandToast(context),
       });
     },

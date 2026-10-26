@@ -25,6 +25,7 @@ import { useNavHistoryMenuItems } from "src/features/tabs/browser/use-nav-histor
 import { useTabBarOrientation } from "src/features/tabs/browser/use-tab-bar-orientation";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useResponseJumpDialog } from "src/features/thread/browser/use-response-jump-dialog";
+import { clearCachedThreadReadState } from "src/features/thread-list/ui/thread-list-cache";
 import {
   type BrowserCommandContext,
   resolveBrowserCommands,
@@ -203,6 +204,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       isTwoPane,
       isWritePanelOpen: isPanelOpen,
       canWriteToThread: threadCapabilities?.canWrite ?? false,
+      clearCachedThreadReadState,
       dispatch,
       toggleWritePanel: () => togglePanel(BOTTOM_PANEL_WRITE_TAB_ID),
       openResponseJumpDialog,

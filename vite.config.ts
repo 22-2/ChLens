@@ -291,6 +291,7 @@ const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
   ],
   tabs: ["browser/use-detached-tab-controller", "browser/use-tab-command-runner"],
   thread: ["browser/use-thread-refresh-controller", "ui/ResBody", "ui/thread-context-menu-items"],
+  "thread-list": ["ui/thread-list-cache"],
 };
 
 interface RestrictedImportPattern {

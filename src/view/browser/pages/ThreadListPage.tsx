@@ -16,6 +16,7 @@ import { ThreadTitleNgDialog } from "src/features/ng/ui/ThreadTitleNgDialog";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
 import { createThreadContextMenuItems } from "src/features/thread/ui/thread-context-menu-items";
+import { clearCachedThreadReadState } from "src/features/thread-list/ui/thread-list-cache";
 import {
   calcHeat,
   createHighlightDividerStyle,
@@ -39,6 +40,7 @@ import type { IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
 import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
+import { deleteThreadLogAndClearReadState } from "src/view/browser/commands/thread-log-actions";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import {
@@ -510,7 +512,10 @@ export const ThreadListPage: React.FC<Props> = ({
   const deleteThreadLog = useCallback(
     async (thread: IThread) => {
       try {
-        const deletedCount = await container.threadLog.deleteLog(thread.url);
+        const deletedCount = await deleteThreadLogAndClearReadState(
+          thread.url,
+          clearCachedThreadReadState,
+        );
         if (deletedCount === 0) {
           toast.info("このスレのログは保存されていません", { targetWindow: viewWindow });
           return;

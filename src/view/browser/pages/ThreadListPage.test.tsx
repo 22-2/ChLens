@@ -55,14 +55,23 @@ const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
 const { bookmarkGetMock } = vi.hoisted(() => ({
   bookmarkGetMock: vi.fn(),
 }));
-const { deleteLogMock, removeHistoryMock, toastErrorMock, toastInfoMock, toastSuccessMock } =
-  vi.hoisted(() => ({
-    deleteLogMock: vi.fn(),
-    removeHistoryMock: vi.fn(),
-    toastErrorMock: vi.fn(),
-    toastInfoMock: vi.fn(),
-    toastSuccessMock: vi.fn(),
-  }));
+const {
+  deleteLogMock,
+  removeReadStateMock,
+  clearBookmarkReadStateMock,
+  removeHistoryMock,
+  toastErrorMock,
+  toastInfoMock,
+  toastSuccessMock,
+} = vi.hoisted(() => ({
+  deleteLogMock: vi.fn(),
+  removeReadStateMock: vi.fn(),
+  clearBookmarkReadStateMock: vi.fn(),
+  removeHistoryMock: vi.fn(),
+  toastErrorMock: vi.fn(),
+  toastInfoMock: vi.fn(),
+  toastSuccessMock: vi.fn(),
+}));
 
 vi.mock("src/features/thread-list/ui/thread-list-shared", async (importOriginal) => {
   const actual =
@@ -267,18 +276,30 @@ describe("ThreadListPage", () => {
     } as unknown as IBoardService;
     bookmarkGetMock.mockReset();
     bookmarkGetMock.mockReturnValue(undefined);
+    clearBookmarkReadStateMock.mockReset();
+    clearBookmarkReadStateMock.mockResolvedValue(true);
     serviceContainer.bookmark = {
       // 初回の走査の完了はサービスコンテナで待つ（legacy-window-app-plan の Phase 2）。
       ready: vi.fn(async () => undefined),
       get: bookmarkGetMock,
       add: vi.fn(),
       remove: vi.fn(),
+      clearReadState: clearBookmarkReadStateMock,
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: vi.fn(() => []),
     } as unknown as IBookmark;
     deleteLogMock.mockReset();
     deleteLogMock.mockResolvedValue(1);
+    removeReadStateMock.mockReset();
+    removeReadStateMock.mockImplementation(async (url: string) => {
+      for (const handler of messageListeners.get("read_state_removed") ?? []) {
+        handler({ url } as never);
+      }
+    });
+    serviceContainer.readState = {
+      remove: removeReadStateMock,
+    } as unknown as typeof serviceContainer.readState;
     removeHistoryMock.mockReset();
     removeHistoryMock.mockResolvedValue(undefined);
     serviceContainer.threadLog = {
@@ -383,6 +404,9 @@ describe("ThreadListPage", () => {
 
   it("スレ一覧の右クリックメニューから選択したスレのログと閲覧履歴を削除する", async () => {
     vi.useRealTimers();
+    cacheGetMock.mockImplementation(async (boardUrl: string) =>
+      boardUrl === "https://egg.5ch.net/software/" ? THREADS : null,
+    );
     render(
       <ThreadListPage
         tabId="tab-1"
@@ -407,6 +431,25 @@ describe("ThreadListPage", () => {
     await waitFor(() =>
       expect(deleteLogMock).toHaveBeenCalledWith("https://egg.5ch.net/test/read.cgi/software/1/"),
     );
+    expect(removeReadStateMock).toHaveBeenCalledWith(
+      "https://egg.5ch.net/test/read.cgi/software/1/",
+    );
+    expect(clearBookmarkReadStateMock).toHaveBeenCalledWith(
+      "https://egg.5ch.net/test/read.cgi/software/1/",
+    );
+    expect(cachePutMock).toHaveBeenCalledWith(
+      "https://egg.5ch.net/software/",
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: "https://egg.5ch.net/test/read.cgi/software/1/",
+          readState: undefined,
+        }),
+      ]),
+    );
+    await waitFor(() => {
+      expect(row).not.toHaveClass("thread-list__row--visited");
+      expect(row.querySelector(".thread-list__unread-badge")).toBeNull();
+    });
     expect(toastSuccessMock).toHaveBeenCalledWith("スレログを削除しました", {
       targetWindow: window,
     });

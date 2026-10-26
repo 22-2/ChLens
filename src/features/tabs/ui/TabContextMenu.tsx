@@ -10,6 +10,7 @@ import {
   createThreadBookmarkMenuItem,
   createThreadCopyMenuItems,
 } from "src/features/thread/ui/thread-context-menu-items";
+import { clearCachedThreadReadState } from "src/features/thread-list/ui/thread-list-cache";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
 import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
@@ -168,6 +169,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
           void deleteThreadLogAndCloseTab({
             threadUrl: threadPage.threadUrl,
             closeTab: () => runTabCommand(TAB_COMMAND_IDS.CLOSE),
+            clearCachedReadState: clearCachedThreadReadState,
             toast,
           });
         },
