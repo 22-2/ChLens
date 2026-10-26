@@ -24,6 +24,7 @@ export interface IReadStateService {
   getByBoard(boardUrl: string): Promise<IReadState[]>;
   getAll(): Promise<IReadState[]>;
   set(readState: IReadState): Promise<void>;
+  remove(url: string): Promise<void>;
 }
 
 export interface IBookmarkItem {
@@ -62,6 +63,7 @@ export interface IBookmark {
   get(url: string): IBookmarkItem | null | undefined;
   add(item: IBookmarkItem): void;
   remove(url: string): void;
+  clearReadState(url: string): Promise<boolean>;
   updateResCount(url: string, count: number): void;
   updateExpired(url: string, expired: boolean): void;
   getByBoard(boardUrl: string): IBookmarkItem[];

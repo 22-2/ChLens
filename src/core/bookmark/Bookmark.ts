@@ -60,6 +60,10 @@ export default class Bookmark {
                 board_url: new ChURL(bookmark.url).toBoard().href,
                 read_state: bookmark.readState,
               });
+              return;
+            }
+            if (typeName === "READ_STATE_REMOVED") {
+              message.send("read_state_removed", { url: bookmark.url });
             }
           },
         );
@@ -118,6 +122,10 @@ export default class Bookmark {
 
   async remove(url: string): Promise<boolean> {
     return this.bel.remove(url);
+  }
+
+  async clearReadState(url: string): Promise<boolean> {
+    return this.bel.clearReadState(url);
   }
 
   async removeAll(): Promise<boolean> {

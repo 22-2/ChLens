@@ -196,6 +196,7 @@ export function setupContainer(): void {
     add: (item: IBookmarkItem) =>
       activeBookmark.add(item.url, item.title, item.resCount ?? undefined),
     remove: (url: string) => activeBookmark.remove(url),
+    clearReadState: (url: string) => activeBookmark.clearReadState(url),
     updateResCount: (url: string, count: number) => activeBookmark.updateResCount(url, count),
     updateExpired: (url: string, expired: boolean) => activeBookmark.updateExpired(url, expired),
     getByBoard: (url: string) => activeBookmark.getByBoard(url),
@@ -227,6 +228,7 @@ export function setupContainer(): void {
     set: async (readState: IReadState) => {
       await ReadState.set(readState);
     },
+    remove: (url: string) => ReadState.remove(url),
   };
 
   // Board Service Adapter

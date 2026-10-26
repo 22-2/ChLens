@@ -167,7 +167,7 @@ export class EntryList {
 }
 
 export interface BookmarkUpdateEvent {
-  type: string; //ADD, TITLE, RES_COUNT, READ_STATE, EXPIRED, REMOVE
+  type: string; //ADD, TITLE, RES_COUNT, READ_STATE, READ_STATE_REMOVED, EXPIRED, REMOVE
   entry: Entry;
 }
 
@@ -234,6 +234,14 @@ export class SyncableEntryList extends EntryList {
       });
     }
 
+    // 変更理由: 既読状態はブックマークにも保存されるため、解除も別保存先へ同期する。
+    if (before.readState && !entry.readState) {
+      this.onChanged.call({
+        type: "READ_STATE_REMOVED",
+        entry: deepCopy(entry),
+      });
+    }
+
     if (before.expired !== entry.expired) {
       this.onChanged.call({
         type: "EXPIRED",
@@ -241,6 +249,15 @@ export class SyncableEntryList extends EntryList {
       });
     }
     return true;
+  }
+
+  /** 既読状態を解除し、別のブックマーク保存先にも解除イベントを同期する。 */
+  async clearReadState(url: string): Promise<boolean> {
+    const entry = this.get(url);
+    if (!entry?.readState) return true;
+
+    entry.readState = null;
+    return this.update(entry);
   }
 
   async remove(url: string): Promise<boolean> {
@@ -267,6 +284,7 @@ export class SyncableEntryList extends EntryList {
       case "TITLE":
       case "RES_COUNT":
       case "READ_STATE":
+      case "READ_STATE_REMOVED":
       case "EXPIRED":
         void this.update(entry);
         break;

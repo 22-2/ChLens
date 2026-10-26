@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => {
     bookmarkGet: vi.fn(() => null),
     bookmarkGetAll: vi.fn(() => []),
     bookmarkImport: vi.fn(async () => true),
+    bookmarkClearReadState: vi.fn(async () => true),
     bookmarkGetByBoard: vi.fn(() => []),
     bookmarkGetAllBoards: vi.fn(() => []),
     messageSend: vi.fn(),
@@ -28,6 +29,7 @@ const mocks = vi.hoisted(() => {
     readStateGetByBoard: vi.fn(async () => []),
     readStateGetAll: vi.fn(async () => []),
     readStateSet: vi.fn(async () => undefined),
+    readStateRemove: vi.fn(async () => undefined),
     isNewerReadState: vi.fn(() => true),
     configSet: vi.fn(async () => undefined),
     // view・features がサービスコンテナ経由で使う core の実装（Phase E）。
@@ -108,6 +110,7 @@ vi.mock("src/core/bookmark/Bookmark", () => ({
     import = mocks.bookmarkImport;
     add = vi.fn(async () => true);
     remove = vi.fn(async () => true);
+    clearReadState = mocks.bookmarkClearReadState;
     updateResCount = vi.fn(async () => true);
     updateExpired = vi.fn(async () => true);
   },
@@ -117,6 +120,7 @@ vi.mock("src/core/bookmark/ReadState", () => ({
   getByBoard: mocks.readStateGetByBoard,
   getAll: mocks.readStateGetAll,
   set: mocks.readStateSet,
+  remove: mocks.readStateRemove,
 }));
 vi.mock("src/core/bookmark/read-state-compare", () => ({
   isNewerReadState: mocks.isNewerReadState,
@@ -181,6 +185,8 @@ describe("サービスコンテナの初期化", () => {
     mocks.configValues.debug_log = "off";
     mocks.promiseFirstScan = Promise.resolve(true);
     mocks.readStateGet.mockClear();
+    mocks.readStateRemove.mockClear();
+    mocks.bookmarkClearReadState.mockClear();
     mocks.isNewerReadState.mockClear();
   });
 
@@ -233,6 +239,12 @@ describe("サービスコンテナの初期化", () => {
     );
     await container.readState.getAll();
     expect(mocks.readStateGetAll).toHaveBeenCalled();
+    await container.readState.remove("https://example.com/test/read.cgi/a/1/");
+    expect(mocks.readStateRemove).toHaveBeenCalledWith("https://example.com/test/read.cgi/a/1/");
+    await container.bookmark.clearReadState("https://example.com/test/read.cgi/a/1/");
+    expect(mocks.bookmarkClearReadState).toHaveBeenCalledWith(
+      "https://example.com/test/read.cgi/a/1/",
+    );
     await container.writeHistory.getByUrl("https://example.com/test/read.cgi/a/1/");
     expect(mocks.writeHistory.getByUrl).toHaveBeenCalledWith(
       "https://example.com/test/read.cgi/a/1/",
