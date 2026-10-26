@@ -20,6 +20,7 @@ export interface ColumnDef<TRow> {
   headerClassName?: string;
   cellClassName: string;
   cell: (row: TRow) => React.ReactNode;
+  cellTooltip?: (row: TRow) => string;
   sortable?: boolean;
   hideable?: boolean;
 }
@@ -372,7 +373,19 @@ export function SimpleDataTable<TRow extends object>({
                     {row.getVisibleCells().map((cell) => {
                       const colDef = colDefMap.get(cell.column.id);
                       return (
-                        <td key={cell.id} className={colDef?.cellClassName ?? ""}>
+                        <td
+                          key={cell.id}
+                          className={colDef?.cellClassName ?? ""}
+                          onMouseMove={
+                            colDef?.cellTooltip
+                              ? (event) => {
+                                  // 列固有の情報がある場合は、行タイトルのツールチップを上書きする。
+                                  event.stopPropagation();
+                                  move(colDef.cellTooltip!(original), event);
+                                }
+                              : undefined
+                          }
+                        >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       );

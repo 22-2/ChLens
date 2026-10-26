@@ -280,10 +280,7 @@ export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
     headerClassName: "thread-list__th--created-at",
     cellClassName: "thread-list__created-at",
     sortable: true,
-    cell: ({ thread }) => (
-      <span title={formatExactThreadCreatedAt(thread.createdAt)}>
-        {formatThreadCreatedAt(thread.createdAt)}
-      </span>
-    ),
+    cellTooltip: ({ thread }) => formatExactThreadCreatedAt(thread.createdAt),
+    cell: ({ thread }) => formatThreadCreatedAt(thread.createdAt),
   },
 ];
