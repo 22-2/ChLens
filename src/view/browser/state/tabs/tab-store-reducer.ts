@@ -40,6 +40,9 @@ import { normalizePageLocation } from "src/view/browser/utils/page-location";
 // タブストア全体の reducer。
 export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreState {
   switch (action.type) {
+    // パネルとタブを同じ保存経路に載せ、互いの更新による上書きを防ぐ。
+    case TAB_ACTION_TYPES.UPDATE_SIDE_PANEL:
+      return { ...state, sidePanel: action.sidePanel };
     case TAB_ACTION_TYPES.ADD_TAB: {
       const paneId = resolvePaneId(state, action.paneId);
       const pane = getPane(state, paneId);

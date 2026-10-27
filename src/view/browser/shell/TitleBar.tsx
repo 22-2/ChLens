@@ -1,11 +1,20 @@
-import { ArrowLeft, ArrowRight, RotateCw, Search } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  PanelRightClose,
+  PanelRightOpen,
+  RotateCw,
+  Search,
+} from "lucide-react";
 import React, { useCallback, useState } from "react";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { TabContextMenu } from "src/features/tabs/ui/TabContextMenu";
 import { commandPalette } from "src/view/browser/commands/command-palette-store";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { useTitleBarButtonSettings } from "src/view/browser/hooks/use-title-bar-navigation-setting";
-import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
+import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
+import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { canGoBack, canGoForward } from "src/view/browser/types";
 import {
   getManualRefreshScopeKey,
@@ -35,6 +44,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   omnibarEnabled = true,
 }) => {
   const { viewTab, viewPage, paneId } = useTabStore();
+  const { state: savedPanel, dispatch: dispatchPanel } = useSidePanelState();
+  const panel = normalizeSidePanel(savedPanel);
   const title = viewPage.title || "read.crx 2";
   const runTabCommand = useTabCommandRunner(viewTab.id);
   const { backEnabled, forwardEnabled, refreshEnabled } = useTitleBarButtonSettings();
@@ -150,6 +161,21 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           data-pane-id={paneId}
           data-testid="title-bar-nav-slot"
         />
+        <button
+          type="button"
+          className="title-bar__navigation"
+          title={panel.isOpen ? "サイドパネルを閉じる" : "サイドパネルを開く"}
+          aria-label={panel.isOpen ? "サイドパネルを閉じる" : "サイドパネルを開く"}
+          aria-expanded={panel.isOpen}
+          onClick={() =>
+            dispatchPanel({
+              type: TAB_ACTION_TYPES.UPDATE_SIDE_PANEL,
+              sidePanel: { ...panel, isOpen: !panel.isOpen },
+            })
+          }
+        >
+          {panel.isOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+        </button>
         {/* 変更理由: ペイン分割はコマンドパレットから操作するため、タイトルバーの
             専用ボタンは置かない。長いタイトルで右端が圧迫される問題も避ける。 */}
       </div>

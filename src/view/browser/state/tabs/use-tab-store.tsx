@@ -585,3 +585,10 @@ export function usePaneId(): string {
   }
   return usePaneIdFromContext(ctx.state);
 }
+
+// シェル共通のビュー状態をタブと同じストアから読み書きする。
+export function useSidePanelState() {
+  const ctx = useContext(TabContext);
+  if (!ctx) throw new Error("useSidePanelState must be used within TabProvider");
+  return { state: ctx.state.sidePanel, dispatch: ctx.dispatch };
+}

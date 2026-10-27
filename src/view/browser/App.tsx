@@ -34,6 +34,7 @@ import { BottomPanel } from "src/view/browser/shell/BottomPanel";
 import { ContentArea } from "src/view/browser/shell/ContentArea";
 import { NavigationBar } from "src/view/browser/shell/NavigationBar";
 import { PageCountStatusItem } from "src/view/browser/shell/PageCountStatusItem";
+import { SidePanel } from "src/view/browser/shell/SidePanel";
 import { TabWindowHost } from "src/view/browser/shell/TabWindowHost";
 import { TitleBar } from "src/view/browser/shell/TitleBar";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
@@ -280,7 +281,10 @@ export const BrowserApp: React.FC = () => {
                 垂直モードでも操作対象をアクティブペインに揃え、タイトルバーを共有する。
               */}
                 <TitleBar />
-                <PaneRow />
+                <div className="browser-shell__workspace">
+                  <PaneRow />
+                  <SidePanel />
+                </div>
                 <BookmarkRootSelectorDialog />
               </div>
             </TabWindowHost>

@@ -3,6 +3,7 @@ import {
   getBrowserSessionJson,
   setBrowserSessionJson,
 } from "src/view/browser/state/tabs/browser-session-storage";
+import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import type { TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
 import type { Page, Pane, PersistedTab, Tab, TabViewStates } from "src/view/browser/types";
 import {
@@ -24,6 +25,7 @@ interface PersistedTabStoreState {
   panes: PersistedPane[];
   activePaneId: string;
   closedTabs: PersistedTab[];
+  sidePanel?: TabStoreState["sidePanel"];
 }
 
 // 旧セッションに残っている可能性がある項目。読み込み時の移行だけに使う。
@@ -73,6 +75,7 @@ function toPersistedTabStoreState(state: TabStoreState): PersistedTabStoreState 
     }),
     activePaneId: state.activePaneId,
     closedTabs: state.closedTabs.map(toPersistedTab),
+    ...(state.sidePanel ? { sidePanel: state.sidePanel } : {}),
   };
 }
 
@@ -87,6 +90,7 @@ export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
     panes: persisted.panes.map((pane) => ({ ...pane, tabs: pane.tabs.map(fromPersistedTab) })),
     activePaneId: persisted.activePaneId,
     closedTabs: persisted.closedTabs.map(fromPersistedTab),
+    ...(persisted.sidePanel ? { sidePanel: persisted.sidePanel } : {}),
   };
 }
 
@@ -127,6 +131,7 @@ function normalizeLoadedTab(tab: LoadedTab): Tab {
 type LoadedTabStoreState = {
   panes?: (Omit<Pane, "tabs"> & { tabs: LoadedTab[] })[];
   activePaneId?: string;
+  sidePanel?: TabStoreState["sidePanel"];
   tabs?: LoadedTab[];
   activeTabId?: string;
   closedTabs?: LoadedTab[];
@@ -165,6 +170,7 @@ export function loadTabStoreSession(): TabStoreState | null {
         panes,
         activePaneId,
         closedTabs: (parsed.closedTabs ?? []).map((tab) => normalizeLoadedTab(tab)),
+        ...(parsed.sidePanel ? { sidePanel: normalizeSidePanel(parsed.sidePanel) } : {}),
       };
     }
 
