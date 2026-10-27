@@ -53,12 +53,8 @@ import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log
 import { toggleZenMode } from "src/view/browser/commands/zen-mode-store";
 import { CommandRegistry } from "src/view/browser/extension/command-registry";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
-import {
-  toggleFilter as toggleFilterForTab,
-  toggleThreadFilterMode,
-} from "src/view/browser/extension/page-actions";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
-import type { Page, ThreadFilter } from "src/view/browser/types";
+import type { Page } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import {
   canQueryExtensionTabs,
@@ -66,7 +62,6 @@ import {
   removeExtensionTabs,
 } from "src/view/browser/utils/extension-tabs";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
-import { isPageFilterable } from "src/view/browser/utils/filterable-pages";
 import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
@@ -261,19 +256,6 @@ async function openLocalDatFile(context: BrowserCommandContext): Promise<void> {
   }
 }
 
-function toggleFilter(context: BrowserCommandContext): void {
-  const { window: viewWindow } = getCommandSurface(context);
-  toggleFilterForTab(viewWindow, context.viewTab.id);
-}
-
-function dispatchThreadFilterModeToggle(
-  context: BrowserCommandContext,
-  filter: Exclude<ThreadFilter, "all">,
-): void {
-  const { window: viewWindow } = getCommandSurface(context);
-  toggleThreadFilterMode(viewWindow, context.viewTab.id, filter);
-}
-
 async function copyWithNotice(
   context: BrowserCommandContext,
   text: string,
@@ -325,54 +307,6 @@ function getCommandLabel(
 ): string {
   return typeof label === "function" ? label(context) : label;
 }
-
-// 変更理由: フィルタボタンと同じ4モードを、それぞれ選択・解除できるパレット項目として並べる。
-const THREAD_FILTER_MODE_COMMANDS: readonly BrowserCommandDefinition[] = [
-  {
-    id: "page.toggle-filter-popular",
-    label: "人気レスのフィルタを切り替え",
-    englishLabel: "Toggle Popular Filter",
-    description: "人気レスだけに絞り込みます。選択中にもう一度実行すると解除します",
-    keywords: ["人気", "popular", "絞り込み", "フィルタ"],
-    group: "page",
-    icon: Filter,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: (context) => dispatchThreadFilterModeToggle(context, "popular"),
-  },
-  {
-    id: "page.toggle-filter-image",
-    label: "画像のフィルタを切り替え",
-    englishLabel: "Toggle Image Filter",
-    description: "画像を含むレスだけに絞り込みます。選択中にもう一度実行すると解除します",
-    keywords: ["画像", "image", "絞り込み", "フィルタ"],
-    group: "page",
-    icon: Filter,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: (context) => dispatchThreadFilterModeToggle(context, "image"),
-  },
-  {
-    id: "page.toggle-filter-video",
-    label: "動画のフィルタを切り替え",
-    englishLabel: "Toggle Video Filter",
-    description: "動画を含むレスだけに絞り込みます。選択中にもう一度実行すると解除します",
-    keywords: ["動画", "video", "絞り込み", "フィルタ"],
-    group: "page",
-    icon: Filter,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: (context) => dispatchThreadFilterModeToggle(context, "video"),
-  },
-  {
-    id: "page.toggle-filter-link",
-    label: "外部リンクのフィルタを切り替え",
-    englishLabel: "Toggle External Link Filter",
-    description: "外部リンクを含むレスだけに絞り込みます。選択中にもう一度実行すると解除します",
-    keywords: ["外部", "リンク", "link", "絞り込み", "フィルタ"],
-    group: "page",
-    icon: Filter,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: (context) => dispatchThreadFilterModeToggle(context, "link"),
-  },
-];
 
 const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
   {
@@ -612,16 +546,6 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
     icon: Hash,
     when: ({ viewPage }) => viewPage.type === "thread",
     run: ({ openResponseJumpDialog }) => openResponseJumpDialog(),
-  },
-  {
-    id: "page.toggle-filter",
-    label: "フィルターを切り替え",
-    englishLabel: "Toggle Filter",
-    keywords: ["検索", "絞り込み", "filter"],
-    group: "page",
-    icon: Filter,
-    when: ({ viewPage }) => isPageFilterable(viewPage.type),
-    run: toggleFilter,
   },
   {
     id: "page.toggle-write-panel",
@@ -883,7 +807,6 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
       });
     },
   },
-  ...THREAD_FILTER_MODE_COMMANDS,
   {
     id: "layout.toggle-zen-mode",
     label: ({ isZenMode }) => (isZenMode ? "Zenモードを終了" : "Zenモードを開始"),

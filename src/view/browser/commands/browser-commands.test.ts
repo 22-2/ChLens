@@ -1,6 +1,7 @@
 import { container } from "src/service-container";
 import type { IBoardTitleService } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
+import { registerTestFilterCommands } from "src/test-support/filter-commands";
 import {
   browserCommandRegistry,
   executeBrowserCommand,
@@ -145,6 +146,7 @@ describe("browser commands", () => {
     coreOwner?.dispose();
     coreOwner = createExtensionOwner("core-test", browserCommandRegistry);
     registerCoreCommands(coreOwner.api);
+    registerTestFilterCommands(coreOwner.api);
     extensionBrowserApiMock.runtime.id = "test-extension";
     extensionBrowserApiMock.tabs.query = queryTabsMock;
     extensionBrowserApiMock.tabs.remove = removeTabsMock;
@@ -879,12 +881,12 @@ describe("browser commands", () => {
 
     try {
       const ids = resolveBrowserCommands(context).map((command) => command.id);
-      expect(ids).toContain("page.toggle-filter-popular");
-      expect(ids).toContain("page.toggle-filter-image");
-      expect(ids).toContain("page.toggle-filter-video");
-      expect(ids).toContain("page.toggle-filter-link");
+      expect(ids).toContain("filter.toggle-popular");
+      expect(ids).toContain("filter.toggle-image");
+      expect(ids).toContain("filter.toggle-video");
+      expect(ids).toContain("filter.toggle-link");
 
-      await expect(executeBrowserCommand("page.toggle-filter-image", context)).resolves.toBe(true);
+      await expect(executeBrowserCommand("filter.toggle-image", context)).resolves.toBe(true);
 
       expect(handler).toHaveBeenCalledWith("image");
     } finally {

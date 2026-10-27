@@ -3,6 +3,7 @@ import "fake-indexeddb/auto";
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { container } from "src/service-container";
+import { registerTestFilterCommands } from "src/test-support/filter-commands";
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import {
   browserCommandRegistry,
@@ -46,6 +47,7 @@ beforeEach(() => {
   coreOwner?.dispose();
   coreOwner = createExtensionOwner("core-test", browserCommandRegistry);
   registerCoreCommands(coreOwner.api);
+  registerTestFilterCommands(coreOwner.api);
 });
 afterEach(() => {
   coreOwner?.dispose();

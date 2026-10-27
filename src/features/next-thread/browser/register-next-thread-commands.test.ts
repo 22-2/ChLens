@@ -1,5 +1,6 @@
 import { container } from "src/service-container";
 import { stubService } from "src/service-container/test-stubs";
+import { registerTestFilterCommands } from "src/test-support/filter-commands";
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import {
   browserCommandRegistry,
@@ -55,6 +56,7 @@ describe("次スレコマンド登録", () => {
   beforeEach(() => {
     coreOwner = createExtensionOwner("core-test", browserCommandRegistry);
     registerCoreCommands(coreOwner.api);
+    registerTestFilterCommands(coreOwner.api);
     featureOwner = createExtensionOwner("next-thread-test", browserCommandRegistry);
     registerNextThreadCommands(featureOwner.api);
     configSet.mockReset();
@@ -80,7 +82,7 @@ describe("次スレコマンド登録", () => {
     const ids = resolveBrowserCommands(context).map(({ id }) => id);
     const nextIndex = ids.indexOf("next-thread.search");
     const relatedIndex = ids.indexOf("next-thread.search-related");
-    const filterIndex = ids.indexOf("page.toggle-filter");
+    const filterIndex = ids.indexOf("filter.toggle");
 
     expect(nextIndex).toBeGreaterThanOrEqual(0);
     expect(relatedIndex).toBe(nextIndex + 1);

@@ -1,5 +1,6 @@
 import { container } from "src/service-container";
 import type { IToastService } from "src/service-container/interfaces";
+import { registerTestFilterCommands } from "src/test-support/filter-commands";
 import {
   browserCommandRegistry,
   executeBrowserCommand,
@@ -62,6 +63,7 @@ describe("メディア機能のコマンド登録", () => {
     // アプリ起動時と同じく、表示順の基準になる core のコマンドを先に登録する。
     coreOwner = createExtensionOwner("core-test", browserCommandRegistry);
     registerCoreCommands(coreOwner.api);
+    registerTestFilterCommands(coreOwner.api);
     featureOwner = createExtensionOwner("media-test", browserCommandRegistry);
     registerMediaCommands(featureOwner.api);
     getDeletableImageUrls.mockResolvedValue(["https://example.com/uploaded-image.png"]);

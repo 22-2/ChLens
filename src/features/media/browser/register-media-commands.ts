@@ -116,7 +116,7 @@ export function registerMediaCommands(api: ExtensionApi): void {
         await runImgurBulkDelete(imageUrls, context, "このスレ");
       },
     },
-    { beforeCommandId: "page.toggle-filter-popular" },
+    { beforeCommandId: "filter.toggle-popular" },
   );
   api.addCommand(
     {
@@ -129,6 +129,6 @@ export function registerMediaCommands(api: ExtensionApi): void {
       icon: Trash2,
       run: (context) => runImgurBulkDelete(undefined, context, "すべての投稿画像"),
     },
-    { beforeCommandId: "page.toggle-filter-popular" },
+    { beforeCommandId: "filter.toggle-popular" },
   );
 }

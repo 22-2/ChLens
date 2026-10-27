@@ -9,6 +9,7 @@ import { registerArchiveReplayCommands } from "src/features/archive-replay/brows
 import { registerAutoRefreshCommands } from "src/features/auto-refresh/browser/register-auto-refresh-commands";
 import { registerBookmarkCommands } from "src/features/bookmark/browser/register-bookmark-commands";
 import { registerCommentOverlayCommands } from "src/features/comment-overlay/browser/register-comment-overlay-commands";
+import { registerFilterCommands } from "src/features/filter/browser/register-filter-commands";
 import { registerMediaCommands } from "src/features/media/browser/register-media-commands";
 import { registerNextThreadCommands } from "src/features/next-thread/browser/register-next-thread-commands";
 import { setupBrowserViewServices } from "src/service-container/setup-browser-view";
@@ -53,6 +54,8 @@ void boot("/view/index.html", () => {
   };
   registerBuiltInPageTypes(getApi);
   registerCoreCommands(getApi("core"));
+  // フィルターは media・next-thread の表示順の基準になるため先に登録する。
+  registerFilterCommands(getApi("filter"));
   registerMediaCommands(getApi("media"));
   registerBookmarkCommands(getApi("bookmark"));
   registerAutoRefreshCommands(getApi("auto-refresh"));

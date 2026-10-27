@@ -20,7 +20,7 @@ export function registerNextThreadCommands(api: ExtensionApi): void {
       when: ({ viewPage }) => viewPage.type === "thread",
       run: ({ openNextThreadSearchDialog }) => openNextThreadSearchDialog(),
     },
-    { beforeCommandId: "page.toggle-filter" },
+    { beforeCommandId: "filter.toggle" },
   );
   api.addCommand(
     {
@@ -34,7 +34,7 @@ export function registerNextThreadCommands(api: ExtensionApi): void {
       when: ({ viewPage }) => viewPage.type === "thread",
       run: ({ openRelatedThreadSearchDialog }) => openRelatedThreadSearchDialog?.(),
     },
-    { beforeCommandId: "page.toggle-filter" },
+    { beforeCommandId: "filter.toggle" },
   );
   api.addCommand(
     {
