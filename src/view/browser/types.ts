@@ -1,5 +1,8 @@
-import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
-import { normalizePageLocation } from "src/view/browser/utils/page-location";
+export {
+  buildHierarchy,
+  getDisplayUrl,
+  getPageViewStateKey,
+} from "src/view/browser/page-type-definitions";
 
 // ページ種別の定義
 // すべてのタブがホームを起点とし、同じタブでスレ一覧・スレッドへ移動する。
@@ -250,17 +253,6 @@ export function ensurePaneHasTab<T extends { tabs: Tab[]; activeTabId: string }>
   return { ...pane, tabs: [home], activeTabId: home.id };
 }
 
-export function getPageViewStateKey(page: Page): string {
-  switch (page.type) {
-    case "threadList":
-      return `threadList:${normalizePageLocation(page.boardUrl)}`;
-    case "thread":
-      return `thread:${normalizePageLocation(page.threadUrl)}`;
-    default:
-      return page.type;
-  }
-}
-
 export function canGoBack(tab: Tab): boolean {
   // ホームへの戻るも同じタブの履歴で行い、他のタブを選択しない。
   return tab.currentIndex > 0;
@@ -268,66 +260,4 @@ export function canGoBack(tab: Tab): boolean {
 
 export function canGoForward(tab: Tab): boolean {
   return tab.currentIndex < tab.history.length - 1;
-}
-
-export function getDisplayUrl(page: Page): string {
-  switch (page.type) {
-    case "home":
-    case "newTab":
-      return "";
-    case "boardList":
-      return "板一覧";
-    case "settings":
-      return "設定";
-    case "bookmarkList":
-      return "ブックマーク";
-    case "historyList":
-      return "閲覧履歴";
-    case "writeHistoryList":
-      return "書き込み履歴";
-    case "logList":
-      return "ログ検索";
-    case "threadList":
-      return (page as ThreadListPage).boardUrl;
-    case "thread":
-      return (page as ThreadPage).threadUrl;
-  }
-}
-
-// 変更理由: 板URLの形式ごとの差をUIのページ階層へ持ち込まないため、導出は共通処理へ委譲する。
-function threadUrlToBoardUrl(threadUrl: string): string {
-  return getBoardUrlFromThreadUrl(threadUrl);
-}
-
-// 新規タブ用: ページに対してカノニカルな階層スタックを構築する
-// 板一覧はホームから明示的に開く入口に限定し、祖先として自動生成しない。
-export function buildHierarchy(page: Page): Page[] {
-  switch (page.type) {
-    case "home":
-    case "newTab":
-      return [{ type: "home", title: "ホーム" }];
-    case "boardList":
-    case "settings":
-    case "bookmarkList":
-    case "historyList":
-    case "writeHistoryList":
-    case "logList":
-    case "threadList":
-      // URLや別タブから直接開いた場合も、同じタブのホームへ戻れる履歴を持たせる。
-      return [{ type: "home", title: "ホーム" }, page];
-
-    case "thread": {
-      const boardUrl = threadUrlToBoardUrl(page.threadUrl);
-      return [
-        { type: "home", title: "ホーム" },
-        {
-          type: "threadList",
-          title: boardUrl,
-          boardUrl,
-          boardTitle: boardUrl,
-        },
-        page,
-      ];
-    }
-  }
 }

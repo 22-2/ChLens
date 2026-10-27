@@ -16,8 +16,8 @@
 | 差し込み口 | 実装 | 状況 |
 |---|---|---|
 | ステータスバー | `src/view/browser/components/StatusBar.tsx` の `StatusBarProvider` / `StatusBarItem` | 表示の仕組みは登録制。各項目はマウント中だけ `StatusBarItem` で登録し、内容は portal で置き場へ描画する。一方、どの項目を置くかは `App.tsx` のペインが機能のコンポーネント（約9件）を直接並べ、並び順は `components/status-bar-priority.ts` が機能名ごとに一元管理している |
-| コマンド | `src/view/browser/commands/browser-commands.ts` の `BROWSER_COMMAND_DEFINITIONS`（約56件、ファイル全体で約1400行） | 静的な配列。`id`・`when`・`isEnabled`・`run` を持つ定義型はすでにある。利用側は `resolveBrowserCommands`（`shell/NavigationBar.tsx`）と `executeBrowserCommand` / `getBrowserCommandLabel`（`commands/command-executor.ts`）だけ |
-| ページ種別 | `src/view/browser/types.ts` の `Page`（10種類の閉じた union） | 種別ごとの知識が `switch` や集合に散らばっている。描画は `shell/TabView.tsx`、同一ページの判定は `state/tabs/tab-store-page-identity.ts`、アイコンは `components/PageTypeIcon.tsx`、再取得・絞り込みの可否は `utils/refreshable-pages.ts`・`utils/filterable-pages.ts`、ほかに `utils/page-location.ts`・`utils/tab-pages.ts`・`state/tabs/auto-refresh-pages.ts`・コマンドの `when` が個別に判定している。種別を1つ足すと10か所前後を直す |
+| コマンド | `src/view/browser/commands/browser-commands.ts` と `src/features/*/browser/register-*-commands.ts` | `CommandRegistry` に core と機能側のコマンドを登録する。メディア、お気に入り、自動更新、次スレ、過去実況再生は機能側へ移行済み。フィルターとコメント実況は画面イベント経由のため PR7 で扱う |
+| ページ種別 | `src/view/browser/types.ts` の `Page`（10種類の閉じた union） | アイコン、更新・絞り込み可否、自動更新対象、同一性、URL表示、履歴階層、描画キーを `src/view/browser/page-type-definitions.ts` に集約し、描画先は組み立て層の `shell/page-renderers.tsx` に置く。層の依存関係に合わせてメタデータと描画先は別モジュールにし、`TabView` の描画分岐をなくした |
 | タブ・ペインの操作 | `state/tabs/use-tab-store.tsx` と `tabActions` | 機能はコマンドのコンテキストから `dispatch` を受け取り、`tabActions.navigate` などを直接送っている |
 | サイドパネル | `src/view/browser/shell/SidePanel.tsx` の `views`（6件） | 静的なオブジェクト。ビュー ID は `state/tabs/side-panel-state.ts` の `SIDE_PANEL_VIEWS` で固定し、保存済みの並び順の正規化にも使う |
 | 右クリックメニュー | `create*MenuItems` 系の関数と各画面の直書き（約40ファイル） | 画面ごとにばらばら。コマンドと同じ操作を別に組み立てている箇所がある |
@@ -225,12 +225,14 @@ api.addStatusBarItem({
     - `createExtensionOwner` が所有者（`dispose` を持つ）と、機能へ渡す `api` を分けて返す。機能は自分の所有者を解除できない。
     - `beforeCommandId` の基準が未登録のときは、ID と登録元を警告ログに出して末尾へ登録する。機能のコマンドは core を基準に並ぶため、起動時もテストも core を先に登録する。
     - レジストリの `subscribe` は、`useSyncExternalStore` へ渡せるよう解除関数を返す。
-- [ ] **PR4. 残りの機能固有コマンドを移す（P1）**
+- [x] **PR4. 残りの機能固有コマンドを移す（P1）**
   - 自動更新、次スレなど。段階0では既存の `BrowserCommandContext` を使ってよい。
   - コメント実況のように `CustomEvent` で画面へ届けているコマンドは、PR4 では移さない（PR7 で扱う）。
-  - 進捗：自動更新の切り替えを `features/auto-refresh`、次スレ検索と自動次スレ設定を `features/next-thread`、過去実況再生の起動を `features/archive-replay` へ移した。機能IDへ変更し、既存コンテキストの操作と表示順を維持した。
-- [ ] **PR5. ページ種別の知識を定義へ集める（P2）**
+  - 完了：自動更新の切り替えを `features/auto-refresh`、次スレ検索と自動次スレ設定を `features/next-thread`、過去実況再生の起動を `features/archive-replay` へ移した。機能IDへ変更し、既存コンテキストの操作と表示順を維持した。
+  - フィルターとコメント実況の切り替えは `CustomEvent` で画面へ届けているため、この PR では移さず PR7 に回す。PR4 の対象は完了したが、P1 全体は PR7 の残作業があるため未完了。
+- [x] **PR5. ページ種別の知識を定義へ集める（P2）**
   - 全種別の定義を1か所に作り、`TabView`・`PageTypeIcon`・同一ページの判定・再取得と絞り込みの可否が定義を引く形にする。`Page` 型と保存形式は変えない。
+  - 完了：10種すべてのメタデータを定義し、アイコン、更新・絞り込み可否、自動更新対象、同一性、URL表示、履歴階層、描画キーの各判定を定義から参照する。描画先は組み立て層の対応表へ移し、`TabView` の分岐をなくした。`Page` 型と保存形式は維持した。
 - [ ] **PR6. ページ種別の定義を機能側へ移し、`api.workspace` の最小限の操作を用意する（P2）**
 - [ ] **PR7. 画面へ届けるコマンドを `api.workspace` 経由にする（P1 の残り、P2）**
   - コメント実況、フィルタの切り替えなど。直接呼べるようになった `CustomEvent` は、置き換えたあとに削除する。
