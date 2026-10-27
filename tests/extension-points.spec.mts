@@ -18,13 +18,11 @@ test("板からスレへの遷移と再読み込み後もフィルターが対�
   await url.press("Enter");
   const panel = page.locator('.content-area__tab-panel[data-active="true"]');
   await expect(panel.getByText("ローカルテストスレッド", { exact: true })).toBeVisible();
-  const toggle = page.getByRole("button", { name: "フィルターを開閉", exact: true });
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  // スレ一覧では検索バーを常設し、開閉ボタンを表示しない。
+  await expect(panel.getByPlaceholder("検索...", { exact: true })).toBeVisible();
   await panel.getByText("ローカルテストスレッド", { exact: true }).click();
   await expect(panel.locator('[data-res-num="1"]')).toBeVisible();
+  const toggle = page.getByRole("button", { name: "フィルターを開閉", exact: true });
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
