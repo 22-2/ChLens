@@ -22,6 +22,11 @@ test.beforeAll(async () => {
       // 変更理由: レスの画像表示が platform を読み込むようになり、実物は拡張機能 API を要求して
       // 画面が開かなくなった。`src/app/platform` と `.../index` の両方を差し替えへ向ける。
       alias: [
+        { find: "react-dom/client", replacement: "preact/compat/client" },
+        { find: "react-dom", replacement: "preact/compat" },
+        { find: "react/jsx-runtime", replacement: "preact/jsx-runtime" },
+        { find: "react/jsx-dev-runtime", replacement: "preact/jsx-dev-runtime" },
+        { find: "react", replacement: "preact/compat" },
         ...(virtualListSource
           ? [
               {
@@ -47,6 +52,24 @@ test.beforeAll(async () => {
   });
   await server.listen();
   origin = server.resolvedUrls!.local[0]!;
+});
+
+test("投稿の展開と取得後に隣のレスが重ならない", async ({ page }, testInfo) => {
+  await page.goto(`${origin}tests/browser/fixtures/ng-virtual-list.html?twitter`);
+  await page.getByRole("button", { name: "FxTwitter を展開する" }).click();
+  await expect(page.getByText("FxTwitterから投稿を取得しています…")).toBeVisible();
+  await expect(page.locator(".res__twitter-post-text")).toBeVisible();
+  await expect
+    .poll(async () => {
+      const boxes = await Promise.all([
+        page.locator('[data-res-num="3"]').boundingBox(),
+        page.locator('[data-res-num="4"]').boundingBox(),
+      ]);
+      return boxes[0] && boxes[1] ? boxes[1].y - (boxes[0].y + boxes[0].height) : -999;
+    })
+    // 仮想リストの整数丸めによる1px未満の差は許容する。
+    .toBeGreaterThanOrEqual(-1);
+  await page.screenshot({ path: testInfo.outputPath("twitter-expanded.png") });
 });
 
 test.afterAll(async () => {
