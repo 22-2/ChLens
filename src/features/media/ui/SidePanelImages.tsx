@@ -1,4 +1,4 @@
-import { Trash2 } from "lucide-react";
+import { Trash2, Undo2 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
 import { useMediaImageStore } from "src/features/media/browser/use-media-image-store";
@@ -63,6 +63,7 @@ function ThreadImageGrid({
             {
               id: "jump-to-response",
               label: "レスにジャンプ",
+              icon: <Undo2 size={14} />,
               onSelect: () => requestThreadResJump(threadUrl, item.resNum, tabId, true),
             },
             ...(status === "loaded"

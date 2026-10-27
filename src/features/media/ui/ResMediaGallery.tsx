@@ -1,4 +1,5 @@
 import { parseMessage } from "@chlen/chlib";
+import { Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -655,6 +656,7 @@ export function ResMediaGallery({
             {
               id: "discard-image",
               label: "画像を破棄",
+              icon: <Trash2 size={14} />,
               danger: true,
               onSelect: () => useMediaImageStore.getState().discardImage(url),
             },
