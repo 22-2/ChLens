@@ -220,6 +220,11 @@ api.addStatusBarItem({
 - [x] **PR3. お気に入りのコマンドを機能側へ移す（P1）**
   - 既存の `CommandTarget` / `CommandRequest` の実行経路と、登録 API との関係を確かめる。
   - 完了：現在ページの切り替えとブックマークリストを開くコマンドを `features/bookmark` の `registerBookmarkCommands` へ移した。切り替えは既存の `TARGET_BOOKMARK_TOGGLE` を利用し、ID を `bookmark.toggle` / `bookmark.open-list` に変更した。従来の表示位置も維持する。
+  - PR1〜3 の見直し：
+    - コマンドの型・グループ定義と、対象・通知先・表示先を得る共通処理（`getCommandPageTarget` / `getCommandToast` / `getCommandSurface`）を `commands/command-definition.ts` へ分けた。機能側はコマンド一覧のモジュールに依存せず、登録 API との型の循環もなくした。
+    - `createExtensionOwner` が所有者（`dispose` を持つ）と、機能へ渡す `api` を分けて返す。機能は自分の所有者を解除できない。
+    - `beforeCommandId` の基準が未登録のときは、ID と登録元を警告ログに出して末尾へ登録する。機能のコマンドは core を基準に並ぶため、起動時もテストも core を先に登録する。
+    - レジストリの `subscribe` は、`useSyncExternalStore` へ渡せるよう解除関数を返す。
 - [ ] **PR4. 残りの機能固有コマンドを移す（P1）**
   - 自動更新、次スレなど。段階0では既存の `BrowserCommandContext` を使ってよい。
   - コメント実況のように `CustomEvent` で画面へ届けているコマンドは、PR4 では移さない（PR7 で扱う）。

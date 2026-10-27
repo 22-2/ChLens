@@ -13,7 +13,7 @@ import {
   browserCommandRegistry,
   registerCoreCommands,
 } from "src/view/browser/commands/browser-commands";
-import { createExtensionApi } from "src/view/browser/extension/extension-api";
+import { createExtensionOwner } from "src/view/browser/extension/extension-api";
 
 // 起動処理のエラーも外部CLIから読めるよう、boot より前に記録を始める。
 installConsoleCapture();
@@ -30,9 +30,11 @@ void boot("/view/index.html", () => {
   // メインの画面だけが使うサービスは、setupContainer（boot の中）の後、描画より前に登録する。
   setupBrowserViewServices();
   // 変更理由: コマンドパレットの表示・復元より先に登録を完了し、Reactの再描画で重複しないようにする。
-  registerCoreCommands(createExtensionApi("core", browserCommandRegistry));
-  registerMediaCommands(createExtensionApi("media", browserCommandRegistry));
-  registerBookmarkCommands(createExtensionApi("bookmark", browserCommandRegistry));
+  // 機能のコマンドは core のコマンドを基準に表示順を決めるため、core を最初に登録する。
+  // 所有者はアプリの終了まで生きるため、解除は呼ばない。
+  registerCoreCommands(createExtensionOwner("core", browserCommandRegistry).api);
+  registerMediaCommands(createExtensionOwner("media", browserCommandRegistry).api);
+  registerBookmarkCommands(createExtensionOwner("bookmark", browserCommandRegistry).api);
   const container = document.getElementById("root");
   if (!container) return;
   createRoot(container).render(<BrowserApp />);

@@ -1,4 +1,4 @@
-import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
+import type { ResolvedBrowserCommand } from "src/view/browser/commands/command-definition";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
 export const OPEN_URL_COMMAND_ID = "navigation.open-url";

@@ -1,56 +1,30 @@
 import { Bookmark, Star } from "lucide-react";
 import { container } from "src/service-container";
-import type { BrowserCommandContext } from "src/view/browser/commands/browser-commands";
+import {
+  type BrowserCommandContext,
+  getCommandPageTarget,
+  getCommandSurface,
+  getCommandToast,
+} from "src/view/browser/commands/command-definition";
 import {
   COMMAND_REQUEST_IDS,
-  type CommandTarget,
   executeCommandRequest,
 } from "src/view/browser/commands/command-runtime";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
-import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
-import type { Page } from "src/view/browser/types";
 import { createQuickAccessPage } from "src/view/browser/utils/tab-pages";
 
-function getCommandSurface(context: BrowserCommandContext): ViewSurface {
-  return (
-    context.viewSurface ?? {
-      window: globalThis.window,
-      document: globalThis.document,
-    }
-  );
-}
-
-function getBookmarkCommandTarget(page: Page): CommandTarget | null {
-  switch (page.type) {
-    case "thread":
-      return {
-        url: page.threadUrl,
-        title: page.title || page.threadUrl,
-        kind: "thread",
-      };
-    case "threadList":
-      return {
-        url: page.boardUrl,
-        title: page.boardTitle || page.title || page.boardUrl,
-        kind: "board",
-      };
-    default:
-      return null;
-  }
-}
-
 async function toggleBookmark(context: BrowserCommandContext): Promise<void> {
-  const target = getBookmarkCommandTarget(context.viewPage);
+  const target = getCommandPageTarget(context.viewPage);
   if (!target) return;
 
   const isBookmarked = Boolean(container.bookmark.get(target.url));
   // 変更理由: パレットとコンテキストメニューで保存処理と表示先通知を共有するため、対象付き要求へ委譲する。
   await executeCommandRequest(
     { id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_TOGGLE, args: { target } },
-    { surface: getCommandSurface(context), toast: context.toast ?? container.toast },
+    { surface: getCommandSurface(context), toast: getCommandToast(context) },
   );
-  (context.toast ?? container.toast).info(
+  getCommandToast(context).info(
     isBookmarked ? "ブックマークを削除しました" : "ブックマークに追加しました",
   );
 }
@@ -78,7 +52,7 @@ export function registerBookmarkCommands(api: ExtensionApi): void {
       keywords: ["お気に入り", "star", "bookmark"],
       group: "page",
       icon: Star,
-      when: ({ viewPage }) => getBookmarkCommandTarget(viewPage) != null,
+      when: ({ viewPage }) => getCommandPageTarget(viewPage) != null,
       run: toggleBookmark,
     },
     { beforeCommandId: "page.open-board" },

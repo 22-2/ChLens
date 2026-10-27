@@ -1,7 +1,7 @@
 import { Bookmark, ExternalLink, History, List, type LucideIcon } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import React from "react";
-import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
+import type { ResolvedBrowserCommand } from "src/view/browser/commands/command-definition";
 import type { OmnibarInputMode } from "src/view/browser/hooks/use-omnibar";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import type { OmnibarSource, OmnibarSuggestion } from "src/view/browser/utils/omnibar";

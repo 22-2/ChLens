@@ -1,7 +1,7 @@
 import { Settings } from "lucide-react";
-import type { BrowserCommandDefinition } from "src/view/browser/commands/browser-commands";
+import type { BrowserCommandDefinition } from "src/view/browser/commands/command-definition";
 import { CommandRegistry } from "src/view/browser/extension/command-registry";
-import { createExtensionApi } from "src/view/browser/extension/extension-api";
+import { createExtensionOwner } from "src/view/browser/extension/extension-api";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 interface TestCommand {
@@ -24,7 +24,7 @@ describe("拡張 API", () => {
   it("コマンド登録時だけスナップショットを更新して購読者へ通知する", () => {
     const registry = new CommandRegistry<TestCommand>();
     const listener = vi.fn();
-    const subscription = registry.subscribe(listener);
+    const unsubscribe = registry.subscribe(listener);
     const initialSnapshot = registry.getSnapshot();
 
     registry.add({ id: "first", value: "1" }, "test");
@@ -35,8 +35,8 @@ describe("拡張 API", () => {
 
     const unchangedSnapshot = registry.getSnapshot();
     expect(registry.getSnapshot()).toBe(unchangedSnapshot);
-    subscription.dispose();
-    subscription.dispose();
+    unsubscribe();
+    unsubscribe();
     registry.add({ id: "second", value: "2" }, "test");
     expect(listener).toHaveBeenCalledTimes(1);
   });
@@ -66,15 +66,24 @@ describe("拡張 API", () => {
     expect(registry.getSnapshot().map(({ id }) => id)).toEqual(["first", "middle", "last"]);
   });
 
+  it("表示順の基準が未登録なら末尾へ登録する", () => {
+    const registry = new CommandRegistry<TestCommand>();
+    registry.add({ id: "first", value: "1" }, "test");
+
+    registry.add({ id: "orphan", value: "2" }, "test", "missing");
+
+    expect(registry.getSnapshot().map(({ id }) => id)).toEqual(["first", "orphan"]);
+  });
+
   it("所有者の解除で登録と任意の後片付けをまとめて実行する", () => {
     const registry = new CommandRegistry<BrowserCommandDefinition>();
-    const api = createExtensionApi("feature", registry);
+    const owner = createExtensionOwner("feature", registry);
     const cleanup = vi.fn();
-    api.addCommand(createBrowserCommand("owned"));
-    api.register(cleanup);
+    owner.api.addCommand(createBrowserCommand("owned"));
+    owner.api.register(cleanup);
 
-    api.dispose();
-    api.dispose();
+    owner.dispose();
+    owner.dispose();
 
     expect(registry.getSnapshot()).toEqual([]);
     expect(cleanup).toHaveBeenCalledTimes(1);
@@ -82,13 +91,13 @@ describe("拡張 API", () => {
 
   it("登録後に個別解除した項目は所有者の解除でも再処理しない", () => {
     const registry = new CommandRegistry<BrowserCommandDefinition>();
-    const api = createExtensionApi("feature", registry);
+    const owner = createExtensionOwner("feature", registry);
     const cleanup = vi.fn();
-    const disposable = api.register(cleanup);
+    const disposable = owner.api.register(cleanup);
 
     disposable.dispose();
     disposable.dispose();
-    api.dispose();
+    owner.dispose();
 
     expect(cleanup).toHaveBeenCalledTimes(1);
   });

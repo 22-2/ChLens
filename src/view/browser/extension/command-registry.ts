@@ -18,15 +18,11 @@ export class CommandRegistry<T extends IdentifiedCommand> {
 
   getSnapshot = (): readonly T[] => this.snapshot;
 
-  subscribe = (listener: () => void): Disposable => {
+  // React の useSyncExternalStore へそのまま渡せるよう、購読解除は関数で返す。
+  subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
-    let disposed = false;
-    return {
-      dispose: () => {
-        if (disposed) return;
-        disposed = true;
-        this.listeners.delete(listener);
-      },
+    return () => {
+      this.listeners.delete(listener);
     };
   };
 
@@ -42,6 +38,15 @@ export class CommandRegistry<T extends IdentifiedCommand> {
     }
 
     const entry = { command, ownerId };
+    if (beforeCommandId && !this.entries.has(beforeCommandId)) {
+      // 変更理由: 基準のコマンドが未登録だと表示順が黙って変わるため、登録順の誤りを追えるよう記録する。
+      // 登録自体は拒否せず末尾へ追加し、コマンドを使えない状態にはしない。
+      logger.warn("表示順の基準コマンドが未登録のため、末尾へ登録しました", {
+        id: command.id,
+        ownerId,
+        beforeCommandId,
+      });
+    }
     if (beforeCommandId && this.entries.has(beforeCommandId)) {
       const reorderedEntries = [...this.entries.entries()];
       const insertionIndex = reorderedEntries.findIndex(([id]) => id === beforeCommandId);

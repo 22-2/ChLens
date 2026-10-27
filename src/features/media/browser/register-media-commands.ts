@@ -3,21 +3,15 @@ import { ChURL, getThreadXhrInfo, parseThread } from "packages/chlib/src/index";
 import { createLogger } from "src/app/logger";
 import { extractUrlsFromMessage } from "src/core/util/url-media";
 import { container } from "src/service-container";
-import type { BrowserCommandContext } from "src/view/browser/commands/browser-commands";
+import {
+  type BrowserCommandContext,
+  getCommandSurface,
+  getCommandToast,
+} from "src/view/browser/commands/command-definition";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
-import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { readConfigValue } from "src/view/browser/utils/config-setting";
 
 const logger = createLogger("features/media");
-
-function getCommandSurface(context: BrowserCommandContext): ViewSurface {
-  return (
-    context.viewSurface ?? {
-      window: globalThis.window,
-      document: globalThis.document,
-    }
-  );
-}
 
 function getThreadMessagesFromCache(parsed: unknown): string[] | null {
   if (typeof parsed !== "object" || parsed === null || !("res" in parsed)) {
@@ -72,7 +66,7 @@ async function runImgurBulkDelete(
   context: BrowserCommandContext,
   label: string,
 ): Promise<void> {
-  const toast = context.toast ?? container.toast;
+  const toast = getCommandToast(context);
   const deletableUrls = await container.imgurImages.getDeletableImageUrls(imageUrls);
   if (deletableUrls.length === 0) {
     toast.info("削除できる投稿画像はありません");

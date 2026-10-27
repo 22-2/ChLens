@@ -2,11 +2,15 @@ import { container } from "src/service-container";
 import type { IToastService } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
 import {
-  type BrowserCommandContext,
   browserCommandRegistry,
   executeBrowserCommand,
+  registerCoreCommands,
 } from "src/view/browser/commands/browser-commands";
-import { createExtensionApi } from "src/view/browser/extension/extension-api";
+import type { BrowserCommandContext } from "src/view/browser/commands/command-definition";
+import {
+  createExtensionOwner,
+  type ExtensionOwner,
+} from "src/view/browser/extension/extension-api";
 import type { Page, Tab } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -52,11 +56,15 @@ function createContext(page: Page): BrowserCommandContext {
 }
 
 describe("お気に入りコマンド登録", () => {
-  let extensionApi: ReturnType<typeof createExtensionApi>;
+  let coreOwner: ExtensionOwner;
+  let featureOwner: ExtensionOwner;
 
   beforeEach(() => {
-    extensionApi = createExtensionApi("bookmark-test", browserCommandRegistry);
-    registerBookmarkCommands(extensionApi);
+    // アプリ起動時と同じく、表示順の基準になる core のコマンドを先に登録する。
+    coreOwner = createExtensionOwner("core-test", browserCommandRegistry);
+    registerCoreCommands(coreOwner.api);
+    featureOwner = createExtensionOwner("bookmark-test", browserCommandRegistry);
+    registerBookmarkCommands(featureOwner.api);
     bookmarkGet.mockReturnValue(null);
     bookmarkAdd.mockResolvedValue(undefined);
     bookmarkRemove.mockResolvedValue(undefined);
@@ -69,7 +77,8 @@ describe("お気に入りコマンド登録", () => {
   });
 
   afterEach(() => {
-    extensionApi.dispose();
+    featureOwner.dispose();
+    coreOwner.dispose();
     vi.restoreAllMocks();
     bookmarkGet.mockReset();
     bookmarkAdd.mockReset();

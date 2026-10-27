@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   type BrowserCommandContext,
   type ResolvedBrowserCommand,
-} from "src/view/browser/commands/browser-commands";
+} from "src/view/browser/commands/command-definition";
 import { runBrowserCommand } from "src/view/browser/commands/command-executor";
 import {
   addRecentCommandId,

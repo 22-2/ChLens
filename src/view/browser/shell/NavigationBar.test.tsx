@@ -11,7 +11,10 @@ import {
   commandPalette,
   commandPaletteStore,
 } from "src/view/browser/commands/command-palette-store";
-import { createExtensionApi } from "src/view/browser/extension/extension-api";
+import {
+  createExtensionOwner,
+  type ExtensionOwner,
+} from "src/view/browser/extension/extension-api";
 import { NavigationBar } from "src/view/browser/shell/NavigationBar";
 import type { Page } from "src/view/browser/types";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
@@ -37,15 +40,15 @@ vi.mock("src/view/browser/commands/command-palette-history", () => ({
   saveRecentCommandIds: saveRecentCommandIdsMock,
 }));
 
-let coreExtensionApi: ReturnType<typeof createExtensionApi> | null = null;
+let coreOwner: ExtensionOwner | null = null;
 beforeEach(() => {
-  coreExtensionApi?.dispose();
-  coreExtensionApi = createExtensionApi("core-test", browserCommandRegistry);
-  registerCoreCommands(coreExtensionApi);
+  coreOwner?.dispose();
+  coreOwner = createExtensionOwner("core-test", browserCommandRegistry);
+  registerCoreCommands(coreOwner.api);
 });
 afterEach(() => {
-  coreExtensionApi?.dispose();
-  coreExtensionApi = null;
+  coreOwner?.dispose();
+  coreOwner = null;
 });
 
 const { viewTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => {

@@ -11,7 +11,6 @@ import {
   History,
   Import,
   List,
-  type LucideIcon,
   MessageSquare,
   PanelLeft,
   PanelRight,
@@ -26,11 +25,17 @@ import {
   X,
 } from "lucide-react";
 import { ChURL } from "packages/chlib/src/index";
-import type { Dispatch } from "react";
 import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container";
-import type { IToastService } from "src/service-container/interfaces";
+import {
+  type BrowserCommandContext,
+  type BrowserCommandDefinition,
+  getCommandPageTarget,
+  getCommandSurface,
+  getCommandToast,
+  type ResolvedBrowserCommand,
+} from "src/view/browser/commands/command-definition";
 import {
   COMMAND_REQUEST_IDS,
   type CommandTarget,
@@ -46,19 +51,17 @@ import {
   getResponseJumpResNumFromCommandId,
   RESPONSE_JUMP_COMMAND_ID,
 } from "src/view/browser/commands/response-jump-command";
-import { TAB_COMMAND_IDS, type TabCommandId } from "src/view/browser/commands/tab-command-runtime";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log-actions";
 import { toggleZenMode } from "src/view/browser/commands/zen-mode-store";
 import { CommandRegistry } from "src/view/browser/extension/command-registry";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
-import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
-import type { ScopedTabAction } from "src/view/browser/state/tabs/use-tab-store";
-import type { Page, Tab, ThreadFilter } from "src/view/browser/types";
+import type { Page, ThreadFilter } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { COMMENT_OVERLAY_FLOW_TOGGLE_EVENT } from "src/view/browser/utils/comment-overlay-flow-events";
 import { persistConfigValue, readConfigValue } from "src/view/browser/utils/config-setting";
@@ -101,89 +104,6 @@ import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/uti
 
 const logger = createLogger("view/browser");
 
-export const BROWSER_COMMAND_GROUP_LABELS = {
-  navigation: "移動",
-  tab: "タブ",
-  page: "現在のページ",
-  layout: "表示",
-  copy: "コピー",
-} as const;
-
-export type BrowserCommandGroup = keyof typeof BROWSER_COMMAND_GROUP_LABELS;
-
-export const BROWSER_COMMAND_GROUP_ORDER: readonly BrowserCommandGroup[] = [
-  "navigation",
-  "tab",
-  "page",
-  "layout",
-  "copy",
-];
-
-export interface BrowserCommandContext {
-  // コマンドはフォーカス中のペインではなく、実際に表示している窓の対象を操作する。
-  viewPage: Page;
-  viewTab: Tab;
-  tabs: readonly Tab[];
-  closedTabs: readonly Tab[];
-  isTwoPane: boolean;
-  isZenMode?: boolean;
-  isWritePanelOpen: boolean;
-  /** 現在のスレッドへ書き込めるか。未指定なら通常のスレッドとして扱う。 */
-  canWriteToThread?: boolean;
-  /** スレログ削除後、板ごとの一覧キャッシュからも既読表示を除く。 */
-  clearCachedThreadReadState: (threadUrl: string) => Promise<void>;
-  dispatch: Dispatch<ScopedTabAction>;
-  toggleWritePanel: () => void;
-  openResponseJumpDialog: () => void;
-  openNextThreadSearchDialog: () => Promise<void>;
-  openSimilarThreadSearchDialog?: () => Promise<void>;
-  openArchiveReplayWindow: () => void;
-  // 履歴・再取得・タブライフサイクルは対象タブを明示する実行器へ委譲し、
-  // メニューとパレットで挙動を揃える。
-  runTabCommand?: (id: TabCommandId) => boolean;
-  // 変更理由: コマンドパレットを別窓へ載せた時も、通知とイベントを表示中の窓へ返すため。
-  // 既存の外部呼び出しとの互換性を保つため未指定時は従来の共有サービスへフォールバックする。
-  viewSurface?: ViewSurface;
-  toast?: IToastService;
-}
-
-export interface BrowserCommandDefinition {
-  id: string;
-  label: string | ((context: BrowserCommandContext) => string);
-  englishLabel: string | ((context: BrowserCommandContext) => string);
-  description?: string;
-  keywords?: readonly string[];
-  group: BrowserCommandGroup;
-  icon: LucideIcon;
-  when?: (context: BrowserCommandContext) => boolean;
-  isEnabled?: (context: BrowserCommandContext) => boolean;
-  run: (context: BrowserCommandContext) => void | Promise<void>;
-}
-
-export interface ResolvedBrowserCommand {
-  id: string;
-  label: string;
-  englishLabel: string;
-  description?: string;
-  keywords: readonly string[];
-  group: BrowserCommandGroup;
-  icon: LucideIcon;
-  enabled: boolean;
-}
-
-function getCommandSurface(context: BrowserCommandContext): ViewSurface {
-  return (
-    context.viewSurface ?? {
-      window: globalThis.window,
-      document: globalThis.document,
-    }
-  );
-}
-
-function getCommandToast(context: BrowserCommandContext): IToastService {
-  return context.toast ?? container.toast;
-}
-
 const RELOADABLE_PAGE_TYPES = new Set<Page["type"]>([
   "thread",
   "threadList",
@@ -191,27 +111,6 @@ const RELOADABLE_PAGE_TYPES = new Set<Page["type"]>([
   "writeHistoryList",
   "logList",
 ]);
-
-export function getCommandPageTarget(page: Page): CommandTarget | null {
-  switch (page.type) {
-    case "thread":
-      return {
-        url: page.threadUrl,
-        title: page.title || page.threadUrl,
-        kind: "thread",
-      };
-
-    case "threadList":
-      return {
-        url: page.boardUrl,
-        title: page.boardTitle || page.title || page.boardUrl,
-        kind: "board",
-      };
-
-    default:
-      return null;
-  }
-}
 
 function getNormalizedCommandPageUrl(page: Page): string | null {
   const target = getCommandPageTarget(page);

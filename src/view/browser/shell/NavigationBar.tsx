@@ -26,10 +26,8 @@ import { useTabBarOrientation } from "src/features/tabs/browser/use-tab-bar-orie
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useResponseJumpDialog } from "src/features/thread/browser/use-response-jump-dialog";
 import { clearCachedThreadReadState } from "src/features/thread-list/ui/thread-list-cache";
-import {
-  type BrowserCommandContext,
-  resolveBrowserCommands,
-} from "src/view/browser/commands/browser-commands";
+import { resolveBrowserCommands } from "src/view/browser/commands/browser-commands";
+import type { BrowserCommandContext } from "src/view/browser/commands/command-definition";
 import { commandPalette } from "src/view/browser/commands/command-palette-store";
 import {
   COMMAND_REQUEST_IDS,

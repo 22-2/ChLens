@@ -1,11 +1,15 @@
 import { container } from "src/service-container";
 import type { IToastService } from "src/service-container/interfaces";
 import {
-  type BrowserCommandContext,
   browserCommandRegistry,
   executeBrowserCommand,
+  registerCoreCommands,
 } from "src/view/browser/commands/browser-commands";
-import { createExtensionApi } from "src/view/browser/extension/extension-api";
+import type { BrowserCommandContext } from "src/view/browser/commands/command-definition";
+import {
+  createExtensionOwner,
+  type ExtensionOwner,
+} from "src/view/browser/extension/extension-api";
 import type { Page, Tab } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -50,11 +54,15 @@ function createContext(page: Page): BrowserCommandContext {
 }
 
 describe("メディア機能のコマンド登録", () => {
-  let extensionApi: ReturnType<typeof createExtensionApi>;
+  let coreOwner: ExtensionOwner;
+  let featureOwner: ExtensionOwner;
 
   beforeEach(() => {
-    extensionApi = createExtensionApi("media-test", browserCommandRegistry);
-    registerMediaCommands(extensionApi);
+    // アプリ起動時と同じく、表示順の基準になる core のコマンドを先に登録する。
+    coreOwner = createExtensionOwner("core-test", browserCommandRegistry);
+    registerCoreCommands(coreOwner.api);
+    featureOwner = createExtensionOwner("media-test", browserCommandRegistry);
+    registerMediaCommands(featureOwner.api);
     getDeletableImageUrls.mockResolvedValue(["https://example.com/uploaded-image.png"]);
     deleteImages.mockResolvedValue({ deletedCount: 1, skippedCount: 0, failures: [] });
     container.imgurImages = { getDeletableImageUrls, deleteImages };
@@ -63,7 +71,8 @@ describe("メディア機能のコマンド登録", () => {
   });
 
   afterEach(() => {
-    extensionApi.dispose();
+    featureOwner.dispose();
+    coreOwner.dispose();
     vi.restoreAllMocks();
     getDeletableImageUrls.mockReset();
     deleteImages.mockReset();

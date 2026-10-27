@@ -2,7 +2,6 @@ import { container } from "src/service-container";
 import type { IBoardTitleService } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
 import {
-  type BrowserCommandContext,
   browserCommandRegistry,
   executeBrowserCommand,
   getDatUrlForCommand,
@@ -10,8 +9,12 @@ import {
   registerCoreCommands,
   resolveBrowserCommands,
 } from "src/view/browser/commands/browser-commands";
+import type { BrowserCommandContext } from "src/view/browser/commands/command-definition";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import { createExtensionApi } from "src/view/browser/extension/extension-api";
+import {
+  createExtensionOwner,
+  type ExtensionOwner,
+} from "src/view/browser/extension/extension-api";
 import { getAutoRefreshPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import type { ScopedTabAction } from "src/view/browser/state/tabs/use-tab-store";
@@ -138,12 +141,12 @@ function createContext(
 }
 
 describe("browser commands", () => {
-  let coreExtensionApi: ReturnType<typeof createExtensionApi> | null = null;
+  let coreOwner: ExtensionOwner | null = null;
 
   beforeEach(() => {
-    coreExtensionApi?.dispose();
-    coreExtensionApi = createExtensionApi("core-test", browserCommandRegistry);
-    registerCoreCommands(coreExtensionApi);
+    coreOwner?.dispose();
+    coreOwner = createExtensionOwner("core-test", browserCommandRegistry);
+    registerCoreCommands(coreOwner.api);
     extensionBrowserApiMock.runtime.id = "test-extension";
     extensionBrowserApiMock.tabs.query = queryTabsMock;
     extensionBrowserApiMock.tabs.remove = removeTabsMock;
@@ -186,8 +189,8 @@ describe("browser commands", () => {
   });
 
   afterEach(() => {
-    coreExtensionApi?.dispose();
-    coreExtensionApi = null;
+    coreOwner?.dispose();
+    coreOwner = null;
     vi.unstubAllGlobals();
     delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
     copyTextMock.mockReset();
