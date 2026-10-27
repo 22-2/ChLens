@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
 import { useMediaImageStore } from "src/features/media/browser/use-media-image-store";
@@ -9,8 +10,10 @@ import { collectThreadImages } from "src/features/media/domain/thread-images";
 import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
+import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
 import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 type TileStyle = CSSProperties & { "--res-thumb-blur-radius"?: string };
@@ -25,6 +28,7 @@ function ThreadImageGrid({
   data: ThreadSnapshot;
 }) {
   const imageStates = useMediaImageStore((store) => store.images);
+  const { openMenu, menu } = useExternalLinkMenu();
   const openMedia = useMediaViewerStore((store) => store.openMediaFromUrl);
   const items = useMemo(
     () => collectThreadImages(data.visibleResponses, data.messageProtocol),
@@ -55,11 +59,31 @@ function ThreadImageGrid({
               manualLoad
             />
           );
+          const contextMenuItems: ContextMenuItem[] = [
+            {
+              id: "jump-to-response",
+              label: "レスにジャンプ",
+              onSelect: () => requestThreadResJump(threadUrl, item.resNum, tabId, true),
+            },
+            ...(status === "loaded"
+              ? [
+                  { id: "gallery-image-separator", separator: true },
+                  {
+                    id: "discard-image",
+                    label: "画像を破棄",
+                    icon: <Trash2 size={14} />,
+                    danger: true,
+                    onSelect: () => useMediaImageStore.getState().discardImage(item.rawUrl),
+                  },
+                ]
+              : []),
+          ];
           return (
             <li
               key={item.rawUrl}
               className={`side-panel__image${isBlurred ? " side-panel__image--blurred" : ""}`}
               title={`>>${item.resNum} ${item.text}`}
+              onContextMenu={(event) => openMenu(item.rawUrl, event, contextMenuItems)}
             >
               {isLoadStarted ? (
                 <button
@@ -87,6 +111,7 @@ function ThreadImageGrid({
           );
         })}
       </ul>
+      {menu}
     </div>
   );
 }
