@@ -60,7 +60,6 @@ import { canGoBack, canGoForward, getCurrentPage } from "src/view/browser/types"
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Dialog } from "src/view/browser/ui/Dialog";
-import {} from "src/view/browser/utils/filter-toolbar-events";
 import {
   useFilterToolbarOpen,
   useFilterToolbarPinned,

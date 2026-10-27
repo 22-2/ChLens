@@ -55,7 +55,10 @@ import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log
 import { toggleZenMode } from "src/view/browser/commands/zen-mode-store";
 import { CommandRegistry } from "src/view/browser/extension/command-registry";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
-import { toggleFilter as toggleFilterForTab } from "src/view/browser/extension/page-actions";
+import {
+  toggleFilter as toggleFilterForTab,
+  toggleThreadFilterMode,
+} from "src/view/browser/extension/page-actions";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import type { Page, ThreadFilter } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -66,7 +69,6 @@ import {
   removeExtensionTabs,
 } from "src/view/browser/utils/extension-tabs";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
-import { THREAD_FILTER_MODE_TOGGLE_EVENT } from "src/view/browser/utils/filter-toolbar-events";
 import { isPageFilterable } from "src/view/browser/utils/filterable-pages";
 import {
   getBoardUrlFromThreadUrl,
@@ -272,12 +274,7 @@ function dispatchThreadFilterModeToggle(
   filter: Exclude<ThreadFilter, "all">,
 ): void {
   const { window: viewWindow } = getCommandSurface(context);
-  const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
-  viewWindow.dispatchEvent(
-    new viewWindowWithConstructors.CustomEvent(THREAD_FILTER_MODE_TOGGLE_EVENT, {
-      detail: { tabId: context.viewTab.id, filter },
-    }),
-  );
+  toggleThreadFilterMode(viewWindow, context.viewTab.id, filter);
 }
 
 function dispatchCommentOverlayFlowToggle(context: BrowserCommandContext): void {

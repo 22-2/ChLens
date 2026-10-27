@@ -1,7 +1,9 @@
 import {
   registerFilterToggle,
   registerPageTarget,
+  registerThreadFilterModeToggle,
   toggleFilter as toggleFilterForTab,
+  toggleThreadFilterMode,
 } from "src/view/browser/extension/page-actions";
 import { describe, expect, it, vi } from "vite-plus/test";
 
@@ -58,6 +60,41 @@ describe("ページのフィルター操作", () => {
         }),
       );
     } finally {
+      disposeTarget();
+    }
+  });
+
+  it("開閉とモード変更は別の操作として登録し、未対応と終了を区別する", () => {
+    const disposeTarget = registerPageTarget(window, "mode-tab");
+    const toggle = vi.fn();
+    const mode = vi.fn();
+    const ignored = vi.fn();
+    const disposeToggle = registerFilterToggle(window, "mode-tab", toggle);
+    const disposeMode = registerThreadFilterModeToggle(window, "mode-tab", mode);
+    const disposeDuplicate = registerThreadFilterModeToggle(window, "mode-tab", ignored);
+    try {
+      disposeDuplicate();
+      expect(toggleThreadFilterMode(window, "mode-tab", "video")).toBe("executed");
+      expect(mode).toHaveBeenCalledWith("video");
+      expect(ignored).not.toHaveBeenCalled();
+      expect(toggle).not.toHaveBeenCalled();
+      disposeMode();
+      expect(toggleThreadFilterMode(window, "mode-tab", "video")).toBe("unsupported");
+      expect(warn).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          operation: "thread.filter-mode.toggle",
+          tabId: "mode-tab",
+          result: "unsupported",
+        }),
+      );
+      expect(toggleFilterForTab(window, "mode-tab")).toBe("executed");
+      disposeTarget();
+      expect(toggleThreadFilterMode(window, "mode-tab", "video")).toBe("target-unavailable");
+    } finally {
+      disposeDuplicate();
+      disposeMode();
+      disposeToggle();
       disposeTarget();
     }
   });

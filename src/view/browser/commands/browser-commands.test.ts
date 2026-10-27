@@ -15,6 +15,7 @@ import {
   createExtensionOwner,
   type ExtensionOwner,
 } from "src/view/browser/extension/extension-api";
+import { registerThreadFilterModeToggle } from "src/view/browser/extension/page-actions";
 import type { ScopedTabAction } from "src/view/browser/state/tabs/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
@@ -871,7 +872,8 @@ describe("browser commands", () => {
       title: "テスト",
       threadUrl: "https://example.com/test/read.cgi/board/1/",
     });
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const handler = vi.fn();
+    const dispose = registerThreadFilterModeToggle(window, "tab-1", handler);
 
     try {
       const ids = resolveBrowserCommands(context).map((command) => command.id);
@@ -882,11 +884,9 @@ describe("browser commands", () => {
 
       await expect(executeBrowserCommand("page.toggle-filter-image", context)).resolves.toBe(true);
 
-      const event = dispatchEventSpy.mock.calls.at(-1)?.[0] as CustomEvent;
-      expect(event.type).toBe("thread-filter-mode-toggle");
-      expect(event.detail).toEqual({ tabId: "tab-1", filter: "image" });
+      expect(handler).toHaveBeenCalledWith("image");
     } finally {
-      dispatchEventSpy.mockRestore();
+      dispose();
     }
   });
 
