@@ -15,6 +15,7 @@ import {
   useWriteSessionControls,
   type WriteEditorPlace,
 } from "src/features/write/browser/use-write-session";
+import { WriteEditorElsewhere } from "src/features/write/ui/WriteEditorElsewhere";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
@@ -36,98 +37,38 @@ const WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY = "write_close_panel_after_submit";
 const WRITE_SANITIZE_URLS_ON_PASTE_KEY = "write_sanitize_urls_on_paste";
 const noop = () => {};
 
-const EDITOR_PLACE_LABELS: Record<WriteEditorPlace, string> = {
-  bottom: "下部パネル",
-  side: "サイドパネル",
-};
+/**
+ * 書き込み欄を置く場所。下部パネルはペインに属し、サイドパネルと別窓はペインの外にある。
+ * 別窓は開いている間、常に編集欄を持つ。
+ */
+export type WriteSurface = WriteEditorPlace | "window";
 
 export interface WritePanelContentProps {
-  standalone?: boolean;
-  /** メイン窓のどこに置いた書き込み欄か。別窓（standalone）では使わない。 */
-  place?: WriteEditorPlace;
+  surface?: WriteSurface;
   onClose?: () => void;
   portalContainer?: HTMLElement | null;
 }
 
-export const WritePanelContent: React.FC<WritePanelContentProps> = (props) => {
-  const place = props.place ?? "bottom";
-  const bottomPanel = useOptionalBottomPanel();
-  const {
-    isWindowOpen,
-    editorPlace,
-    isEditorBusy,
-    moveEditor,
-    openWriteWindow,
-    requestEditorFocus,
-    selectedThreadUrl,
-    selectThread,
-    appendDraft,
-  } = useWriteSessionControls();
-  const isEditorHere = props.standalone || (!isWindowOpen && editorPlace === place);
-
-  useEffect(() => {
-    const request = bottomPanel?.writePanelInsertRequest;
-    if (isEditorHere || !request) {
-      return;
-    }
-
-    const targetThreadUrl = request.threadUrl ?? selectedThreadUrl;
-    if (!targetThreadUrl) {
-      return;
-    }
-
-    // 変更理由: 編集欄がほかの場所にある間はこの場所の書き込みUIをマウントしないため、
-    // 返信要求を共有下書きへ移してから元のペイン側の要求を消費する。
-    selectThread(targetThreadUrl);
-    appendDraft(targetThreadUrl, request.text);
-    bottomPanel.clearWritePanelInsertRequest(request.id);
-  }, [appendDraft, bottomPanel, isEditorHere, selectThread, selectedThreadUrl]);
-
-  if (!isEditorHere) {
-    const moveHere = () => {
-      if (!moveEditor(place)) return;
-      if (place === "side") requestEditorFocus();
-      else bottomPanel?.requestWritePanelFocus();
-    };
-    return (
-      <div className="write-panel__detached-message">
-        <span>
-          書き込み欄は{isWindowOpen ? "別窓" : EDITOR_PLACE_LABELS[editorPlace]}で開いています。
-        </span>
-        {isWindowOpen && (
-          <button
-            type="button"
-            className="write-panel__btn write-panel__btn--secondary"
-            onClick={() => openWriteWindow()}
-          >
-            別窓を表示
-          </button>
-        )}
-        {/* 下書きと投稿先はセッションに残るため、移動しても入力内容は失われない。 */}
-        <button
-          type="button"
-          className="write-panel__btn write-panel__btn--secondary"
-          onClick={moveHere}
-          disabled={isEditorBusy}
-          title={isEditorBusy ? "送信中は移動できません" : undefined}
-        >
-          こちらに移動
-        </button>
-      </div>
-    );
+export const WritePanelContent: React.FC<WritePanelContentProps> = ({
+  surface = "bottom",
+  ...props
+}) => {
+  const { isWindowOpen, editorPlace } = useWriteSessionControls();
+  // メイン窓の場所は、別窓がなく編集欄の場所と一致するときだけ編集欄を持つ。
+  if (surface !== "window" && (isWindowOpen || editorPlace !== surface)) {
+    return <WriteEditorElsewhere place={surface} />;
   }
-
-  return <WritePanelEditor {...props} />;
+  return <WritePanelEditor surface={surface} {...props} />;
 };
 
-const WritePanelEditor: React.FC<WritePanelContentProps> = ({
-  standalone = false,
-  place = "bottom",
+const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurface }> = ({
+  surface,
   onClose,
   portalContainer,
 }) => {
   // 別窓とサイドの編集欄はペインの下部パネルに属さないため、フォーカス要求はセッション側を使う。
-  const isOutsidePane = standalone || place === "side";
+  const isInPane = surface === "bottom";
+  const isWindow = surface === "window";
   const { viewPage } = useTabStore();
   const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
   // 変更理由: 設定DialogのPortal先も書き込み窓と同じDocumentへ置き、別窓で
@@ -136,9 +77,9 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const toast = useToast();
   const { window: viewWindow, document: viewDocument } = viewSurface;
   const bottomPanel = useOptionalBottomPanel();
-  const writePanelInsertRequest = standalone ? null : bottomPanel?.writePanelInsertRequest;
+  const writePanelInsertRequest = isWindow ? null : bottomPanel?.writePanelInsertRequest;
   const clearWritePanelInsertRequest = bottomPanel?.clearWritePanelInsertRequest ?? noop;
-  const closePanel = standalone ? (onClose ?? noop) : (bottomPanel?.closePanel ?? onClose ?? noop);
+  const closePanel = isWindow ? (onClose ?? noop) : (bottomPanel?.closePanel ?? onClose ?? noop);
   const {
     selectedThreadUrl,
     targets,
@@ -238,7 +179,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const writeErrorMessage = statusText || "書き込みに失敗しました";
 
   useEffect(() => {
-    const requestId = isOutsidePane ? editorFocusRequestId : writePanelFocusRequestId;
+    const requestId = isInPane ? writePanelFocusRequestId : editorFocusRequestId;
     if (requestId == null) {
       return;
     }
@@ -251,10 +192,10 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
 
       // パネルを開いた描画が終わってからフォーカスし、ユーザーがすぐ入力できる状態にする。
       textarea.focus({ preventScroll: true });
-      if (isOutsidePane) {
-        consumeEditorFocusRequest(requestId);
-      } else {
+      if (isInPane) {
         bottomPanel?.consumeWritePanelFocusRequest(requestId);
+      } else {
+        consumeEditorFocusRequest(requestId);
       }
     });
 
@@ -262,7 +203,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   }, [
     bottomPanel,
     consumeEditorFocusRequest,
-    isOutsidePane,
+    isInPane,
     viewWindow,
     writePanelFocusRequestId,
     editorFocusRequestId,
@@ -555,7 +496,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
         )}
         {!isConfirm && (
           <>
-            {isOutsidePane && targets.length > 0 && (
+            {!isInPane && targets.length > 0 && (
               // 投稿先の切り替えは共有書き込み窓とサイドパネルの役割に限定し、各ペインの
               // 下部パネルは表示中スレッドへそのまま投稿する簡潔な入力欄として保つ。
               // サイドパネルは操作中のペインに追従しないため、投稿先を明示して選べるようにする。
@@ -621,7 +562,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
                     <Settings size={14} aria-hidden="true" />
                     <span>書き込み設定</span>
                   </button>
-                  {!standalone && (
+                  {!isWindow && (
                     <button
                       type="button"
                       className="write-panel__menu-item"

@@ -44,7 +44,7 @@ export const WriteWindowHost: React.FC = () => {
         <main className="write-window">
           <div className="write-window__content">
             <WritePanelContent
-              standalone
+              surface="window"
               onClose={closeWriteWindow}
               portalContainer={writeWindowRoot}
             />

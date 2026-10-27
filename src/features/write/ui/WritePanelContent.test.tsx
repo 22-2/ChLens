@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
-import { WritePanelContent } from "src/features/write/ui/WritePanelContent";
+import { WritePanelContent, type WriteSurface } from "src/features/write/ui/WritePanelContent";
 import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
@@ -58,10 +58,10 @@ vi.mock("src/app/platform", () => ({
   },
 }));
 
-function renderWritePanel(standalone = false, place?: "bottom" | "side") {
+function renderWritePanel(surface?: WriteSurface) {
   return render(
     <StatusBarProvider>
-      <WritePanelContent standalone={standalone} place={place} />
+      <WritePanelContent surface={surface} />
       <StatusBar />
     </StatusBarProvider>,
   );
@@ -312,7 +312,7 @@ describe("WritePanelContent", () => {
     const { unmount } = render(
       <ViewSurfaceProvider surface={{ window: previewWindow, document: previewDocument }}>
         <StatusBarProvider>
-          <WritePanelContent standalone portalContainer={previewDocument.body} />
+          <WritePanelContent surface="window" portalContainer={previewDocument.body} />
         </StatusBarProvider>
       </ViewSurfaceProvider>,
       { container: previewDocument.body },
@@ -356,7 +356,7 @@ describe("WritePanelContent", () => {
     expect(screen.queryByLabelText("投稿先スレッド")).not.toBeInTheDocument();
 
     unmount();
-    renderWritePanel(true);
+    renderWritePanel("window");
     expect(screen.getByLabelText("投稿先スレッド")).toBeInTheDocument();
   });
 
@@ -365,7 +365,7 @@ describe("WritePanelContent", () => {
     mocks.selectedThreadUrl = targetThreadUrl;
     mocks.targets = [{ threadUrl: targetThreadUrl, title: "スレッド", tabId: "tab-1" }];
     mocks.editorPlace = "side";
-    renderWritePanel(false, "side");
+    renderWritePanel("side");
     expect(screen.getByLabelText("投稿先スレッド")).toBeInTheDocument();
   });
 
