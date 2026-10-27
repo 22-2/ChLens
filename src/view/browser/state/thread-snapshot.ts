@@ -7,6 +7,11 @@ export interface ThreadSnapshot {
   responses: readonly IRes[];
   /** 本文で表示されるレス。抽出など本文に対応する一覧は NG で隠れたレスを含めない。 */
   visibleResponses: readonly IRes[];
+  /** 本文の HTML 化に使うプロトコル。本文と同じ URL を取り出すために共有する。 */
+  messageProtocol: string;
+  /** 本文で画像をぼかすレス番号と、ぼかしの強さ。 */
+  blurredResNums: ReadonlySet<number>;
+  imageBlurRadius: number;
   /** 公開した時刻。経過時間や勢いの基準にし、描画のたびに値が変わらないようにする。 */
   updatedAt: number;
   loading: boolean;

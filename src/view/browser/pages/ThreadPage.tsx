@@ -21,7 +21,10 @@ import { useCommentOverlay } from "src/features/comment-overlay/application/use-
 import { useLiveChatReplyIndex } from "src/features/live-chat/browser/use-live-chat-reply-index";
 import { useLiveChatResponses } from "src/features/live-chat/browser/use-live-chat-responses";
 import { useThreadDisplayModeSetting } from "src/features/live-chat/browser/use-thread-display-mode-setting";
-import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
+import {
+  getThreadMediaViewerScopeId,
+  useMediaViewerStore,
+} from "src/features/media/browser/use-media-viewer-store";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/features/next-thread/browser/use-auto-next-thread-setting";
@@ -191,31 +194,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     [visibleResponses, isNgDisabled, ngMode],
   );
   useEffect(() => () => removeThreadSnapshot(tabId, snapshotOwner), [tabId, snapshotOwner]);
-  useEffect(() => {
-    if (isArchiveReplay) {
-      removeThreadSnapshot(tabId, snapshotOwner);
-      return;
-    }
-    publishThreadSnapshot(tabId, snapshotOwner, {
-      threadUrl: page.threadUrl,
-      responses,
-      visibleResponses: extractableResponses,
-      updatedAt: Date.now(),
-      loading: isInitialLoading,
-      error,
-      expired,
-    });
-  }, [
-    tabId,
-    snapshotOwner,
-    page.threadUrl,
-    responses,
-    extractableResponses,
-    isInitialLoading,
-    error,
-    expired,
-    isArchiveReplay,
-  ]);
   const requestManualRefresh = useCallback(() => {
     if (!threadCapabilities.canRefresh) return;
     runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
@@ -329,7 +307,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     edge: "bottom",
     onRefresh: requestManualRefresh,
   });
-  const mediaViewerScopeId = `${tabId}\u0000${page.threadUrl}`;
+  const mediaViewerScopeId = getThreadMediaViewerScopeId(tabId, page.threadUrl);
   const openMedia = useMediaViewerStore((state) => state.openMediaFromUrl);
   const openMediaFromUrl = useCallback(
     (url: string, resImages?: string[]) => {
@@ -795,6 +773,38 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     if (!imageBlurConfig.enabled) return new Set<number>();
     return buildBlurredResSet(responses, indexes.repIndex, imageBlurConfig.harmfulWordPattern);
   }, [imageBlurConfig, indexes.repIndex, responses]);
+  // 画像一覧も本文と同じぼかし判定にするため、判定結果を含めて公開する。
+  useEffect(() => {
+    if (isArchiveReplay) {
+      removeThreadSnapshot(tabId, snapshotOwner);
+      return;
+    }
+    publishThreadSnapshot(tabId, snapshotOwner, {
+      threadUrl: page.threadUrl,
+      responses,
+      visibleResponses: extractableResponses,
+      messageProtocol,
+      blurredResNums,
+      imageBlurRadius: imageBlurConfig.radius,
+      updatedAt: Date.now(),
+      loading: isInitialLoading,
+      error,
+      expired,
+    });
+  }, [
+    tabId,
+    snapshotOwner,
+    page.threadUrl,
+    responses,
+    extractableResponses,
+    messageProtocol,
+    blurredResNums,
+    imageBlurConfig.radius,
+    isInitialLoading,
+    error,
+    expired,
+    isArchiveReplay,
+  ]);
 
   const { openPopupResContextMenu, openThreadResContextMenu } = useThreadResContextMenu({
     addPopupContextMenu,

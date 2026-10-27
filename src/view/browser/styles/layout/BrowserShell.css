@@ -151,6 +151,76 @@
   color: var(--sys-color-warning-fg);
 }
 
+.side-panel__images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--sys-size-side-panel-image-tile), 1fr));
+  gap: var(--sys-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.side-panel__image {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-thumbnail-surface);
+}
+.side-panel__image-open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.side-panel__image-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.side-panel__image--blurred img {
+  filter: blur(var(--res-thumb-blur-radius));
+  transform: scale(1.06);
+}
+/* 一覧を画像だけに保ち、レス番号と本文はホバーかキーボード操作中だけ重ねる。 */
+.side-panel__image-caption {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  gap: var(--sys-space-2);
+  padding: var(--sys-space-1) var(--sys-space-2);
+  border: 0;
+  background: var(--sys-color-media-badge-bg);
+  color: var(--sys-color-accent-fg);
+  font-size: var(--sys-font-size-xs);
+  text-align: left;
+  cursor: pointer;
+  opacity: 0;
+}
+.side-panel__image-caption span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.side-panel__image:hover .side-panel__image-caption,
+.side-panel__image:focus-within .side-panel__image-caption {
+  opacity: 1;
+}
+/* ホバーできないタッチ環境では、レスへ移動する操作を常に見せる。 */
+@media (hover: none) {
+  .side-panel__image-caption {
+    opacity: 1;
+  }
+}
+.side-panel__image-open:focus-visible,
+.side-panel__image-caption:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: -2px;
+}
+
 .side-panel__properties {
   display: grid;
   grid-template-columns: max-content 1fr;

@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { SidePanelBoards } from "src/view/browser/shell/SidePanelBoards";
 import { SidePanelExtract } from "src/view/browser/shell/SidePanelExtract";
 import { SidePanelFavorites } from "src/view/browser/shell/SidePanelFavorites";
+import { SidePanelImages } from "src/view/browser/shell/SidePanelImages";
 import { SidePanelProperties } from "src/view/browser/shell/SidePanelProperties";
 import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
@@ -130,6 +131,12 @@ export function SidePanel() {
             tabId={viewTab.id}
             page={viewPage}
           />
+        ) : (
+          <p className="side-panel__empty">スレッドを開くと表示されます。</p>
+        )
+      ) : state.activeView === "images" ? (
+        viewPage.type === "thread" ? (
+          <SidePanelImages tabId={viewTab.id} page={viewPage} />
         ) : (
           <p className="side-panel__empty">スレッドを開くと表示されます。</p>
         )

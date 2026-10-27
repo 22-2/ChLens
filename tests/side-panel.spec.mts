@@ -50,6 +50,40 @@ test("抽出結果を強調し、本文のレスへ移動する", async ({ page,
   );
 });
 
+test("画像一覧は手動取得の設定に従い、取得した画像をビューアーで開く", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const imageUrl = `${localBoard.origin}/img/1.png`;
+  localBoard.setDat(
+    [
+      `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local001<>画像なし<>ローカルテストスレッド`,
+      `名無し<>sage<>2026/10/02(金) 12:01:00 ID:local002<>画像のレス ${imageUrl}<>`,
+    ].join("\n"),
+  );
+  await page.addInitScript(() => {
+    localStorage.setItem("config_manual_image_loading", "on");
+  });
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  const urlInput = page.getByPlaceholder("URLを入力");
+  await urlInput.fill(localBoard.threadUrl);
+  await urlInput.press("Enter");
+  await expect(page.locator('[data-res-num="2"]')).toContainText("画像のレス");
+
+  await page.getByRole("button", { name: "サイドパネルを開く" }).click();
+  const panel = page.getByRole("complementary", { name: "サイドパネル" });
+  await panel.getByRole("tab", { name: "画像一覧" }).click();
+  await expect(panel.getByText("1 件")).toBeVisible();
+  expect(localBoard.requests).not.toContain("/img/1.png");
+
+  await panel.getByRole("button", { name: "画像を読み込む: >>2 の画像" }).click();
+  await expect(panel.locator(`img[src="${imageUrl}"]`)).toBeVisible();
+  await panel.getByRole("button", { name: ">>2 の画像を拡大" }).click();
+  await expect(page.locator(".media-viewer__label")).toHaveText(imageUrl);
+});
+
 test("スレプロパティに表示中のスレの情報を出す", async ({ page, extensionId, localBoard }) => {
   const thread = localBoard.addLargeThread(150);
   await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
