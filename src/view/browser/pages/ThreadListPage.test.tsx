@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createRef } from "react";
 import { createOpenedBoards } from "src/core/board/OpenedBoards";
+import { WHEEL_THRESHOLD } from "src/features/thread/browser/useWheelPagination";
 import {
   type DisplayThread,
   THREAD_LIST_COLUMNS,
@@ -662,6 +663,41 @@ describe("ThreadListPage", () => {
         lastVisited: expect.any(Number),
       }),
     );
+  });
+
+  it("一覧上端で上ホイールを繰り返すと一覧を更新し、クールダウン中は再更新しない", async () => {
+    // 変更理由: フック単体ではイベントの競合を再現できないため、実際の一覧と
+    // スクロール要素を組み合わせて、フィルタの常設と更新が干渉しないことを確かめる。
+    vi.useRealTimers();
+    const scrollContainerRef = createRef<HTMLDivElement>();
+    render(
+      <div ref={scrollContainerRef} className="content-area__tab-panel" data-tab-panel-id="tab-1">
+        <ThreadListPage
+          tabId="tab-1"
+          page={{
+            type: "threadList",
+            title: "テスト板",
+            boardUrl: "https://example.com/wheel-refresh/",
+            boardTitle: "テスト板",
+          }}
+          refreshKey={0}
+          isActive
+          scrollContainerRef={scrollContainerRef}
+        />
+      </div>,
+    );
+    const panel = scrollContainerRef.current!;
+    await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
+    dispatchMock.mockClear();
+
+    for (let index = 0; index < WHEEL_THRESHOLD; index += 1) {
+      fireEvent.wheel(panel, { deltaY: -48 });
+    }
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
+    const refreshCount = dispatchMock.mock.calls.length;
+    fireEvent.wheel(panel, { deltaY: -48 });
+    expect(dispatchMock).toHaveBeenCalledTimes(refreshCount);
+    expect(screen.getByRole("textbox")).toBeVisible();
   });
 
   it("フィルタバーは常設され、閉じるボタンやホイールでは閉じない", async () => {

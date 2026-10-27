@@ -16,7 +16,12 @@ import { useThreadTitleNgDialog } from "src/features/ng/browser/use-thread-title
 import { ThreadTitleNgDialog } from "src/features/ng/ui/ThreadTitleNgDialog";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
+import {
+  useWheelPagination,
+  WHEEL_THRESHOLD,
+} from "src/features/thread/browser/useWheelPagination";
 import { createThreadContextMenuItems } from "src/features/thread/ui/thread-context-menu-items";
+import { WheelScrollIndicator } from "src/features/thread/ui/WheelScrollIndicator";
 import { clearCachedThreadReadState } from "src/features/thread-list/ui/thread-list-cache";
 import {
   calcHeat,
@@ -134,9 +139,12 @@ export const ThreadListPage: React.FC<Props> = ({
   refreshKey,
   isActive,
   isAutoRefreshEnabled = false,
+  scrollContainerRef,
 }) => {
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const { window: viewWindow, document: viewDocument } = viewSurface;
+  const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
+  const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const runTargetCommand = useCallback(
     (request: CommandRequest) => {
       void runCommandRequest(request, { surface: viewSurface, toast });
@@ -235,6 +243,16 @@ export const ThreadListPage: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const previousBoardUrlRef = useRef(page.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
+  // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
+  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
+  const wheelPagination = useWheelPagination({
+    isEnabled: isActive,
+    isLoading: loading,
+    cooldownScopeKey: manualRefreshScopeKey,
+    containerRef: effectiveScrollContainerRef,
+    edge: "top",
+    onRefresh: requestManualRefresh,
+  });
   // 変更理由: スレ一覧ではフィルタバーを常設するため、開閉の状態は持たない。
   // 通知の上端位置を合わせ、タイトルバーの開閉ボタンを隠せるよう、開いている・常時表示として共有する。
   useEffect(() => {
@@ -785,6 +803,11 @@ export const ThreadListPage: React.FC<Props> = ({
         message={loading && isAutoRefreshing ? "スレ一覧を読み込み中..." : null}
         busy={loading && isAutoRefreshing}
         visible={isActive}
+      />
+      <WheelScrollIndicator
+        {...wheelPagination}
+        threshold={WHEEL_THRESHOLD}
+        portalContainerRef={effectiveScrollContainerRef}
       />
       {showRefreshOverlay && (
         <div
