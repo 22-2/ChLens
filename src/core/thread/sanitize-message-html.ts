@@ -44,3 +44,50 @@ export function sanitizeMessageHtml(html: string): string {
     ALLOW_ARIA_ATTR: false,
   });
 }
+
+export function sanitizeNameHtml(html: string, trip?: string): string {
+  if (!DOMPurify.isSupported) {
+    throw new Error("DOMPurify が使えない環境で名前欄のサニタイズを実行できません");
+  }
+
+  // 本文とは許可する装飾が異なるため、同じ DOMPurify に名前欄専用の許可リストを渡す。
+  const fragment = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ["b", "small", "font", "span"],
+    ALLOWED_ATTR: ["color", "style"],
+    ALLOW_DATA_ATTR: false,
+    ALLOW_ARIA_ATTR: false,
+    RETURN_DOM_FRAGMENT: true,
+  });
+  for (const element of fragment.querySelectorAll("*")) {
+    const style = element.getAttribute("style");
+    // DOMPurify は CSS の安全性を検証しないので、従来許していた色指定だけに絞る。
+    if (element.localName !== "span" || !style || !/^color:\s*[#a-zA-Z0-9]+;?$/i.test(style)) {
+      element.removeAttribute("style");
+    }
+    const color = element.getAttribute("color");
+    if (element.localName !== "font" || !color || !/^[#a-zA-Z0-9]+$/.test(color)) {
+      element.removeAttribute("color");
+    }
+  }
+
+  if (trip) {
+    const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const value = node.textContent ?? "";
+      const index = value.indexOf(trip);
+      if (index < 0) continue;
+      const highlighted = document.createElement("span");
+      highlighted.className = "trip";
+      highlighted.textContent = trip;
+      (node as Text).replaceWith(
+        document.createTextNode(value.slice(0, index)),
+        highlighted,
+        document.createTextNode(value.slice(index + trip.length)),
+      );
+      break;
+    }
+  }
+  const container = document.createElement("div");
+  container.append(fragment);
+  return container.innerHTML;
+}
