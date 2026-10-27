@@ -22,6 +22,7 @@ interface UseThreadReadStateParams {
   isActive: boolean;
   responses: IRes[];
   loading: boolean;
+  initialResNum?: number;
   rootRef: RefObject<HTMLDivElement | null>;
   /**
    * 指定レスへスクロールする。並びにないレスなら false。
@@ -48,6 +49,7 @@ export function useThreadReadState({
   isActive,
   responses,
   loading,
+  initialResNum,
   rootRef,
   scrollToResponse,
   measureReadState,
@@ -233,7 +235,9 @@ export function useThreadReadState({
       return;
     }
 
-    if (initialReadState?.last) {
+    // URLの指定は保存済み位置より優先し、存在しない場合は保存位置へ戻す。
+    const jumpedToUrl = initialResNum != null && scrollToResponse(initialResNum);
+    if (!jumpedToUrl && initialReadState?.last) {
       scrollToResponse(initialReadState.last, {
         highlight: false,
         // 保存値のnullはoffset未設定を表すため、スクロールAPIにはundefinedで渡す。
@@ -248,6 +252,7 @@ export function useThreadReadState({
   }, [
     hasLoadedInitialReadState,
     initialReadState,
+    initialResNum,
     isActive,
     isInitialReadStateResolved,
     loading,

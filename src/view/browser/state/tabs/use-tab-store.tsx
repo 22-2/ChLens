@@ -54,6 +54,7 @@ import {
 import { useTabViewScope } from "src/view/browser/state/tabs/use-tab-view-scope";
 import { getCurrentPage, type Page, type Pane, type TabViewState } from "src/view/browser/types";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 import browser from "webextension-polyfill";
 
 const logger = createLogger("view/browser");
@@ -77,13 +78,21 @@ function createInitialState(initialPageFromLocation: Page | null): TabStoreState
     // 外部リンクの起動先は復元済みセッションへ追加する。qを理由に復元を飛ばすと、
     // 起動時の保存で以前のタブが上書きされ、F5でも同じ初期化が繰り返される。
     const pane = getActivePane(restoredSession);
-    const target =
+    let target =
       pane.tabs.find(
         (tab) => getPageIdentity(getCurrentPage(tab)) === getPageIdentity(initialPageFromLocation),
       ) ?? createTabFromPage(initialPageFromLocation);
+    if (initialPageFromLocation.type === "thread" && initialPageFromLocation.initialResNum) {
+      // 既存タブを再利用する起動でも、今回のURL指定をそのタブの初期位置に残す。
+      const history = [...target.history];
+      history[target.currentIndex] = initialPageFromLocation;
+      target = { ...target, history };
+    }
     return updatePane(restoredSession, pane.id, (current) => ({
       ...current,
-      tabs: pane.tabs.includes(target) ? pane.tabs : [...pane.tabs, target],
+      tabs: pane.tabs.some((tab) => tab.id === target.id)
+        ? pane.tabs.map((tab) => (tab.id === target.id ? target : tab))
+        : [...pane.tabs, target],
       activeTabId: target.id,
     }));
   }
@@ -219,6 +228,44 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const dispatch = useCallback<Dispatch<ScopedTabAction>>(
     (action) => {
       const prevState = stateRef.current;
+      if (
+        action.type === TAB_ACTION_TYPES.NAVIGATE &&
+        action.page.type === "thread" &&
+        action.page.initialResNum
+      ) {
+        const paneId = resolvePaneId(prevState, action.paneId);
+        const tab = action.tabId
+          ? findTabAcrossPanes(prevState, action.tabId)
+          : getPaneActiveTab(getPane(prevState, paneId));
+        if (tab && getPageIdentity(getCurrentPage(tab)) === getPageIdentity(action.page)) {
+          // 同一ページへの遷移はreducerが省略するため、既存タブへ直接ジャンプを届ける。
+          requestThreadResJump(
+            action.page.threadUrl,
+            action.page.initialResNum,
+            tab.id,
+            true,
+            true,
+          );
+        }
+      }
+      if (
+        action.type === TAB_ACTION_TYPES.OPEN_IN_NEW_TAB &&
+        action.page.type === "thread" &&
+        action.page.initialResNum
+      ) {
+        const pane = getPane(prevState, resolvePaneId(prevState, action.paneId));
+        const tab = pane.tabs.find(
+          (item) => getPageIdentity(getCurrentPage(item)) === getPageIdentity(action.page),
+        );
+        if (tab)
+          requestThreadResJump(
+            action.page.threadUrl,
+            action.page.initialResNum,
+            tab.id,
+            true,
+            true,
+          );
+      }
       const nextState = tabReducer(prevState, action);
       // 開始拒否は状態が変わらない場合もあるため、同一stateで抜ける前に記録する。
       recordAutoRefreshTransitions(action, prevState, nextState);

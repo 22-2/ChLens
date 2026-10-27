@@ -31,6 +31,7 @@ export interface InternalThreadPage {
   type: "thread";
   title: string;
   threadUrl: string;
+  initialResNum?: number;
 }
 
 export interface InternalThreadListPage {
@@ -57,7 +58,14 @@ function toInternalBrowserPage(
   if (!result) return null;
 
   if (result.type === "thread") {
-    return { type: "thread", title: result.url, threadUrl: result.threadUrl };
+    const resNum = Number(result.resNumber);
+    // 正規化したスレURLとは別に番号を保持し、どの入力経路でも初期位置に使う。
+    return {
+      type: "thread",
+      title: result.url,
+      threadUrl: result.threadUrl,
+      ...(Number.isInteger(resNum) && resNum > 0 ? { initialResNum: resNum } : {}),
+    };
   }
 
   return {

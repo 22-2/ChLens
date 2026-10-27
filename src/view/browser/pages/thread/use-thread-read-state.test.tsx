@@ -47,6 +47,40 @@ describe("useThreadReadState Phase 0 contracts", () => {
     vi.useRealTimers();
   });
 
+  it.each([true, false])(
+    "URL指定を優先し、対象がない場合は保存位置へ戻す（存在: %s）",
+    async (exists) => {
+      const scrollToResponse = vi.fn((num: number) => num !== 3 || exists);
+      container.bookmark = { get: () => undefined } as unknown as IBookmark;
+      container.readState = {
+        get: vi.fn(async () => ({ url: THREAD_URL, last: 1, read: 2, received: 3, offset: 10 })),
+        set: vi.fn(async () => undefined),
+      } as unknown as IReadStateService;
+      container.util = { isNewerReadState: () => false } as unknown as IUtil;
+      const host = createThreadRoot();
+      renderHook(() =>
+        useThreadReadState({
+          tabId: "thread-tab",
+          threadUrl: THREAD_URL,
+          isActive: true,
+          responses: [createResponse(1), createResponse(2), createResponse(3)],
+          loading: false,
+          rootRef: { current: host },
+          initialResNum: 3,
+          scrollToResponse,
+          measureReadState: () => null,
+        }),
+      );
+      await act(async () => {
+        await Promise.resolve();
+        await vi.runAllTimersAsync();
+      });
+      expect(scrollToResponse).toHaveBeenCalledWith(3);
+      if (exists) expect(scrollToResponse).toHaveBeenCalledTimes(1);
+      else expect(scrollToResponse).toHaveBeenCalledWith(1, { highlight: false, offset: 10 });
+    },
+  );
+
   it("新着レス取得で表示位置が上へ移動しても既読番号を巻き戻さない", async () => {
     const readStateSet = vi.fn<IReadStateService["set"]>(async () => undefined);
     const initialReadState: IReadState = {

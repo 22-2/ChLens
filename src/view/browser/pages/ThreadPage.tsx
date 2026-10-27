@@ -172,6 +172,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
+  useEffect(() => {
+    if (page.initialResNum == null) return;
+    // URLで選んだレスが保存済みの絞り込みに隠れないよう、初期表示前に解除する。
+    setFilter("all");
+    setSearchQuery("");
+  }, [page.threadUrl, page.initialResNum, setFilter, setSearchQuery]);
   const requestManualRefresh = useCallback(() => {
     if (!threadCapabilities.canRefresh) return;
     runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
@@ -702,8 +708,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     threadUrl: page.threadUrl,
     isActive,
     responses,
-    loading,
+    loading: loading || (page.initialResNum != null && (filter !== "all" || searchQuery !== "")),
     rootRef,
+    initialResNum: page.initialResNum,
     scrollToResponse: virtualList.scrollToResponse,
     measureReadState: virtualList.measureReadState,
     readPositionMode,

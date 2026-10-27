@@ -299,8 +299,14 @@ function parseRoute(url: URL, mode: BoardUrlMode): ParsedRoute | null {
 function responseNumber(rawUrl: string, bbsType: BBSType): string | null {
   try {
     const route = new ChURL(rawUrl);
-    if (bbsType === "unknown" || route.type !== "thread") return null;
-    return route.getResNumber();
+    if (bbsType === "unknown") return null;
+    const resNumber = route.type === "thread" ? route.getResNumber() : null;
+    if (resNumber) return resNumber;
+    // 短縮スレURLは正規化前のパスからレス番号を取り出す必要がある。
+    if (bbsType === "2ch") {
+      return /^\/[\w-]+\/\d+\/(\d+)(?:\/|$)/.exec(new URL(rawUrl).pathname)?.[1] ?? null;
+    }
+    return null;
   } catch {
     return null;
   }

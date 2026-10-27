@@ -47,6 +47,7 @@ export interface ThreadPage {
   type: "thread";
   title: string;
   threadUrl: string;
+  initialResNum?: number;
 }
 
 export interface SettingsPage {

@@ -1,4 +1,3 @@
-import { ChURL } from "packages/chlib/src/index";
 import type { Dispatch, MouseEvent } from "react";
 import { useCallback } from "react";
 import { platform } from "src/app/platform/index";
@@ -18,7 +17,6 @@ import {
   resolveAbsoluteUrl,
   RESPECT_DEFAULT_EXTERNAL,
 } from "src/view/browser/utils/link-routing";
-import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 interface UseUrlHandlersParams {
   threadUrl: string;
@@ -88,14 +86,6 @@ export function useUrlHandlers({
       }
 
       if (internalPage) {
-        if (internalPage.type === "thread") {
-          // 変更理由: レス番号のURL形式は共有ライブラリに集約し、画面はジャンプ操作だけを行う。
-          const jumpResNum = Number.parseInt(new ChURL(absoluteUrl).getResNumber() ?? "", 10);
-          if (Number.isFinite(jumpResNum) && jumpResNum > 0) {
-            requestThreadResJump(internalPage.threadUrl, jumpResNum);
-          }
-        }
-
         // 5ch互換URLは外部ブラウザではなく拡張内で開く。
         // ミドルクリック時はバックグラウンドタブで開く（設定に関わらず常にバックグラウンド）
         if (button === 1) {
