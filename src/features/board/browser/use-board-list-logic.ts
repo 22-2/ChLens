@@ -12,7 +12,7 @@ import { useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
 
 // ─── 定数 ────────────────────────────────────────────────────────────────────
 
-const logger = createLogger("useBoardListLogic");
+const logger = createLogger("board");
 const CONFIG_KEYS = {
   REMOVED_BOARD_URLS: "board_list_removed_urls",
   REMOVED_MENU_NAMES: "board_list_removed_menus",

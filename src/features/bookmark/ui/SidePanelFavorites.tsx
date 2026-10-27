@@ -11,7 +11,7 @@ import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
-const logger = createLogger("side-panel-favorites");
+const logger = createLogger("bookmark");
 
 export function SidePanelFavorites() {
   const { dispatch } = useTabStore();
