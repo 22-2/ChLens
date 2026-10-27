@@ -11,24 +11,10 @@ type MonacoEnvironmentLike = {
   [key: string]: unknown;
 };
 
-// NGと置換で同じローカル配信のMonacoワーカーを使う。
-const workerMap: Record<string, string> = {
-  json: "json.worker.js",
-  css: "css.worker.js",
-  scss: "css.worker.js",
-  less: "css.worker.js",
-  html: "html.worker.js",
-  handlebars: "html.worker.js",
-  razor: "html.worker.js",
-  typescript: "ts.worker.js",
-  javascript: "ts.worker.js",
-};
-
 // 拡張機能・Tauriの絶対URLをそのまま使い、表示ページの階層に依存させない。
-const resolveWorkerUrl = (label: string): string => {
-  const file = workerMap[label] ?? "editor.worker.js";
-  return platform.window.getAssetUrl(`/lib/monaco/vs/assets/${file}`);
-};
+// 独自DSLでは言語サービスを使わないため、編集用ワーカーだけで動作させる。
+const resolveWorkerUrl = (): string =>
+  platform.window.getAssetUrl("/lib/monaco/vs/assets/editor.worker.js");
 
 // loader.config も絶対パスにするっす
 loader.config({
@@ -44,11 +30,11 @@ const configureMonacoEnvironment = (): void => {
 
   globalScope.MonacoEnvironment = {
     ...globalScope.MonacoEnvironment,
-    getWorker: (_moduleId: string, label: string) => {
-      const url = resolveWorkerUrl(label);
+    getWorker: () => {
+      const url = resolveWorkerUrl();
       // 同一オリジンのローカル資産なら、拡張機能のCSPでも許可される通常のWorkerを使える。
       return new Worker(url, {
-        name: `monaco-${label || "editor"}`,
+        name: "monaco-editor",
       });
     },
   };

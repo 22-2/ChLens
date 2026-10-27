@@ -223,17 +223,30 @@ function staticCopyPlugin(
       // vite.config.ts 内
       const monacoSrc = "node_modules/monaco-editor/min/vs";
       const monacoDest = `${outputDir}/lib/monaco/vs`;
-      await fs.ensureDir(monacoDest);
-      await fs.copy(monacoSrc, monacoDest, { overwrite: true });
+      // 独自DSLは言語サービスを使わないため、巨大な各言語ワーカーは配布しない。
+      // 前回ビルドでコピー済みのファイルも残らないよう、Monaco領域を作り直す。
+      await fs.emptyDir(monacoDest);
+      await fs.copy(monacoSrc, monacoDest, {
+        overwrite: true,
+        filter: (sourcePath) => {
+          const relativePath = path.relative(monacoSrc, sourcePath).split(path.sep).join("/");
+          if (relativePath.startsWith("assets/")) {
+            return /^assets\/editor\.worker-[a-zA-Z0-9_-]+\.js$/.test(relativePath);
+          }
+          if (relativePath.startsWith("language/")) {
+            return !/\/[^/]+\.worker\.js$/.test(relativePath);
+          }
+          return true;
+        },
+      });
 
-      // ★ ハッシュ付き Worker をハッシュなしの名前にリネーム（コピー）するっす
+      // MonacoのハッシュはURL用Base64なので、英数字以外にハイフンと下線も含む。
       const assetsDir = path.join(monacoDest, "assets");
       if (await fs.pathExists(assetsDir)) {
         const files = await fs.readdir(assetsDir);
         for (const file of files) {
-          // 例: json.worker-DKiEKt88.js -> json.worker.js に変換
-          // MonacoのハッシュはURL用Base64なので、英数字以外にハイフンと下線も含む。
-          const match = file.match(/^(.+?\.worker)-[a-zA-Z0-9_-]+\.js$/);
+          // エディター用WorkerだけをURL固定名へ変換し、DSLエディターから参照する。
+          const match = file.match(/^(editor\.worker)-[a-zA-Z0-9_-]+\.js$/);
           if (match) {
             await fs.copy(path.join(assetsDir, file), path.join(assetsDir, `${match[1]}.js`), {
               overwrite: true,
