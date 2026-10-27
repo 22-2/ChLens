@@ -67,48 +67,27 @@ describe("MediaViewer", () => {
     expect(onSave).toHaveBeenCalledOnce();
   });
 
-  it("読込済みの画像をコピーでき、読込中は操作を無効にする", () => {
+  it("右クリックメニューから読込済みの画像をコピーできる", () => {
     useMediaImageStore.setState({
       images: new Map([
         ["https://example.com/image.jpg", { status: "loaded", version: 1, fallbackSrc: null }],
       ]),
     });
     const onCopy = vi.fn();
-    const { rerender } = renderMediaViewer({ onCopy });
-    const copyButton = screen.getByRole("button", { name: "画像をコピー" });
-    expect(copyButton).toBeEnabled();
-    fireEvent.click(copyButton);
-    expect(onCopy).toHaveBeenCalledOnce();
+    const { container } = renderMediaViewer({ onCopy });
 
-    rerender(
-      <MediaViewer
-        viewer={{ src: "https://example.com/image.jpg", label: "https://example.com/image.jpg" }}
-        viewerStageRef={createRef<HTMLDivElement>()}
-        viewerCanvasRef={createRef<HTMLDivElement>()}
-        viewerImageRef={createRef<HTMLImageElement>()}
-        canNavigateViewerPrev={false}
-        canNavigateViewerNext={false}
-        isLoading
-        onOverlayClick={() => {}}
-        onChromeClick={() => {}}
-        onNavigatePrev={() => {}}
-        onNavigateNext={() => {}}
-        onZoomOut={() => {}}
-        onZoomReset={() => {}}
-        onZoomIn={() => {}}
-        onSave={() => {}}
-        onCopy={onCopy}
-        canDeleteImage={false}
-        onDeleteImage={() => {}}
-        onClose={() => {}}
-        isDetached={false}
-        onDetach={() => {}}
-        onAttach={() => {}}
-        onImageLoad={() => {}}
-        onImageError={() => {}}
-      />,
-    );
-    expect(copyButton).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "画像をコピー" })).not.toBeInTheDocument();
+    expect(screen.queryByText("ブラウザで開く")).not.toBeInTheDocument();
+    fireEvent.contextMenu(container.querySelector(".media-viewer")!);
+    fireEvent.click(screen.getByRole("menuitem", { name: "画像をコピー" }));
+    expect(onCopy).toHaveBeenCalledOnce();
+  });
+
+  it("読込中でも右クリックメニューを開け、画像のコピーは無効になる", () => {
+    const { container } = renderMediaViewer({ isLoading: true });
+    fireEvent.contextMenu(container.querySelector(".media-viewer")!);
+    expect(screen.getByRole("menuitem", { name: "画像をコピー" })).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: "ブラウザで開く" })).toBeEnabled();
   });
 
   it("このアプリから投稿した画像では削除ボタンから onDeleteImage を呼ぶ", () => {

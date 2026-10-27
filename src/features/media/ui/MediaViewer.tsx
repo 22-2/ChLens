@@ -1,9 +1,8 @@
 import { ExternalLink, Undo2 } from "lucide-react";
-import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
-import { ConfirmableLink } from "src/view/browser/ui/ConfirmableLink";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { Spinner } from "src/view/browser/ui/Spinner";
-import { EXTERNAL_LINK_CONFIRM_CONFIG_KEY } from "src/view/browser/utils/external-link-analysis";
+import { requestExternalLink } from "src/view/browser/utils/external-link";
 
 import { useMediaImageStore } from "../browser/use-media-image-store";
 import type { MediaViewerProps } from "../browser/use-media-viewer-controller";
@@ -38,7 +37,7 @@ export function MediaViewer({
   onImageLoad,
   onImageError,
 }: MediaViewerProps & MediaViewerWindowProps) {
-  const { value: confirmExternal } = useConfigBooleanSetting(EXTERNAL_LINK_CONFIRM_CONFIG_KEY);
+  const surface = useViewSurface();
   const { openMenu, menu } = useExternalLinkMenu();
   const imageState = useMediaImageStore((state) => state.images.get(viewer.label));
   const imageIsLoaded = imageState?.status === "loaded";
@@ -53,11 +52,26 @@ export function MediaViewer({
         }}
         onClick={onOverlayClick}
         onContextMenu={(event) => {
-          if (!confirmExternal && !imageIsLoaded) return;
-          openMenu(
-            viewer.label,
-            event,
-            imageIsLoaded
+          openMenu(viewer.label, event, [
+            {
+              id: "copy-image",
+              label: "画像をコピー",
+              disabled: isLoading || !imageIsLoaded,
+              onSelect: onCopy,
+            },
+            {
+              id: "open-in-browser",
+              label: "ブラウザで開く",
+              // 別窓からも操作元の窓で開き、外部リンク確認の設定を維持する。
+              onSelect: () =>
+                requestExternalLink(viewer.label, {
+                  sourceWindow: surface.window,
+                  open: (url) => {
+                    surface.window.open(url, "_blank", "noopener,noreferrer");
+                  },
+                }),
+            },
+            ...(imageIsLoaded
               ? [
                   {
                     id: "discard-image",
@@ -66,22 +80,14 @@ export function MediaViewer({
                     onSelect: () => useMediaImageStore.getState().discardImage(viewer.label),
                   },
                 ]
-              : [],
-          );
+              : []),
+          ]);
         }}
       >
         <div className="media-viewer__chrome" onClick={onChromeClick}>
           <div className="media-viewer__toolbar">
             <span className="media-viewer__label">{viewer.label}</span>
             <div className="media-viewer__actions">
-              <ConfirmableLink
-                href={viewer.label}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="media-viewer__btn"
-              >
-                ブラウザで開く
-              </ConfirmableLink>
               {viewer.images && viewer.images.length > 1 && (
                 <>
                   <button
@@ -119,15 +125,6 @@ export function MediaViewer({
               </button>
               <button type="button" className="media-viewer__btn" onClick={onSave} title="保存">
                 保存
-              </button>
-              <button
-                type="button"
-                className="media-viewer__btn"
-                onClick={onCopy}
-                disabled={isLoading || !imageIsLoaded}
-                title="表示中の画像をコピー"
-              >
-                画像をコピー
               </button>
               {/* 変更理由: 削除キーを持つこのアプリの投稿画像だけ削除を出し、他人の画像に操作を出さない。 */}
               {canDeleteImage && (
@@ -179,7 +176,7 @@ export function MediaViewer({
           </div>
         </div>
       </div>
-      {(confirmExternal || imageIsLoaded) && menu}
+      {menu}
     </>
   );
 }
