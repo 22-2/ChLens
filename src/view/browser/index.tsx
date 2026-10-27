@@ -8,6 +8,7 @@ import { installLogPersistence } from "src/app/debug/log-persistence";
 import { registerArchiveReplayCommands } from "src/features/archive-replay/browser/register-archive-replay-commands";
 import { registerAutoRefreshCommands } from "src/features/auto-refresh/browser/register-auto-refresh-commands";
 import { registerBookmarkCommands } from "src/features/bookmark/browser/register-bookmark-commands";
+import { registerCommentOverlayCommands } from "src/features/comment-overlay/browser/register-comment-overlay-commands";
 import { registerMediaCommands } from "src/features/media/browser/register-media-commands";
 import { registerNextThreadCommands } from "src/features/next-thread/browser/register-next-thread-commands";
 import { setupBrowserViewServices } from "src/service-container/setup-browser-view";
@@ -57,6 +58,7 @@ void boot("/view/index.html", () => {
   registerAutoRefreshCommands(getApi("auto-refresh"));
   registerNextThreadCommands(getApi("next-thread"));
   registerArchiveReplayCommands(getApi("archive-replay"));
+  registerCommentOverlayCommands(getApi("comment-overlay"));
   const container = document.getElementById("root");
   if (!container) return;
   createRoot(container).render(<BrowserApp />);

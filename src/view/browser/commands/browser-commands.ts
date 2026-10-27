@@ -11,7 +11,6 @@ import {
   History,
   Import,
   List,
-  MessageSquare,
   PanelLeft,
   PanelRight,
   PenLine,
@@ -23,7 +22,6 @@ import {
 } from "lucide-react";
 import { ChURL } from "packages/chlib/src/index";
 import { createLogger } from "src/app/logger";
-import { isTauriRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container";
 import {
   type BrowserCommandContext,
@@ -62,7 +60,6 @@ import {
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import type { Page, ThreadFilter } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
-import { COMMENT_OVERLAY_FLOW_TOGGLE_EVENT } from "src/view/browser/utils/comment-overlay-flow-events";
 import {
   canQueryExtensionTabs,
   getOpenCompatibleThreadPages,
@@ -275,18 +272,6 @@ function dispatchThreadFilterModeToggle(
 ): void {
   const { window: viewWindow } = getCommandSurface(context);
   toggleThreadFilterMode(viewWindow, context.viewTab.id, filter);
-}
-
-function dispatchCommentOverlayFlowToggle(context: BrowserCommandContext): void {
-  const { window: viewWindow } = getCommandSurface(context);
-  const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
-  viewWindow.dispatchEvent(
-    new viewWindowWithConstructors.CustomEvent(COMMENT_OVERLAY_FLOW_TOGGLE_EVENT, {
-      detail: {
-        threadUrl: context.viewPage.type === "thread" ? context.viewPage.threadUrl : null,
-      },
-    }),
-  );
 }
 
 async function copyWithNotice(
@@ -922,17 +907,6 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
     group: "layout",
     icon: Filter,
     run: () => toggleCommandConfigSwitch("image_blur"),
-  },
-  {
-    id: "page.toggle-comment-overlay",
-    label: "コメント実況を切り替え",
-    englishLabel: "Toggle Comment Overlay",
-    description: "実況中なら表示を切り替え、停止中なら表示中のスレッドの実況を開始します",
-    keywords: ["実況", "コメント", "overlay", "コメント実況"],
-    group: "page",
-    icon: MessageSquare,
-    when: () => isTauriRuntime(),
-    run: dispatchCommentOverlayFlowToggle,
   },
 ];
 

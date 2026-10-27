@@ -1,7 +1,6 @@
 import React, { type ReactNode, useMemo } from "react";
 import { AutoScrollStateProvider } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import { AutoRefreshStatusItem } from "src/features/auto-refresh/ui/AutoRefreshStatusItem";
-import { CommentOverlayCommandBridge } from "src/features/comment-overlay/ui/CommentOverlayCommandBridge";
 import { CommentOverlayStatusItem } from "src/features/comment-overlay/ui/CommentOverlayStatusItem";
 import { NgStatusProvider } from "src/features/ng/browser/use-ng-status";
 import { NgStatusItem } from "src/features/ng/ui/NgStatusItem";
@@ -59,7 +58,6 @@ export const DetachedTabWindowContent: React.FC<{
                   <PopularFilterStatusItem />
                   <AutoRefreshStatusItem />
                   <CommentOverlayStatusItem isActive />
-                  <CommentOverlayCommandBridge />
                   <PageCountStatusItem />
                   <ThreadListPanelToggleItem />
                   <WritePanelToggleItem />

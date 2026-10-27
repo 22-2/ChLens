@@ -6,7 +6,6 @@ import { openArchiveReplayWindow as openArchiveReplayNativeWindow } from "src/fe
 import { AutoScrollStateProvider } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import { AutoRefreshStatusItem } from "src/features/auto-refresh/ui/AutoRefreshStatusItem";
 import { BookmarkRootSelectorDialog } from "src/features/bookmark/ui/BookmarkRootSelectorDialog";
-import { CommentOverlayCommandBridge } from "src/features/comment-overlay/ui/CommentOverlayCommandBridge";
 import { CommentOverlayJumpBridge } from "src/features/comment-overlay/ui/CommentOverlayJumpBridge";
 import { CommentOverlayStatusItem } from "src/features/comment-overlay/ui/CommentOverlayStatusItem";
 import { OverlayPlacementWindowProvider } from "src/features/comment-overlay/ui/OverlayPlacementWindow";
@@ -268,7 +267,6 @@ export const BrowserApp: React.FC = () => {
           <OverlayPlacementWindowProvider>
             <TabWindowHost>
               <CommentOverlayJumpBridge />
-              <CommentOverlayCommandBridge />
               <WriteWindowHost />
               <ArchiveReplayMainThreadSyncBridge />
               {/*
