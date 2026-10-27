@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { stripHtml } from "src/core/util/strip-html";
 import { buildThreadFindIndex, findThreadMatches } from "src/features/thread/domain/thread-find";
+import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
+import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
 import { useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
-import { useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
+import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
 import { findSearchMatchRanges } from "src/view/browser/utils/search-highlight";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
@@ -22,20 +24,49 @@ function Highlight({ text, query }: { text: string; query: string }) {
   );
 }
 
-export function SidePanelExtract({ tabId, page }: { tabId: string; page: ThreadPage }) {
-  const { state, update } = useTabViewState(tabId, page);
-  const query = state.sidePanelExtractQuery ?? "";
-  const snapshot = useThreadSnapshots((store) => store.entries.get(tabId)?.snapshot);
-  const data = snapshot?.threadUrl === page.threadUrl ? snapshot : undefined;
+function ExtractResults({
+  tabId,
+  threadUrl,
+  snapshot,
+  query,
+}: {
+  tabId: string;
+  threadUrl: string;
+  snapshot: ThreadSnapshot;
+  query: string;
+}) {
   const results = useMemo(() => {
-    if (!data || !query.trim()) return [];
     const matched = new Set(
-      findThreadMatches(buildThreadFindIndex(data.visibleResponses), query.trim())
+      findThreadMatches(buildThreadFindIndex(snapshot.visibleResponses), query)
         .filter((match) => match.field === "body")
         .map((match) => match.resNum),
     );
-    return data.visibleResponses.filter((response) => matched.has(response.num));
-  }, [data, query]);
+    return snapshot.visibleResponses.filter((response) => matched.has(response.num));
+  }, [snapshot, query]);
+  if (results.length === 0) return <SidePanelMessage>一致するレスはありません。</SidePanelMessage>;
+  return (
+    <>
+      <p>{results.length} 件</p>
+      {results.map((response) => (
+        <button
+          type="button"
+          className="side-panel__entry side-panel__response"
+          key={response.num}
+          onClick={() => requestThreadResJump(threadUrl, response.num, tabId, true)}
+        >
+          <strong>{response.num}</strong>
+          <span>
+            <Highlight text={stripHtml(response.message)} query={query} />
+          </span>
+        </button>
+      ))}
+    </>
+  );
+}
+
+export function SidePanelExtract({ tabId, page }: { tabId: string; page: ThreadPage }) {
+  const { state, update } = useTabViewState(tabId, page);
+  const query = (state.sidePanelExtractQuery ?? "").trim();
   return (
     <div className="side-panel__content">
       <input
@@ -43,37 +74,22 @@ export function SidePanelExtract({ tabId, page }: { tabId: string; page: ThreadP
         type="search"
         aria-label="レスを抽出"
         placeholder="レスを抽出"
-        value={query}
+        value={state.sidePanelExtractQuery ?? ""}
         onChange={(event) => update({ sidePanelExtractQuery: event.currentTarget.value })}
       />
-      {!data ? (
-        <p>スレッドの情報を取得できません。</p>
-      ) : data.loading ? (
-        <p>スレッドを読み込み中…</p>
-      ) : data.error && data.responses.length === 0 ? (
-        <p>{data.error}</p>
-      ) : query.trim() ? (
-        results.length === 0 ? (
-          <p>一致するレスはありません。</p>
-        ) : (
-          <>
-            <p>{results.length} 件</p>
-            {results.map((response) => (
-              <button
-                type="button"
-                className="side-panel__entry side-panel__response"
-                key={response.num}
-                onClick={() => requestThreadResJump(page.threadUrl, response.num, tabId, true)}
-              >
-                <strong>{response.num}</strong>
-                <span>
-                  <Highlight text={stripHtml(response.message)} query={query.trim()} />
-                </span>
-              </button>
-            ))}
-          </>
-        )
-      ) : null}
+      <ThreadSnapshotGate tabId={tabId} threadUrl={page.threadUrl}>
+        {(snapshot) =>
+          // 空欄では結果も件数も出さない。
+          query ? (
+            <ExtractResults
+              tabId={tabId}
+              threadUrl={page.threadUrl}
+              snapshot={snapshot}
+              query={query}
+            />
+          ) : null
+        }
+      </ThreadSnapshotGate>
     </div>
   );
 }

@@ -7,9 +7,10 @@ import {
   collectResTimestamps,
 } from "src/features/thread/domain/thread-momentum";
 import { MomentumLineChart } from "src/features/thread/ui/MomentumLineChart";
+import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import { useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
+import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
 import { formatCompactDateTime } from "src/view/browser/utils/date-time";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
@@ -28,12 +29,9 @@ function formatTimestamp(timestamp: number | null): string {
   return timestamp == null ? UNKNOWN : formatCompactDateTime(timestamp);
 }
 
-export function SidePanelProperties({ tabId, page }: { tabId: string; page: ThreadPage }) {
+function ThreadProperties({ page, data }: { page: ThreadPage; data: ThreadSnapshot }) {
   const { dispatch } = useTabStore();
-  const snapshot = useThreadSnapshots((store) => store.entries.get(tabId)?.snapshot);
-  const data = snapshot?.threadUrl === page.threadUrl ? snapshot : undefined;
   const stats = useMemo(() => {
-    if (!data) return null;
     // 経過時間と勢いは本文の更新時刻を基準に揃え、パネルの再描画では値を動かさない。
     const now = data.updatedAt;
     const timestamps = collectResTimestamps(data.responses);
@@ -48,11 +46,6 @@ export function SidePanelProperties({ tabId, page }: { tabId: string; page: Thre
     };
   }, [data]);
   const readState = useStoredReadState(page.threadUrl);
-
-  if (!data || !stats) return <p className="side-panel__empty">スレッドの情報を取得できません。</p>;
-  if (data.loading) return <p className="side-panel__empty">スレッドを読み込み中…</p>;
-  if (data.error && data.responses.length === 0)
-    return <p className="side-panel__empty">{data.error}</p>;
 
   // 板を特定できない URL では元の URL が返るため、その場合は板の操作を出さない。
   const boardUrl = getBoardUrlFromThreadUrl(page.threadUrl);
@@ -113,5 +106,13 @@ export function SidePanelProperties({ tabId, page }: { tabId: string; page: Thre
       </dl>
       <MomentumLineChart data={stats.graph} loading={false} />
     </div>
+  );
+}
+
+export function SidePanelProperties({ tabId, page }: { tabId: string; page: ThreadPage }) {
+  return (
+    <ThreadSnapshotGate tabId={tabId} threadUrl={page.threadUrl}>
+      {(snapshot) => <ThreadProperties page={page} data={snapshot} />}
+    </ThreadSnapshotGate>
   );
 }

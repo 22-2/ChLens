@@ -6,6 +6,7 @@ import { SidePanelImages } from "src/features/media/ui/SidePanelImages";
 import { SidePanelExtract } from "src/features/thread/ui/SidePanelExtract";
 import { SidePanelProperties } from "src/features/thread/ui/SidePanelProperties";
 import { SidePanelWrite } from "src/features/write/ui/SidePanelWrite";
+import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
@@ -133,19 +134,19 @@ export function SidePanel() {
             page={viewPage}
           />
         ) : (
-          <p className="side-panel__empty">スレッドを開くと表示されます。</p>
+          <SidePanelMessage>スレッドを開くと表示されます。</SidePanelMessage>
         )
       ) : state.activeView === "images" ? (
         viewPage.type === "thread" ? (
           <SidePanelImages tabId={viewTab.id} page={viewPage} />
         ) : (
-          <p className="side-panel__empty">スレッドを開くと表示されます。</p>
+          <SidePanelMessage>スレッドを開くと表示されます。</SidePanelMessage>
         )
       ) : state.activeView === "properties" ? (
         viewPage.type === "thread" ? (
           <SidePanelProperties tabId={viewTab.id} page={viewPage} />
         ) : (
-          <p className="side-panel__empty">スレッドを開くと表示されます。</p>
+          <SidePanelMessage>スレッドを開くと表示されます。</SidePanelMessage>
         )
       ) : state.activeView === "write" ? (
         <SidePanelWrite />
