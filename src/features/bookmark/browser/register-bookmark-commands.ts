@@ -38,7 +38,9 @@ export function registerBookmarkCommands(api: ExtensionApi): void {
       keywords: ["お気に入り", "favorite", "bookmark"],
       group: "navigation",
       icon: Bookmark,
-      run: (context) => api.workspace.openPage(context, createQuickAccessPage("bookmarkList")),
+      run: (context) => {
+        context.workspace.openPage(createQuickAccessPage("bookmarkList"));
+      },
     },
     { beforeCommandId: "navigation.open-history" },
   );

@@ -40,6 +40,7 @@ import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log
 import { useZenMode } from "src/view/browser/commands/zen-mode-store";
 import { Omnibar } from "src/view/browser/components/Omnibar";
 import { toggleFilter as toggleFilterForTab } from "src/view/browser/extension/page-actions";
+import { createBoundWorkspace } from "src/view/browser/extension/workspace-api";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
   BOTTOM_PANEL_WRITE_TAB_ID,
@@ -113,7 +114,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   openRelatedThreadSearchDialog = NOOP_OPEN_RELATED_THREAD_SEARCH_DIALOG,
   openArchiveReplayWindow = NOOP_OPEN_ARCHIVE_REPLAY_WINDOW,
 }) => {
-  const { state, viewTab, viewPage, dispatch, paneId } = useTabStore();
+  const { state, stateRef, viewTab, viewPage, dispatch, paneId } = useTabStore();
   const manualRefreshScopeKey = getManualRefreshScopeKey(viewTab.id, viewPage);
   const refreshCoolingDown = useManualRefreshCooldown(manualRefreshScopeKey);
   const isFilterToolbarOpen = useFilterToolbarOpen(viewTab.id);
@@ -375,6 +376,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const context = useMemo<BrowserCommandContext>(
     () => ({
+      workspace: createBoundWorkspace(viewSurface.window, viewTab.id, stateRef, dispatch),
       viewPage,
       viewTab,
       tabs: state.tabs,
@@ -405,6 +407,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       openResponseJumpDialog,
       state.closedTabs,
       state.tabs,
+      stateRef,
       toast,
       togglePanel,
       runTabCommand,

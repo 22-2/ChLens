@@ -120,6 +120,7 @@ function createContext(
   const dispatch = vi.fn<(action: ScopedTabAction) => void>();
   return {
     context: {
+      workspace: { openPage: vi.fn(() => "executed" as const) },
       viewPage: page,
       viewTab,
       tabs: [viewTab],
@@ -759,6 +760,7 @@ describe("browser commands", () => {
     const otherTab: Tab = { ...createTab(homePage), id: "tab-2" };
     const dispatch = vi.fn<(action: ScopedTabAction) => void>();
     const context: BrowserCommandContext = {
+      workspace: { openPage: vi.fn(() => "executed" as const) },
       viewPage: homePage,
       viewTab,
       tabs: [viewTab, otherTab],

@@ -1,6 +1,5 @@
 import type { BrowserCommandDefinition } from "src/view/browser/commands/command-definition";
 import { CommandRegistry, type Disposable } from "src/view/browser/extension/command-registry";
-import { type WorkspaceApi, workspaceApi } from "src/view/browser/extension/workspace-api";
 import {
   type PageOfType,
   type PageTypeDefinition,
@@ -20,7 +19,6 @@ export interface ExtensionApi {
     type: Type,
     definition: PageTypeDefinition<PageOfType<Type>>,
   ) => Disposable;
-  workspace: WorkspaceApi;
   register: (cleanup: () => void) => Disposable;
 }
 
@@ -61,7 +59,6 @@ export function createExtensionOwner(
       addCommand: (command, options) =>
         own(commandRegistry.add(command, ownerId, options?.beforeCommandId)),
       registerPageType: (type, definition) => own(registerPageTypeDefinition(type, definition)),
-      workspace: workspaceApi,
       register: (cleanup) => {
         let cleaned = false;
         return own({

@@ -4,6 +4,7 @@ import { container } from "src/service-container";
 import type { IToastService } from "src/service-container/interfaces";
 import type { CommandTarget } from "src/view/browser/commands/command-runtime";
 import type { TabCommandId } from "src/view/browser/commands/tab-command-runtime";
+import type { BoundWorkspace } from "src/view/browser/extension/workspace-api";
 import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ScopedTabAction } from "src/view/browser/state/tabs/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
@@ -32,6 +33,7 @@ export const BROWSER_COMMAND_GROUP_ORDER: readonly BrowserCommandGroup[] = [
 
 export interface BrowserCommandContext {
   // コマンドはフォーカス中のペインではなく、実際に表示している窓の対象を操作する。
+  workspace: BoundWorkspace;
   viewPage: Page;
   viewTab: Tab;
   tabs: readonly Tab[];

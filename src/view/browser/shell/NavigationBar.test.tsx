@@ -113,6 +113,13 @@ const { orientationHolder } = vi.hoisted(() => ({
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabStore: () => ({
     state: { tabs: [viewTab], closedTabs: [] },
+    stateRef: {
+      current: {
+        panes: [{ id: "pane-1", tabs: [viewTab], activeTabId: viewTab.id }],
+        activePaneId: "pane-1",
+        closedTabs: [],
+      },
+    },
     viewTab,
     viewPage: viewTab.history[viewTab.currentIndex],
     dispatch: dispatchMock,

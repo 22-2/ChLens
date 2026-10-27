@@ -11,6 +11,8 @@ import {
   createExtensionOwner,
   type ExtensionOwner,
 } from "src/view/browser/extension/extension-api";
+import { registerPageTarget } from "src/view/browser/extension/page-actions";
+import { createBoundWorkspace } from "src/view/browser/extension/workspace-api";
 import type { Page, Tab } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -28,6 +30,8 @@ const toast = {
   info: vi.fn(),
 } satisfies IToastService;
 
+let disposePageTarget: (() => void) | undefined;
+
 function createContext(page: Page): BrowserCommandContext {
   const tab = {
     id: "bookmark-command-test",
@@ -38,7 +42,17 @@ function createContext(page: Page): BrowserCommandContext {
     autoRefreshEnabled: false,
     autoRefreshPageKey: null,
   } as Tab;
+  const dispatch = vi.fn();
+  const stateRef = {
+    current: {
+      panes: [{ id: "bookmark-pane", tabs: [tab], activeTabId: tab.id }],
+      activePaneId: "bookmark-pane",
+      closedTabs: [],
+    },
+  };
+  disposePageTarget = registerPageTarget(window, tab.id);
   return {
+    workspace: createBoundWorkspace(window, tab.id, stateRef, dispatch),
     viewPage: page,
     viewTab: tab,
     tabs: [tab],
@@ -46,7 +60,7 @@ function createContext(page: Page): BrowserCommandContext {
     isTwoPane: false,
     isWritePanelOpen: false,
     clearCachedThreadReadState: async () => undefined,
-    dispatch: vi.fn(),
+    dispatch,
     toggleWritePanel: vi.fn(),
     openResponseJumpDialog: vi.fn(),
     openNextThreadSearchDialog: async () => undefined,
@@ -77,6 +91,8 @@ describe("お気に入りコマンド登録", () => {
   });
 
   afterEach(() => {
+    disposePageTarget?.();
+    disposePageTarget = undefined;
     featureOwner.dispose();
     coreOwner.dispose();
     vi.restoreAllMocks();
@@ -101,7 +117,12 @@ describe("お気に入りコマンド登録", () => {
     await expect(executeBrowserCommand("bookmark.open-list", context)).resolves.toBe(true);
 
     expect(context.dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ page: expect.objectContaining({ type: "bookmarkList" }) }),
+      expect.objectContaining({
+        type: "NAVIGATE",
+        paneId: "bookmark-pane",
+        tabId: "bookmark-command-test",
+        page: expect.objectContaining({ type: "bookmarkList" }),
+      }),
     );
   });
 });

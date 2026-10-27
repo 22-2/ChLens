@@ -37,6 +37,7 @@ function createContext(page: Page): BrowserCommandContext {
     autoRefreshPageKey: null,
   } as Tab;
   return {
+    workspace: { openPage: vi.fn(() => "executed" as const) },
     viewPage: page,
     viewTab: tab,
     tabs: [tab],
