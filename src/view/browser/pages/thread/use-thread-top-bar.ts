@@ -1,18 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import { registerFilterToggle } from "src/view/browser/extension/page-actions";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import {
-  THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
-  type ThreadFilterToolbarToggleDetail,
-} from "src/view/browser/utils/filter-toolbar-events";
 import {
   setFilterToolbarOpen,
   setFilterToolbarPinned,
 } from "src/view/browser/utils/filter-toolbar-open-state";
 
-const TOP_BAR_EVENT_BY_MODE = {
-  search: "thread-search-toggle",
-  filter: THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
-} as const;
+const SEARCH_TOGGLE_EVENT = "thread-search-toggle";
 
 export type TopBarMode = "none" | "filter";
 
@@ -131,28 +125,16 @@ export function useThreadTopBar({
     const handleSearchToggle = () => {
       openFilterToolbarForSearch();
     };
-    const handleFilterToggle = (event: Event) => {
-      const detail = (event as CustomEvent<ThreadFilterToolbarToggleDetail>).detail;
-      if (detail?.tabId != null && (!isActive || detail.tabId !== tabId)) {
-        return;
-      }
-      toggleFilterToolbar();
-    };
-    viewWindow.addEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
-    viewWindow.addEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
+    viewWindow.addEventListener(SEARCH_TOGGLE_EVENT, handleSearchToggle);
+    return () => viewWindow.removeEventListener(SEARCH_TOGGLE_EVENT, handleSearchToggle);
+  }, [openFilterToolbarForSearch, viewWindow]);
 
-    return () => {
-      viewWindow.removeEventListener(TOP_BAR_EVENT_BY_MODE.search, handleSearchToggle);
-      viewWindow.removeEventListener(TOP_BAR_EVENT_BY_MODE.filter, handleFilterToggle);
-    };
-  }, [
-    isActive,
-    openFilterToolbar,
-    openFilterToolbarForSearch,
-    tabId,
-    toggleFilterToolbar,
-    viewWindow,
-  ]);
+  // Preactの遅延Effectでは旧ページの解除より先に新ページの登録が走るため、同期して切り替える。
+  useLayoutEffect(() => {
+    // 非表示のタブは操作を受けず、画面終了時には古いハンドラーを解除する。
+    if (!isActive) return;
+    return registerFilterToggle(viewWindow, tabId, toggleFilterToolbar);
+  }, [isActive, tabId, toggleFilterToolbar, viewWindow]);
 
   return {
     activeTopBar,

@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createRef } from "react";
 import { createOpenedBoards } from "src/core/board/OpenedBoards";
+import { WHEEL_THRESHOLD } from "src/features/thread/browser/useWheelPagination";
 import {
   type DisplayThread,
   THREAD_LIST_COLUMNS,
@@ -18,9 +19,10 @@ import type {
   IToastService,
 } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
+import { toggleFilter as togglePageFilter } from "src/view/browser/extension/page-actions";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { getAutoRefreshThreadPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
-import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const THREAD_LIST_SORT_STORAGE_KEY = "chlens_browser_thread_list_sort_by_site";
@@ -663,9 +665,9 @@ describe("ThreadListPage", () => {
     );
   });
 
-  it("一覧上端の上ホイールはフィルタを開くだけで、一覧の更新はしない", async () => {
-    // 変更理由: 一覧上端のホイール操作は更新からフィルタ開閉へ戻したため、
-    // 実際の一覧とスクロール要素を組み合わせて、更新が走らず開閉だけが行われることを確かめる。
+  it("一覧上端で上ホイールを繰り返すと一覧を更新し、クールダウン中は再更新しない", async () => {
+    // 変更理由: フック単体ではイベントの競合を再現できないため、実際の一覧と
+    // スクロール要素を組み合わせて、フィルタの常設と更新が干渉しないことを確かめる。
     vi.useRealTimers();
     const scrollContainerRef = createRef<HTMLDivElement>();
     render(
@@ -688,27 +690,46 @@ describe("ThreadListPage", () => {
     await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
     dispatchMock.mockClear();
 
+    for (let index = 0; index < WHEEL_THRESHOLD; index += 1) {
+      fireEvent.wheel(panel, { deltaY: -48 });
+    }
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
+    const refreshCount = dispatchMock.mock.calls.length;
     fireEvent.wheel(panel, { deltaY: -48 });
+    expect(dispatchMock).toHaveBeenCalledTimes(refreshCount);
     expect(screen.getByRole("textbox")).toBeVisible();
-    // ホイールで開いた直後の下ホイールは、フィルタを閉じる操作として扱う。
-    fireEvent.wheel(panel, { deltaY: 48 });
-    expect(screen.queryByRole("textbox")).toBeNull();
-    expect(dispatchMock).not.toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
+  });
 
-    const toggleFilter = () =>
-      fireEvent(
-        window,
-        new CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.threadList, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
-    // ボタンで開いたフィルタは、下ホイールでは閉じない。
-    toggleFilter();
+  it("フィルタバーは常設され、閉じるボタンやホイールでは閉じない", async () => {
+    // 変更理由: スレ一覧ではフィルタを常に表示するため、開閉の操作が残っていないことを確かめる。
+    vi.useRealTimers();
+    const scrollContainerRef = createRef<HTMLDivElement>();
+    render(
+      <div ref={scrollContainerRef} className="content-area__tab-panel" data-tab-panel-id="tab-1">
+        <ThreadListPage
+          tabId="tab-1"
+          page={{
+            type: "threadList",
+            title: "テスト板",
+            boardUrl: "https://example.com/pinned-filter/",
+            boardTitle: "テスト板",
+          }}
+          refreshKey={0}
+          isActive
+          scrollContainerRef={scrollContainerRef}
+        />
+      </div>,
+    );
+    const panel = scrollContainerRef.current!;
+    await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
+
     expect(screen.getByRole("textbox")).toBeVisible();
+    expect(screen.queryByText("✕")).toBeNull();
     fireEvent.wheel(panel, { deltaY: 48 });
+    act(() => {
+      togglePageFilter(window, "tab-1");
+    });
     expect(screen.getByRole("textbox")).toBeVisible();
-    toggleFilter();
-    expect(screen.queryByRole("textbox")).toBeNull();
   });
 
   it.each([false, true])(
@@ -1556,3 +1577,5 @@ describe("ThreadListPage", () => {
     });
   });
 });
+
+setupTestPageTypes();

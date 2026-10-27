@@ -1,16 +1,22 @@
 import { container } from "src/service-container";
 import type { IBoardTitleService } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
+import { registerTestFilterCommands } from "src/test-support/filter-commands";
 import {
-  type BrowserCommandContext,
+  browserCommandRegistry,
   executeBrowserCommand,
   getDatUrlForCommand,
   getSubjectUrlForCommand,
+  registerCoreCommands,
   resolveBrowserCommands,
 } from "src/view/browser/commands/browser-commands";
+import type { BrowserCommandContext } from "src/view/browser/commands/command-definition";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import { getAutoRefreshPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
-import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
+import {
+  createExtensionOwner,
+  type ExtensionOwner,
+} from "src/view/browser/extension/extension-api";
+import { registerThreadFilterModeToggle } from "src/view/browser/extension/page-actions";
 import type { ScopedTabAction } from "src/view/browser/state/tabs/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
@@ -25,9 +31,6 @@ const browserCommandMocks = vi.hoisted(() => {
     encodeThreadAsToonMock: vi.fn(),
     estimateToonTokenCountMock: vi.fn<() => number>(),
     getThreadMock: vi.fn(),
-    getImgurDeletableImageUrlsMock: vi.fn(),
-    deleteImgurImagesMock: vi.fn(),
-    openNextThreadSearchDialogMock: vi.fn<() => Promise<void>>(),
     parseSikiLogFileMock: vi.fn(),
     registerSikiLogThreadMock: vi.fn(),
     requestThreadResJumpMock: vi.fn(),
@@ -50,9 +53,6 @@ const {
   encodeThreadAsToonMock,
   estimateToonTokenCountMock,
   getThreadMock,
-  getImgurDeletableImageUrlsMock,
-  deleteImgurImagesMock,
-  openNextThreadSearchDialogMock,
   parseSikiLogFileMock,
   registerSikiLogThreadMock,
   requestThreadResJumpMock,
@@ -121,6 +121,7 @@ function createContext(
   const dispatch = vi.fn<(action: ScopedTabAction) => void>();
   return {
     context: {
+      workspace: { openPage: vi.fn(() => "executed" as const) },
       viewPage: page,
       viewTab,
       tabs: [viewTab],
@@ -131,7 +132,7 @@ function createContext(
       dispatch,
       toggleWritePanel: vi.fn(),
       openResponseJumpDialog: vi.fn(),
-      openNextThreadSearchDialog: openNextThreadSearchDialogMock,
+      openNextThreadSearchDialog: async () => undefined,
       openArchiveReplayWindow: vi.fn(),
     },
     dispatch,
@@ -139,7 +140,13 @@ function createContext(
 }
 
 describe("browser commands", () => {
+  let coreOwner: ExtensionOwner | null = null;
+
   beforeEach(() => {
+    coreOwner?.dispose();
+    coreOwner = createExtensionOwner("core-test", browserCommandRegistry);
+    registerCoreCommands(coreOwner.api);
+    registerTestFilterCommands(coreOwner.api);
     extensionBrowserApiMock.runtime.id = "test-extension";
     extensionBrowserApiMock.tabs.query = queryTabsMock;
     extensionBrowserApiMock.tabs.remove = removeTabsMock;
@@ -173,12 +180,6 @@ describe("browser commands", () => {
       ],
     });
     container.thread = { getThread: getThreadMock };
-    container.imgurImages = {
-      getDeletableImageUrls: getImgurDeletableImageUrlsMock,
-      deleteImages: deleteImgurImagesMock,
-    };
-    getImgurDeletableImageUrlsMock.mockResolvedValue(["https://i.imgur.com/abc123.png"]);
-    deleteImgurImagesMock.mockResolvedValue({ deletedCount: 1, skippedCount: 0, failures: [] });
     container.toast = {
       notify: vi.fn(),
       success: toastSuccessMock,
@@ -188,6 +189,8 @@ describe("browser commands", () => {
   });
 
   afterEach(() => {
+    coreOwner?.dispose();
+    coreOwner = null;
     vi.unstubAllGlobals();
     delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
     copyTextMock.mockReset();
@@ -195,9 +198,6 @@ describe("browser commands", () => {
     encodeThreadAsToonMock.mockReset();
     estimateToonTokenCountMock.mockReset();
     getThreadMock.mockReset();
-    getImgurDeletableImageUrlsMock.mockReset();
-    deleteImgurImagesMock.mockReset();
-    openNextThreadSearchDialogMock.mockReset();
     parseSikiLogFileMock.mockReset();
     registerSikiLogThreadMock.mockReset();
     requestThreadResJumpMock.mockReset();
@@ -222,33 +222,7 @@ describe("browser commands", () => {
     expect(ids).not.toContain("copy.dat-url");
     expect(ids).not.toContain("copy.thread-toon");
     expect(ids).not.toContain("page.jump-to-response");
-    expect(ids).not.toContain("page.search-next-thread");
-    expect(ids).not.toContain("navigation.open-archive-replay");
     expect(ids).toContain("navigation.open-siki-log");
-  });
-
-  it("過去実況再生をコマンドパレットから開ける", async () => {
-    Object.defineProperty(window, "__TAURI_INTERNALS__", {
-      configurable: true,
-      value: {},
-    });
-    const { context } = createContext({ type: "boardList", title: "ホーム" });
-    const openArchiveReplayWindow = vi.fn();
-    context.openArchiveReplayWindow = openArchiveReplayWindow;
-
-    expect(resolveBrowserCommands(context)).toContainEqual(
-      expect.objectContaining({
-        id: "navigation.open-archive-replay",
-        label: "過去実況再生を開く",
-        enabled: true,
-      }),
-    );
-
-    await expect(executeBrowserCommand("navigation.open-archive-replay", context)).resolves.toBe(
-      true,
-    );
-    expect(openArchiveReplayWindow).toHaveBeenCalledOnce();
-    delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
   });
 
   it("Sikiログを選択すると本文を新しいタブで開く", async () => {
@@ -380,25 +354,6 @@ describe("browser commands", () => {
         threadUrl: "https://example.com/test/read.cgi/software/1788743729/",
       },
     });
-  });
-
-  it("スレッドでは次スレ候補検索コマンドを実行できる", async () => {
-    const { context } = createContext({
-      type: "thread",
-      title: "Thread",
-      threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
-    });
-
-    expect(resolveBrowserCommands(context)).toContainEqual(
-      expect.objectContaining({
-        id: "page.search-next-thread",
-        label: "次スレ候補を検索",
-        enabled: true,
-      }),
-    );
-
-    await expect(executeBrowserCommand("page.search-next-thread", context)).resolves.toBe(true);
-    expect(openNextThreadSearchDialogMock).toHaveBeenCalledOnce();
   });
 
   it("板一覧では板名を再取得して対象板の履歴タイトルを更新する", async () => {
@@ -757,56 +712,6 @@ describe("browser commands", () => {
     );
   });
 
-  it("投稿したImgur画像を一括削除する前に件数を確認する", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-    const { context } = createContext({ type: "boardList", title: "ホーム" });
-
-    await expect(executeBrowserCommand("page.delete-all-imgur-images", context)).resolves.toBe(
-      true,
-    );
-
-    expect(confirm).toHaveBeenCalledWith(
-      expect.stringContaining("Imgur画像 1 件を削除します。元に戻せません"),
-    );
-    expect(getImgurDeletableImageUrlsMock).toHaveBeenCalledOnce();
-    expect(deleteImgurImagesMock).toHaveBeenCalledWith(["https://i.imgur.com/abc123.png"]);
-    expect(toastSuccessMock).toHaveBeenCalledWith("Imgur画像を 1 件削除しました");
-    confirm.mockRestore();
-  });
-
-  it("このスレの一括削除対象は保存済みログから読み、スレ再取得を行わない", async () => {
-    const threadUrl = "https://egg.5ch.net/test/read.cgi/software/123/";
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-    const getCache = vi.fn((path: string) => {
-      expect(path).toBe("https://egg.5ch.io/software/dat/123.dat");
-      return {
-        get: vi.fn(async () => undefined),
-        data: null,
-        parsed: { res: [{ message: "https://i.imgur.com/abc123.png" }] },
-        lastUpdated: 1,
-        put: vi.fn(async () => undefined),
-      };
-    });
-    container.config = {
-      get: (key) => (key === "format_2chnet" ? "dat" : null),
-      set: vi.fn(),
-      ready: vi.fn(),
-      getAll: () => ({}),
-    };
-    container.cache = { getCache };
-    const { context } = createContext({ type: "thread", title: "Thread", threadUrl });
-
-    await expect(executeBrowserCommand("page.delete-thread-imgur-images", context)).resolves.toBe(
-      true,
-    );
-
-    expect(getCache).toHaveBeenCalledOnce();
-    expect(getThreadMock).not.toHaveBeenCalled();
-    expect(getImgurDeletableImageUrlsMock).toHaveBeenCalledWith(["https://i.imgur.com/abc123.png"]);
-    expect(deleteImgurImagesMock).toHaveBeenCalledWith(["https://i.imgur.com/abc123.png"]);
-    confirm.mockRestore();
-  });
-
   it("2ペイン切り替えは現在の表示状態に応じたactionを送る", async () => {
     const { context, dispatch } = createContext({
       type: "boardList",
@@ -857,6 +762,7 @@ describe("browser commands", () => {
     const otherTab: Tab = { ...createTab(homePage), id: "tab-2" };
     const dispatch = vi.fn<(action: ScopedTabAction) => void>();
     const context: BrowserCommandContext = {
+      workspace: { openPage: vi.fn(() => "executed" as const) },
       viewPage: homePage,
       viewTab,
       tabs: [viewTab, otherTab],
@@ -867,7 +773,7 @@ describe("browser commands", () => {
       dispatch,
       toggleWritePanel: vi.fn(),
       openResponseJumpDialog: vi.fn(),
-      openNextThreadSearchDialog: openNextThreadSearchDialogMock,
+      openNextThreadSearchDialog: async () => undefined,
       openArchiveReplayWindow: vi.fn(),
     };
 
@@ -970,22 +876,21 @@ describe("browser commands", () => {
       title: "テスト",
       threadUrl: "https://example.com/test/read.cgi/board/1/",
     });
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const handler = vi.fn();
+    const dispose = registerThreadFilterModeToggle(window, "tab-1", handler);
 
     try {
       const ids = resolveBrowserCommands(context).map((command) => command.id);
-      expect(ids).toContain("page.toggle-filter-popular");
-      expect(ids).toContain("page.toggle-filter-image");
-      expect(ids).toContain("page.toggle-filter-video");
-      expect(ids).toContain("page.toggle-filter-link");
+      expect(ids).toContain("filter.toggle-popular");
+      expect(ids).toContain("filter.toggle-image");
+      expect(ids).toContain("filter.toggle-video");
+      expect(ids).toContain("filter.toggle-link");
 
-      await expect(executeBrowserCommand("page.toggle-filter-image", context)).resolves.toBe(true);
+      await expect(executeBrowserCommand("filter.toggle-image", context)).resolves.toBe(true);
 
-      const event = dispatchEventSpy.mock.calls.at(-1)?.[0] as CustomEvent;
-      expect(event.type).toBe("thread-filter-mode-toggle");
-      expect(event.detail).toEqual({ tabId: "tab-1", filter: "image" });
+      expect(handler).toHaveBeenCalledWith("image");
     } finally {
-      dispatchEventSpy.mockRestore();
+      dispose();
     }
   });
 
@@ -1006,27 +911,6 @@ describe("browser commands", () => {
     expect(command).toBeUndefined();
     await expect(executeBrowserCommand("page.toggle-write-panel", context)).resolves.toBe(false);
     expect(toggleWritePanel).not.toHaveBeenCalled();
-  });
-
-  it("自動更新の切り替えは表示中ページの有効状態を反転したactionを送る", async () => {
-    const page: Page = {
-      type: "threadList",
-      title: "板",
-      boardUrl: "https://example.com/board/",
-      boardTitle: "板",
-    };
-    const { context, dispatch } = createContext(page);
-
-    // 停止中の板では「開始」として、有効化のactionを送る。
-    const label = resolveBrowserCommands(context).find(
-      (command) => command.id === "page.toggle-auto-refresh",
-    )?.englishLabel;
-    expect(label).toBe("Start Auto Refresh");
-
-    await expect(executeBrowserCommand("page.toggle-auto-refresh", context)).resolves.toBe(true);
-    expect(dispatch).toHaveBeenCalledWith(
-      tabActions.setAutoRefreshEnabled(true, getAutoRefreshPageKey(page) ?? undefined),
-    );
   });
 
   it("画像のぼかし切り替えは保存値を反転して保存する", async () => {

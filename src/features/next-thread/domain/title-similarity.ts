@@ -26,7 +26,7 @@ function stripNewsBadge(title: string): string {
 }
 
 export function calculateBaseTitleSimilarity(leftTitle: string, rightTitle: string): number {
-  // 【朗報】などの定型タグだけで別の話題を類似候補に押し上げない。
+  // 【朗報】などの定型タグだけで別の話題を関連候補に押し上げない。
   return calculateTitleSimilarity(stripNewsBadge(leftTitle), stripNewsBadge(rightTitle));
 }
 
@@ -66,9 +66,9 @@ function toBigramSet(title: string): Set<string> {
 }
 
 /**
- * 類似スレ検索用の話題の近さ。
+ * 関連スレ検索用の話題の近さ。
  * 変更理由: 自動の次スレ判定は誤移動を避けるため従来の類似度のしきい値に依存している。
- * n-gramで上がる値がそのしきい値へ影響しないよう、手動の類似スレ検索だけがこちらを使う。
+ * n-gramで上がる値がそのしきい値へ影響しないよう、手動の関連スレ検索だけがこちらを使う。
  */
 export function calculateTopicTitleSimilarity(leftTitle: string, rightTitle: string): number {
   const left = stripNewsBadge(leftTitle);

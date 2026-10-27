@@ -352,8 +352,8 @@ describe("設定項目の区切りごとのまとめ", () => {
       groups.map((group) => [group.divider?.id, group.fields.map((field) => field.key)]),
     ).toEqual([
       [undefined, ["before"]],
-      ["new-tab", ["new_tab_page_mode", "focus_new_tab_on_open", "new_tab_page_board_url"]],
-      ["network", ["https_mode", "confirm_external_links"]],
+      ["new-tab", ["new_tab_page_mode", "focus_new_tab_on_open"]],
+      ["network", ["https_mode", "useragent", "confirm_external_links"]],
     ]);
   });
 });

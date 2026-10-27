@@ -6,7 +6,6 @@ import { openArchiveReplayWindow as openArchiveReplayNativeWindow } from "src/fe
 import { AutoScrollStateProvider } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import { AutoRefreshStatusItem } from "src/features/auto-refresh/ui/AutoRefreshStatusItem";
 import { BookmarkRootSelectorDialog } from "src/features/bookmark/ui/BookmarkRootSelectorDialog";
-import { CommentOverlayCommandBridge } from "src/features/comment-overlay/ui/CommentOverlayCommandBridge";
 import { CommentOverlayJumpBridge } from "src/features/comment-overlay/ui/CommentOverlayJumpBridge";
 import { CommentOverlayStatusItem } from "src/features/comment-overlay/ui/CommentOverlayStatusItem";
 import { OverlayPlacementWindowProvider } from "src/features/comment-overlay/ui/OverlayPlacementWindow";
@@ -15,6 +14,7 @@ import { NextThreadSearchDialog } from "src/features/next-thread/ui/NextThreadSe
 import { NgStatusProvider } from "src/features/ng/browser/use-ng-status";
 import { NgStatusItem } from "src/features/ng/ui/NgStatusItem";
 import { useTabBarOrientation } from "src/features/tabs/browser/use-tab-bar-orientation";
+import { SharedTabBar } from "src/features/tabs/ui/SharedTabBar";
 import { TabBar } from "src/features/tabs/ui/TabBar";
 import { WindowNavigationBridge } from "src/features/tabs/ui/WindowNavigationBridge";
 import { IkioiStatusItem } from "src/features/thread/ui/IkioiStatusItem";
@@ -98,10 +98,14 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const { viewPage, viewTab, paneId } = useTabStore();
   const initialBottomPanel = useBottomPanelLayout(paneId);
   const tabBarOrientation = useTabBarOrientation();
+  const { panes } = useTabPanes();
+  // 変更理由: タブバーは全ペイン共通にする。垂直は画面左端、水平は2ペイン以上のときだけ
+  // タイトルバーの下へ出す。1ペインの水平は従来どおりペインの操作欄と同じ行に置く。
+  const hasSharedTabBar = tabBarOrientation === "vertical" || panes.length > 1;
   const {
     state: nextThreadSearchState,
     searchNextThread,
-    searchSimilarThreads,
+    searchRelatedThreads,
     close: closeNextThreadSearch,
     selectCandidate,
   } = useNextThreadSearch({
@@ -128,14 +132,14 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const navigationBar = (
     <NavigationBar
       openNextThreadSearchDialog={searchNextThread}
-      openSimilarThreadSearchDialog={searchSimilarThreads}
+      openRelatedThreadSearchDialog={searchRelatedThreads}
       openArchiveReplayWindow={openArchiveReplayWindow}
     />
   );
   const paneBody = (
     <>
       <ActiveThreadBridgeState isActive={isActive} />
-      <ContentArea isOverlayTarget={isActive} onSearchSimilarThreads={searchSimilarThreads} />
+      <ContentArea isOverlayTarget={isActive} onSearchRelatedThreads={searchRelatedThreads} />
       <BottomPanel />
       {/* コマンドとナビゲーションを同じオムニバーへ集約し、
           操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}
@@ -196,18 +200,12 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
               }
             >
               <AutoScrollStateProvider>
-                {tabBarOrientation === "vertical" ? (
-                  // 変更理由: 垂直モードではタブバーをペインの上端まで伸ばし、
-                  // タイトルバー以下を右へ押しのける。タイトルバーもペイン単位にし、
-                  // 自ペインの操作欄を持つ。1ペイン優先の簡易対応とし、
-                  // 2ペイン時は操作欄が複製される。
-                  <div className="pane-column__vertical-body">
-                    <TabBar orientation="vertical" />
-                    <div className="pane-column__vertical-main">
-                      <div className="pane-column__chrome">{navigationBar}</div>
-                      {paneBody}
-                    </div>
-                  </div>
+                {hasSharedTabBar ? (
+                  // 変更理由: タブバーはシェル側の共通バーにあるため、ペインは操作欄と本体だけを持つ。
+                  <>
+                    <div className="pane-column__chrome">{navigationBar}</div>
+                    {paneBody}
+                  </>
                 ) : (
                   <>
                     <div className="pane-column__chrome">
@@ -235,6 +233,36 @@ const PaneRow: React.FC = () => {
       {panes.map((pane) => (
         <PaneColumn key={pane.id} paneId={pane.id} isActive={pane.id === activePaneId} />
       ))}
+    </div>
+  );
+};
+
+// タイトルバーとワークスペースの枠。1ペインの垂直モードでは、左端のタブバーを
+// タイトルバーの上端まで伸ばし、タイトルバー以下を右へ押しのける。
+const ShellFrame: React.FC = () => {
+  const orientation = useTabBarOrientation();
+  const { panes } = useTabPanes();
+  const main = (
+    <>
+      <TitleBar />
+      {orientation === "horizontal" && panes.length > 1 ? (
+        <SharedTabBar orientation="horizontal" />
+      ) : null}
+      <div className="browser-shell__workspace">
+        <PaneRow />
+        <SidePanel />
+      </div>
+    </>
+  );
+
+  if (orientation !== "vertical") {
+    return main;
+  }
+
+  return (
+    <div className="browser-shell__vertical-frame">
+      <SharedTabBar orientation="vertical" />
+      <div className="browser-shell__vertical-main">{main}</div>
     </div>
   );
 };
@@ -268,7 +296,6 @@ export const BrowserApp: React.FC = () => {
           <OverlayPlacementWindowProvider>
             <TabWindowHost>
               <CommentOverlayJumpBridge />
-              <CommentOverlayCommandBridge />
               <WriteWindowHost />
               <ArchiveReplayMainThreadSyncBridge />
               {/*
@@ -292,11 +319,7 @@ export const BrowserApp: React.FC = () => {
                 これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
                 垂直モードでも操作対象をアクティブペインに揃え、タイトルバーを共有する。
               */}
-                <TitleBar />
-                <div className="browser-shell__workspace">
-                  <PaneRow />
-                  <SidePanel />
-                </div>
+                <ShellFrame />
                 <BookmarkRootSelectorDialog />
               </div>
             </TabWindowHost>

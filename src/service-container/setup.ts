@@ -7,6 +7,7 @@ import message from "src/app/Message";
 import Notification from "src/app/Notification";
 import { setHttpsMode } from "src/app/platform/https-mode";
 import { isTauriRuntime } from "src/app/platform/runtime";
+import { setUserAgent } from "src/app/platform/user-agent";
 import { escapeHtml, safeHref } from "src/app/Util";
 import { BBSMenuModel } from "src/core/board/BBSMenuModel";
 import { createBoardService } from "src/core/board/BoardService";
@@ -112,6 +113,11 @@ export function setupContainer(): void {
   // 通信はバックグラウンドやRust側で行うため、設定を読めるここで方針を通信層へ渡す。
   const syncHttpsMode = () => setHttpsMode(normalizeHttpsMode(config.get("https_mode")));
   syncHttpsMode();
+  const syncUserAgent = () => {
+    const value = config.get("useragent");
+    setUserAgent(typeof value === "string" ? value : "");
+  };
+  syncUserAgent();
 
   // NG と置換設定の状態は、ここで作る1つずつのインスタンスだけが持つ。
   // 依存は呼ばれた時点で container から読むため、登録前に作っても未登録の例外は出ない。
@@ -142,6 +148,9 @@ export function setupContainer(): void {
       if (key === "https_mode") {
         syncHttpsMode();
       }
+      if (key === "useragent") {
+        syncUserAgent();
+      }
     },
     ready: (cb: () => void) => config.ready(cb),
     getAll: () => config.getAll(),
@@ -154,6 +163,9 @@ export function setupContainer(): void {
     }
     if (key === "https_mode") {
       syncHttpsMode();
+    }
+    if (key === "useragent") {
+      syncUserAgent();
     }
   });
 

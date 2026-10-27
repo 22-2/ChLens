@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { createLogger } from "src/app/logger";
 import type { IThread } from "src/service-container/interfaces";
 
@@ -37,4 +38,27 @@ export async function saveThreadListSnapshot(boardUrl: string, threads: IThread[
   } catch (error) {
     logger.error("スレ一覧のスナップショットを保存できませんでした:", { boardUrl, error });
   }
+}
+
+// タイトルバーと一覧ページは別のコンポーネントなので、選択中の履歴をタブごとに共有する。
+const selectedSnapshots = new Map<string, ThreadListSnapshot>();
+const listeners = new Set<() => void>();
+
+export function selectThreadListSnapshot(tabId: string, snapshot: ThreadListSnapshot | null): void {
+  if (snapshot) selectedSnapshots.set(tabId, snapshot);
+  else selectedSnapshots.delete(tabId);
+  for (const listener of listeners) listener();
+}
+
+export function useSelectedThreadListSnapshot(tabId: string): ThreadListSnapshot | null {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    () => selectedSnapshots.get(tabId) ?? null,
+    () => null,
+  );
 }

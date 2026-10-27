@@ -1,3 +1,4 @@
+import { AppWindow, CopyPlus, ExternalLink, Link, ShieldOff } from "lucide-react";
 import { type MouseEvent, useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { createLogger } from "src/app/logger";
@@ -56,14 +57,35 @@ export function useExternalLinkMenu() {
       });
     const cleanedUrl = analyzeExternalLink(state.url).cleanedUrl;
     const items: ContextMenuItem[] = [
-      { id: "open", label: "開く", onSelect: () => open(true) },
-      { id: "open-background", label: "新しいタブで開く", onSelect: () => open(false) },
-      { id: "open-window", label: "新しいウィンドウで開く", onSelect: () => open(true, true) },
+      {
+        id: "open",
+        label: "開く",
+        icon: <ExternalLink size={14} />,
+        onSelect: () => open(true),
+      },
+      {
+        id: "open-background",
+        label: "新しいタブで開く",
+        icon: <CopyPlus size={14} />,
+        onSelect: () => open(false),
+      },
+      {
+        id: "open-window",
+        label: "新しいウィンドウで開く",
+        icon: <AppWindow size={14} />,
+        onSelect: () => open(true, true),
+      },
       { id: "separator", separator: true },
-      { id: "copy", label: "URLをコピー", onSelect: () => copy(state.url) },
+      {
+        id: "copy",
+        label: "URLをコピー",
+        icon: <Link size={14} />,
+        onSelect: () => copy(state.url),
+      },
       {
         id: "copy-clean",
         label: "追跡情報を除いてURLをコピー",
+        icon: <ShieldOff size={14} />,
         disabled: !cleanedUrl,
         onSelect: () => {
           if (cleanedUrl) copy(cleanedUrl);

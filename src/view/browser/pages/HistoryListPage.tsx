@@ -269,7 +269,6 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
   }, [searchQuery, sortState, updateViewState]);
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
-    pageType: "historyList",
     tabId,
     isActive,
     searchQuery,

@@ -5,8 +5,24 @@ import { boot } from "src/app";
 import { installDebugApi } from "src/app/debug/debug-api";
 import { installConsoleCapture, installRuntimeErrorCapture } from "src/app/debug/debug-log";
 import { installLogPersistence } from "src/app/debug/log-persistence";
+import { registerArchiveReplayCommands } from "src/features/archive-replay/browser/register-archive-replay-commands";
+import { registerAutoRefreshCommands } from "src/features/auto-refresh/browser/register-auto-refresh-commands";
+import { registerBookmarkCommands } from "src/features/bookmark/browser/register-bookmark-commands";
+import { registerCommentOverlayCommands } from "src/features/comment-overlay/browser/register-comment-overlay-commands";
+import { registerFilterCommands } from "src/features/filter/browser/register-filter-commands";
+import { registerMediaCommands } from "src/features/media/browser/register-media-commands";
+import { registerNextThreadCommands } from "src/features/next-thread/browser/register-next-thread-commands";
 import { setupBrowserViewServices } from "src/service-container/setup-browser-view";
 import { BrowserApp } from "src/view/browser/App";
+import {
+  browserCommandRegistry,
+  registerCoreCommands,
+} from "src/view/browser/commands/browser-commands";
+import {
+  createExtensionOwner,
+  type ExtensionOwner,
+} from "src/view/browser/extension/extension-api";
+import { registerBuiltInPageTypes } from "src/view/browser/shell/register-built-in-page-types";
 
 // 起動処理のエラーも外部CLIから読めるよう、boot より前に記録を始める。
 installConsoleCapture();
@@ -22,6 +38,30 @@ installDebugApi();
 void boot("/view/index.html", () => {
   // メインの画面だけが使うサービスは、setupContainer（boot の中）の後、描画より前に登録する。
   setupBrowserViewServices();
+  // 変更理由: コマンドパレットの表示・復元より先に登録を完了し、Reactの再描画で重複しないようにする。
+  // 機能のコマンドは core のコマンドを基準に表示順を決めるため、core を最初に登録する。
+  // 同じ基準の直前へ入る機能どうしは、登録した順に並ぶ（例：auto-refresh と next-thread は
+  // どちらも Zen モードの直前に入り、自動更新 → 自動次スレの順を保つため auto-refresh を先にする）。
+  // 所有者はアプリの終了まで生きるため、解除は呼ばない。
+  const owners = new Map<string, ExtensionOwner>();
+  const getApi = (id: string) => {
+    let owner = owners.get(id);
+    if (!owner) {
+      owner = createExtensionOwner(id, browserCommandRegistry);
+      owners.set(id, owner);
+    }
+    return owner.api;
+  };
+  registerBuiltInPageTypes(getApi);
+  registerCoreCommands(getApi("core"));
+  // フィルターは media・next-thread の表示順の基準になるため先に登録する。
+  registerFilterCommands(getApi("filter"));
+  registerMediaCommands(getApi("media"));
+  registerBookmarkCommands(getApi("bookmark"));
+  registerAutoRefreshCommands(getApi("auto-refresh"));
+  registerNextThreadCommands(getApi("next-thread"));
+  registerArchiveReplayCommands(getApi("archive-replay"));
+  registerCommentOverlayCommands(getApi("comment-overlay"));
   const container = document.getElementById("root");
   if (!container) return;
   createRoot(container).render(<BrowserApp />);

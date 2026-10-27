@@ -8,6 +8,7 @@ import type {
   HttpRequestOptions,
   HttpResponse,
 } from "src/app/platform/types";
+import { getUserAgent } from "src/app/platform/user-agent";
 
 const logger = createLogger("platform");
 
@@ -32,12 +33,24 @@ function decodeText(bytes: Uint8Array, mimeType: string | undefined): string {
   }
 }
 
+// 呼び出し側が明示したUser-Agentを優先し、無ければ設定で指定した値を付ける。
+function withUserAgent(
+  headers: Record<string, string> | undefined,
+): Record<string, string> | undefined {
+  const userAgent = getUserAgent();
+  if (!userAgent) return headers;
+  if (headers && Object.keys(headers).some((name) => name.toLowerCase() === "user-agent")) {
+    return headers;
+  }
+  return { ...headers, "User-Agent": userAgent };
+}
+
 async function request(url: string, options: HttpRequestOptions = {}): Promise<SharedHttpResponse> {
   return invoke<SharedHttpResponse>("shared_http_request", {
     request: {
       url,
       method: options.method,
-      headers: options.headers,
+      headers: withUserAgent(options.headers),
       body: typeof options.body === "string" ? options.body : undefined,
       bodyBase64:
         options.body instanceof ArrayBuffer

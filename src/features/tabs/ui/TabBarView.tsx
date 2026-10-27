@@ -1,5 +1,4 @@
 import { DragDropProvider } from "@dnd-kit/react";
-import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { PanelLeftClose, PanelLeftOpen, Pin, Plus, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -11,6 +10,7 @@ import {
 } from "src/features/tabs/browser/tab-bar-layout";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
+import { readSortableMove, useSortableTab } from "src/view/browser/components/sortable-tab";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 
@@ -24,12 +24,6 @@ interface TabListScrollState {
 const TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD = 1.5;
 const TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS = 150;
 
-// Material Design の Fast-out, Slow-in カーブで Chrome 風の吸い付く感を再現する。
-const SORTABLE_TRANSITION = {
-  duration: 200,
-  easing: "cubic-bezier(0.4, 0, 0.2, 1)",
-};
-
 interface SortableTabProps {
   tab: Tab;
   index: number;
@@ -39,6 +33,10 @@ interface SortableTabProps {
   canClose: boolean;
   isVertical: boolean;
   compact: boolean;
+  /** 共通タブバーで、各ペインが今表示しているタブに付ける「左」「右」などの印。 */
+  paneBadge?: string;
+  /** 表示中だがフォーカスのないペインのタブかどうか。 */
+  isPaneUnfocused?: boolean;
   wasDraggingRef: React.MutableRefObject<boolean>;
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
@@ -57,18 +55,19 @@ const SortableTab: React.FC<SortableTabProps> = ({
   canClose,
   isVertical,
   compact,
+  paneBadge,
+  isPaneUnfocused = false,
   wasDraggingRef,
   onSelect,
   onClose,
   onContextMenu,
   onArrowNavigate,
 }) => {
-  const { ref, isDragSource } = useSortable({
+  const { ref, isDragSource } = useSortableTab({
     id: tab.id,
     index,
     // ピン留めと通常の境界を越えないようグループを分ける。
     group: tab.pinned ? "pinned" : "normal",
-    transition: SORTABLE_TRANSITION,
   });
 
   const page = getCurrentPage(tab);
@@ -120,6 +119,8 @@ const SortableTab: React.FC<SortableTabProps> = ({
       <div
         ref={ref}
         className={`tab${isActive ? " tab--active" : ""}${
+          isPaneUnfocused ? " tab--pane-unfocused" : ""
+        }${
           tab.pinned ? " tab--pinned" : ""
         }${isHighlighted ? " tab--highlighted" : ""}${isDragSource ? " tab--dragging" : ""}`}
         data-tab-id={tab.id}
@@ -149,6 +150,13 @@ const SortableTab: React.FC<SortableTabProps> = ({
         ) : (
           <span className="tab__title">{page.title}</span>
         )}
+        {/* 変更理由: 共通タブバーでは2つのペインが同時に表示中のタブを持つため、
+            どのタブが同じ画面に並んでいるか（左右の組）をタブ上の印で示す。 */}
+        {paneBadge ? (
+          <span className="tab__pane-badge" title={`${paneBadge}ペインに表示中`}>
+            {paneBadge}
+          </span>
+        ) : null}
         {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、
             実行中/待機中を区別できるインジケーターを常時表示する。 */}
         {autoRefreshIndicatorState != null && !tab.pinned && (
@@ -205,6 +213,14 @@ export interface TabBarViewProps {
   onBarContextMenu: (x: number, y: number) => void;
   /** メニューなど、タブバーの内側に重ねる要素。 */
   overlay?: React.ReactNode;
+  /** 複数ペインの共通タブバーで、このタブ一覧がどのペインのものかを示す見出し。 */
+  sectionLabel?: string;
+  /** 見出しの横へ添える、ペインがフォーカス中かどうか。 */
+  isPaneFocused?: boolean;
+  /** 共通タブバーの本体に付ける他ペインのタブ一覧。 */
+  extraSections?: React.ReactNode;
+  /** 共通タブバーの2つ目以降のペイン。外枠・開閉ボタン・幅変更を持たず、タブ一覧だけを描く。 */
+  embedded?: boolean;
 }
 
 /**
@@ -230,6 +246,10 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   onTabContextMenu,
   onBarContextMenu,
   overlay,
+  sectionLabel,
+  isPaneFocused = false,
+  extraSections,
+  embedded = false,
 }) => {
   const barRef = useRef<HTMLDivElement | null>(null);
   const tabListRef = useRef<HTMLDivElement | null>(null);
@@ -457,21 +477,10 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   const handleDragEnd = useCallback(
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any
     (event: any) => {
-      // event.canceled はドラッグがキャンセル（Esc キーなど）された場合に true になる。
-      if (event.canceled) return;
-      const { operation } = event;
-      if (!isSortableOperation(operation)) return;
-      const { source } = operation;
-      if (!source) return;
-      // 変更理由: OptimisticSortingPlugin がドラッグ中に確定させたグループ内の最終位置を
-      // source.sortable.index として受け取り、それをそのまま並べ替えの真実にする。
-      // ドロップ先タブIDから逆算すると投影インデックスとズレるため使わない。
-      const toIndex = source.index;
-      const initialIndex = source.sortable?.initialIndex;
-      if (typeof toIndex !== "number") return;
       // 実際に位置が変わっていなければ、click 抑止も並べ替えも行わない。
-      if (typeof initialIndex === "number" && toIndex === initialIndex) return;
-      if (!onMoveTab(String(source.id), toIndex)) return;
+      const move = readSortableMove(event);
+      if (!move) return;
+      if (!onMoveTab(move.id, move.toIndex)) return;
       // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
       wasDraggingRef.current = true;
     },
@@ -565,6 +574,71 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
 
   const displayWidth = dragWidth ?? width;
 
+  // 変更理由: 共通タブバーでは、ペインごとにタブ一覧を区切って並べるため、
+  // 一覧を1つの区画として扱う。単独のときは見出しを出さず、従来の見た目のままにする。
+  const paneSection = (
+    <div
+      className={`tab-bar__pane-section${sectionLabel ? " tab-bar__pane-section--labeled" : ""}${
+        isPaneFocused ? " tab-bar__pane-section--focused" : ""
+      }`}
+      onContextMenu={embedded ? handleBarContextMenu : undefined}
+    >
+      {sectionLabel ? <div className="tab-bar__pane-label">{sectionLabel}</div> : null}
+      <DragDropProvider onDragEnd={handleDragEnd}>
+        <div
+          className={`tab-list-container${
+            tabListScrollState.canScrollLeft ? " tab-list-container--can-scroll-left" : ""
+          }${tabListScrollState.canScrollRight ? " tab-list-container--can-scroll-right" : ""}${
+            tabListScrollState.canScrollTop ? " tab-list-container--can-scroll-top" : ""
+          }${tabListScrollState.canScrollBottom ? " tab-list-container--can-scroll-bottom" : ""}`}
+        >
+          <div
+            ref={tabListRef}
+            className="tab-list"
+            role="tablist"
+            aria-orientation={isVertical ? "vertical" : "horizontal"}
+          >
+            {items.map(({ tab, isActive, autoRefreshIndicatorState }, index) => (
+              <SortableTab
+                key={tab.id}
+                tab={tab}
+                index={index}
+                isActive={isActive}
+                isHighlighted={highlightedTabIds.has(tab.id)}
+                autoRefreshIndicatorState={autoRefreshIndicatorState}
+                canClose={canCloseTab}
+                isVertical={isVertical}
+                compact={isVertical && collapsed}
+                paneBadge={isActive && sectionLabel ? sectionLabel : undefined}
+                isPaneUnfocused={isActive && Boolean(sectionLabel) && !isPaneFocused}
+                wasDraggingRef={wasDraggingRef}
+                onSelect={onSelectTab}
+                onClose={onCloseTab}
+                onContextMenu={handleContextMenu}
+                onArrowNavigate={handleArrowNavigate}
+              />
+            ))}
+            {/* 変更理由: 水平モードでは従来どおり溢れたときだけ外へ固定する。
+                垂直モードでは最終タブの直後に置き、一覧と一緒にスクロールさせる。 */}
+            {!isVertical && !isTabListScrollable ? addTabButton : null}
+            {isVertical ? addTabButton : null}
+          </div>
+        </div>
+      </DragDropProvider>
+      {/* 変更理由: 共通の水平タブバーでは、溢れたときの追加ボタンもペインごとの区画の内側へ固定する。 */}
+      {!isVertical && sectionLabel && isTabListScrollable ? addTabButton : null}
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <>
+        {paneSection}
+        {overlay}
+      </>
+    );
+  }
+
   return (
     <div
       ref={barRef}
@@ -601,45 +675,8 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
           </div>
         </>
       ) : null}
-      <DragDropProvider onDragEnd={handleDragEnd}>
-        <div
-          className={`tab-list-container${
-            tabListScrollState.canScrollLeft ? " tab-list-container--can-scroll-left" : ""
-          }${tabListScrollState.canScrollRight ? " tab-list-container--can-scroll-right" : ""}${
-            tabListScrollState.canScrollTop ? " tab-list-container--can-scroll-top" : ""
-          }${tabListScrollState.canScrollBottom ? " tab-list-container--can-scroll-bottom" : ""}`}
-        >
-          <div
-            ref={tabListRef}
-            className="tab-list"
-            role="tablist"
-            aria-orientation={isVertical ? "vertical" : "horizontal"}
-          >
-            {items.map(({ tab, isActive, autoRefreshIndicatorState }, index) => (
-              <SortableTab
-                key={tab.id}
-                tab={tab}
-                index={index}
-                isActive={isActive}
-                isHighlighted={highlightedTabIds.has(tab.id)}
-                autoRefreshIndicatorState={autoRefreshIndicatorState}
-                canClose={canCloseTab}
-                isVertical={isVertical}
-                compact={isVertical && collapsed}
-                wasDraggingRef={wasDraggingRef}
-                onSelect={onSelectTab}
-                onClose={onCloseTab}
-                onContextMenu={handleContextMenu}
-                onArrowNavigate={handleArrowNavigate}
-              />
-            ))}
-            {/* 変更理由: 水平モードでは従来どおり溢れたときだけ外へ固定する。
-                垂直モードでは最終タブの直後に置き、一覧と一緒にスクロールさせる。 */}
-            {!isVertical && !isTabListScrollable ? addTabButton : null}
-            {isVertical ? addTabButton : null}
-          </div>
-        </div>
-      </DragDropProvider>
+      {paneSection}
+      {extraSections}
       {/* タブが横幅を超えるときだけ、追加ボタンをスクロール領域の外へ固定する。 */}
       {isVertical ? (
         // 変更理由: 縮小時もハンドルを出し、右へ引く操作で展開へ移れるようにする。
@@ -653,7 +690,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
           onPointerUp={handleResizePointerUp}
           onPointerCancel={handleResizePointerCancel}
         />
-      ) : isTabListScrollable ? (
+      ) : isTabListScrollable && !sectionLabel ? (
         addTabButton
       ) : null}
 

@@ -6,9 +6,7 @@
 /* 変更理由: ペイン上部のボタン行をなくし、TitleBar 右上へポータルする。
    URL入力は行を足さず、TitleBar 中央のピルと入れ替えて出すので本文の高さを奪わない。 */
 .nav-bar--titlebar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+  display: contents;
 }
 
 /* 変更理由: TitleBar の細バーに収めるため、ポータルされた2ボタンは小さくする。
@@ -26,6 +24,7 @@
   /* 変更理由: 水平タブ時のタブバー行にあった大きさ（30px・32px）に揃え、押しやすさを保つ。 */
   width: 30px;
   height: 30px;
+  border-radius: var(--sys-radius-sm);
 }
 
 .nav-bar--titlebar .nav-bar__filter-toggle svg,

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { TabBar } from "src/features/tabs/ui/TabBar";
 import { container } from "src/service-container/index";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const dispatchMock = vi.fn();
@@ -215,6 +216,24 @@ describe("TabBar wheel switching", () => {
 
     fireEvent.mouseLeave(tab);
     expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("共通タブバーでは表示中のタブにペインの印を付け、フォーカスのないペインは控えめにする", () => {
+    const { container, rerender } = render(<TabBar sectionLabel="左" isPaneFocused />);
+    const active = container.querySelector('[data-tab-id="tab-1"]') as HTMLDivElement;
+    const inactive = container.querySelector('[data-tab-id="tab-2"]') as HTMLDivElement;
+
+    expect(active.querySelector(".tab__pane-badge")).toHaveTextContent("左");
+    expect(active).not.toHaveClass("tab--pane-unfocused");
+    expect(inactive.querySelector(".tab__pane-badge")).toBeNull();
+
+    rerender(<TabBar sectionLabel="左" isPaneFocused={false} />);
+    expect(active).toHaveClass("tab--pane-unfocused");
+  });
+
+  it("単独のタブバーでは印を付けない", () => {
+    const { container } = render(<TabBar />);
+    expect(container.querySelector(".tab__pane-badge")).toBeNull();
   });
 
   it("deltaY が極小/0 のホイールではタブを切り替えない", () => {
@@ -1313,3 +1332,5 @@ describe("TabBar bookmark", () => {
     expect(document.querySelector(".tab-bar__bookmark")).toBeNull();
   });
 });
+
+setupTestPageTypes();

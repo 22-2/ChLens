@@ -2,9 +2,9 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
+import { toggleFilter as toggleFilterForTab } from "src/view/browser/extension/page-actions";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import type { ThreadFilter } from "src/view/browser/types";
-import { THREAD_FILTER_TOOLBAR_TOGGLE_EVENT } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 function TopBarHarness({
@@ -73,15 +73,11 @@ describe("useThreadTopBar", () => {
     expect(screen.getByTestId("search-query")).toHaveTextContent("abc");
   });
 
-  it("常時表示の設定のときはタイトルバー相当のトグルイベントで閉じない", () => {
+  it("常時表示の設定のときはタイトルバー相当の開閉操作で閉じない", () => {
     render(<TopBarHarness pinnedOpen />);
 
     act(() => {
-      window.dispatchEvent(
-        new window.CustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
+      toggleFilterForTab(window, "tab-1");
     });
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
@@ -131,34 +127,26 @@ describe("useThreadTopBar", () => {
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
   });
 
-  it("対象タブへのフィルタバートグルイベントでフィルタバーを開閉する", () => {
+  it("対象タブへのフィルタバー開閉操作でフィルタバーを開閉する", () => {
     render(<TopBarHarness />);
 
     fireEvent.click(screen.getByRole("button", { name: "set filter" }));
 
     act(() => {
-      window.dispatchEvent(
-        new window.CustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
+      toggleFilterForTab(window, "tab-1");
     });
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
 
     act(() => {
-      window.dispatchEvent(
-        new window.CustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
+      toggleFilterForTab(window, "tab-1");
     });
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("none");
     expect(screen.getByTestId("filter")).toHaveTextContent("all");
   });
 
-  it("別タブや非アクティブなスレッドにはトグルイベントを届けない", () => {
+  it("別タブや非アクティブなスレッドには開閉操作を届けない", () => {
     render(
       <>
         <TopBarHarness />
@@ -167,15 +155,22 @@ describe("useThreadTopBar", () => {
     );
 
     act(() => {
-      window.dispatchEvent(
-        new window.CustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, {
-          detail: { tabId: "tab-2" },
-        }),
-      );
+      toggleFilterForTab(window, "tab-2");
     });
 
     expect(screen.getAllByTestId("active-top-bar")[0]).toHaveTextContent("none");
     expect(screen.getAllByTestId("active-top-bar")[1]).toHaveTextContent("none");
+  });
+
+  it("非表示と画面終了後はフィルター操作を受け取らない", () => {
+    const { rerender, unmount } = render(<TopBarHarness />);
+    expect(toggleFilterForTab(window, "tab-1")).toBe("executed");
+    rerender(<TopBarHarness isActive={false} />);
+    expect(toggleFilterForTab(window, "tab-1")).toBe("target-unavailable");
+    rerender(<TopBarHarness />);
+    expect(toggleFilterForTab(window, "tab-1")).toBe("executed");
+    unmount();
+    expect(toggleFilterForTab(window, "tab-1")).toBe("target-unavailable");
   });
 
   it("ホイール相当のクローズでは検索語による絞り込みを維持する", () => {

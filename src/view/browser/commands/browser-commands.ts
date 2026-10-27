@@ -1,7 +1,6 @@
 import {
   Archive,
   ArrowLeftRight,
-  Bookmark,
   Clipboard,
   Columns2,
   ExternalLink,
@@ -12,28 +11,28 @@ import {
   History,
   Import,
   List,
-  type LucideIcon,
-  MessageSquare,
   PanelLeft,
   PanelRight,
   PenLine,
-  PlayCircle,
   RotateCcw,
   RotateCw,
-  Search,
   Settings,
-  Star,
-  Timer,
   Trash2,
   X,
 } from "lucide-react";
-import { ChURL, getThreadXhrInfo, parseThread } from "packages/chlib/src/index";
-import type { Dispatch } from "react";
+import { ChURL } from "packages/chlib/src/index";
 import { createLogger } from "src/app/logger";
-import { isTauriRuntime } from "src/app/platform/runtime";
-import { extractUrlsFromMessage } from "src/core/util/url-media";
 import { container } from "src/service-container";
-import type { IToastService } from "src/service-container/interfaces";
+import {
+  type BrowserCommandContext,
+  type BrowserCommandDefinition,
+  getCommandPageTarget,
+  getCommandSurface,
+  getCommandToast,
+  isCommandConfigSwitchOn,
+  type ResolvedBrowserCommand,
+  toggleCommandConfigSwitch,
+} from "src/view/browser/commands/command-definition";
 import {
   COMMAND_REQUEST_IDS,
   type CommandTarget,
@@ -49,32 +48,20 @@ import {
   getResponseJumpResNumFromCommandId,
   RESPONSE_JUMP_COMMAND_ID,
 } from "src/view/browser/commands/response-jump-command";
-import { TAB_COMMAND_IDS, type TabCommandId } from "src/view/browser/commands/tab-command-runtime";
+import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log-actions";
 import { toggleZenMode } from "src/view/browser/commands/zen-mode-store";
-import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
-import {
-  getAutoRefreshPageKey,
-  isAutoRefreshEnabledForPage,
-} from "src/view/browser/state/tabs/auto-refresh-pages";
+import { CommandRegistry } from "src/view/browser/extension/command-registry";
+import type { ExtensionApi } from "src/view/browser/extension/extension-api";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
-import type { ScopedTabAction } from "src/view/browser/state/tabs/use-tab-store";
-import type { Page, Tab, ThreadFilter } from "src/view/browser/types";
+import type { Page } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
-import { COMMENT_OVERLAY_FLOW_TOGGLE_EVENT } from "src/view/browser/utils/comment-overlay-flow-events";
-import { persistConfigValue, readConfigValue } from "src/view/browser/utils/config-setting";
 import {
   canQueryExtensionTabs,
   getOpenCompatibleThreadPages,
   removeExtensionTabs,
 } from "src/view/browser/utils/extension-tabs";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
-import {
-  QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
-  type QuickAccessFilterPageType,
-  THREAD_FILTER_MODE_TOGGLE_EVENT,
-} from "src/view/browser/utils/filter-toolbar-events";
-import { isPageFilterable } from "src/view/browser/utils/filterable-pages";
 import {
   getBoardUrlFromThreadUrl,
   parseInternalBrowserPage,
@@ -102,174 +89,6 @@ import { encodeThreadAsToon, estimateToonTokenCount } from "src/view/browser/uti
 
 const logger = createLogger("view/browser");
 
-function getThreadMessagesFromCache(parsed: unknown): string[] | null {
-  if (typeof parsed !== "object" || parsed === null || !("res" in parsed)) {
-    return null;
-  }
-  const responses = (parsed as { res?: unknown }).res;
-  if (!Array.isArray(responses)) {
-    return null;
-  }
-  return responses.flatMap((response: unknown) => {
-    if (
-      typeof response === "object" &&
-      response !== null &&
-      "message" in response &&
-      typeof response.message === "string"
-    ) {
-      return [response.message];
-    }
-    return [];
-  });
-}
-
-async function getCachedThreadMessages(threadUrl: string): Promise<string[]> {
-  const thread = new ChURL(threadUrl);
-  const format2chnet = readConfigValue("format_2chnet");
-  const xhrInfo = getThreadXhrInfo(thread, format2chnet);
-  if (!xhrInfo) {
-    return [];
-  }
-
-  // 変更理由: 削除対象の確認でスレを再取得すると掲示板へ不要な通信を送るため、保存済みログだけを読む。
-  const cache = container.cache.getCache(xhrInfo.path);
-  await cache.get();
-  const cachedMessages = getThreadMessagesFromCache(cache.parsed);
-  if (cachedMessages) {
-    return cachedMessages;
-  }
-
-  if (cache.data == null) {
-    return [];
-  }
-  return (
-    parseThread(thread, cache.data, {
-      format2chnet,
-      resLength: cache.resLength,
-    })?.res.map((response) => response.message) ?? []
-  );
-}
-
-async function runImgurBulkDelete(
-  imageUrls: readonly string[] | undefined,
-  context: BrowserCommandContext,
-  label: string,
-): Promise<void> {
-  const toast = getCommandToast(context);
-  const deletableUrls = await container.imgurImages.getDeletableImageUrls(imageUrls);
-  if (deletableUrls.length === 0) {
-    toast.info("削除できる投稿画像はありません");
-    return;
-  }
-
-  const viewWindow = getCommandSurface(context).window;
-  if (
-    !viewWindow.confirm(
-      `${label}から、このアプリで投稿したImgur画像 ${deletableUrls.length} 件を削除します。元に戻せません。よろしいですか？`,
-    )
-  ) {
-    return;
-  }
-
-  const result = await container.imgurImages.deleteImages(deletableUrls);
-  if (result.failures.length > 0) {
-    logger.error("Imgur画像の一括削除で一部失敗しました", {
-      label,
-      deletedCount: result.deletedCount,
-      skippedCount: result.skippedCount,
-      failures: result.failures,
-    });
-    toast.error(
-      `Imgur画像を ${result.deletedCount} 件削除しました。${result.failures.length} 件は失敗しました。`,
-    );
-    return;
-  }
-  toast.success(`Imgur画像を ${result.deletedCount} 件削除しました`);
-}
-
-export const BROWSER_COMMAND_GROUP_LABELS = {
-  navigation: "移動",
-  tab: "タブ",
-  page: "現在のページ",
-  layout: "表示",
-  copy: "コピー",
-} as const;
-
-export type BrowserCommandGroup = keyof typeof BROWSER_COMMAND_GROUP_LABELS;
-
-export const BROWSER_COMMAND_GROUP_ORDER: readonly BrowserCommandGroup[] = [
-  "navigation",
-  "tab",
-  "page",
-  "layout",
-  "copy",
-];
-
-export interface BrowserCommandContext {
-  // コマンドはフォーカス中のペインではなく、実際に表示している窓の対象を操作する。
-  viewPage: Page;
-  viewTab: Tab;
-  tabs: readonly Tab[];
-  closedTabs: readonly Tab[];
-  isTwoPane: boolean;
-  isZenMode?: boolean;
-  isWritePanelOpen: boolean;
-  /** 現在のスレッドへ書き込めるか。未指定なら通常のスレッドとして扱う。 */
-  canWriteToThread?: boolean;
-  /** スレログ削除後、板ごとの一覧キャッシュからも既読表示を除く。 */
-  clearCachedThreadReadState: (threadUrl: string) => Promise<void>;
-  dispatch: Dispatch<ScopedTabAction>;
-  toggleWritePanel: () => void;
-  openResponseJumpDialog: () => void;
-  openNextThreadSearchDialog: () => Promise<void>;
-  openSimilarThreadSearchDialog?: () => Promise<void>;
-  openArchiveReplayWindow: () => void;
-  // 履歴・再取得・タブライフサイクルは対象タブを明示する実行器へ委譲し、
-  // メニューとパレットで挙動を揃える。
-  runTabCommand?: (id: TabCommandId) => boolean;
-  // 変更理由: コマンドパレットを別窓へ載せた時も、通知とイベントを表示中の窓へ返すため。
-  // 既存の外部呼び出しとの互換性を保つため未指定時は従来の共有サービスへフォールバックする。
-  viewSurface?: ViewSurface;
-  toast?: IToastService;
-}
-
-export interface BrowserCommandDefinition {
-  id: string;
-  label: string | ((context: BrowserCommandContext) => string);
-  englishLabel: string | ((context: BrowserCommandContext) => string);
-  description?: string;
-  keywords?: readonly string[];
-  group: BrowserCommandGroup;
-  icon: LucideIcon;
-  when?: (context: BrowserCommandContext) => boolean;
-  isEnabled?: (context: BrowserCommandContext) => boolean;
-  run: (context: BrowserCommandContext) => void | Promise<void>;
-}
-
-export interface ResolvedBrowserCommand {
-  id: string;
-  label: string;
-  englishLabel: string;
-  description?: string;
-  keywords: readonly string[];
-  group: BrowserCommandGroup;
-  icon: LucideIcon;
-  enabled: boolean;
-}
-
-function getCommandSurface(context: BrowserCommandContext): ViewSurface {
-  return (
-    context.viewSurface ?? {
-      window: globalThis.window,
-      document: globalThis.document,
-    }
-  );
-}
-
-function getCommandToast(context: BrowserCommandContext): IToastService {
-  return context.toast ?? container.toast;
-}
-
 const RELOADABLE_PAGE_TYPES = new Set<Page["type"]>([
   "thread",
   "threadList",
@@ -277,27 +96,6 @@ const RELOADABLE_PAGE_TYPES = new Set<Page["type"]>([
   "writeHistoryList",
   "logList",
 ]);
-
-export function getCommandPageTarget(page: Page): CommandTarget | null {
-  switch (page.type) {
-    case "thread":
-      return {
-        url: page.threadUrl,
-        title: page.title || page.threadUrl,
-        kind: "thread",
-      };
-
-    case "threadList":
-      return {
-        url: page.boardUrl,
-        title: page.boardTitle || page.title || page.boardUrl,
-        kind: "board",
-      };
-
-    default:
-      return null;
-  }
-}
 
 function getNormalizedCommandPageUrl(page: Page): string | null {
   const target = getCommandPageTarget(page);
@@ -458,78 +256,6 @@ async function openLocalDatFile(context: BrowserCommandContext): Promise<void> {
   }
 }
 
-function toggleFilter(context: BrowserCommandContext): void {
-  const { window: viewWindow } = getCommandSurface(context);
-  const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
-  if (context.viewPage.type === "thread") {
-    viewWindow.dispatchEvent(
-      new viewWindowWithConstructors.CustomEvent("thread-filter-toolbar-toggle"),
-    );
-    return;
-  }
-
-  const pageType = context.viewPage.type as QuickAccessFilterPageType;
-  const eventName = QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[pageType];
-  if (!eventName) return;
-
-  viewWindow.dispatchEvent(
-    new viewWindowWithConstructors.CustomEvent(eventName, {
-      detail: { tabId: context.viewTab.id },
-    }),
-  );
-}
-
-function dispatchThreadFilterModeToggle(
-  context: BrowserCommandContext,
-  filter: Exclude<ThreadFilter, "all">,
-): void {
-  const { window: viewWindow } = getCommandSurface(context);
-  const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
-  viewWindow.dispatchEvent(
-    new viewWindowWithConstructors.CustomEvent(THREAD_FILTER_MODE_TOGGLE_EVENT, {
-      detail: { tabId: context.viewTab.id, filter },
-    }),
-  );
-}
-
-function dispatchCommentOverlayFlowToggle(context: BrowserCommandContext): void {
-  const { window: viewWindow } = getCommandSurface(context);
-  const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
-  viewWindow.dispatchEvent(
-    new viewWindowWithConstructors.CustomEvent(COMMENT_OVERLAY_FLOW_TOGGLE_EVENT, {
-      detail: {
-        threadUrl: context.viewPage.type === "thread" ? context.viewPage.threadUrl : null,
-      },
-    }),
-  );
-}
-
-// 変更理由: 設定の真偽値はフック側と同じ "on" / "off" の書式で保存し、
-// 画面と読み替え結果が食い違わないようにする。
-function isConfigSwitchOn(key: string): boolean {
-  return readConfigValue(key) === "on";
-}
-
-function toggleConfigSwitch(key: string): void {
-  persistConfigValue(key, isConfigSwitchOn(key) ? "off" : "on", "コマンドパレット");
-}
-
-async function toggleBookmark(context: BrowserCommandContext): Promise<void> {
-  const target = getCommandPageTarget(context.viewPage);
-  if (!target) return;
-
-  const isBookmarked = Boolean(container.bookmark.get(target.url));
-  // 変更理由: パレットとコンテキストメニューが同じ対象コマンドを通ることで、
-  // 非同期の保存完了と別窓の通知先を入口ごとに実装しないようにする。
-  await executeCommandRequest(
-    { id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_TOGGLE, args: { target } },
-    { surface: getCommandSurface(context), toast: getCommandToast(context) },
-  );
-  getCommandToast(context).info(
-    isBookmarked ? "ブックマークを削除しました" : "ブックマークに追加しました",
-  );
-}
-
 async function copyWithNotice(
   context: BrowserCommandContext,
   text: string,
@@ -582,55 +308,7 @@ function getCommandLabel(
   return typeof label === "function" ? label(context) : label;
 }
 
-// 変更理由: フィルタボタンと同じ4モードを、それぞれ選択・解除できるパレット項目として並べる。
-const THREAD_FILTER_MODE_COMMANDS: readonly BrowserCommandDefinition[] = [
-  {
-    id: "page.toggle-filter-popular",
-    label: "人気レスのフィルタを切り替え",
-    englishLabel: "Toggle Popular Filter",
-    description: "人気レスだけに絞り込みます。選択中にもう一度実行すると解除します",
-    keywords: ["人気", "popular", "絞り込み", "フィルタ"],
-    group: "page",
-    icon: Filter,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: (context) => dispatchThreadFilterModeToggle(context, "popular"),
-  },
-  {
-    id: "page.toggle-filter-image",
-    label: "画像のフィルタを切り替え",
-    englishLabel: "Toggle Image Filter",
-    description: "画像を含むレスだけに絞り込みます。選択中にもう一度実行すると解除します",
-    keywords: ["画像", "image", "絞り込み", "フィルタ"],
-    group: "page",
-    icon: Filter,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: (context) => dispatchThreadFilterModeToggle(context, "image"),
-  },
-  {
-    id: "page.toggle-filter-video",
-    label: "動画のフィルタを切り替え",
-    englishLabel: "Toggle Video Filter",
-    description: "動画を含むレスだけに絞り込みます。選択中にもう一度実行すると解除します",
-    keywords: ["動画", "video", "絞り込み", "フィルタ"],
-    group: "page",
-    icon: Filter,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: (context) => dispatchThreadFilterModeToggle(context, "video"),
-  },
-  {
-    id: "page.toggle-filter-link",
-    label: "外部リンクのフィルタを切り替え",
-    englishLabel: "Toggle External Link Filter",
-    description: "外部リンクを含むレスだけに絞り込みます。選択中にもう一度実行すると解除します",
-    keywords: ["外部", "リンク", "link", "絞り込み", "フィルタ"],
-    group: "page",
-    icon: Filter,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: (context) => dispatchThreadFilterModeToggle(context, "link"),
-  },
-];
-
-export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
+const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
   {
     id: "navigation.open-settings",
     label: "設定を開く",
@@ -688,15 +366,6 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     },
   },
   {
-    id: "navigation.open-bookmarks",
-    label: "ブックマークリストを開く",
-    englishLabel: "Open Bookmarks",
-    keywords: ["お気に入り", "favorite", "bookmark"],
-    group: "navigation",
-    icon: Bookmark,
-    run: (context) => openQuickAccessPage(context, createQuickAccessPage("bookmarkList")),
-  },
-  {
     id: "navigation.open-history",
     label: "閲覧履歴を開く",
     englishLabel: "Open Browsing History",
@@ -722,23 +391,6 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     group: "navigation",
     icon: Archive,
     run: (context) => openQuickAccessPage(context, createQuickAccessPage("logList")),
-  },
-  {
-    id: "navigation.open-archive-replay",
-    label: "過去実況再生を開く",
-    englishLabel: "Open Archive Replay",
-    description: "複数の実況スレッドを投稿時刻順につないで再生します",
-    keywords: ["過去実況", "実況再生", "コメント再生", "archive replay", "replay"],
-    group: "navigation",
-    icon: PlayCircle,
-    when: () => isTauriRuntime(),
-    // 変更理由: 過去ログ検索とは別に、複数スレッドを時刻順で再生する入口を
-    // Tauri版のコマンドパレットへ限定して公開し、ブラウザ版で未対応の再生窓を
-    // 誤って開かないようにする。
-    run: ({ openArchiveReplayWindow }) => {
-      if (!isTauriRuntime()) return;
-      openArchiveReplayWindow();
-    },
   },
   {
     id: "navigation.open-siki-log",
@@ -896,38 +548,6 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     run: ({ openResponseJumpDialog }) => openResponseJumpDialog(),
   },
   {
-    id: "page.search-next-thread",
-    label: "次スレ候補を検索",
-    englishLabel: "Find Next Thread Candidates",
-    description: "積極判定で現在のスレに続く候補を一覧表示します",
-    keywords: ["次スレ", "候補", "thread", "next", "search"],
-    group: "page",
-    icon: Search,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: ({ openNextThreadSearchDialog }) => openNextThreadSearchDialog(),
-  },
-  {
-    id: "page.search-similar-threads",
-    label: "類似スレを検索",
-    englishLabel: "Find Similar Threads",
-    description: "次スレ候補とタイトルが似ているスレを板一覧から検索します",
-    keywords: ["類似スレ", "似たスレ", "関連スレ", "similar", "thread", "search"],
-    group: "page",
-    icon: Search,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: ({ openSimilarThreadSearchDialog }) => openSimilarThreadSearchDialog?.(),
-  },
-  {
-    id: "page.toggle-filter",
-    label: "フィルターを切り替え",
-    englishLabel: "Toggle Filter",
-    keywords: ["検索", "絞り込み", "filter"],
-    group: "page",
-    icon: Filter,
-    when: ({ viewPage }) => isPageFilterable(viewPage.type),
-    run: toggleFilter,
-  },
-  {
     id: "page.toggle-write-panel",
     label: ({ isWritePanelOpen }) =>
       isWritePanelOpen ? "書き込みパネルを閉じる" : "書き込みパネルを開く",
@@ -942,16 +562,6 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
       if (canWriteToThread === false) return;
       toggleWritePanel();
     },
-  },
-  {
-    id: "page.toggle-bookmark",
-    label: "現在のページのブックマークを切り替え",
-    englishLabel: "Toggle Bookmark for Current Page",
-    keywords: ["お気に入り", "star", "bookmark"],
-    group: "page",
-    icon: Star,
-    when: ({ viewPage }) => getCommandPageTarget(viewPage) != null,
-    run: toggleBookmark,
   },
   {
     id: "page.open-board",
@@ -1198,67 +808,6 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
     },
   },
   {
-    id: "page.delete-thread-imgur-images",
-    label: "このスレの投稿画像を一括削除",
-    englishLabel: "Delete Uploaded Images in Current Thread",
-    description: "現在のスレに含まれる、このアプリから投稿したImgur画像をまとめて削除します",
-    keywords: ["Imgur", "画像削除", "一括削除", "投稿画像"],
-    group: "page",
-    icon: Trash2,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: async (context) => {
-      const { viewPage } = context;
-      if (viewPage.type !== "thread") return;
-      const messages = await getCachedThreadMessages(viewPage.threadUrl);
-      const imageUrls = messages.flatMap(extractUrlsFromMessage);
-      await runImgurBulkDelete(imageUrls, context, "このスレ");
-    },
-  },
-  {
-    id: "page.delete-all-imgur-images",
-    label: "投稿したImgur画像をすべて削除",
-    englishLabel: "Delete All Uploaded Imgur Images",
-    description: "このアプリから投稿したImgur画像をすべて削除します",
-    keywords: ["Imgur", "画像削除", "一括削除", "投稿画像", "すべて"],
-    group: "page",
-    icon: Trash2,
-    run: async (context) => {
-      await runImgurBulkDelete(undefined, context, "すべての投稿画像");
-    },
-  },
-  ...THREAD_FILTER_MODE_COMMANDS,
-  {
-    id: "page.toggle-auto-refresh",
-    label: ({ viewPage, viewTab }) =>
-      isAutoRefreshEnabledForPage(viewTab, viewPage) ? "自動更新を停止" : "自動更新を開始",
-    englishLabel: ({ viewPage, viewTab }) =>
-      isAutoRefreshEnabledForPage(viewTab, viewPage) ? "Stop Auto Refresh" : "Start Auto Refresh",
-    description: "表示中のスレッドや板の自動更新を切り替えます",
-    keywords: ["自動更新", "auto refresh", "更新", "実況"],
-    group: "page",
-    icon: Timer,
-    when: ({ viewPage }) => getAutoRefreshPageKey(viewPage) != null,
-    run: ({ dispatch, viewPage, viewTab }) => {
-      const pageKey = getAutoRefreshPageKey(viewPage);
-      if (pageKey == null) return;
-      dispatch(
-        tabActions.setAutoRefreshEnabled(!isAutoRefreshEnabledForPage(viewTab, viewPage), pageKey),
-      );
-    },
-  },
-  {
-    id: "page.toggle-auto-next-thread",
-    label: () =>
-      isConfigSwitchOn("auto_next_thread") ? "自動次スレを無効にする" : "自動次スレを有効にする",
-    englishLabel: () =>
-      isConfigSwitchOn("auto_next_thread") ? "Disable Auto Next Thread" : "Enable Auto Next Thread",
-    description: "スレッドが上限に近づいたときに次スレを自動で探す設定を切り替えます",
-    keywords: ["次スレ", "自動次スレ", "next thread", "自動"],
-    group: "page",
-    icon: Search,
-    run: () => toggleConfigSwitch("auto_next_thread"),
-  },
-  {
     id: "layout.toggle-zen-mode",
     label: ({ isZenMode }) => (isZenMode ? "Zenモードを終了" : "Zenモードを開始"),
     englishLabel: ({ isZenMode }) => (isZenMode ? "Exit Zen Mode" : "Enter Zen Mode"),
@@ -1271,34 +820,36 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   {
     id: "layout.toggle-image-blur",
     label: () =>
-      isConfigSwitchOn("image_blur") ? "画像のぼかしを無効にする" : "画像のぼかしを有効にする",
+      isCommandConfigSwitchOn("image_blur")
+        ? "画像のぼかしを無効にする"
+        : "画像のぼかしを有効にする",
     englishLabel: () =>
-      isConfigSwitchOn("image_blur") ? "Disable Image Blur" : "Enable Image Blur",
+      isCommandConfigSwitchOn("image_blur") ? "Disable Image Blur" : "Enable Image Blur",
     description: "NGワードを含む画像などのぼかし表示を切り替えます",
     keywords: ["ぼかし", "画像", "blur", "モザイク"],
     group: "layout",
     icon: Filter,
-    run: () => toggleConfigSwitch("image_blur"),
-  },
-  {
-    id: "page.toggle-comment-overlay",
-    label: "コメント実況を切り替え",
-    englishLabel: "Toggle Comment Overlay",
-    description: "実況中なら表示を切り替え、停止中なら表示中のスレッドの実況を開始します",
-    keywords: ["実況", "コメント", "overlay", "コメント実況"],
-    group: "page",
-    icon: MessageSquare,
-    when: () => isTauriRuntime(),
-    run: dispatchCommentOverlayFlowToggle,
+    run: () => toggleCommandConfigSwitch("image_blur"),
   },
 ];
+
+export const browserCommandRegistry = new CommandRegistry<BrowserCommandDefinition>();
+
+/** 既存のブラウザコマンドを、アプリ起動時に1つの所有者として登録する。 */
+export function registerCoreCommands(api: ExtensionApi): void {
+  for (const definition of CORE_COMMAND_DEFINITIONS) {
+    api.addCommand(definition);
+  }
+}
 
 export function resolveBrowserCommands(
   context: BrowserCommandContext,
   runningCommandIds: ReadonlySet<string> = new Set(),
 ): ResolvedBrowserCommand[] {
-  return BROWSER_COMMAND_DEFINITIONS.filter((definition) => definition.when?.(context) ?? true).map(
-    (definition) => ({
+  return browserCommandRegistry
+    .getSnapshot()
+    .filter((definition) => definition.when?.(context) ?? true)
+    .map((definition) => ({
       id: definition.id,
       label: getCommandLabel(definition.label, context),
       englishLabel: getCommandLabel(definition.englishLabel, context),
@@ -1307,8 +858,7 @@ export function resolveBrowserCommands(
       group: definition.group,
       icon: definition.icon,
       enabled: !runningCommandIds.has(definition.id) && (definition.isEnabled?.(context) ?? true),
-    }),
-  );
+    }));
 }
 
 export async function executeBrowserCommand(
@@ -1337,7 +887,9 @@ export async function executeBrowserCommand(
 
   const responseJumpResNum = getResponseJumpResNumFromCommandId(commandId);
   const definitionId = responseJumpResNum === null ? commandId : RESPONSE_JUMP_COMMAND_ID;
-  const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === definitionId);
+  const definition = browserCommandRegistry
+    .getSnapshot()
+    .find((command) => command.id === definitionId);
   if (!definition) return false;
 
   // 変更理由: パレットを開いたままページ状態が変わる可能性があるため、
@@ -1373,6 +925,8 @@ export function getBrowserCommandLabel(commandId: string, context: BrowserComman
     return `レス${responseJumpResNum}へジャンプ`;
   }
 
-  const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === commandId);
+  const definition = browserCommandRegistry
+    .getSnapshot()
+    .find((command) => command.id === commandId);
   return definition ? getCommandLabel(definition.label, context) : commandId;
 }

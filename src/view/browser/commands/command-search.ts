@@ -1,5 +1,5 @@
 import fuzzysort from "fuzzysort";
-import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
+import type { ResolvedBrowserCommand } from "src/view/browser/commands/command-definition";
 import {
   createOpenUrlCommand,
   createOpenUrlInNewTabCommand,

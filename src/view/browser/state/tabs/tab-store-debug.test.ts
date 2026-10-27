@@ -1,4 +1,5 @@
 import { queryDebugLogs, resetDebugLogForTest } from "src/app/debug/debug-log";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { getAutoRefreshPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { recordAutoRefreshTransitions } from "src/view/browser/state/tabs/tab-store-debug";
@@ -69,3 +70,5 @@ describe("自動更新状態のデバッグ記録", () => {
     expect(queryDebugLogs({ category: "auto-refresh" })).toEqual([]);
   });
 });
+
+setupTestPageTypes();

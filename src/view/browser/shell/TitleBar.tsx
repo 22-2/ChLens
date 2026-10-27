@@ -154,13 +154,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         role="toolbar"
         aria-label="レイアウト操作"
       >
-        {/* 変更理由: 垂直モードではアクティブペインではなく自ペインの NavigationBar が
-            ここへポータルする。ペイン単位の data-pane-id で描画先を区別する。 */}
-        <div
-          className="title-bar__nav-slot"
-          data-pane-id={paneId}
-          data-testid="title-bar-nav-slot"
-        />
         <button
           type="button"
           className="title-bar__navigation"
@@ -176,6 +169,13 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         >
           {panel.isOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
         </button>
+        {/* 変更理由: 垂直モードではアクティブペインではなく自ペインの NavigationBar が
+            ここへポータルする。ペイン単位の data-pane-id で描画先を区別する。 */}
+        <div
+          className="title-bar__nav-slot"
+          data-pane-id={paneId}
+          data-testid="title-bar-nav-slot"
+        />
         {/* 変更理由: ペイン分割はコマンドパレットから操作するため、タイトルバーの
             専用ボタンは置かない。長いタイトルで右端が圧迫される問題も避ける。 */}
       </div>

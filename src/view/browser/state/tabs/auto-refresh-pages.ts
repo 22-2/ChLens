@@ -1,4 +1,8 @@
-import { getPageViewStateKey, type Page, type Tab } from "src/view/browser/types";
+import {
+  getPageTypeDefinitionByType,
+  getPageViewStateKey,
+} from "src/view/browser/page-type-definitions";
+import type { Page, Tab } from "src/view/browser/types";
 
 // 変更理由: スレ一覧が既読通知の発生元を判定するときも、画面側と同じURL正規化を使う。
 export function getAutoRefreshThreadPageKey(threadUrl: string): string {
@@ -8,13 +12,7 @@ export function getAutoRefreshThreadPageKey(threadUrl: string): string {
 export function getAutoRefreshPageKey(page: Page): string | null {
   // 変更理由: 自動更新・表示状態・手動更新が同じページを別々のキー書式で識別していたため、
   // ページキーの組み立てはgetPageViewStateKeyへ一本化し、ここでは対象ページの判定だけを行う。
-  switch (page.type) {
-    case "thread":
-    case "threadList":
-      return getPageViewStateKey(page);
-    default:
-      return null;
-  }
+  return getPageTypeDefinitionByType(page.type).autoRefreshable ? getPageViewStateKey(page) : null;
 }
 
 export function isAutoRefreshEnabledForPage(tab: Tab, page: Page): boolean {

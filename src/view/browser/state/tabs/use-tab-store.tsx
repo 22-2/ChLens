@@ -13,6 +13,7 @@ import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import { createLogger } from "src/app/logger";
 import { platform } from "src/app/platform";
 import { container } from "src/service-container/index";
+import { getPageIdentity, getPageViewStateKey } from "src/view/browser/page-type-definitions";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { recordAutoRefreshTransitions } from "src/view/browser/state/tabs/tab-store-debug";
 import {
@@ -29,7 +30,6 @@ import {
   createTabFromPage,
   readInitialPageFromLocation,
 } from "src/view/browser/state/tabs/tab-store-new-tab";
-import { getPageIdentity } from "src/view/browser/state/tabs/tab-store-page-identity";
 import { tabReducer } from "src/view/browser/state/tabs/tab-store-reducer";
 import { findTabAcrossPanes } from "src/view/browser/state/tabs/tab-store-selectors";
 import {
@@ -52,13 +52,7 @@ import {
   type TabStoreState,
 } from "src/view/browser/state/tabs/tab-store-types";
 import { useTabViewScope } from "src/view/browser/state/tabs/use-tab-view-scope";
-import {
-  getCurrentPage,
-  getPageViewStateKey,
-  type Page,
-  type Pane,
-  type TabViewState,
-} from "src/view/browser/types";
+import { getCurrentPage, type Page, type Pane, type TabViewState } from "src/view/browser/types";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import browser from "webextension-polyfill";
 
@@ -75,9 +69,9 @@ export type {
 } from "src/view/browser/state/tabs/tab-store-types";
 export { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 
-const initialPageFromLocation = readInitialPageFromLocation();
-const restoredSession = loadTabStoreSession();
-const initialState: TabStoreState = (() => {
+// ページ種別の登録を終えてから復元するため、初期化は Provider の生成時に行う。
+function createInitialState(initialPageFromLocation: Page | null): TabStoreState {
+  const restoredSession = loadTabStoreSession();
   if (restoredSession) {
     if (!initialPageFromLocation) return restoredSession;
     // 外部リンクの起動先は復元済みセッションへ追加する。qを理由に復元を飛ばすと、
@@ -100,7 +94,7 @@ const initialState: TabStoreState = (() => {
     activePaneId: pane.id,
     closedTabs: [],
   };
-})();
+}
 
 // --- ペイン解決ヘルパー ---
 
@@ -132,7 +126,8 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // 以前はdispatch内の同期計算とuseReducerで2回評価しており、新規タブのIDが
   // stateRef側と描画側で食い違って閲覧履歴のタイトル同期などが外れていた。
   // reducerはdispatchで1回だけ評価し、その結果をstateRefとReact stateの両方へ渡す。
-  const [state, setState] = useState(initialState);
+  const [initialPageFromLocation] = useState(readInitialPageFromLocation);
+  const [state, setState] = useState(() => createInitialState(initialPageFromLocation));
   const stateRef = useRef(state);
   const threadVisitRef = useRef<Map<string, ThreadHistoryVisit>>(new Map());
   // ウィンドウタイトル更新用に、アクティブペインのアクティブタブの現在ページを参照する。
@@ -198,7 +193,7 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     ) {
       persistThreadVisit(launchTab.id, page);
     }
-  }, [persistThreadVisit]);
+  }, [initialPageFromLocation, persistThreadVisit]);
 
   const syncThreadVisitTitle = useCallback(
     (tabId: string, page: Extract<Page, { type: "thread" }>, title: string) => {
@@ -368,7 +363,7 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } catch (error) {
       logger.error("起動先のURLパラメーターを消費できませんでした", error);
     }
-  }, []);
+  }, [initialPageFromLocation]);
 
   // アクティブタブのページタイトルが変わったらウィンドウタイトルを更新する
   useEffect(() => {

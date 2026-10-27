@@ -1,4 +1,4 @@
-import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
+import type { ResolvedBrowserCommand } from "src/view/browser/commands/command-definition";
 
 export const RESPONSE_JUMP_COMMAND_ID = "page.jump-to-response";
 

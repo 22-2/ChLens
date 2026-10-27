@@ -164,6 +164,39 @@ describe("ExternalImage", () => {
     expect(fetchTauriBinaryMock).toHaveBeenCalledOnce();
   });
 
+  it("親がボタンの場合はサイズ確認中の表示をボタンにせず、クリックを親へ通す", () => {
+    const onParentClick = vi.fn();
+    useMediaImageStore.getState().beginImageCheck(imageUrl, imageUrl);
+
+    render(
+      <button type="button" onClick={onParentClick}>
+        <ExternalImage src={imageUrl} alt="テスト画像" insideControl />
+      </button>,
+    );
+
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    fireEvent.click(screen.getByText("画像サイズを確認中..."));
+    expect(onParentClick).toHaveBeenCalledOnce();
+    expect(requestMediaImageDownloadMock).not.toHaveBeenCalled();
+  });
+
+  it("親がボタンの場合でも確認待ちの表示はクリックで確認し、親の操作を止める", () => {
+    const onParentClick = vi.fn();
+    const version = useMediaImageStore.getState().beginImageCheck(imageUrl, imageUrl)!;
+    useMediaImageStore.getState().setImagePreflightResult(imageUrl, imageUrl, version, null, 5);
+
+    render(
+      <button type="button" onClick={onParentClick}>
+        <ExternalImage src={imageUrl} alt="テスト画像" insideControl />
+      </button>,
+    );
+
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+    fireEvent.click(screen.getByText("画像サイズを確認できません。クリックして確認"));
+    expect(requestMediaImageDownloadMock).toHaveBeenCalledWith(imageUrl, imageUrl, window);
+    expect(onParentClick).not.toHaveBeenCalled();
+  });
+
   it("取得済み画像を破棄すると表示を隠し、クリックで再取得する", async () => {
     isTauriRuntimeMock.mockReturnValue(true);
     fetchTauriBinaryMock.mockResolvedValue(imageResponse());

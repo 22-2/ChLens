@@ -56,7 +56,6 @@ const NEW_TAB_PAGE_MODE_OPTIONS = [
   // 初期ページの設定値は維持し、統一した入口の名前を表示する。
   { const: "home", title: "ホーム" },
   { const: "related_board", title: "関連する板" },
-  { const: "custom_board", title: "指定の板" },
 ] as const satisfies readonly SettingsOption[];
 
 const TAB_BAR_ORIENTATION_OPTIONS = [
@@ -144,13 +143,6 @@ const ALL_SETTINGS_SECTIONS = [
           "外部ページの「chlens で開く」からスレを開いたとき、新しいタブをアクティブにします。",
       },
       {
-        kind: "string",
-        key: "new_tab_page_board_url",
-        title: "指定の板 URL",
-        description:
-          "『指定の板』を選んだ時に開く板URLです（例: https://example.com/test/read.cgi/software/）。",
-      },
-      {
         kind: "divider",
         id: "network",
         title: "通信",
@@ -163,6 +155,13 @@ const ALL_SETTINGS_SECTIONS = [
           "HTTPのURLを読み込むときの扱いです。HTTPS onlyはHTTPSだけで接続し、HTTPS非対応の板は読めません。HTTPS優先はHTTPSで接続できないときだけHTTPで接続します。自動はURLのとおりに接続します。",
         options: HTTPS_MODE_OPTIONS,
         widget: "radio",
+      },
+      {
+        kind: "string",
+        key: "useragent",
+        title: "User-Agent",
+        description:
+          "Tauri版で、通信と書き込みに使うUser-Agentです。空欄なら既定値を使います。ASCII文字だけを指定してください。",
       },
       {
         kind: "boolean",

@@ -16,7 +16,12 @@ import { useThreadTitleNgDialog } from "src/features/ng/browser/use-thread-title
 import { ThreadTitleNgDialog } from "src/features/ng/ui/ThreadTitleNgDialog";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
+import {
+  useWheelPagination,
+  WHEEL_THRESHOLD,
+} from "src/features/thread/browser/useWheelPagination";
 import { createThreadContextMenuItems } from "src/features/thread/ui/thread-context-menu-items";
+import { WheelScrollIndicator } from "src/features/thread/ui/WheelScrollIndicator";
 import { clearCachedThreadReadState } from "src/features/thread-list/ui/thread-list-cache";
 import {
   calcHeat,
@@ -39,7 +44,9 @@ import {
 } from "src/features/thread-list/ui/thread-list-shared";
 import {
   getThreadListSnapshots,
+  selectThreadListSnapshot,
   type ThreadListSnapshot,
+  useSelectedThreadListSnapshot,
 } from "src/features/thread-list/ui/thread-list-snapshots";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
@@ -58,7 +65,6 @@ import {
   getThreadListPageCountKey,
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
-import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
 import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
@@ -71,6 +77,10 @@ import {
 } from "src/view/browser/types";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
+import {
+  setFilterToolbarOpen,
+  setFilterToolbarPinned,
+} from "src/view/browser/utils/filter-toolbar-open-state";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
@@ -129,9 +139,12 @@ export const ThreadListPage: React.FC<Props> = ({
   refreshKey,
   isActive,
   isAutoRefreshEnabled = false,
+  scrollContainerRef,
 }) => {
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const { window: viewWindow, document: viewDocument } = viewSurface;
+  const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
+  const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const runTargetCommand = useCallback(
     (request: CommandRequest) => {
       void runCommandRequest(request, { surface: viewSurface, toast });
@@ -163,7 +176,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const pageCountKey = getThreadListPageCountKey(tabId, page.boardUrl);
   const bookmarkRevision = useBookmarkRevision();
   const [snapshots, setSnapshots] = useState<ThreadListSnapshot[]>([]);
-  const [selectedSnapshot, setSelectedSnapshot] = useState<ThreadListSnapshot | null>(null);
+  const selectedSnapshot = useSelectedThreadListSnapshot(tabId);
   const [snapshotRevision, setSnapshotRevision] = useState(0);
   const onSnapshotSaved = useCallback(() => setSnapshotRevision((revision) => revision + 1), []);
   const autoRefreshRequestRef = useRef<{ boardUrl: string; refreshKey: number } | null>(null);
@@ -201,8 +214,9 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [page.boardUrl, snapshotRevision, toast]);
   useEffect(() => {
     // 板の切り替えや明示的な更新後は、保存済みの過去一覧から最新表示に戻す。
-    setSelectedSnapshot(null);
-  }, [page.boardUrl, refreshKey]);
+    selectThreadListSnapshot(tabId, null);
+    return () => selectThreadListSnapshot(tabId, null);
+  }, [page.boardUrl, refreshKey, tabId]);
   useThreadListReadStateSync({ boardUrl: page.boardUrl, isActive, setThreads });
   const [boardAutoRefreshIntervalMs, setBoardAutoRefreshIntervalMs] = useState(() =>
     readBoardAutoRefreshIntervalMs(page.boardUrl),
@@ -229,13 +243,26 @@ export const ThreadListPage: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const previousBoardUrlRef = useRef(page.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
-  const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
-    pageType: "threadList",
-    tabId,
-    isActive,
-    searchQuery,
-    setSearchQuery,
+  // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
+  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
+  const wheelPagination = useWheelPagination({
+    isEnabled: isActive,
+    isLoading: loading,
+    cooldownScopeKey: manualRefreshScopeKey,
+    containerRef: effectiveScrollContainerRef,
+    edge: "top",
+    onRefresh: requestManualRefresh,
   });
+  // 変更理由: スレ一覧ではフィルタバーを常設するため、開閉の状態は持たない。
+  // 通知の上端位置を合わせ、タイトルバーの開閉ボタンを隠せるよう、開いている・常時表示として共有する。
+  useEffect(() => {
+    setFilterToolbarOpen(tabId, true);
+    setFilterToolbarPinned(tabId, true);
+    return () => {
+      setFilterToolbarOpen(tabId, false);
+      setFilterToolbarPinned(tabId, false);
+    };
+  }, [tabId]);
   const [contextMenuState, setContextMenuState] = useState<{
     x: number;
     y: number;
@@ -762,14 +789,12 @@ export const ThreadListPage: React.FC<Props> = ({
       onQueryChange={setSearchQuery}
       searchMode="custom"
       searchContent={
-        isFilterOpen ? (
-          <SearchBar
-            query={searchQuery}
-            onQueryChange={setSearchQuery}
-            onClose={closeFilterToolbar}
-            hitCount={visibleDisplayThreads.length}
-          />
-        ) : null
+        <SearchBar
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          hitCount={visibleDisplayThreads.length}
+          autoFocus={false}
+        />
       }
       onDoubleClick={handleDoubleClick}
     >
@@ -779,29 +804,11 @@ export const ThreadListPage: React.FC<Props> = ({
         busy={loading && isAutoRefreshing}
         visible={isActive}
       />
-      <div className="thread-list-page__snapshots">
-        <label>
-          <span>一覧の履歴</span>
-          <select
-            value={selectedSnapshot?.url ?? ""}
-            onFocus={() => setSnapshotRevision((revision) => revision + 1)}
-            onChange={(event) => {
-              setSelectedSnapshot(
-                snapshots.find((snapshot) => snapshot.url === event.target.value) ?? null,
-              );
-            }}
-          >
-            <option value="">最新の一覧</option>
-            {snapshots.map((snapshot) => (
-              <option key={snapshot.url} value={snapshot.url}>
-                {new Date(snapshot.last_updated).toLocaleString("ja-JP")}（{snapshot.threads.length}
-                件）
-              </option>
-            ))}
-          </select>
-        </label>
-        {selectedSnapshot && <span>過去の一覧を表示中（自動更新は一時停止）</span>}
-      </div>
+      <WheelScrollIndicator
+        {...wheelPagination}
+        threshold={WHEEL_THRESHOLD}
+        portalContainerRef={effectiveScrollContainerRef}
+      />
       {showRefreshOverlay && (
         <div
           className={`thread-list-page__loading-overlay${loading ? " thread-list-page__loading-overlay--visible" : ""}`}

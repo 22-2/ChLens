@@ -1,5 +1,5 @@
 import { Search } from "lucide-react";
-import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
+import type { ResolvedBrowserCommand } from "src/view/browser/commands/command-definition";
 import { filterAndSortBrowserCommands } from "src/view/browser/commands/command-search";
 import { describe, expect, it } from "vite-plus/test";
 

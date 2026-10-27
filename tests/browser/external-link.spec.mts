@@ -164,7 +164,9 @@ test("画像はビューアで表示し、ビューアからの外部起動と�
   await expect(page.locator(".media-viewer")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByTestId("opened")).toHaveText("[]");
-  await page.getByRole("button", { name: "ブラウザで開く", exact: true }).click();
+  // ビューアの外部起動はツールバーから右クリックメニューへ移ったため、画像の右クリックから開く。
+  await page.locator(".media-viewer__image").click({ button: "right" });
+  await page.getByRole("menuitem", { name: "ブラウザで開く", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "キャンセル", exact: true }).click();
   await page.locator(".media-viewer__image").click({ button: "right" });

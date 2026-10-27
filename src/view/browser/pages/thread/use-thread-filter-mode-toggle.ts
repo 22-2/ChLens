@@ -1,10 +1,7 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
+import { registerThreadFilterModeToggle } from "src/view/browser/extension/page-actions";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ThreadFilter } from "src/view/browser/types";
-import {
-  THREAD_FILTER_MODE_TOGGLE_EVENT,
-  type ThreadFilterModeToggleDetail,
-} from "src/view/browser/utils/filter-toolbar-events";
 
 interface UseThreadFilterModeToggleParams {
   tabId: string;
@@ -16,7 +13,7 @@ interface UseThreadFilterModeToggleParams {
 /**
  * コマンドパレットからのフィルタモード切り替えを、表示中のスレッドタブへ適用する。
  *
- * 変更理由: フィルタの状態はThreadPageの中にあるため、コマンドからは直接触れない。
+ * 変更理由: フィルタの状態はThreadPageの中にあり、画面が操作の登録と解除を管理する。
  * 対象タブが表示中のときだけ反応させ、同じウィンドウ内の別スレッドを誤って絞り込まないようにする。
  */
 export function useThreadFilterModeToggle({
@@ -27,20 +24,15 @@ export function useThreadFilterModeToggle({
 }: UseThreadFilterModeToggleParams): void {
   const { window: viewWindow } = useViewSurface();
 
-  useEffect(() => {
-    const handleFilterModeToggle = (event: Event) => {
-      const detail = (event as CustomEvent<ThreadFilterModeToggleDetail>).detail;
-      if (!isActive || detail?.tabId !== tabId) return;
-
-      // フィルタボタンと同じく、選択中のモードをもう一度選ぶと「すべて」へ戻す。
-      setFilter((current) => (current === detail.filter ? "all" : detail.filter));
+  // 同じタブのスレ遷移で、旧ページの解除と新ページの登録を同期させる。
+  useLayoutEffect(() => {
+    if (!isActive) return;
+    // 表示している窓とタブにだけ登録し、非表示・別窓移動時には解除する。
+    return registerThreadFilterModeToggle(viewWindow, tabId, (filter) => {
+      // 同じモードをもう一度選ぶと「すべて」へ戻す。
+      setFilter((current) => (current === filter ? "all" : filter));
       // 押したモードの結果を確認できるよう、フィルタバーも開いておく。
       openFilterToolbar();
-    };
-
-    viewWindow.addEventListener(THREAD_FILTER_MODE_TOGGLE_EVENT, handleFilterModeToggle);
-    return () => {
-      viewWindow.removeEventListener(THREAD_FILTER_MODE_TOGGLE_EVENT, handleFilterModeToggle);
-    };
+    });
   }, [isActive, openFilterToolbar, setFilter, tabId, viewWindow]);
 }

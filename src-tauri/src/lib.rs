@@ -18,7 +18,7 @@ use std::sync::{
 };
 
 use tauri::{
-  webview::{NewWindowFeatures, NewWindowResponse, WebviewWindowBuilder},
+  webview::{NewWindowFeatures, NewWindowResponse, PageLoadEvent, WebviewWindowBuilder},
   AppHandle, Manager, Runtime, Url, WebviewUrl, WindowEvent,
 };
 
@@ -118,6 +118,22 @@ pub fn run() {
       // 変更理由: Overlayや過去実況再生ウィンドウはMainを閉じても残る構成のため、
       // Main終了をアプリ全体の終了とみなし、裏で残るWebViewやRustプロセスを確実に解放する。
       window.app_handle().exit(0);
+    })
+    .on_page_load(|webview, payload| {
+      if webview.label() != "main" || payload.event() != PageLoadEvent::Started {
+        return;
+      }
+
+      // 変更理由: 再読み込み時はpagehideからの非同期IPCが途切れ、DOMだけ閉じた
+      // 別窓がOS上に残り得る。動的な別窓はMainかその子から作られるため、
+      // Mainの新しい文書が始まる前に旧文書に属する窓を閉じる。
+      for (label, popup) in webview.app_handle().webview_windows() {
+        if label.starts_with("chlens-popup-") {
+          if let Err(error) = popup.close() {
+            log::error!("再読み込み時に別窓 {label} を閉じられませんでした: {error}");
+          }
+        }
+      }
     })
     .setup(move |app| {
       // 変更理由: 以前はdebugビルドだけ・Info固定だったため、配布版の不具合をRust側から追えなかった。

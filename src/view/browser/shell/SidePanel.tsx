@@ -1,5 +1,6 @@
+import { DragDropProvider } from "@dnd-kit/react";
 import { BookOpen, Image, Info, ListTree, Pencil, Search } from "lucide-react";
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, type RefObject, useRef } from "react";
 import { SidePanelBoards } from "src/features/board/ui/SidePanelBoards";
 import { SidePanelFavorites } from "src/features/bookmark/ui/SidePanelFavorites";
 import { SidePanelImages } from "src/features/media/ui/SidePanelImages";
@@ -7,6 +8,7 @@ import { SidePanelExtract } from "src/features/thread/ui/SidePanelExtract";
 import { SidePanelProperties } from "src/features/thread/ui/SidePanelProperties";
 import { SidePanelWrite } from "src/features/write/ui/SidePanelWrite";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
+import { readSortableMove, useSortableTab } from "src/view/browser/components/sortable-tab";
 import { useResizeHandle } from "src/view/browser/hooks/use-resize-handle";
 import {
   normalizeSidePanel,
@@ -79,20 +81,79 @@ function renderView(view: ViewDefinition, tabId: string, page: Page): ReactNode 
   return view.render(tabId, page);
 }
 
+interface SortableViewTabProps {
+  id: string;
+  index: number;
+  label: string;
+  Icon: typeof ListTree;
+  isActive: boolean;
+  wasDraggingRef: RefObject<boolean>;
+  onSelect: () => void;
+  onMove: (target: number) => void;
+}
+
+// メインのタブバーと同じ useSortable の設定・クラス名でドラッグ並べ替えを行う。
+function SortableViewTab({
+  id,
+  index,
+  label,
+  Icon,
+  isActive,
+  wasDraggingRef,
+  onSelect,
+  onMove,
+}: SortableViewTabProps) {
+  const { ref, isDragSource } = useSortableTab({ id, index, group: "side-panel" });
+  return (
+    <button
+      ref={ref}
+      type="button"
+      role="tab"
+      className={`side-panel__tab${isDragSource ? " side-panel__tab--dragging" : ""}`}
+      aria-selected={isActive}
+      title={`${label}（Alt と左右キーで並べ替え）`}
+      aria-label={label}
+      onKeyDown={(e) => {
+        if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+          e.preventDefault();
+          onMove(index + (e.key === "ArrowLeft" ? -1 : 1));
+        }
+      }}
+      onClick={() => {
+        if (wasDraggingRef.current) {
+          wasDraggingRef.current = false;
+          return;
+        }
+        onSelect();
+      }}
+    >
+      <Icon size={16} />
+    </button>
+  );
+}
+
 export function SidePanel() {
   const { state: saved, dispatch } = useSidePanelState();
   const { viewTab, viewPage } = useTabStore();
   const state = normalizeSidePanel(saved);
-  const dragged = useRef<string | null>(null);
+  // ドラッグ終了直後の click によるビュー切り替えを1回だけ抑止する（タブバーと同じ挙動）。
+  const wasDragging = useRef(false);
   const update = (patch: Partial<typeof state>) =>
     dispatch({ type: TAB_ACTION_TYPES.UPDATE_SIDE_PANEL, sidePanel: { ...state, ...patch } });
   const move = (id: string, target: number) => {
     const items = [...state.views];
     const from = items.indexOf(id);
-    if (from < 0 || target < 0 || target >= items.length || from === target) return;
+    if (from < 0 || target < 0 || target >= items.length || from === target) return false;
     items.splice(from, 1);
     items.splice(target, 0, id);
     update({ views: items });
+    return true;
+  };
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleDragEnd = (event: any) => {
+    const sorted = readSortableMove(event);
+    if (!sorted) return;
+    if (move(sorted.id, sorted.toIndex)) wasDragging.current = true;
   };
   const resize = useResizeHandle({
     value: state.width,
@@ -110,43 +171,25 @@ export function SidePanel() {
     <aside className="side-panel" style={{ width: resize.size }} aria-label="サイドパネル">
       <div className="side-panel__resize" aria-label="サイドパネルの幅" {...resize.handleProps} />
       <div className="side-panel__tabs" role="tablist" aria-label="サイドパネルのビュー">
-        {state.views.map((id, index) => {
-          if (!isViewId(id)) return null;
-          const view = views[id];
-          const Icon = view.Icon;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={state.activeView === id}
-              title={`${view.label}（Alt と左右キーで並べ替え）`}
-              aria-label={view.label}
-              draggable
-              onDragStart={() => {
-                dragged.current = id;
-              }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                if (dragged.current) move(dragged.current, index);
-                dragged.current = null;
-              }}
-              onDragEnd={() => {
-                dragged.current = null;
-              }}
-              onKeyDown={(e) => {
-                if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-                  e.preventDefault();
-                  move(id, index + (e.key === "ArrowLeft" ? -1 : 1));
-                }
-              }}
-              onClick={() => update({ activeView: id })}
-            >
-              <Icon size={16} />
-            </button>
-          );
-        })}
+        <DragDropProvider onDragEnd={handleDragEnd}>
+          {state.views.map((id, index) => {
+            if (!isViewId(id)) return null;
+            const view = views[id];
+            return (
+              <SortableViewTab
+                key={id}
+                id={id}
+                index={index}
+                label={view.label}
+                Icon={view.Icon}
+                isActive={state.activeView === id}
+                wasDraggingRef={wasDragging}
+                onSelect={() => update({ activeView: id })}
+                onMove={(target) => move(id, target)}
+              />
+            );
+          })}
+        </DragDropProvider>
       </div>
       {activeView && (
         <>

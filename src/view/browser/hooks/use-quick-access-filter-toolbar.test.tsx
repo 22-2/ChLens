@@ -1,9 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
+import { toggleFilter as togglePageFilter } from "src/view/browser/extension/page-actions";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
+import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 function QuickAccessFilterHarness({
@@ -17,7 +18,6 @@ function QuickAccessFilterHarness({
 }) {
   const [searchQuery, setSearchQuery] = useState("");
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
-    pageType: "threadList",
     tabId: "tab-1",
     isActive,
     isWheelToggleEnabled,
@@ -62,6 +62,36 @@ describe("クイックアクセスのフィルタ開閉", () => {
     cleanup();
   });
 
+  it("窓を移動すると旧窓の登録を解除し、新しい窓で開閉する", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const detachedWindow = iframe.contentWindow;
+    if (!detachedWindow) throw new Error("テスト用の窓を作れませんでした");
+    const mainSurface = { window, document };
+    const detachedSurface = { window: detachedWindow, document: detachedWindow.document };
+    const { rerender, unmount } = render(
+      <ViewSurfaceProvider surface={mainSurface}>
+        <QuickAccessFilterHarness />
+      </ViewSurfaceProvider>,
+    );
+    try {
+      rerender(
+        <ViewSurfaceProvider surface={detachedSurface}>
+          <QuickAccessFilterHarness />
+        </ViewSurfaceProvider>,
+      );
+      expect(togglePageFilter(window, "tab-1")).toBe("target-unavailable");
+      act(() => {
+        expect(togglePageFilter(detachedWindow, "tab-1")).toBe("executed");
+      });
+      expect(screen.getByTestId("filter-state")).toHaveTextContent("open");
+      unmount();
+      expect(togglePageFilter(detachedWindow, "tab-1")).toBe("target-unavailable");
+    } finally {
+      iframe.remove();
+    }
+  });
+
   it("通常テーブルの上端で上方向へホイールするとフィルタを開く", () => {
     render(<QuickAccessFilterHarness />);
 
@@ -84,12 +114,9 @@ describe("クイックアクセスのフィルタ開閉", () => {
   it("ホイール開閉が無効でも既存のトグル操作で開閉でき、ホイールで入力を隠さない", () => {
     render(<QuickAccessFilterHarness isWheelToggleEnabled={false} />);
     const toggleFilter = () =>
-      fireEvent(
-        window,
-        new CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.threadList, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
+      act(() => {
+        togglePageFilter(window, "tab-1");
+      });
 
     toggleFilter();
     expect(screen.getByTestId("filter-state")).toHaveTextContent("open");

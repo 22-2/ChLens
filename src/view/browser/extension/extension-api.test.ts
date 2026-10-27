@@ -1,0 +1,122 @@
+import { Settings } from "lucide-react";
+import type { BrowserCommandDefinition } from "src/view/browser/commands/command-definition";
+import { CORE_PAGE_TYPE_DEFINITIONS } from "src/view/browser/core-page-type-definitions";
+import { CommandRegistry } from "src/view/browser/extension/command-registry";
+import { createExtensionOwner } from "src/view/browser/extension/extension-api";
+import {
+  getPageTypeDefinitionByType,
+  isPageTypeRegistered,
+} from "src/view/browser/page-type-definitions";
+import { describe, expect, it, vi } from "vite-plus/test";
+
+interface TestCommand {
+  id: string;
+  value: string;
+}
+
+function createBrowserCommand(id: string): BrowserCommandDefinition {
+  return {
+    id,
+    label: id,
+    englishLabel: id,
+    group: "navigation",
+    icon: Settings,
+    run: () => undefined,
+  };
+}
+
+describe("拡張 API", () => {
+  it("コマンド登録時だけスナップショットを更新して購読者へ通知する", () => {
+    const registry = new CommandRegistry<TestCommand>();
+    const listener = vi.fn();
+    const unsubscribe = registry.subscribe(listener);
+    const initialSnapshot = registry.getSnapshot();
+
+    registry.add({ id: "first", value: "1" }, "test");
+
+    expect(registry.getSnapshot()).not.toBe(initialSnapshot);
+    expect(registry.getSnapshot()).toEqual([{ id: "first", value: "1" }]);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    const unchangedSnapshot = registry.getSnapshot();
+    expect(registry.getSnapshot()).toBe(unchangedSnapshot);
+    unsubscribe();
+    unsubscribe();
+    registry.add({ id: "second", value: "2" }, "test");
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("二重登録の解除で先行登録を消さず、解除を繰り返しても安全", () => {
+    const registry = new CommandRegistry<TestCommand>();
+    const original: TestCommand = { id: "shared", value: "original" };
+    const first = registry.add(original, "first-owner");
+    const duplicate = registry.add({ id: "shared", value: "duplicate" }, "second-owner");
+
+    duplicate.dispose();
+    duplicate.dispose();
+    expect(registry.getSnapshot()).toEqual([original]);
+
+    first.dispose();
+    first.dispose();
+    expect(registry.getSnapshot()).toEqual([]);
+  });
+
+  it("表示順指定で既存コマンドの直前へ挿入する", () => {
+    const registry = new CommandRegistry<TestCommand>();
+    registry.add({ id: "first", value: "1" }, "test");
+    registry.add({ id: "last", value: "3" }, "test");
+
+    registry.add({ id: "middle", value: "2" }, "test", "last");
+
+    expect(registry.getSnapshot().map(({ id }) => id)).toEqual(["first", "middle", "last"]);
+  });
+
+  it("表示順の基準が未登録なら末尾へ登録する", () => {
+    const registry = new CommandRegistry<TestCommand>();
+    registry.add({ id: "first", value: "1" }, "test");
+
+    registry.add({ id: "orphan", value: "2" }, "test", "missing");
+
+    expect(registry.getSnapshot().map(({ id }) => id)).toEqual(["first", "orphan"]);
+  });
+
+  it("所有者の解除で登録と任意の後片付けをまとめて実行する", () => {
+    const registry = new CommandRegistry<BrowserCommandDefinition>();
+    const owner = createExtensionOwner("feature", registry);
+    const cleanup = vi.fn();
+    owner.api.addCommand(createBrowserCommand("owned"));
+    owner.api.register(cleanup);
+
+    owner.dispose();
+    owner.dispose();
+
+    expect(registry.getSnapshot()).toEqual([]);
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+
+  it("登録後に個別解除した項目は所有者の解除でも再処理しない", () => {
+    const registry = new CommandRegistry<BrowserCommandDefinition>();
+    const owner = createExtensionOwner("feature", registry);
+    const cleanup = vi.fn();
+    const disposable = owner.api.register(cleanup);
+
+    disposable.dispose();
+    disposable.dispose();
+    owner.dispose();
+
+    expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+  it("ページ種別の二重登録は拒否され、拒否側の解除は先の定義を消さない", () => {
+    const registry = new CommandRegistry<BrowserCommandDefinition>();
+    const original = createExtensionOwner("first", registry);
+    const duplicate = createExtensionOwner("second", registry);
+    original.api.registerPageType("settings", CORE_PAGE_TYPE_DEFINITIONS.settings);
+    duplicate.api.registerPageType("settings", CORE_PAGE_TYPE_DEFINITIONS.settings);
+    duplicate.dispose();
+    expect(isPageTypeRegistered("settings")).toBe(true);
+    expect(getPageTypeDefinitionByType("settings")).toBe(CORE_PAGE_TYPE_DEFINITIONS.settings);
+    original.dispose();
+    original.dispose();
+    expect(isPageTypeRegistered("settings")).toBe(false);
+  });
+});

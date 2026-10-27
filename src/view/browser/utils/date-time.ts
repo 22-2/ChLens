@@ -27,3 +27,37 @@ export function formatCompactDateTime(timestamp: number): string {
   const pad2 = (value: number): string => value.toString().padStart(2, "0");
   return `${date.getFullYear()}/${pad2(date.getMonth() + 1)}/${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
 }
+
+const relativeTimeFormatter = new Intl.RelativeTimeFormat("ja-JP", { numeric: "auto" });
+
+/** スレ一覧の作成日時と履歴の時刻を同じ相対表示にする。 */
+export function formatRelativeTime(timestamp: number, now = Date.now()): string {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return "-";
+
+  const difference = timestamp - now;
+  const absoluteDifference = Math.abs(difference);
+  if (absoluteDifference < 60_000) {
+    return difference < 0 ? "たった今" : "まもなく";
+  }
+
+  let unit: Intl.RelativeTimeFormatUnit;
+  let unitMs: number;
+  if (absoluteDifference < 3_600_000) {
+    unit = "minute";
+    unitMs = 60_000;
+  } else if (absoluteDifference < 86_400_000) {
+    unit = "hour";
+    unitMs = 3_600_000;
+  } else if (absoluteDifference < 2_592_000_000) {
+    unit = "day";
+    unitMs = 86_400_000;
+  } else if (absoluteDifference < 31_536_000_000) {
+    unit = "month";
+    unitMs = 2_592_000_000;
+  } else {
+    unit = "year";
+    unitMs = 31_536_000_000;
+  }
+
+  return relativeTimeFormatter.format(Math.round(difference / unitMs), unit);
+}

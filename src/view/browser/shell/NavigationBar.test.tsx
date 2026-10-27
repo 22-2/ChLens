@@ -2,14 +2,25 @@ import "@testing-library/jest-dom/vitest";
 import "fake-indexeddb/auto";
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import * as snapshots from "src/features/thread-list/ui/thread-list-snapshots";
 import { container } from "src/service-container";
+import { registerTestFilterCommands } from "src/test-support/filter-commands";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
+import {
+  browserCommandRegistry,
+  registerCoreCommands,
+} from "src/view/browser/commands/browser-commands";
 import {
   commandPalette,
   commandPaletteStore,
 } from "src/view/browser/commands/command-palette-store";
+import {
+  createExtensionOwner,
+  type ExtensionOwner,
+} from "src/view/browser/extension/extension-api";
+import { registerFilterToggle } from "src/view/browser/extension/page-actions";
 import { NavigationBar } from "src/view/browser/shell/NavigationBar";
 import type { Page } from "src/view/browser/types";
-import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import {
   setFilterToolbarOpen,
   setFilterToolbarPinned,
@@ -31,6 +42,18 @@ vi.mock("src/view/browser/commands/command-palette-history", () => ({
   loadRecentCommandIds: loadRecentCommandIdsMock,
   saveRecentCommandIds: saveRecentCommandIdsMock,
 }));
+
+let coreOwner: ExtensionOwner | null = null;
+beforeEach(() => {
+  coreOwner?.dispose();
+  coreOwner = createExtensionOwner("core-test", browserCommandRegistry);
+  registerCoreCommands(coreOwner.api);
+  registerTestFilterCommands(coreOwner.api);
+});
+afterEach(() => {
+  coreOwner?.dispose();
+  coreOwner = null;
+});
 
 const { viewTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => {
   const longTitle = "かなり長い履歴タイトル".repeat(12);
@@ -93,6 +116,13 @@ const { orientationHolder } = vi.hoisted(() => ({
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabStore: () => ({
     state: { tabs: [viewTab], closedTabs: [] },
+    stateRef: {
+      current: {
+        panes: [{ id: "pane-1", tabs: [viewTab], activeTabId: viewTab.id }],
+        activePaneId: "pane-1",
+        closedTabs: [],
+      },
+    },
     viewTab,
     viewPage: viewTab.history[viewTab.currentIndex],
     dispatch: dispatchMock,
@@ -600,6 +630,42 @@ describe("NavigationBar", () => {
     expect(within(actions).getByTitle("お気に入りに追加")).toBeInTheDocument();
   });
 
+  it("更新の右クリックメニューから過去の一覧と最新の一覧を切り替える", async () => {
+    viewTab.currentIndex = 0;
+    const snapshot = {
+      url: "snapshot:test",
+      last_modified: "https://example.com/board/",
+      last_updated: Date.now() - 5 * 60_000,
+      threads: [],
+    };
+    const getSnapshots = vi
+      .spyOn(snapshots, "getThreadListSnapshots")
+      .mockResolvedValue([snapshot]);
+    function Selection() {
+      return (
+        <span data-testid="selection">
+          {snapshots.useSelectedThreadListSnapshot(viewTab.id)?.url ?? "latest"}
+        </span>
+      );
+    }
+    render(
+      <>
+        <NavigationBar />
+        <Selection />
+      </>,
+    );
+    fireEvent.click(screen.getByTitle("メニュー"));
+    fireEvent.contextMenu(screen.getByTitle("更新"));
+    expect(screen.getByText(/自動更新を開始/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByText("5 分前（0件）"));
+    expect(screen.getByTestId("selection")).toHaveTextContent("snapshot:test");
+    fireEvent.click(screen.getByTitle("メニュー"));
+    fireEvent.contextMenu(screen.getByTitle("更新"));
+    fireEvent.click(screen.getByText("最新の一覧"));
+    expect(screen.getByTestId("selection")).toHaveTextContent("latest");
+    getSnapshots.mockRestore();
+  });
+
   it("戻る履歴メニューのタイトルを複数行表示にする", () => {
     render(<NavigationBar />);
 
@@ -653,16 +719,15 @@ describe("NavigationBar", () => {
     expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
   });
 
-  it("URLバーの開閉ボタンの左にあるフィルタボタンでフィルタトグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+  it("URLバーの開閉ボタンの左にあるフィルタボタンで対象タブのフィルターを切り替える", () => {
+    const toggle = vi.fn();
+    const dispose = registerFilterToggle(window, viewTab.id, toggle);
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByRole("button", { name: "フィルターを開閉" }));
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "thread-filter-toolbar-toggle" }),
-    );
-    dispatchEventSpy.mockRestore();
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
   });
 
   it("フィルタバーが開いている間はフィルタボタンを押下状態にして色を変える", () => {
@@ -691,21 +756,21 @@ describe("NavigationBar", () => {
     expect(screen.getByRole("button", { name: "フィルターを開閉" })).toBeInTheDocument();
   });
 
-  it("メニュー項目の『フィルターを開く』でフィルタトグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+  it("メニュー項目の『フィルターを開く』で対象タブのフィルターを切り替える", () => {
+    const toggle = vi.fn();
+    const dispose = registerFilterToggle(window, viewTab.id, toggle);
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "thread-filter-toolbar-toggle" }),
-    );
-    dispatchEventSpy.mockRestore();
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
   });
 
   it("閲覧履歴ではメニュー項目の『フィルターを開く』で履歴用トグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const toggle = vi.fn();
+    const dispose = registerFilterToggle(window, "tab-1", toggle);
     viewTab.history = [
       {
         type: "historyList" as const,
@@ -719,17 +784,13 @@ describe("NavigationBar", () => {
     fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList,
-        detail: { tabId: "tab-1" },
-      }),
-    );
-    dispatchEventSpy.mockRestore();
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
   });
 
   it("板一覧ではメニュー項目の『フィルターを開く』で板一覧用トグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const toggle = vi.fn();
+    const dispose = registerFilterToggle(window, "tab-1", toggle);
     viewTab.history = [
       {
         type: "boardList" as const,
@@ -743,17 +804,13 @@ describe("NavigationBar", () => {
     fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.boardList,
-        detail: { tabId: "tab-1" },
-      }),
-    );
-    dispatchEventSpy.mockRestore();
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
   });
 
   it("ブックマークリストではメニュー項目の『フィルターを開く』でブックマーク用トグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const toggle = vi.fn();
+    const dispose = registerFilterToggle(window, "tab-1", toggle);
     viewTab.history = [
       {
         type: "bookmarkList" as const,
@@ -767,13 +824,8 @@ describe("NavigationBar", () => {
     fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList,
-        detail: { tabId: "tab-1" },
-      }),
-    );
-    dispatchEventSpy.mockRestore();
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
   });
 
   it("メニュー上部のお気に入りで現在スレッドのブックマークを切り替える", async () => {
@@ -1109,3 +1161,5 @@ describe("NavigationBar titlebar slot", () => {
     expect(container.querySelector(".nav-bar__url-input")).toBeNull();
   });
 });
+
+setupTestPageTypes();

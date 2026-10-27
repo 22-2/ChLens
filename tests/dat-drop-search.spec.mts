@@ -9,7 +9,7 @@ async function openUrl(page: Page, url: string) {
   await urlInput.press("Enter");
 }
 
-test("dat落ち通知は類似検索に次スレも含め、コマンドの次スレ検索は候補を絞る", async ({
+test("dat落ち通知は関連スレ検索に次スレも含め、コマンドの次スレ検索は候補を絞る", async ({
   page,
   extensionId,
   localBoard,
@@ -46,18 +46,18 @@ test("dat落ち通知は類似検索に次スレも含め、コマンドの次�
   await expect(activePanel.getByText("このスレッドはdat落ちしています")).toBeVisible();
   await expect(activePanel.locator(".thread-page__notice--expired button")).toHaveCount(1);
 
-  await activePanel.getByRole("button", { name: "類似スレを探す" }).click();
-  const similarDialog = page.getByRole("dialog");
-  const similarResults = similarDialog.getByRole("list", {
-    name: "類似スレ・次スレ候補一覧",
+  await activePanel.getByRole("button", { name: "関連スレを探す" }).click();
+  const relatedDialog = page.getByRole("dialog");
+  const relatedResults = relatedDialog.getByRole("list", {
+    name: "関連スレ・次スレ候補一覧",
   });
   await expect(
-    similarResults.getByRole("button", { name: "ローカル実況 Part.2へ移動" }),
+    relatedResults.getByRole("button", { name: "ローカル実況 Part.2へ移動" }),
   ).toBeVisible();
   await expect(
-    similarResults.getByRole("button", { name: "ローカル実況 Part.5へ移動" }),
+    relatedResults.getByRole("button", { name: "ローカル実況 Part.5へ移動" }),
   ).toBeVisible();
-  await similarDialog.getByRole("button", { name: "閉じる" }).click();
+  await relatedDialog.getByRole("button", { name: "閉じる" }).click();
 
   // 次スレ検索の操作は通知から外したため、通知にボタンがないことと、コマンドの次スレ検索が候補を絞ることを確かめる。
   await expect(activePanel.getByRole("button", { name: "次スレを探す" })).toHaveCount(0);

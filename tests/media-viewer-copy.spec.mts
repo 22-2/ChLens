@@ -39,8 +39,16 @@ test("スレの画像をビューアで開き、PNG画像としてコピーす�
   await page.locator('.content-area__tab-panel[data-active="true"] .res__thumb--image').click();
   const viewer = page.locator(".media-viewer");
   await expect(viewer).toBeVisible();
-  await expect(viewer.getByRole("button", { name: "画像をコピー" })).toBeEnabled();
-  await viewer.getByRole("button", { name: "画像をコピー" }).click();
+  // 画像のコピーは右クリックメニューにあり、項目の有効状態はメニューを開いた時点で決まる。
+  // 読み込み前に開くと無効のままになるため、画像の読み込み完了を待ってから開く。
+  const viewerImage = viewer.locator(".media-viewer__image");
+  await expect
+    .poll(() => viewerImage.evaluate((image) => (image as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+  await viewerImage.click({ button: "right" });
+  const copyItem = page.getByRole("menuitem", { name: "画像をコピー", exact: true });
+  await expect(copyItem).toBeEnabled();
+  await copyItem.click();
 
   await expect
     .poll(() =>

@@ -1,10 +1,10 @@
 import { createLogger } from "src/app/logger";
 import { container } from "src/service-container";
 import {
-  type BrowserCommandContext,
   executeBrowserCommand,
   getBrowserCommandLabel,
 } from "src/view/browser/commands/browser-commands";
+import type { BrowserCommandContext } from "src/view/browser/commands/command-definition";
 
 const logger = createLogger("view/browser");
 

@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import {
   commandPalette,
   commandPaletteStore,
@@ -313,3 +314,5 @@ describe("TitleBar", () => {
     expect(commandPaletteStore.getState().opened).toBe(false);
   });
 });
+
+setupTestPageTypes();

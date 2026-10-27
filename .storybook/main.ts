@@ -47,6 +47,8 @@ const config: StorybookConfig = {
     name: "@storybook/react-vite",
     options: {},
   },
+  // Babel docgen は既存 .ts の型アサーションを JSX と誤解析するため、ストーリー本文の説明を使う。
+  typescript: { reactDocgen: false },
   viteFinal: async (config) => {
     const configuredAliases = withoutPreactAliases(config.resolve?.alias);
     // 変更理由: Storybook既定設定が配列形式のaliasを返す場合もあるため、

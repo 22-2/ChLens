@@ -243,18 +243,41 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 2px;
   /* 変更理由: タイトルが長くても右端の操作UIを縮めず、タイトル側だけを省略させる。 */
   min-width: max-content;
+}
+
+/* 変更理由: 右上の操作をフィルター・サイドパネル・メニューの順に並べ、
+   ポータルの入れ子に関係なくボタンの間隔と大きさを揃える。 */
+.title-bar__actions > .title-bar__navigation {
+  order: 2;
+  width: 30px;
+  height: 30px;
+}
+
+.title-bar__nav-slot > .nav-bar--titlebar {
+  display: contents;
+}
+
+.title-bar__actions .nav-bar--titlebar .nav-bar__filter-toggle {
+  order: 1;
+}
+
+.title-bar__actions .nav-bar--titlebar .nav-bar__btn {
+  order: 3;
+}
+
+.title-bar__actions .nav-bar__filter-toggle:hover:not(:disabled),
+.title-bar__actions .nav-bar__btn:hover:not(:disabled) {
+  background: var(--sys-color-tab-strip-hover);
+  color: var(--sys-color-text);
 }
 
 /* 変更理由: 垂直モードでは自ペインのメニューとURL切り替えがここへポータルされる。
    空のときは幅を持たず、水平モードの見た目を変えない。 */
 .title-bar__nav-slot {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-  flex-shrink: 0;
+  display: contents;
 }
 
 .title-bar__nav-slot:empty {

@@ -35,6 +35,11 @@ export type ExternalImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src"
   src: string;
   /** クリック後の親画面ですでに明示的な取得操作が行われた場合は、設定より優先して自動取得する。 */
   manualLoad?: boolean;
+  /**
+   * 親がボタンやリンクの場合に指定する。取得前の表示をボタンにせず、操作を待つ状態以外のクリックは親へ任せる。
+   * ボタンの中にボタンを置くと、HTMLとして不正なうえ、クリックがどちらに届くか利用者から分からないため。
+   */
+  insideControl?: boolean;
   "data-testid"?: string;
   "data-image-key"?: string;
 };
@@ -101,7 +106,7 @@ function fetchSharedTauriImage(key: string, url: string, version: number): Promi
  * 通常のimg読み込みを先に試すことで、ブラウザのlazy loadingと既存のキャッシュ挙動を維持する。
  */
 export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
-  function ExternalImage({ src, onError, onLoad, manualLoad, ...props }, ref) {
+  function ExternalImage({ src, onError, onLoad, manualLoad, insideControl, ...props }, ref) {
     const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
     const { value: imageAutoDownloadLimitMb } = useConfigNumberSetting(
       IMAGE_AUTO_DOWNLOAD_LIMIT_CONFIG_KEY,
@@ -121,7 +126,7 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
     const fallbackStatusRef = useRef<"idle" | "pending" | "loaded" | "failed">("idle");
     const requestVersionRef = useRef(0);
     const currentSrcRef = useRef(src);
-    const placeholderRef = useRef<HTMLButtonElement>(null);
+    const placeholderRef = useRef<HTMLElement | null>(null);
 
     currentSrcRef.current = src;
 
@@ -261,25 +266,58 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
         }
         return shouldLoadManually ? "クリックして画像を取得" : "画像サイズを確認中...";
       })();
+      const requestImage = () => {
+        void requestMediaImageDownload(imageKey, src, viewWindow).catch((error: unknown) => {
+          logger.error("画像取得の事前確認に失敗しました", { url: src, error });
+        });
+      };
+      const placeholderProps = {
+        ref: (node: HTMLElement | null) => {
+          placeholderRef.current = node;
+        },
+        className: [
+          "external-image-placeholder",
+          imageState?.status === "discarded" ? "external-image-placeholder--deleted" : null,
+          typeof props.className === "string" ? props.className : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
+        style: {
+          ...props.style,
+          width: props.style?.width ?? props.width ?? "100%",
+          height: props.style?.height ?? props.height ?? "100%",
+        },
+        title:
+          imageState?.status === "discarded" ? placeholderText : (props.title ?? placeholderText),
+        "data-testid": props["data-testid"],
+        "data-image-key": props["data-image-key"],
+      };
+      if (insideControl) {
+        // 確認待ちと削除済みは表示が「クリック」を案内しているため、ここで取得し親の操作を止める。
+        // サイズ確認中などの受け身の状態は、親（ビューアを開くなど）の操作をそのまま通す。
+        const isAwaitingUserAction =
+          imageState?.status === "awaiting-confirmation" || imageState?.status === "discarded";
+        return (
+          <span
+            {...placeholderProps}
+            onClick={
+              isAwaitingUserAction
+                ? (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    requestImage();
+                  }
+                : undefined
+            }
+          >
+            <span>{placeholderText}</span>
+          </span>
+        );
+      }
       return (
         <button
-          ref={placeholderRef}
+          {...placeholderProps}
           type="button"
-          className={[
-            "external-image-placeholder",
-            imageState?.status === "discarded" ? "external-image-placeholder--deleted" : null,
-            typeof props.className === "string" ? props.className : null,
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          style={{
-            ...props.style,
-            width: props.style?.width ?? props.width ?? "100%",
-            height: props.style?.height ?? props.height ?? "100%",
-          }}
-          title={
-            imageState?.status === "discarded" ? placeholderText : (props.title ?? placeholderText)
-          }
           aria-label={
             imageState?.status === "discarded"
               ? placeholderText
@@ -289,14 +327,10 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
                   ? `画像を読み込む: ${alt}`
                   : "画像を読み込む"
           }
-          data-testid={props["data-testid"]}
-          data-image-key={props["data-image-key"]}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            void requestMediaImageDownload(imageKey, src, viewWindow).catch((error: unknown) => {
-              logger.error("画像取得の事前確認に失敗しました", { url: src, error });
-            });
+            requestImage();
           }}
         >
           <span>{placeholderText}</span>

@@ -18,13 +18,25 @@
 }
 
 /* 変更理由: Zenモードでは本文の閲覧領域を広げ、操作が必要な時だけパレットを戻す。 */
-.browser-shell[data-zen-mode="true"] > .title-bar,
+.browser-shell[data-zen-mode="true"] .title-bar,
 .browser-shell[data-zen-mode="true"] .pane-column__chrome,
+.browser-shell[data-zen-mode="true"] .tab-bar--vertical,
 .browser-shell[data-zen-mode="true"] .status-bar,
 .browser-shell[data-zen-mode="true"] .bottom-panel,
 .browser-shell[data-zen-mode="true"] .thread-page__top-bar,
+.browser-shell[data-zen-mode="true"] .thread-page__minimap,
+.browser-shell[data-zen-mode="true"] .thread-page__minimap-tooltip,
+.browser-shell[data-zen-mode="true"] .thread-page__floating-action,
 .browser-shell[data-zen-mode="true"] .search-bar {
   display: none;
+}
+
+.browser-shell[data-zen-mode="true"] .thread-page--with-minimap .thread-page__notice,
+.browser-shell[data-zen-mode="true"] .thread-page--with-minimap .thread-page__responses,
+.browser-shell[data-zen-mode="true"]
+  .thread-page--with-minimap
+  .thread-page__auto-scroll-threshold {
+  padding-right: var(--sys-space-8);
 }
 
 .zen-mode__palette {
@@ -43,6 +55,24 @@
   pointer-events: auto;
 }
 
+/* 変更理由: 1ペインの垂直モードでは、タブバーを画面の上端から下端まで伸ばし、
+   タイトルバーとワークスペースをその右に縦積みする。 */
+.browser-shell__vertical-frame {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  min-width: 0;
+  min-height: 0;
+}
+
+.browser-shell__vertical-main {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* ペインと補助ビューは独立してスクロールし、狭い幅でも本文を残す。 */
 .browser-shell__workspace {
   display: flex;
@@ -58,7 +88,8 @@
   max-width: 50%;
   overflow: auto;
   border-left: 1px solid var(--sys-color-border);
-  background: var(--sys-color-surface-muted);
+  /* 変更理由: サイドパネルを垂直タブバーと同じタブストリップ色に揃える。 */
+  background: var(--sys-color-tab-strip);
 }
 .side-panel__resize {
   position: absolute;
@@ -68,7 +99,7 @@
   z-index: var(--sys-z-local);
 }
 .side-panel__resize:focus-visible,
-.side-panel__tabs button:focus-visible {
+.side-panel__tab:focus-visible {
   outline: 2px solid var(--sys-color-focus-ring);
   outline-offset: -2px;
 }
@@ -77,7 +108,9 @@
   overflow-x: auto;
   border-bottom: 1px solid var(--sys-color-border);
 }
-.side-panel__tabs button {
+/* 変更理由: メインのタブバー（.tab）と、ホバー色・選択表示・遷移・ドラッグ表示を揃える。 */
+.side-panel__tab {
+  position: relative;
   flex: none;
   display: flex;
   align-items: center;
@@ -87,11 +120,27 @@
   color: var(--sys-color-text-muted);
   background: transparent;
   border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
   cursor: pointer;
+  transition:
+    background var(--sys-duration-fast),
+    color var(--sys-duration-fast);
 }
-.side-panel__tabs button[aria-selected="true"] {
+.side-panel__tab[aria-selected="true"] {
   color: var(--sys-color-text);
-  box-shadow: inset 0 -2px var(--sys-color-accent);
+  background: var(--sys-color-surface);
+  border-bottom-color: var(--sys-color-tab-indicator);
+}
+.side-panel__tab[aria-selected="false"]:hover {
+  background: var(--sys-color-tab-strip-hover);
+}
+.side-panel__tab--dragging {
+  z-index: var(--sys-z-dragging);
+  opacity: 0.95;
+  box-shadow: var(--sys-shadow-dragging);
+  /* dnd-kitがtransformを管理するため、GPUレイヤーだけを予約する。 */
+  will-change: transform;
 }
 .side-panel__heading,
 .side-panel__empty {

@@ -4,9 +4,10 @@ import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { subscribeCommentOverlayJump } from "src/features/comment-overlay/platform/jump-events";
 import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
+import { getPageViewStateKey } from "src/view/browser/page-type-definitions";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabDispatch, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import { getCurrentPage, getPageViewStateKey } from "src/view/browser/types";
+import { getCurrentPage } from "src/view/browser/types";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 const logger = createLogger("comment-overlay");

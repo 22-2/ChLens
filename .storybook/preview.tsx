@@ -1,3 +1,4 @@
+import "../src/browser-shim.js";
 import "../src/view/browser/styles/index.css";
 import "./story-canvas.css";
 

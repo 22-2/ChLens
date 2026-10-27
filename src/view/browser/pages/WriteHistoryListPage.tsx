@@ -253,7 +253,6 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   }, [searchQuery, sortState, updateViewState]);
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
-    pageType: "writeHistoryList",
     tabId,
     isActive,
     searchQuery,

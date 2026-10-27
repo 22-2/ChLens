@@ -1,8 +1,8 @@
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
+import { buildHierarchy } from "src/view/browser/page-type-definitions";
 import { readConfigValue } from "src/view/browser/state/tabs/tab-store-config";
 import { deriveBoardUrlFromThreadUrl } from "src/view/browser/state/tabs/tab-store-state-helpers";
 import {
-  buildHierarchy,
   createHomeTab,
   createTabRuntimeState,
   ensurePaneHasTab,
@@ -16,14 +16,14 @@ import { normalizePageLocation } from "src/view/browser/utils/page-location";
 import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 // 新規タブ・ペインの生成と、設定に応じた初期ページの解決。
-type NewTabPageMode = "home" | "related_board" | "custom_board";
+type NewTabPageMode = "home" | "related_board";
 
 function resolveNewTabPageMode(raw: string | null): NewTabPageMode {
-  if (raw === "home" || raw === "related_board" || raw === "custom_board") {
+  if (raw === "home" || raw === "related_board") {
     return raw;
   }
 
-  // 未設定時だけホームを既定にし、利用者が指定した初期ページの設定は維持する。
+  // 未設定時と、廃止した「指定の板」の保存値はホームを既定にする。
   return DEFAULT_CONFIG.new_tab_page_mode as NewTabPageMode;
 }
 
@@ -113,15 +113,6 @@ function resolveConfiguredNewTabPage(sourcePage: Page | null, sourceTab: Tab | n
 
   if (mode === "home") {
     // 新しいタブもホームから始め、板一覧はホームのボタンから開く。
-    return { type: "home", title: "ホーム" };
-  }
-
-  if (mode === "custom_board") {
-    const rawBoardUrl = readConfigValue("new_tab_page_board_url");
-    if (typeof rawBoardUrl === "string" && rawBoardUrl.trim() !== "") {
-      return createThreadListPageFromBoardUrl(rawBoardUrl);
-    }
-
     return { type: "home", title: "ホーム" };
   }
 

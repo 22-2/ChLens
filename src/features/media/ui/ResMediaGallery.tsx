@@ -1,4 +1,5 @@
 import { parseMessage } from "@chlen/chlib";
+import { Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -276,6 +277,7 @@ function VideoThumbImage({
       alt={`${embed.providerLabel} のサムネイル`}
       loading="lazy"
       manualLoad={false}
+      insideControl
       onError={() => {
         if (posterUrl !== embed.fallbackThumbnailUrl) {
           setPosterUrl(embed.fallbackThumbnailUrl);
@@ -499,6 +501,7 @@ function TwitterPostCard({
                       data-image-key={media.url}
                       alt={media.altText ?? "投稿画像"}
                       loading="lazy"
+                      insideControl
                     />
                   ) : (
                     <ExternalImage
@@ -507,6 +510,7 @@ function TwitterPostCard({
                       alt={media.altText ?? "投稿画像"}
                       loading="lazy"
                       manualLoad={false}
+                      insideControl
                     />
                   )}
                 </ConfirmableLink>
@@ -655,6 +659,7 @@ export function ResMediaGallery({
             {
               id: "discard-image",
               label: "画像を破棄",
+              icon: <Trash2 size={14} />,
               danger: true,
               onSelect: () => useMediaImageStore.getState().discardImage(url),
             },
@@ -858,6 +863,7 @@ export function ResMediaGallery({
                     data-image-key={item.rawUrl}
                     alt={item.rawUrl}
                     loading="lazy"
+                    insideControl
                   />
                 ) : (
                   <ExternalImage
@@ -866,6 +872,7 @@ export function ResMediaGallery({
                     alt={item.rawUrl}
                     loading="lazy"
                     manualLoad={false}
+                    insideControl
                   />
                 )}
               </ConfirmableLink>

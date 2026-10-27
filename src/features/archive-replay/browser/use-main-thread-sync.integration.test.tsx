@@ -4,6 +4,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import { container } from "src/service-container/index";
 import type { IHistoryService } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
@@ -77,6 +78,8 @@ describe("過去実況Main同期のTabProvider統合", () => {
 
   it("新規専用タブをMainへフォーカスしてもTabProviderの状態を壊さない", async () => {
     vi.resetModules();
+    const { registerTestPageTypes } = await import("src/test-support/page-types-test-setup");
+    const disposePageTypes = registerTestPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
     const { useArchiveReplayMainThreadSync } = await import("./use-main-thread-sync");
 
@@ -132,7 +135,10 @@ describe("過去実況Main同期のTabProvider統合", () => {
     expect(screen.getByTestId("current-url")).toHaveTextContent(
       "https://example.com/test/read.cgi/live/2/",
     );
+    disposePageTypes();
     expect(screen.getByTestId("current-url")).toHaveAttribute("data-tab-id", tabId);
     expect(screen.getByTestId("current-url")).toHaveAttribute("data-tab-count", tabCount);
   });
 });
+
+setupTestPageTypes();

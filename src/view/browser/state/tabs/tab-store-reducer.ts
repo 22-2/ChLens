@@ -1,3 +1,4 @@
+import { getPageIdentity } from "src/view/browser/page-type-definitions";
 import {
   getAutoRefreshPageKey,
   resetAutoRefreshState,
@@ -8,7 +9,6 @@ import {
   createTabFromPage,
   shouldFocusNewTabOnOpen,
 } from "src/view/browser/state/tabs/tab-store-new-tab";
-import { getPageIdentity } from "src/view/browser/state/tabs/tab-store-page-identity";
 import {
   canCloseTab,
   canOpenInRightPane,
@@ -359,7 +359,10 @@ export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabSt
       const nextState = updateTargetTab(state, paneId, action.tabId, (tab) =>
         resetAutoRefreshState(pushPageToTabHistory(tab, action.page)),
       );
-      return action.tabId ? nextState : { ...nextState, activePaneId: paneId };
+      // 明示的なタブ指定でも、元画面の選択タブからの遷移は従来どおりペインをアクティブにする。
+      return action.tabId && !action.activatePane
+        ? nextState
+        : { ...nextState, activePaneId: paneId };
     }
 
     case TAB_ACTION_TYPES.NAVIGATE_TAB: {

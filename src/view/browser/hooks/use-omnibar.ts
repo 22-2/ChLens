@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { createLogger } from "src/app/logger";
-import type { ResolvedBrowserCommand } from "src/view/browser/commands/browser-commands";
+import type { ResolvedBrowserCommand } from "src/view/browser/commands/command-definition";
 import { filterAndSortBrowserCommands } from "src/view/browser/commands/command-search";
 import {
   buildOmnibarSuggestions,

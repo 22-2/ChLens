@@ -1,3 +1,4 @@
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { loadTabStoreSession } from "src/view/browser/state/tabs/tab-store-session";
 import { createHomeTab, getCurrentPage, type Tab } from "src/view/browser/types";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -119,6 +120,28 @@ describe("ホーム統合後のセッション移行", () => {
 });
 
 describe("セッション保存形式", () => {
+  it("未登録ページの履歴と表示状態を再登録まで失わない", async () => {
+    const { toPersistedTab } = await import("src/view/browser/state/tabs/tab-store-session");
+    const unknownPage = {
+      type: "futurePage",
+      title: "未登録",
+      location: "example",
+    } as unknown as Tab["history"][number];
+    const viewStates = { "futurePage:example": { searchQuery: "再登録後に復元" } };
+    const tab = { ...createHomeTab("tab"), history: [unknownPage], viewStates };
+    const persisted = toPersistedTab(tab);
+    expect(persisted.history).toEqual([unknownPage]);
+    expect(persisted.viewStates).toEqual(viewStates);
+    storage.json = JSON.stringify({
+      panes: [{ id: "pane", tabs: [persisted], activeTabId: "tab" }],
+      activePaneId: "pane",
+      closedTabs: [],
+    });
+    const restored = loadTabStoreSession()!.panes[0].tabs[0];
+    expect(restored.history).toContainEqual(unknownPage);
+    expect(restored.viewStates).toEqual(viewStates);
+  });
+
   it("一時状態を書き出さず、履歴から外れたページの表示状態を切り捨てる", async () => {
     const { toPersistedTab } = await import("src/view/browser/state/tabs/tab-store-session");
     const threadPage = {
@@ -184,3 +207,5 @@ describe("下部パネルのセッション", () => {
     });
   });
 });
+
+setupTestPageTypes();

@@ -5,12 +5,15 @@ interface Props {
   className?: string;
   query: string;
   onQueryChange: (q: string) => void;
-  onClose: () => void;
+  /** 省略すると閉じるボタンと Escape での閉じる操作を出さない（常設のバー用）。 */
+  onClose?: () => void;
   hitCount?: number;
   loading?: boolean;
   /** 検索バー先頭に差し込む補助コントロール（例: 検索モード切替）。 */
   prefix?: React.ReactNode;
   placeholder?: string;
+  /** 表示時に入力欄へフォーカスするか。常設のバーでは奪わないよう false にする。 */
+  autoFocus?: boolean;
 }
 
 export const SearchBar: React.FC<Props> = ({
@@ -22,12 +25,13 @@ export const SearchBar: React.FC<Props> = ({
   loading = false,
   prefix,
   placeholder = "検索...",
+  autoFocus = true,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   return (
     <div className={["search-bar", className].filter(Boolean).join(" ")}>
@@ -40,7 +44,7 @@ export const SearchBar: React.FC<Props> = ({
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Escape") onClose();
+          if (e.key === "Escape") onClose?.();
         }}
       />
       {loading ? (
@@ -48,9 +52,11 @@ export const SearchBar: React.FC<Props> = ({
       ) : hitCount !== undefined ? (
         <span className="search-bar__count">{hitCount}件</span>
       ) : null}
-      <button className="search-bar__close" onClick={onClose}>
-        ✕
-      </button>
+      {onClose ? (
+        <button className="search-bar__close" onClick={onClose}>
+          ✕
+        </button>
+      ) : null}
     </div>
   );
 };

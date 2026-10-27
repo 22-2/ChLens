@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
+import { registerFilterToggle } from "src/view/browser/extension/page-actions";
 import {
   getThreadListPageCountKey,
   getThreadPageCountKey,
@@ -10,7 +11,6 @@ import {
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
 import type { Page } from "src/view/browser/types";
-import { THREAD_FILTER_TOOLBAR_TOGGLE_EVENT } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { PageCountStatusItem } from "./PageCountStatusItem";
@@ -118,21 +118,14 @@ describe("PageCountStatusItem", () => {
   it("スレのレス数をクリックすると対象タブのフィルタバーを切り替える", async () => {
     renderStatusBar("thread", 128);
 
-    const listener = vi.fn<(event: Event) => void>();
-    window.addEventListener(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, listener);
-
+    const toggle = vi.fn();
+    const dispose = registerFilterToggle(window, "tab-1", toggle);
     try {
       const countButton = await screen.findByRole("button", { name: "現在のレス数: 128レス" });
       fireEvent.click(countButton);
-
-      const receivedEvent = listener.mock.calls[0]?.[0];
-      if (receivedEvent == null) {
-        throw new Error("フィルタバーを開くイベントが発生しませんでした");
-      }
-      expect(receivedEvent).toBeInstanceOf(CustomEvent);
-      expect((receivedEvent as CustomEvent<{ tabId: string }>).detail).toEqual({ tabId: "tab-1" });
+      expect(toggle).toHaveBeenCalledOnce();
     } finally {
-      window.removeEventListener(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, listener);
+      dispose();
     }
   });
 });

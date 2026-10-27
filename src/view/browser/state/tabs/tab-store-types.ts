@@ -90,7 +90,7 @@ export type TabAction =
   | { type: typeof TAB_ACTION_TYPES.TOGGLE_PIN; tabId: string }
   | { type: typeof TAB_ACTION_TYPES.MOVE_TAB; dragTabId: string; toIndex: number }
   | { type: typeof TAB_ACTION_TYPES.SELECT_TAB; tabId: string; preserveActivePane?: boolean }
-  | { type: typeof TAB_ACTION_TYPES.NAVIGATE; page: Page }
+  | { type: typeof TAB_ACTION_TYPES.NAVIGATE; page: Page; activatePane?: boolean }
   | { type: typeof TAB_ACTION_TYPES.NAVIGATE_TAB; tabId: string; page: Page }
   | { type: typeof TAB_ACTION_TYPES.GO_BACK }
   | { type: typeof TAB_ACTION_TYPES.GO_FORWARD }

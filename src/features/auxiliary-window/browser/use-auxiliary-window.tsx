@@ -8,6 +8,7 @@ import {
 } from "src/features/auxiliary-window/browser/auxiliary-window-root";
 import {
   type AuxiliaryWindowWatcher,
+  closeAuxiliaryWindow,
   watchAuxiliaryWindow,
 } from "src/features/auxiliary-window/browser/auxiliary-window-watcher";
 
@@ -86,9 +87,7 @@ export function openAuxiliaryWindow(
   } catch (error) {
     logger.error(`[${options.logLabel}] 別窓の表示基盤を作成できませんでした`, error);
     try {
-      if (!auxiliaryWindow.closed) {
-        auxiliaryWindow.close();
-      }
+      closeAuxiliaryWindow(auxiliaryWindow);
     } catch (closeError) {
       // root作成失敗時にWindowProxyへ触れない環境でも、本窓へ例外を伝播させない。
       logger.error(`[${options.logLabel}] 失敗した別窓を閉じられませんでした`, closeError);

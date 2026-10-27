@@ -379,6 +379,7 @@ const UI_LAYER_FILES = [
   "src/view/browser/utils/**",
   "src/view/browser/components/**",
   "src/view/browser/commands/**",
+  "src/view/browser/extension/**",
   "src/view/browser/state/**",
   "src/view/browser/types.ts",
 ];

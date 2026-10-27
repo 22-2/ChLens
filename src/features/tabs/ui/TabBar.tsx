@@ -20,9 +20,17 @@ interface BarContextMenuState {
 /**
  * ストアと接続したタブバー。状態と操作はモデルから、見た目は TabBarView から得る。
  */
-export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
-  orientation = "horizontal",
-}) => {
+export const TabBar: React.FC<{
+  orientation?: TabBarOrientation;
+  /** 共通タブバーで、このペインのタブ一覧に付ける見出し。 */
+  sectionLabel?: string;
+  /** 見出しの横へ添える、ペインがフォーカス中かどうか。 */
+  isPaneFocused?: boolean;
+  /** 共通タブバーに続けて並べる他ペインのタブ一覧。 */
+  extraSections?: React.ReactNode;
+  /** 共通タブバーの2つ目以降のペインとして、タブ一覧だけを描く。 */
+  embedded?: boolean;
+}> = ({ orientation = "horizontal", sectionLabel, isPaneFocused, extraSections, embedded }) => {
   const isVertical = orientation === "vertical";
   const model = useTabBarModel(isVertical);
   const { setCollapsed, setWidth } = model;
@@ -89,6 +97,10 @@ export const TabBar: React.FC<{ orientation?: TabBarOrientation }> = ({
       onTabContextMenu={handleTabContextMenu}
       onBarContextMenu={handleBarContextMenu}
       overlay={overlay}
+      sectionLabel={sectionLabel}
+      isPaneFocused={isPaneFocused}
+      extraSections={extraSections}
+      embedded={embedded}
     />
   );
 };

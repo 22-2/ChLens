@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   root: null as HTMLElement | null,
 }));
 
+vi.mock("src/app/platform", () => ({ platform: { window: {} } }));
+
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   PaneProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useTabDispatch: () => mocks.tabDispatch,
