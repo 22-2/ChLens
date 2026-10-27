@@ -48,7 +48,9 @@
 .thread-page__sticky-header {
   position: sticky;
   top: 0;
-  z-index: var(--sys-z-sticky);
+  /* 変更理由: フィルタバーが閉じている間はミニマップがペイン上端から始まり、
+     同じsticky領域にあるスレ内検索バーがミニマップの背後へ隠れるため、前面へ出す。 */
+  z-index: calc(var(--sys-z-minimap) + 1);
 }
 
 .thread-page__responses {
@@ -79,6 +81,10 @@
 .thread-page--with-minimap .thread-page__notice,
 .thread-page--with-minimap .thread-page__responses,
 .thread-page--with-minimap .thread-page__auto-scroll-threshold {
+  padding-right: calc(var(--sys-space-8) + var(--thread-minimap-width, 0px));
+}
+
+.thread-page--with-minimap .thread-find-bar {
   padding-right: calc(var(--sys-space-8) + var(--thread-minimap-width, 0px));
 }
 

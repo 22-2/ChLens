@@ -17,6 +17,7 @@ import { Spinner } from "src/view/browser/ui/Spinner";
 import { downloadBlob } from "src/view/browser/utils/blob-download";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 const logger = createLogger("view/browser");
@@ -159,6 +160,7 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
     headerClassName: "simple-data-table__th--title",
     cellClassName: "simple-data-table__title",
     sortable: true,
+    searchable: true,
     cell: (row) => row.title,
   },
   {
@@ -175,6 +177,7 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
     headerClassName: "simple-data-table__th--writehistory-name",
     cellClassName: "simple-data-table__writehistory-name",
     sortable: true,
+    searchable: true,
     cell: (row) => row.name || "-",
   },
   {
@@ -183,6 +186,7 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
     headerClassName: "simple-data-table__th--writehistory-mail",
     cellClassName: "simple-data-table__writehistory-mail",
     sortable: true,
+    searchable: true,
     cell: (row) => row.mail || "-",
   },
   {
@@ -190,6 +194,7 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
     header: "本文",
     cellClassName: "simple-data-table__writehistory-message",
     sortable: true,
+    searchable: true,
     cell: (row) => row.message || "-",
   },
   {
@@ -324,12 +329,11 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   }, []);
 
   const filtered = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    const rows = normalizedQuery
+    const rows = searchQuery.trim()
       ? entries.filter((entry) =>
-          `${entry.title} ${entry.name} ${entry.mail} ${entry.message}`
-            .toLowerCase()
-            .includes(normalizedQuery),
+          [entry.title, entry.name, entry.mail, entry.message].some((text) =>
+            matchesSearchQuery(text, searchQuery),
+          ),
         )
       : entries;
 
@@ -468,6 +472,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
       <SimpleDataTable
         columns={COLUMNS}
         rows={filtered}
+        highlightQuery={searchQuery}
         getRowKey={(row) => `${row.url}:${row.originalIndex}`}
         getRowTooltip={(row) => row.title}
         onRowClick={openEntry}

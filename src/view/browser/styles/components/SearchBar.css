@@ -29,6 +29,22 @@
   border-color: var(--sys-color-focus-ring);
 }
 
+.search-bar__scope-select {
+  height: 28px;
+  padding: 0 var(--sys-space-2);
+  border: 1px solid var(--sys-color-input-border);
+  border-radius: var(--sys-radius-md);
+  font-family: inherit;
+  font-size: var(--sys-font-size-sm);
+  background: var(--sys-color-input-bg);
+  color: var(--sys-color-text);
+}
+
+.search-bar__scope-select:focus {
+  border-color: var(--sys-color-focus-ring);
+  outline: none;
+}
+
 .search-bar__count {
   font-size: var(--sys-font-size-sm);
   color: var(--sys-color-table-muted);

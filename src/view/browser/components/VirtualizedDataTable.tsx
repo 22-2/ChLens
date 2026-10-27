@@ -1,6 +1,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { useEffect, useMemo, useRef } from "react";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
+import { SearchHighlight } from "src/view/browser/components/SearchHighlight";
 import { type ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
@@ -21,6 +22,7 @@ interface Props<TRow> {
   // 変更理由: タイトル列を1行省略表示にした分、全文は行全体のホバーで
   // 確認できるようにするため、行単位のツールチップ文言を受け取れるようにする。
   getRowTooltip?: (row: TRow) => string;
+  highlightQuery?: string;
   estimatedRowHeight?: number;
   overscan?: number;
   endReachedThreshold?: number;
@@ -43,6 +45,7 @@ export function VirtualizedDataTable<TRow>({
   sortDirection,
   onSort,
   getRowTooltip,
+  highlightQuery = "",
   estimatedRowHeight = 52,
   overscan = 8,
   endReachedThreshold = 10,
@@ -187,9 +190,14 @@ export function VirtualizedDataTable<TRow>({
               >
                 {visibleColumns.map((column) => {
                   const colDef = colDefMap.get(column.key);
+                  const cellContent = column.cell(row);
                   return (
                     <td key={column.key} className={colDef?.cellClassName ?? ""}>
-                      {column.cell(row)}
+                      {colDef?.searchable && typeof cellContent === "string" ? (
+                        <SearchHighlight text={cellContent} query={highlightQuery} />
+                      ) : (
+                        cellContent
+                      )}
                     </td>
                   );
                 })}

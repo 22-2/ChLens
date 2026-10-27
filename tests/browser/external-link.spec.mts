@@ -82,10 +82,10 @@ for (const input of ["クリック", "ミドルクリック", "Enter", "Space", 
   });
 }
 
-test("除去後URLを明示選択してから1回だけ開く", async ({ page }, info) => {
+test("検出時に選択済みの除去後URLを1回だけ開く", async ({ page }, info) => {
   await article(page).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("checkbox").check();
+  await expect(dialog.getByRole("checkbox")).toBeChecked();
   await expect(dialog.getByRole("textbox")).toHaveValue("https://example.com/article?id=42");
   await page.screenshot({ path: info.outputPath("confirmation-light.png") });
   await dialog.getByRole("button", { name: "開く", exact: true }).click();
@@ -139,14 +139,16 @@ for (const action of ["開く", "新しいタブで開く", "新しいウィン�
   test(`右クリックの「${action}」も確認してから開く`, async ({ page }) => {
     await article(page).click({ button: "right" });
     await page.getByRole("menuitem", { name: action, exact: true }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("checkbox")).toBeChecked();
     await expect(page.getByTestId("opened")).toHaveText("[]");
-    await page.getByRole("dialog").getByRole("button", { name: "開く", exact: true }).click();
+    await dialog.getByRole("button", { name: "開く", exact: true }).click();
     await expect
       .poll(async () => JSON.parse(await page.getByTestId("opened").innerText()))
       .toEqual([
         {
-          url: "https://example.com/article?id=42&utm_source=test",
+          url: "https://example.com/article?id=42",
           active: action !== "新しいタブで開く",
           newWindow: action === "新しいウィンドウで開く",
         },

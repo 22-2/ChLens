@@ -7,6 +7,7 @@ import {
 import { ChevronDown, ChevronUp } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
+import { SearchHighlight } from "src/view/browser/components/SearchHighlight";
 import { useColumnOrder } from "src/view/browser/components/use-column-order";
 import { useColumnVisibility } from "src/view/browser/components/use-column-visibility";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
@@ -22,6 +23,7 @@ export interface ColumnDef<TRow> {
   cell: (row: TRow) => React.ReactNode;
   cellTooltip?: (row: TRow) => string;
   sortable?: boolean;
+  searchable?: boolean;
   hideable?: boolean;
 }
 
@@ -50,6 +52,7 @@ interface Props<TRow> {
   // 変更理由: タイトル列を1行省略表示にした分、全文は行全体のホバーで
   // 確認できるようにするため、行単位のツールチップ文言を受け取れるようにする。
   getRowTooltip?: (row: TRow) => string;
+  highlightQuery?: string;
   columnVisibilityStorageKey?: string;
   columnVisibilityLockedKeys?: readonly string[];
   columnOrderStorageKey?: string;
@@ -70,6 +73,7 @@ export function SimpleDataTable<TRow extends object>({
   sortDirection,
   onSort,
   getRowTooltip,
+  highlightQuery = "",
   columnVisibilityStorageKey,
   columnVisibilityLockedKeys,
   columnOrderStorageKey,
@@ -372,6 +376,7 @@ export function SimpleDataTable<TRow extends object>({
                   >
                     {row.getVisibleCells().map((cell) => {
                       const colDef = colDefMap.get(cell.column.id);
+                      const cellContent = flexRender(cell.column.columnDef.cell, cell.getContext());
                       return (
                         <td
                           key={cell.id}
@@ -386,7 +391,11 @@ export function SimpleDataTable<TRow extends object>({
                               : undefined
                           }
                         >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          {colDef?.searchable && typeof cellContent === "string" ? (
+                            <SearchHighlight text={cellContent} query={highlightQuery} />
+                          ) : (
+                            cellContent
+                          )}
                         </td>
                       );
                     })}
