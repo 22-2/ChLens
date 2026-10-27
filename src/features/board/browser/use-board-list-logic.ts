@@ -6,13 +6,13 @@ import {
   type OpenedBoardEntry,
   parseOpenedBoardEntries,
 } from "src/core/board/opened-board-entries";
+import { normalizeBoardUrlForRemove } from "src/features/board/domain/board-list-utils";
 import { container } from "src/service-container/index";
-import { normalizeBoardUrlForRemove } from "src/view/browser/pages/board-list/board-list-utils";
 import { useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
 
 // ─── 定数 ────────────────────────────────────────────────────────────────────
 
-const logger = createLogger("useBoardListLogic");
+const logger = createLogger("board");
 const CONFIG_KEYS = {
   REMOVED_BOARD_URLS: "board_list_removed_urls",
   REMOVED_MENU_NAMES: "board_list_removed_menus",

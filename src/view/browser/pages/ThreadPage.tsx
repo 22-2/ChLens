@@ -29,10 +29,6 @@ import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer
 import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/features/next-thread/browser/use-auto-next-thread-setting";
 import { NextThreadSearchDialog } from "src/features/next-thread/ui/NextThreadSearchDialog";
-import {
-  useIsNgTemporarilyDisabled,
-  useNgDisplayMode,
-} from "src/features/ng/browser/use-ng-status";
 import type { ContextMenuPopupItem } from "src/features/popup/browser/popup-types";
 import { useThreadPopupManager } from "src/features/popup/browser/use-popup-manager";
 import { PopupRenderer } from "src/features/popup/ui/PopupRenderer";
@@ -41,6 +37,7 @@ import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtim
 import { useThreadData } from "src/features/thread/browser/use-thread-data";
 import { useThreadFind } from "src/features/thread/browser/use-thread-find";
 import { useThreadRefreshController } from "src/features/thread/browser/use-thread-refresh-controller";
+import { useThreadSnapshotPublisher } from "src/features/thread/browser/use-thread-snapshot-publisher";
 import type { VirtualKey } from "src/features/thread/browser/use-thread-virtual-list";
 import {
   REPLAY_LINE_KEY,
@@ -83,10 +80,6 @@ import {
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import {
-  publishThreadSnapshot,
-  removeThreadSnapshot,
-} from "src/view/browser/state/thread-snapshot";
-import {
   canGoBack,
   canGoForward,
   type Tab,
@@ -94,7 +87,6 @@ import {
 } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
-import { resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
   buildBlurredResSet,
@@ -177,21 +169,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
-  // 表示面ごとに取得を重複させず、このタブの最新結果を補助ビューへ公開する。
-  const [snapshotOwner] = useState(() => Symbol("thread-snapshot"));
-  const isNgDisabled = useIsNgTemporarilyDisabled();
-  const ngMode = useNgDisplayMode();
-  const extractableResponses = useMemo(
-    () =>
-      visibleResponses.filter(
-        (res) =>
-          isNgDisabled ||
-          !(res.ng || res.class?.includes("ng")) ||
-          resolveNgDisplayMode(ngMode, res.ng) === "highlight-ng",
-      ),
-    [visibleResponses, isNgDisabled, ngMode],
-  );
-  useEffect(() => () => removeThreadSnapshot(tabId, snapshotOwner), [tabId, snapshotOwner]);
   const requestManualRefresh = useCallback(() => {
     if (!threadCapabilities.canRefresh) return;
     runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
@@ -773,37 +750,19 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     return buildBlurredResSet(responses, indexes.repIndex, imageBlurConfig.harmfulWordPattern);
   }, [imageBlurConfig, indexes.repIndex, responses]);
   // 画像一覧も本文と同じぼかし判定にするため、判定結果を含めて公開する。
-  useEffect(() => {
-    if (isArchiveReplay) {
-      removeThreadSnapshot(tabId, snapshotOwner);
-      return;
-    }
-    publishThreadSnapshot(tabId, snapshotOwner, {
-      threadUrl: page.threadUrl,
-      responses,
-      visibleResponses: extractableResponses,
-      messageProtocol,
-      blurredResNums,
-      imageBlurRadius: imageBlurConfig.radius,
-      updatedAt: Date.now(),
-      loading: isInitialLoading,
-      error,
-      expired,
-    });
-  }, [
+  useThreadSnapshotPublisher({
     tabId,
-    snapshotOwner,
-    page.threadUrl,
+    enabled: !isArchiveReplay,
+    threadUrl: page.threadUrl,
     responses,
-    extractableResponses,
+    visibleResponses,
     messageProtocol,
     blurredResNums,
-    imageBlurConfig.radius,
-    isInitialLoading,
+    imageBlurRadius: imageBlurConfig.radius,
+    loading: isInitialLoading,
     error,
     expired,
-    isArchiveReplay,
-  ]);
+  });
 
   const { openPopupResContextMenu, openThreadResContextMenu } = useThreadResContextMenu({
     addPopupContextMenu,

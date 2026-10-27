@@ -1,4 +1,4 @@
-import type { Page } from "src/view/browser/types";
+import type { Page, ThreadListPage } from "src/view/browser/types";
 
 export type QuickAccessPageType = "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
 
@@ -31,4 +31,15 @@ export function createSettingsPage(sectionId?: string): SettingsPage {
   return sectionId === undefined
     ? { type: "settings", title: "設定" }
     : { type: "settings", title: "設定", sectionId };
+}
+
+/**
+ * 板のスレ一覧ページ。タブの題名と板名には同じ名前を使い、板名が分からなければ URL を出す。
+ *
+ * 変更理由: 板一覧・お気に入り・タブメニュー・スレプロパティなどが個別に組み立てており、
+ * 板名がないときに空の題名になる場所と URL になる場所が混ざりうるため。
+ */
+export function createBoardPage(boardUrl: string, boardTitle?: string): ThreadListPage {
+  const title = boardTitle || boardUrl;
+  return { type: "threadList", title, boardUrl, boardTitle: title };
 }

@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { SidePanelExtract } from "src/view/browser/shell/SidePanelExtract";
+import { SidePanelExtract } from "src/features/thread/ui/SidePanelExtract";
 import { publishThreadSnapshot, useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 

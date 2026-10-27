@@ -45,3 +45,9 @@ export function removeThreadSnapshot(tabId: string, owner: symbol): void {
     return { entries };
   });
 }
+
+/** 表示中のスレのスナップショットだけを返し、対象の切替直後に前のスレの情報を使わない。 */
+export function useThreadSnapshot(tabId: string, threadUrl: string): ThreadSnapshot | undefined {
+  const snapshot = useThreadSnapshots((store) => store.entries.get(tabId)?.snapshot);
+  return snapshot?.threadUrl === threadUrl ? snapshot : undefined;
+}

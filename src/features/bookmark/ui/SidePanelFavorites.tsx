@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
+  type BookmarkEntry,
+  readBookmarks,
+  toBookmarkPage,
+} from "src/features/bookmark/browser/read-bookmarks";
+import {
   BookmarkContextMenu,
   type BookmarkContextMenuState,
 } from "src/features/bookmark/ui/BookmarkContextMenu";
 import { container } from "src/service-container/index";
-import { type BookmarkEntry, readBookmarks } from "src/view/browser/pages/BookmarkListPage";
+import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
-const logger = createLogger("side-panel-favorites");
+const logger = createLogger("bookmark");
 
 export function SidePanelFavorites() {
   const { dispatch } = useTabStore();
@@ -41,15 +45,10 @@ export function SidePanelFavorites() {
     return () => container.message.off("bookmark_updated", updated);
   }, [load]);
   const open = (entry: BookmarkEntry, background: boolean) => {
-    const page = parseInternalBrowserPage(entry.url);
+    const page = toBookmarkPage(entry);
     if (!page) return;
-    const target = {
-      ...page,
-      title: entry.title,
-      ...(page.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
-    };
     dispatch(
-      background ? tabActions.openInNewTab(target, { background }) : tabActions.navigate(target),
+      background ? tabActions.openInNewTab(page, { background }) : tabActions.navigate(page),
     );
   };
   const filtered = entries.filter((entry) =>
@@ -66,16 +65,16 @@ export function SidePanelFavorites() {
         onChange={(event) => setQuery(event.currentTarget.value)}
       />
       {loading ? (
-        <p>お気に入りを読み込み中…</p>
+        <SidePanelMessage>お気に入りを読み込み中…</SidePanelMessage>
       ) : error ? (
         <div>
-          <p>{error}</p>
+          <SidePanelMessage>{error}</SidePanelMessage>
           <button type="button" onClick={() => void load()}>
             再試行
           </button>
         </div>
       ) : filtered.length === 0 ? (
-        <p>お気に入りがありません。</p>
+        <SidePanelMessage>お気に入りがありません。</SidePanelMessage>
       ) : (
         filtered.map((entry) => (
           <button
@@ -112,20 +111,8 @@ export function SidePanelFavorites() {
           }}
           onOpenCurrentTab={() => open(menu.entry, false)}
           onOpenInNewTab={(background) => {
-            const page = parseInternalBrowserPage(menu.entry.url);
-            if (!page) return;
-            dispatch(
-              tabActions.openInNewTab(
-                {
-                  ...page,
-                  title: menu.entry.title,
-                  ...(page.type === "threadList"
-                    ? { boardTitle: menu.entry.boardTitle || menu.entry.title }
-                    : {}),
-                },
-                { background },
-              ),
-            );
+            const page = toBookmarkPage(menu.entry);
+            if (page) dispatch(tabActions.openInNewTab(page, { background }));
           }}
           onRemoved={(url) => setEntries((current) => current.filter((entry) => entry.url !== url))}
           onClose={() => setMenu(null)}

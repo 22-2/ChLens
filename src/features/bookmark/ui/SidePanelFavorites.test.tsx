@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { SidePanelFavorites } from "src/view/browser/shell/SidePanelFavorites";
+import { SidePanelFavorites } from "src/features/bookmark/ui/SidePanelFavorites";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +18,11 @@ const mocks = vi.hoisted(() => ({
     },
   ]),
 }));
-vi.mock("src/view/browser/pages/BookmarkListPage", () => ({ readBookmarks: mocks.read }));
+// 開くページの組み立ては本物を使い、保存済みのお気に入りの読み込みだけを差し替える。
+vi.mock("src/features/bookmark/browser/read-bookmarks", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("src/features/bookmark/browser/read-bookmarks")>()),
+  readBookmarks: mocks.read,
+}));
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabStore: () => ({ dispatch: mocks.dispatch }),
 }));

@@ -24,6 +24,7 @@ import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 interface MenuPosition {
   x: number;
@@ -137,17 +138,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         onSelect: () => {
           // 元スレの履歴を残したまま板を見比べられるように、新しいタブで開く。
           // 既存の同一板タブがあっても比較用の新規タブを作るため、重複排除を無効にする。
-          dispatch(
-            tabActions.openInNewTabForce(
-              {
-                type: "threadList",
-                title: boardUrl,
-                boardUrl,
-                boardTitle: boardUrl,
-              },
-              { focus: true },
-            ),
-          );
+          dispatch(tabActions.openInNewTabForce(createBoardPage(boardUrl), { focus: true }));
         },
       });
       result.push({

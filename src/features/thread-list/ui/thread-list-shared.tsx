@@ -3,6 +3,7 @@ import { ChURL } from "packages/chlib/src/url/ChURL";
 import React from "react";
 import { createLogger } from "src/app/logger";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
+import { countUnreadResponses } from "src/features/thread/domain/unread-count";
 import type { IThread } from "src/service-container/interfaces";
 import type { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 
@@ -206,14 +207,9 @@ export type DisplayThread = {
   isBookmarked: boolean;
 };
 
+/** 一覧では既読位置のないスレを未読 0 として扱い、未読バッジの対象にしない。 */
 export function getThreadUnreadCount(thread: Pick<IThread, "resCount" | "readState">): number {
-  // 変更理由: 既読位置がないスレはまだ閲覧していないため、レス数全体を
-  // 未読として表示すると未閲覧スレまで未読バッジの対象になる。
-  if (!thread.readState) return 0;
-
-  // 変更理由: read_state_updated で受信レス数が先行する場合もあるため、
-  // 一覧のレス数と既読状態が把握している受信数の大きい方を基準にする。
-  return Math.max(Math.max(thread.resCount, thread.readState.received) - thread.readState.read, 0);
+  return countUnreadResponses(thread.resCount, thread.readState) ?? 0;
 }
 
 export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [

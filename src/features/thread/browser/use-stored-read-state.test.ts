@@ -17,11 +17,11 @@ const mocks = vi.hoisted(() => {
 });
 vi.mock("src/service-container/index", () => ({ container: mocks.container }));
 
-import { useSidePanelReadState } from "./use-side-panel-read-state";
+import { useStoredReadState } from "./use-stored-read-state";
 
 const threadUrl = "https://example.com/test/read.cgi/board/1/";
 
-describe("サイドパネルの既読状態", () => {
+describe("保存済みの既読状態", () => {
   afterEach(() => {
     mocks.get.mockReset();
     mocks.handlers.clear();
@@ -29,7 +29,7 @@ describe("サイドパネルの既読状態", () => {
 
   it("保存済みの既読状態を読み、更新通知に追従する", async () => {
     mocks.get.mockResolvedValue({ url: threadUrl, last: 1, read: 1, received: 1 });
-    const { result, unmount } = renderHook(() => useSidePanelReadState(threadUrl));
+    const { result, unmount } = renderHook(() => useStoredReadState(threadUrl));
     await waitFor(() => expect(result.current?.read).toBe(1));
 
     act(() => {

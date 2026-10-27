@@ -1,6 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
+  type BookmarkEntry,
+  readBookmarks,
+  toBookmarkPage,
+} from "src/features/bookmark/browser/read-bookmarks";
+import {
   BookmarkContextMenu,
   type BookmarkContextMenuState,
 } from "src/features/bookmark/ui/BookmarkContextMenu";
@@ -11,10 +16,6 @@ import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-ac
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabDispatch, useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
 import { Spinner } from "src/view/browser/ui/Spinner";
-import {
-  parseInternalBrowserPage,
-  resolveBoardUrlForBrowser,
-} from "src/view/browser/utils/link-routing";
 
 const logger = createLogger("view/browser");
 
@@ -30,129 +31,6 @@ const DEFAULT_SORT_STATE: BookmarkSortState = {
   column: null,
   direction: "asc",
 };
-
-export interface BookmarkEntry {
-  url: string;
-  title: string;
-  pageType: "thread" | "threadList";
-  boardTitle: string;
-  resCount: number;
-  unreadCount: number;
-  heat: number;
-  createdAt: number;
-  originalIndex: number;
-}
-
-interface LegacyReadStateLike {
-  read?: unknown;
-}
-
-interface LegacyBookmarkLike {
-  url?: unknown;
-  title?: unknown;
-  boardTitle?: unknown;
-  resCount?: unknown;
-  readState?: LegacyReadStateLike | undefined;
-}
-
-function toNumber(value: unknown): number {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-  if (typeof value === "string") {
-    const parsed = Number.parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
-}
-
-function normalizeString(value: unknown, fallback = ""): string {
-  return typeof value === "string" ? value : fallback;
-}
-
-function parseCreatedAt(url: string): number {
-  const resolved = resolveBoardUrlForBrowser(url);
-  if (resolved?.type !== "thread" || !/^\d+$/.test(resolved.threadId)) return 0;
-  return Number.parseInt(resolved.threadId, 10) * 1000;
-}
-
-function calcHeat(createdAt: number, resCount: number): number {
-  if (!createdAt || createdAt > Date.now()) {
-    return 0;
-  }
-  const elapsedDays = Math.max((Date.now() - createdAt) / 86400000, 1 / 1440);
-  return resCount / elapsedDays;
-}
-
-function deriveBoardTitle(threadUrl: string): string {
-  try {
-    const parsed = new window.URL(threadUrl);
-    // 変更理由: 掲示板別のURL形式から板名を再抽出せず、ライブラリが返す板識別子を表示する。
-    const resolved = resolveBoardUrlForBrowser(threadUrl);
-    if (resolved?.type === "thread") {
-      return `${parsed.hostname}/${resolved.boardName}`;
-    }
-
-    return parsed.hostname;
-  } catch {
-    return "";
-  }
-}
-
-function deriveBoardTitleFromBoardUrl(boardUrl: string): string {
-  try {
-    const parsed = new window.URL(boardUrl);
-    const pathPart = parsed.pathname.replace(/^\/|\/$/g, "");
-    return pathPart ? `${parsed.hostname}/${pathPart}` : parsed.hostname;
-  } catch {
-    return "";
-  }
-}
-
-export async function readBookmarks(): Promise<BookmarkEntry[]> {
-  // window.app ではなくサービスコンテナから読む（legacy-window-app-plan の Phase 2）。
-  // 以前は getAll がない場合に getAllThreads・getAllBoards をつなげていたが、Bookmark は常に getAll を持つ。
-  await container.bookmark.ready();
-  // 保存されている値の形は信用せず、下で1件ずつ確かめるため unknown として扱う。
-  const rawItems: unknown[] = container.bookmark.getAll();
-
-  return rawItems
-    .map((rawItem, index) => {
-      const item = rawItem as LegacyBookmarkLike;
-      const url = normalizeString(item.url);
-      if (!url) {
-        return null;
-      }
-
-      const parsed = parseInternalBrowserPage(url);
-      if (!parsed) {
-        return null;
-      }
-
-      const title = normalizeString(item.title, url);
-      const resCount = Math.max(0, Math.trunc(toNumber(item.resCount)));
-      const readCount = Math.max(0, Math.trunc(toNumber(item.readState?.read)));
-      const isThreadBookmark = parsed.type === "thread";
-      const unreadCount = isThreadBookmark ? Math.max(0, resCount - readCount) : 0;
-      const createdAt = isThreadBookmark ? parseCreatedAt(url) : 0;
-
-      return {
-        url,
-        title,
-        pageType: parsed.type,
-        boardTitle:
-          parsed.type === "threadList"
-            ? normalizeString(item.boardTitle, deriveBoardTitleFromBoardUrl(url))
-            : normalizeString(item.boardTitle, deriveBoardTitle(url)),
-        resCount,
-        unreadCount,
-        heat: isThreadBookmark ? calcHeat(createdAt, resCount) : 0,
-        createdAt,
-        originalIndex: index,
-      } satisfies BookmarkEntry;
-    })
-    .filter((item): item is BookmarkEntry => item !== null);
-}
 
 const COLUMNS: ColumnDef<BookmarkEntry>[] = [
   {
@@ -358,38 +236,17 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
 
   const openEntry = useCallback(
     (entry: BookmarkEntry) => {
-      const parsed = parseInternalBrowserPage(entry.url);
-      if (!parsed) return;
-
-      dispatch(
-        tabActions.navigate({
-          ...parsed,
-          title: entry.title,
-          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
-        }),
-      );
+      const page = toBookmarkPage(entry);
+      if (page) dispatch(tabActions.navigate(page));
     },
     [dispatch],
   );
 
   const openEntryInNewTab = useCallback(
     (entry: BookmarkEntry, background = true) => {
-      const parsed = parseInternalBrowserPage(entry.url);
-      if (!parsed) return;
-
+      const page = toBookmarkPage(entry);
       // 中クリックは必ず背景で開き、メニューの通常クリックは新規タブの設定に従う。
-      dispatch(
-        tabActions.openInNewTab(
-          {
-            ...parsed,
-            title: entry.title,
-            ...(parsed.type === "threadList"
-              ? { boardTitle: entry.boardTitle || entry.title }
-              : {}),
-          },
-          { background },
-        ),
-      );
+      if (page) dispatch(tabActions.openInNewTab(page, { background }));
     },
     [dispatch],
   );

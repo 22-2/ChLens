@@ -92,6 +92,7 @@ import {
   selectSikiLogFile,
 } from "src/view/browser/utils/siki-log";
 import {
+  createBoardPage,
   createQuickAccessPage,
   createSettingsPage,
   type QuickAccessPage,
@@ -339,12 +340,7 @@ function getBoardPageFromThread(page: Page): Extract<Page, { type: "threadList" 
   const boardUrl = getBoardUrlFromThreadUrl(page.threadUrl);
   if (boardUrl === page.threadUrl) return null;
 
-  return {
-    type: "threadList",
-    title: boardUrl,
-    boardUrl,
-    boardTitle: boardUrl,
-  };
+  return createBoardPage(boardUrl);
 }
 
 function openSettings(context: BrowserCommandContext): void {

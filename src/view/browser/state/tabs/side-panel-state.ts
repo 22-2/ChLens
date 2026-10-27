@@ -8,6 +8,14 @@ export const SIDE_PANEL_VIEWS = [
   "properties",
   "write",
 ] as const;
+const SIDE_PANEL_MIN_WIDTH = 200;
+const SIDE_PANEL_MAX_WIDTH = 600;
+
+/** 本文の幅を確保しつつ、ビューが崩れない幅に収める。保存値の復元とリサイズで同じ範囲を使う。 */
+export function clampSidePanelWidth(width: number): number {
+  return Math.max(SIDE_PANEL_MIN_WIDTH, Math.min(SIDE_PANEL_MAX_WIDTH, width));
+}
+
 export const DEFAULT_SIDE_PANEL: SidePanelState = {
   isOpen: false,
   width: 320,
@@ -37,7 +45,7 @@ export function normalizeSidePanel(value: unknown): SidePanelState {
     isOpen: input.isOpen === true,
     width:
       typeof input.width === "number" && Number.isFinite(input.width)
-        ? Math.max(200, Math.min(600, input.width))
+        ? clampSidePanelWidth(input.width)
         : DEFAULT_SIDE_PANEL.width,
     views,
     activeView:

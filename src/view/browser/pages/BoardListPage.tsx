@@ -1,18 +1,19 @@
 import React, { useCallback, useState } from "react";
+import { useBoardListDisplay } from "src/features/board/browser/use-board-list-display";
+import { useBoardListLogic } from "src/features/board/browser/use-board-list-logic";
+import { buildCategoryId } from "src/features/board/domain/board-list-utils";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
 import { BoardListContent } from "src/view/browser/pages/board-list/BoardListContent";
 import { ContextMenuHandler } from "src/view/browser/pages/board-list/ContextMenuHandler";
 import { SearchBarSection } from "src/view/browser/pages/board-list/SearchBarSection";
-import { useBoardListDisplay } from "src/view/browser/pages/board-list/use-board-list-display";
-import { useBoardListLogic } from "src/view/browser/pages/board-list/use-board-list-logic";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { canGoBack, canGoForward } from "src/view/browser/types";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 interface BoardListPageProps {
   tabId: string;
@@ -79,14 +80,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, r
 
   const handleBoardClick = useCallback(
     (boardUrl: string, boardTitle: string) => {
-      dispatch(
-        tabActions.navigate({
-          type: "threadList",
-          title: boardTitle,
-          boardUrl,
-          boardTitle,
-        }),
-      );
+      dispatch(tabActions.navigate(createBoardPage(boardUrl, boardTitle)));
     },
     [dispatch],
   );
@@ -95,15 +89,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, r
     (boardUrl: string, boardTitle: string) => {
       // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
       dispatch(
-        tabActions.openInNewTab(
-          {
-            type: "threadList",
-            title: boardTitle,
-            boardUrl,
-            boardTitle,
-          },
-          { background: true },
-        ),
+        tabActions.openInNewTab(createBoardPage(boardUrl, boardTitle), { background: true }),
       );
     },
     [dispatch],

@@ -272,6 +272,7 @@ const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
     "application/imgur-upload",
     "browser/use-media-viewer-store",
     "domain/media-settings",
+    "domain/thread-images",
     "ui/ExternalImage",
     "ui/MediaViewerContainer",
     "ui/ResMediaGallery",
@@ -290,7 +291,12 @@ const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
     "ui/ThreadTitleNgDialog",
   ],
   tabs: ["browser/use-detached-tab-controller", "browser/use-tab-command-runner"],
-  thread: ["browser/use-thread-refresh-controller", "ui/ResBody", "ui/thread-context-menu-items"],
+  thread: [
+    "browser/use-thread-refresh-controller",
+    "domain/unread-count",
+    "ui/ResBody",
+    "ui/thread-context-menu-items",
+  ],
   "thread-list": ["ui/thread-list-cache"],
 };
 

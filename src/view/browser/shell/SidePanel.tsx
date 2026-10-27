@@ -1,24 +1,81 @@
 import { BookOpen, Image, Info, ListTree, Pencil, Search } from "lucide-react";
-import { useRef } from "react";
-import { SidePanelBoards } from "src/view/browser/shell/SidePanelBoards";
-import { SidePanelExtract } from "src/view/browser/shell/SidePanelExtract";
-import { SidePanelFavorites } from "src/view/browser/shell/SidePanelFavorites";
-import { SidePanelImages } from "src/view/browser/shell/SidePanelImages";
-import { SidePanelProperties } from "src/view/browser/shell/SidePanelProperties";
-import { SidePanelWrite } from "src/view/browser/shell/SidePanelWrite";
-import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
+import { type ReactNode, useRef } from "react";
+import { SidePanelBoards } from "src/features/board/ui/SidePanelBoards";
+import { SidePanelFavorites } from "src/features/bookmark/ui/SidePanelFavorites";
+import { SidePanelImages } from "src/features/media/ui/SidePanelImages";
+import { SidePanelExtract } from "src/features/thread/ui/SidePanelExtract";
+import { SidePanelProperties } from "src/features/thread/ui/SidePanelProperties";
+import { SidePanelWrite } from "src/features/write/ui/SidePanelWrite";
+import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
+import {
+  clampSidePanelWidth,
+  normalizeSidePanel,
+  SIDE_PANEL_VIEWS,
+} from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import type { Page, ThreadPage } from "src/view/browser/types";
 
-const views = {
-  boards: { label: "板一覧", Icon: ListTree },
-  favorites: { label: "お気に入り", Icon: BookOpen },
-  images: { label: "画像一覧", Icon: Image },
-  extract: { label: "抽出レス", Icon: Search },
-  properties: { label: "スレプロパティ", Icon: Info },
-  write: { label: "書き込み", Icon: Pencil },
-} as const;
-type ViewId = keyof typeof views;
+type ViewId = (typeof SIDE_PANEL_VIEWS)[number];
+type ViewDefinition = { label: string; Icon: typeof ListTree } & (
+  | { requiresThread: false; render: (tabId: string) => ReactNode }
+  /** スレを開いているときだけ表示できるビュー。スレ以外ではその旨を出す。 */
+  | { requiresThread: true; render: (tabId: string, page: ThreadPage) => ReactNode }
+);
+
+const views: Record<ViewId, ViewDefinition> = {
+  boards: {
+    label: "板一覧",
+    Icon: ListTree,
+    requiresThread: false,
+    render: (tabId) => <SidePanelBoards key={tabId} tabId={tabId} />,
+  },
+  favorites: {
+    label: "お気に入り",
+    Icon: BookOpen,
+    requiresThread: false,
+    render: () => <SidePanelFavorites />,
+  },
+  images: {
+    label: "画像一覧",
+    Icon: Image,
+    requiresThread: true,
+    render: (tabId, page) => <SidePanelImages tabId={tabId} page={page} />,
+  },
+  extract: {
+    label: "抽出レス",
+    Icon: Search,
+    requiresThread: true,
+    // 検索語はタブとスレごとに持つため、対象が変わったら入力欄ごと作り直す。
+    render: (tabId, page) => (
+      <SidePanelExtract key={`${tabId}:${page.threadUrl}`} tabId={tabId} page={page} />
+    ),
+  },
+  properties: {
+    label: "スレプロパティ",
+    Icon: Info,
+    requiresThread: true,
+    render: (tabId, page) => <SidePanelProperties tabId={tabId} page={page} />,
+  },
+  write: {
+    label: "書き込み",
+    Icon: Pencil,
+    requiresThread: false,
+    render: () => <SidePanelWrite />,
+  },
+};
+
+function isViewId(id: string): id is ViewId {
+  return Object.hasOwn(views, id);
+}
+
+function renderView(view: ViewDefinition, tabId: string, page: Page): ReactNode {
+  if (!view.requiresThread) return view.render(tabId);
+  if (page.type !== "thread") {
+    return <SidePanelMessage>スレッドを開くと表示されます。</SidePanelMessage>;
+  }
+  return view.render(tabId, page);
+}
 
 export function SidePanel() {
   const { state: saved, dispatch } = useSidePanelState();
@@ -36,6 +93,7 @@ export function SidePanel() {
     update({ views: items });
   };
   if (!state.isOpen) return null;
+  const activeView = isViewId(state.activeView) ? views[state.activeView] : null;
   return (
     <aside className="side-panel" style={{ width: state.width }} aria-label="サイドパネル">
       <div
@@ -48,10 +106,7 @@ export function SidePanel() {
           if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
             event.preventDefault();
             update({
-              width: Math.max(
-                200,
-                Math.min(600, state.width + (event.key === "ArrowLeft" ? 20 : -20)),
-              ),
+              width: clampSidePanelWidth(state.width + (event.key === "ArrowLeft" ? 20 : -20)),
             });
           }
         }}
@@ -63,7 +118,7 @@ export function SidePanel() {
           target.onpointermove = (moveEvent) => {
             target.parentElement?.style.setProperty(
               "width",
-              `${Math.max(200, Math.min(600, width + start - moveEvent.clientX))}px`,
+              `${clampSidePanelWidth(width + start - moveEvent.clientX)}px`,
             );
           };
           const cleanup = () => {
@@ -73,7 +128,7 @@ export function SidePanel() {
           };
           target.onpointerup = (endEvent) => {
             cleanup();
-            update({ width: Math.max(200, Math.min(600, width + start - endEvent.clientX)) });
+            update({ width: clampSidePanelWidth(width + start - endEvent.clientX) });
           };
           target.onpointercancel = () => {
             cleanup();
@@ -83,8 +138,8 @@ export function SidePanel() {
       />
       <div className="side-panel__tabs" role="tablist" aria-label="サイドパネルのビュー">
         {state.views.map((id, index) => {
-          const view = views[id as ViewId];
-          if (!view) return null;
+          if (!isViewId(id)) return null;
+          const view = views[id];
           const Icon = view.Icon;
           return (
             <button
@@ -120,36 +175,12 @@ export function SidePanel() {
           );
         })}
       </div>
-      <div className="side-panel__heading">{views[state.activeView as ViewId]?.label}</div>
-      {state.activeView === "boards" ? (
-        <SidePanelBoards key={viewTab.id} tabId={viewTab.id} />
-      ) : state.activeView === "favorites" ? (
-        <SidePanelFavorites />
-      ) : state.activeView === "extract" ? (
-        viewPage.type === "thread" ? (
-          <SidePanelExtract
-            key={`${viewTab.id}:${viewPage.threadUrl}`}
-            tabId={viewTab.id}
-            page={viewPage}
-          />
-        ) : (
-          <p className="side-panel__empty">スレッドを開くと表示されます。</p>
-        )
-      ) : state.activeView === "images" ? (
-        viewPage.type === "thread" ? (
-          <SidePanelImages tabId={viewTab.id} page={viewPage} />
-        ) : (
-          <p className="side-panel__empty">スレッドを開くと表示されます。</p>
-        )
-      ) : state.activeView === "properties" ? (
-        viewPage.type === "thread" ? (
-          <SidePanelProperties tabId={viewTab.id} page={viewPage} />
-        ) : (
-          <p className="side-panel__empty">スレッドを開くと表示されます。</p>
-        )
-      ) : state.activeView === "write" ? (
-        <SidePanelWrite />
-      ) : null}
+      {activeView && (
+        <>
+          <div className="side-panel__heading">{activeView.label}</div>
+          {renderView(activeView, viewTab.id, viewPage)}
+        </>
+      )}
     </aside>
   );
 }

@@ -9,7 +9,7 @@ export function SidePanelWrite() {
   return (
     <StatusBarProvider>
       <div className="side-panel__content side-panel__write">
-        <WritePanelContent place="side" />
+        <WritePanelContent surface="side" />
       </div>
       <StatusBar />
     </StatusBarProvider>

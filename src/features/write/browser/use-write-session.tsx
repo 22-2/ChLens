@@ -55,10 +55,11 @@ interface WriteSessionControlsContextValue {
   targets: WriteTarget[];
   isWindowOpen: boolean;
   writeWindowRoot: HTMLElement | null;
-  writeWindowFocusRequestId: number | null;
+  /** 別窓とサイドの編集欄の本文欄へフォーカスを移す要求。下部パネルの編集欄はペイン側の要求を使う。 */
+  editorFocusRequestId: number | null;
   selectThread: (threadUrl: string) => void;
-  requestWriteWindowFocus: () => void;
-  consumeWriteWindowFocusRequest: (requestId: number) => void;
+  requestEditorFocus: () => void;
+  consumeEditorFocusRequest: (requestId: number) => void;
   appendDraft: (threadUrl: string, text: string) => void;
   openWriteWindow: (sourceWindow?: Window) => boolean;
   closeWriteWindow: () => void;
@@ -152,10 +153,10 @@ const defaultControlsContextValue: WriteSessionControlsContextValue = {
   targets: [],
   isWindowOpen: false,
   writeWindowRoot: null,
-  writeWindowFocusRequestId: null,
+  editorFocusRequestId: null,
   selectThread: () => {},
-  requestWriteWindowFocus: () => {},
-  consumeWriteWindowFocusRequest: () => {},
+  requestEditorFocus: () => {},
+  consumeEditorFocusRequest: () => {},
   appendDraft: () => {},
   openWriteWindow: () => false,
   closeWriteWindow: () => {},
@@ -194,8 +195,8 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
     sidePanelRef.current = sidePanel;
   }, [sidePanel]);
   const [session, setSession] = useState<WriteSessionState>(loadSession);
-  const nextWriteWindowFocusIdRef = useRef(0);
-  const [writeWindowFocusRequestId, setWriteWindowFocusRequestId] = useState<number | null>(null);
+  const nextEditorFocusIdRef = useRef(0);
+  const [editorFocusRequestId, setEditorFocusRequestId] = useState<number | null>(null);
   const writeWindow = useAuxiliaryWindow(WRITE_WINDOW_OPTIONS);
   // 変更理由: 書き込み欄を下部とサイドに同時に置くと、同じ投稿先へ二重に送信できてしまう。
   // 編集欄は常に1か所だけとし、ほかの場所には現在の場所と「こちらに移動」だけを出す。
@@ -244,13 +245,13 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
     );
   }, []);
 
-  const requestWriteWindowFocus = useCallback(() => {
-    nextWriteWindowFocusIdRef.current += 1;
-    setWriteWindowFocusRequestId(nextWriteWindowFocusIdRef.current);
+  const requestEditorFocus = useCallback(() => {
+    nextEditorFocusIdRef.current += 1;
+    setEditorFocusRequestId(nextEditorFocusIdRef.current);
   }, []);
 
-  const consumeWriteWindowFocusRequest = useCallback((requestId: number) => {
-    setWriteWindowFocusRequestId((current) => (current === requestId ? null : current));
+  const consumeEditorFocusRequest = useCallback((requestId: number) => {
+    setEditorFocusRequestId((current) => (current === requestId ? null : current));
   }, []);
 
   const getDraft = useCallback(
@@ -315,9 +316,9 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
       type: TAB_ACTION_TYPES.UPDATE_SIDE_PANEL,
       sidePanel: showSidePanelView(sidePanelRef.current, "write"),
     });
-    // サイドの編集欄は別窓と同じくセッションのフォーカス要求で本文欄へ移る。
-    requestWriteWindowFocus();
-  }, [dispatch, requestWriteWindowFocus]);
+    // サイドの編集欄はペインに属さないため、別窓と同じくセッションのフォーカス要求で本文欄へ移る。
+    requestEditorFocus();
+  }, [dispatch, requestEditorFocus]);
 
   const controlsContextValue = useMemo<WriteSessionControlsContextValue>(
     () => ({
@@ -327,10 +328,10 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
       targets,
       isWindowOpen: writeWindow.isOpen,
       writeWindowRoot: writeWindow.root,
-      writeWindowFocusRequestId,
+      editorFocusRequestId,
       selectThread,
-      requestWriteWindowFocus,
-      consumeWriteWindowFocusRequest,
+      requestEditorFocus,
+      consumeEditorFocusRequest,
       appendDraft,
       openWriteWindow: writeWindow.open,
       closeWriteWindow,
@@ -345,15 +346,15 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
       isEditorBusy,
       moveEditor,
       showSideEditor,
-      consumeWriteWindowFocusRequest,
+      consumeEditorFocusRequest,
       writeWindow.open,
       selectThread,
       session.selectedThreadUrl,
       targets,
       writeWindow.isOpen,
-      writeWindowFocusRequestId,
+      editorFocusRequestId,
       writeWindow.root,
-      requestWriteWindowFocus,
+      requestEditorFocus,
     ],
   );
 

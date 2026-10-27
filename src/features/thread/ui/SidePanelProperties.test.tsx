@@ -1,8 +1,8 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { SidePanelProperties } from "src/features/thread/ui/SidePanelProperties";
 import type { IRes } from "src/service-container/interfaces";
-import { SidePanelProperties } from "src/view/browser/shell/SidePanelProperties";
 import { publishThreadSnapshot, useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -13,8 +13,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabStore: () => ({ dispatch: mocks.dispatch }),
 }));
-vi.mock("src/view/browser/shell/use-side-panel-read-state", () => ({
-  useSidePanelReadState: () => mocks.readState,
+vi.mock("src/features/thread/browser/use-stored-read-state", () => ({
+  useStoredReadState: () => mocks.readState,
 }));
 vi.mock("src/features/thread/ui/MomentumLineChart", () => ({ MomentumLineChart: () => null }));
 

@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
-import { WritePanelContent } from "src/features/write/ui/WritePanelContent";
+import { WritePanelContent, type WriteSurface } from "src/features/write/ui/WritePanelContent";
 import { container } from "src/service-container/index";
 import type { IConfig, IMessage } from "src/service-container/interfaces";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
   isEditorBusy: false,
   moveEditor: vi.fn(() => true),
   setEditorBusy: vi.fn(),
-  requestWriteWindowFocus: vi.fn(),
+  requestEditorFocus: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   toastInfo: vi.fn(),
@@ -58,10 +58,10 @@ vi.mock("src/app/platform", () => ({
   },
 }));
 
-function renderWritePanel(standalone = false, place?: "bottom" | "side") {
+function renderWritePanel(surface?: WriteSurface) {
   return render(
     <StatusBarProvider>
-      <WritePanelContent standalone={standalone} place={place} />
+      <WritePanelContent surface={surface} />
       <StatusBar />
     </StatusBarProvider>,
   );
@@ -122,7 +122,7 @@ vi.mock("src/features/write/browser/use-write-session", () => ({
     isEditorBusy: mocks.isEditorBusy,
     moveEditor: mocks.moveEditor,
     setEditorBusy: mocks.setEditorBusy,
-    requestWriteWindowFocus: mocks.requestWriteWindowFocus,
+    requestEditorFocus: mocks.requestEditorFocus,
     writeWindowRoot: null,
     selectedThreadUrl: mocks.selectedThreadUrl,
     targets: mocks.targets,
@@ -158,7 +158,7 @@ describe("WritePanelContent", () => {
     mocks.isEditorBusy = false;
     mocks.moveEditor.mockClear();
     mocks.setEditorBusy.mockClear();
-    mocks.requestWriteWindowFocus.mockClear();
+    mocks.requestEditorFocus.mockClear();
     mocks.writePanelInsertRequest = null;
     mocks.status = "idle";
     mocks.statusText = "";
@@ -312,7 +312,7 @@ describe("WritePanelContent", () => {
     const { unmount } = render(
       <ViewSurfaceProvider surface={{ window: previewWindow, document: previewDocument }}>
         <StatusBarProvider>
-          <WritePanelContent standalone portalContainer={previewDocument.body} />
+          <WritePanelContent surface="window" portalContainer={previewDocument.body} />
         </StatusBarProvider>
       </ViewSurfaceProvider>,
       { container: previewDocument.body },
@@ -356,7 +356,7 @@ describe("WritePanelContent", () => {
     expect(screen.queryByLabelText("投稿先スレッド")).not.toBeInTheDocument();
 
     unmount();
-    renderWritePanel(true);
+    renderWritePanel("window");
     expect(screen.getByLabelText("投稿先スレッド")).toBeInTheDocument();
   });
 
@@ -365,7 +365,7 @@ describe("WritePanelContent", () => {
     mocks.selectedThreadUrl = targetThreadUrl;
     mocks.targets = [{ threadUrl: targetThreadUrl, title: "スレッド", tabId: "tab-1" }];
     mocks.editorPlace = "side";
-    renderWritePanel(false, "side");
+    renderWritePanel("side");
     expect(screen.getByLabelText("投稿先スレッド")).toBeInTheDocument();
   });
 

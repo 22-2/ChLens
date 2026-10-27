@@ -6,32 +6,36 @@ import {
   useMediaViewerStore,
 } from "src/features/media/browser/use-media-viewer-store";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
+import { collectThreadImages } from "src/features/media/domain/thread-images";
 import { ExternalImage } from "src/features/media/ui/ExternalImage";
+import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
+import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
-import { collectThreadImages } from "src/view/browser/shell/side-panel-images";
-import { useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
+import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 type TileStyle = CSSProperties & { "--res-thumb-blur-radius"?: string };
 
-export function SidePanelImages({ tabId, page }: { tabId: string; page: ThreadPage }) {
-  const snapshot = useThreadSnapshots((store) => store.entries.get(tabId)?.snapshot);
-  const data = snapshot?.threadUrl === page.threadUrl ? snapshot : undefined;
+function ThreadImageGrid({
+  tabId,
+  threadUrl,
+  data,
+}: {
+  tabId: string;
+  threadUrl: string;
+  data: ThreadSnapshot;
+}) {
   const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
   const imageStates = useMediaImageStore((store) => store.images);
   const openMedia = useMediaViewerStore((store) => store.openMediaFromUrl);
   const items = useMemo(
-    () => (data ? collectThreadImages(data.visibleResponses, data.messageProtocol) : []),
+    () => collectThreadImages(data.visibleResponses, data.messageProtocol),
     [data],
   );
   const rawUrls = useMemo(() => items.map((item) => item.rawUrl), [items]);
 
-  if (!data) return <p className="side-panel__empty">スレッドの情報を取得できません。</p>;
-  if (data.loading) return <p className="side-panel__empty">スレッドを読み込み中…</p>;
-  if (data.error && data.responses.length === 0)
-    return <p className="side-panel__empty">{data.error}</p>;
-  if (items.length === 0) return <p className="side-panel__empty">画像はありません。</p>;
+  if (items.length === 0) return <SidePanelMessage>画像はありません。</SidePanelMessage>;
 
   const style: TileStyle = { "--res-thumb-blur-radius": `${data.imageBlurRadius}px` };
   return (
@@ -66,11 +70,7 @@ export function SidePanelImages({ tabId, page }: { tabId: string; page: ThreadPa
                   className="side-panel__image-open"
                   aria-label={`>>${item.resNum} の画像を拡大`}
                   onClick={() =>
-                    openMedia(
-                      item.rawUrl,
-                      rawUrls,
-                      getThreadMediaViewerScopeId(tabId, page.threadUrl),
-                    )
+                    openMedia(item.rawUrl, rawUrls, getThreadMediaViewerScopeId(tabId, threadUrl))
                   }
                 >
                   {image}
@@ -81,7 +81,7 @@ export function SidePanelImages({ tabId, page }: { tabId: string; page: ThreadPa
               <button
                 type="button"
                 className="side-panel__image-caption"
-                onClick={() => requestThreadResJump(page.threadUrl, item.resNum, tabId, true)}
+                onClick={() => requestThreadResJump(threadUrl, item.resNum, tabId, true)}
               >
                 <strong>{item.resNum}</strong>
                 <span>{item.text}</span>
@@ -91,5 +91,13 @@ export function SidePanelImages({ tabId, page }: { tabId: string; page: ThreadPa
         })}
       </ul>
     </div>
+  );
+}
+
+export function SidePanelImages({ tabId, page }: { tabId: string; page: ThreadPage }) {
+  return (
+    <ThreadSnapshotGate tabId={tabId} threadUrl={page.threadUrl}>
+      {(snapshot) => <ThreadImageGrid tabId={tabId} threadUrl={page.threadUrl} data={snapshot} />}
+    </ThreadSnapshotGate>
   );
 }

@@ -1,5 +1,9 @@
 // @vitest-environment node
-import { createQuickAccessPage, createSettingsPage } from "src/view/browser/utils/tab-pages";
+import {
+  createBoardPage,
+  createQuickAccessPage,
+  createSettingsPage,
+} from "src/view/browser/utils/tab-pages";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("共通ページ生成", () => {
@@ -29,5 +33,21 @@ describe("共通ページ生成", () => {
       title: "設定",
       sectionId: "ng",
     });
+  });
+
+  it("板のページは題名と板名に同じ名前を使い、板名がなければ URL にする", () => {
+    const boardUrl = "https://example.com/board/";
+    expect(createBoardPage(boardUrl, "板名")).toEqual({
+      type: "threadList",
+      title: "板名",
+      boardUrl,
+      boardTitle: "板名",
+    });
+    expect(createBoardPage(boardUrl)).toEqual(
+      expect.objectContaining({ title: boardUrl, boardTitle: boardUrl }),
+    );
+    expect(createBoardPage(boardUrl, "")).toEqual(
+      expect.objectContaining({ title: boardUrl, boardTitle: boardUrl }),
+    );
   });
 });

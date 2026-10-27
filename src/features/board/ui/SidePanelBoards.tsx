@@ -1,8 +1,10 @@
-import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
-import { useBoardListDisplay } from "src/view/browser/pages/board-list/use-board-list-display";
-import { useBoardListLogic } from "src/view/browser/pages/board-list/use-board-list-logic";
+import { useBoardListDisplay } from "src/features/board/browser/use-board-list-display";
+import { useBoardListLogic } from "src/features/board/browser/use-board-list-logic";
+import { buildCategoryId } from "src/features/board/domain/board-list-utils";
+import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 /** 通常の板一覧と取得・削除・検索の規則を共有し、狭い領域ではツリーで表示する。 */
 export function SidePanelBoards({ tabId }: { tabId: string }) {
@@ -10,7 +12,7 @@ export function SidePanelBoards({ tabId }: { tabId: string }) {
   const logic = useBoardListLogic(0, tabId);
   const display = useBoardListDisplay({ ...logic, tabId });
   const openBoard = (url: string, title: string, background: boolean) => {
-    const page = { type: "threadList" as const, title, boardUrl: url, boardTitle: title };
+    const page = createBoardPage(url, title);
     dispatch(
       background ? tabActions.openInNewTab(page, { background: true }) : tabActions.navigate(page),
     );
@@ -28,16 +30,16 @@ export function SidePanelBoards({ tabId }: { tabId: string }) {
         onChange={(e) => display.setSearchQuery(e.currentTarget.value)}
       />
       {logic.loading ? (
-        <p>板一覧を読み込み中…</p>
+        <SidePanelMessage>板一覧を読み込み中…</SidePanelMessage>
       ) : logic.error ? (
         <div>
-          <p>{logic.error}</p>
+          <SidePanelMessage>{logic.error}</SidePanelMessage>
           <button type="button" onClick={() => void logic.fetchMenu(true)}>
             再試行
           </button>
         </div>
       ) : display.displayMenus.length === 0 ? (
-        <p>板が見つかりません。</p>
+        <SidePanelMessage>板が見つかりません。</SidePanelMessage>
       ) : (
         display.displayMenus.map((menu) => (
           <details

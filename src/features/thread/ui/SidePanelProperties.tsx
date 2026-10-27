@@ -1,18 +1,21 @@
 import { type ReactNode, useMemo } from "react";
+import { collectThreadImages } from "src/features/media/domain/thread-images";
+import { useStoredReadState } from "src/features/thread/browser/use-stored-read-state";
 import {
   buildMomentumGraphData,
   calculateIkioi,
   collectResTimestamps,
 } from "src/features/thread/domain/thread-momentum";
+import { countUnreadResponses } from "src/features/thread/domain/unread-count";
 import { MomentumLineChart } from "src/features/thread/ui/MomentumLineChart";
-import { collectThreadImages } from "src/view/browser/shell/side-panel-images";
-import { useSidePanelReadState } from "src/view/browser/shell/use-side-panel-read-state";
+import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import { useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
+import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
 import { formatCompactDateTime } from "src/view/browser/utils/date-time";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 const UNKNOWN = "不明";
 
@@ -28,12 +31,9 @@ function formatTimestamp(timestamp: number | null): string {
   return timestamp == null ? UNKNOWN : formatCompactDateTime(timestamp);
 }
 
-export function SidePanelProperties({ tabId, page }: { tabId: string; page: ThreadPage }) {
+function ThreadProperties({ page, data }: { page: ThreadPage; data: ThreadSnapshot }) {
   const { dispatch } = useTabStore();
-  const snapshot = useThreadSnapshots((store) => store.entries.get(tabId)?.snapshot);
-  const data = snapshot?.threadUrl === page.threadUrl ? snapshot : undefined;
   const stats = useMemo(() => {
-    if (!data) return null;
     // 経過時間と勢いは本文の更新時刻を基準に揃え、パネルの再描画では値を動かさない。
     const now = data.updatedAt;
     const timestamps = collectResTimestamps(data.responses);
@@ -47,12 +47,7 @@ export function SidePanelProperties({ tabId, page }: { tabId: string; page: Thre
       imageCount: collectThreadImages(data.responses, data.messageProtocol).length,
     };
   }, [data]);
-  const readState = useSidePanelReadState(page.threadUrl);
-
-  if (!data || !stats) return <p className="side-panel__empty">スレッドの情報を取得できません。</p>;
-  if (data.loading) return <p className="side-panel__empty">スレッドを読み込み中…</p>;
-  if (data.error && data.responses.length === 0)
-    return <p className="side-panel__empty">{data.error}</p>;
+  const readState = useStoredReadState(page.threadUrl);
 
   // 板を特定できない URL では元の URL が返るため、その場合は板の操作を出さない。
   const boardUrl = getBoardUrlFromThreadUrl(page.threadUrl);
@@ -63,20 +58,12 @@ export function SidePanelProperties({ tabId, page }: { tabId: string; page: Thre
       <button
         type="button"
         className="side-panel__link"
-        onClick={() =>
-          dispatch(
-            tabActions.navigate({
-              type: "threadList",
-              title: boardUrl,
-              boardUrl,
-              boardTitle: boardUrl,
-            }),
-          )
-        }
+        onClick={() => dispatch(tabActions.navigate(createBoardPage(boardUrl)))}
       >
         {boardUrl}
       </button>
     );
+  const unreadCount = countUnreadResponses(data.responses.length, readState);
   const status = data.expired ? "dat落ち" : data.error ? `取得失敗（${data.error}）` : "取得済み";
   const rows: [string, ReactNode][] = [
     ["スレ名", page.title],
@@ -86,16 +73,7 @@ export function SidePanelProperties({ tabId, page }: { tabId: string; page: Thre
     ["経過時間", stats.firstAt == null ? UNKNOWN : formatElapsed(stats.now - stats.firstAt)],
     ["最終レス", formatTimestamp(stats.lastAt)],
     ["レス数", data.responses.length.toLocaleString()],
-    [
-      "未読数",
-      // スレ一覧の未読数と同じく、既読位置がなければ数えず、受信済みの多い方を基準にする。
-      readState == null
-        ? UNKNOWN
-        : Math.max(
-            Math.max(data.responses.length, readState.received) - readState.read,
-            0,
-          ).toLocaleString(),
-    ],
+    ["未読数", unreadCount == null ? UNKNOWN : unreadCount.toLocaleString()],
     ["画像数", stats.imageCount.toLocaleString()],
     ["状態", status],
     ["勢い", stats.ikioi == null ? UNKNOWN : stats.ikioi.toLocaleString()],
@@ -113,5 +91,13 @@ export function SidePanelProperties({ tabId, page }: { tabId: string; page: Thre
       </dl>
       <MomentumLineChart data={stats.graph} loading={false} />
     </div>
+  );
+}
+
+export function SidePanelProperties({ tabId, page }: { tabId: string; page: ThreadPage }) {
+  return (
+    <ThreadSnapshotGate tabId={tabId} threadUrl={page.threadUrl}>
+      {(snapshot) => <ThreadProperties page={page} data={snapshot} />}
+    </ThreadSnapshotGate>
   );
 }
