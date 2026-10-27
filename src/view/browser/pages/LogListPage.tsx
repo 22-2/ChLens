@@ -17,7 +17,9 @@ const logger = createLogger("view/browser");
 type SortDirection = "asc" | "desc";
 type SortColumn = "title" | "boardTitle" | "resLength" | "lastUpdated";
 const PAGE_SIZE = 200;
-const SEARCH_CHUNK_SIZE = 50;
+const SEARCH_CHUNK_SIZE = 100;
+const SEARCH_RESULT_UPDATE_INTERVAL = 500;
+const BODY_SEARCH_CACHE_LIMIT = 8;
 const LOAD_MORE_THRESHOLD = 12;
 
 interface SortState {
@@ -137,6 +139,9 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
   // 本文検索の結果。null のときは本文検索未実行。
   const [bodyMatchedEntries, setBodyMatchedEntries] = useState<LogEntry[] | null>(null);
   const [bodySearchLoading, setBodySearchLoading] = useState(false);
+  const bodySearchCacheRef = useRef(new Map<string, LogEntry[]>());
+  const [bodySearchRevision, setBodySearchRevision] = useState(0);
+  const previousRefreshKeyRef = useRef(refreshKey);
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
     tabId,
@@ -154,10 +159,15 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
     });
   }, [searchMode, searchQuery, sortState, updateViewState]);
 
-  const wasActiveRef = React.useRef(isActive);
+  const invalidateBodySearchCache = useCallback(() => {
+    bodySearchCacheRef.current.clear();
+    setBodySearchRevision((revision) => revision + 1);
+  }, []);
 
-  const loadNextPage = useCallback(async (reset = false) => {
+  const pendingReloadRef = useRef(false);
+  const loadNextPage = useCallback(async function loadNextPage(reset = false) {
     if (isLoadingPageRef.current) {
+      pendingReloadRef.current ||= reset;
       return;
     }
     isLoadingPageRef.current = true;
@@ -189,6 +199,11 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
       } else {
         setLoadingMore(false);
       }
+      if (pendingReloadRef.current) {
+        // 初回読み込み中にログ更新が届いた場合も通知を捨てず、最新状態を一度だけ読み直す。
+        pendingReloadRef.current = false;
+        void loadNextPage(true);
+      }
     }
   }, []);
 
@@ -197,8 +212,12 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
   }, [loadNextPage]);
 
   useEffect(() => {
+    if (previousRefreshKeyRef.current !== refreshKey) {
+      previousRefreshKeyRef.current = refreshKey;
+      invalidateBodySearchCache();
+    }
     void loadEntries();
-  }, [loadEntries, refreshKey]);
+  }, [invalidateBodySearchCache, loadEntries, refreshKey]);
 
   // 本文検索: 保存ログを小分けに走査し、見つかった結果から順に表示する。
   useEffect(() => {
@@ -212,25 +231,46 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
       return;
     }
 
+    const cachedResults = bodySearchCacheRef.current.get(query);
+    if (cachedResults) {
+      // 変更理由: 同じ語で本文検索へ戻ったとき、保存本文を再走査せず前回の結果を使う。
+      bodySearchCacheRef.current.delete(query);
+      bodySearchCacheRef.current.set(query, cachedResults);
+      setBodyMatchedEntries(cachedResults);
+      setBodySearchLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setBodyMatchedEntries([]);
     setBodySearchLoading(true);
     const timer = window.setTimeout(() => {
       void (async () => {
         let offset = 0;
+        let lastPublishedOffset = 0;
         const matchedEntries: LogEntry[] = [];
         try {
           while (!cancelled) {
             const page = await container.threadLog.searchLogsPage(query, offset, SEARCH_CHUNK_SIZE);
+            if (cancelled) return;
             offset = page.nextOffset;
             for (const result of page.logs) {
               matchedEntries.push(toLogEntry(result));
             }
-            if (!cancelled) {
-              setBodyMatchedEntries([...matchedEntries]);
-            }
+
             if (!page.hasMore) {
+              const results = [...matchedEntries];
+              setBodyMatchedEntries(results);
+              bodySearchCacheRef.current.set(query, results);
+              if (bodySearchCacheRef.current.size > BODY_SEARCH_CACHE_LIMIT) {
+                const oldestQuery = bodySearchCacheRef.current.keys().next().value;
+                if (oldestQuery !== undefined) bodySearchCacheRef.current.delete(oldestQuery);
+              }
               break;
+            }
+            if (offset - lastPublishedOffset >= SEARCH_RESULT_UPDATE_INTERVAL) {
+              setBodyMatchedEntries([...matchedEntries]);
+              lastPublishedOffset = offset;
             }
             // 変更理由: 大量ログの連続走査中も描画と入力処理へ制御を戻す。
             await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
@@ -252,26 +292,19 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
       window.clearTimeout(timer);
       setBodySearchLoading(false);
     };
-  }, [searchMode, searchQuery]);
+  }, [bodySearchRevision, searchMode, searchQuery]);
 
   useEffect(() => {
-    // hidden のまま保持されたログページが、前面復帰時に新着を取りこぼさないよう再同期する。
-    if (isActive && !wasActiveRef.current) {
-      void loadEntries();
-    }
-    wasActiveRef.current = isActive;
-  }, [isActive, loadEntries]);
-
-  useEffect(() => {
-    // スレ閲覧でログが追加/更新されたら一覧を再読込する（閲覧履歴と同じパターン）。
+    // 非表示タブでも更新通知を購読しているため、再表示時に一覧を読み直す必要はない。
     const handleLogUpdated = () => {
+      invalidateBodySearchCache();
       void loadEntries();
     };
     container.message.on("log_updated", handleLogUpdated);
     return () => {
       container.message.off("log_updated", handleLogUpdated);
     };
-  }, [loadEntries]);
+  }, [invalidateBodySearchCache, loadEntries]);
 
   const handleSort = useCallback((key: string) => {
     if (!COLUMNS.some((column) => column.key === key)) {
