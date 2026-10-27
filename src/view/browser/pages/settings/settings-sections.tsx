@@ -56,7 +56,6 @@ const NEW_TAB_PAGE_MODE_OPTIONS = [
   // 初期ページの設定値は維持し、統一した入口の名前を表示する。
   { const: "home", title: "ホーム" },
   { const: "related_board", title: "関連する板" },
-  { const: "custom_board", title: "指定の板" },
 ] as const satisfies readonly SettingsOption[];
 
 const TAB_BAR_ORIENTATION_OPTIONS = [
@@ -142,13 +141,6 @@ const ALL_SETTINGS_SECTIONS = [
         title: "外部ページから開いたときに新しいタブをフォーカスする",
         description:
           "外部ページの「chlens で開く」からスレを開いたとき、新しいタブをアクティブにします。",
-      },
-      {
-        kind: "string",
-        key: "new_tab_page_board_url",
-        title: "指定の板 URL",
-        description:
-          "『指定の板』を選んだ時に開く板URLです（例: https://example.com/test/read.cgi/software/）。",
       },
       {
         kind: "divider",

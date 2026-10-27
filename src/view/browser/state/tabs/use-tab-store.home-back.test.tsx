@@ -208,7 +208,6 @@ describe("通常タブのホームと閲覧履歴", () => {
 
   it("最後のタブを閉じると設定に関係なくホームへ置き換え、閉じたタブから復元できる", async () => {
     localStorage.setItem("config_new_tab_page_mode", "custom_board");
-    localStorage.setItem("config_new_tab_page_board_url", "https://example.com/custom/");
     const threadPage = {
       type: "thread" as const,
       title: "サンプルスレ",
