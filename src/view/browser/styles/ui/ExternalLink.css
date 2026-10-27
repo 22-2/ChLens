@@ -49,8 +49,13 @@
 
 .external-link-dialog__choice {
   display: flex;
-  align-items: start;
+  align-items: center;
   gap: var(--sys-space-2);
+}
+
+.external-link-dialog__choice input {
+  flex: 0 0 auto;
+  margin: 0;
 }
 
 .external-link-dialog__actions {
