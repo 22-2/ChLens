@@ -97,6 +97,9 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const { viewPage, viewTab, paneId } = useTabStore();
   const initialBottomPanel = useBottomPanelLayout(paneId);
   const tabBarOrientation = useTabBarOrientation();
+  const { panes } = useTabPanes();
+  // 変更理由: 1ペインの垂直モードではタブバーを画面左端のシェル側へ出し、タイトルバーの上端まで伸ばす。
+  const hasSharedTabColumn = tabBarOrientation === "vertical" && panes.length === 1;
   const {
     state: nextThreadSearchState,
     searchNextThread,
@@ -195,11 +198,14 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
               }
             >
               <AutoScrollStateProvider>
-                {tabBarOrientation === "vertical" ? (
-                  // 変更理由: 垂直モードではタブバーをペインの上端まで伸ばし、
-                  // タイトルバー以下を右へ押しのける。タイトルバーもペイン単位にし、
-                  // 自ペインの操作欄を持つ。1ペイン優先の簡易対応とし、
-                  // 2ペイン時は操作欄が複製される。
+                {hasSharedTabColumn ? (
+                  // 変更理由: タブバーはシェル側（画面左端）にあるため、ペインは操作欄と本体だけを持つ。
+                  <>
+                    <div className="pane-column__chrome">{navigationBar}</div>
+                    {paneBody}
+                  </>
+                ) : tabBarOrientation === "vertical" ? (
+                  // 変更理由: 2ペイン以上の垂直モードでは、各ペインがタブバーを持つ。
                   <div className="pane-column__vertical-body">
                     <TabBar orientation="vertical" />
                     <div className="pane-column__vertical-main">
@@ -234,6 +240,35 @@ const PaneRow: React.FC = () => {
       {panes.map((pane) => (
         <PaneColumn key={pane.id} paneId={pane.id} isActive={pane.id === activePaneId} />
       ))}
+    </div>
+  );
+};
+
+// タイトルバーとワークスペースの枠。1ペインの垂直モードでは、左端のタブバーを
+// タイトルバーの上端まで伸ばし、タイトルバー以下を右へ押しのける。
+const ShellFrame: React.FC = () => {
+  const { panes } = useTabPanes();
+  const orientation = useTabBarOrientation();
+  const main = (
+    <>
+      <TitleBar />
+      <div className="browser-shell__workspace">
+        <PaneRow />
+        <SidePanel />
+      </div>
+    </>
+  );
+
+  if (orientation !== "vertical" || panes.length !== 1) {
+    return main;
+  }
+
+  return (
+    <div className="browser-shell__vertical-frame">
+      <PaneProvider paneId={panes[0].id}>
+        <TabBar orientation="vertical" />
+      </PaneProvider>
+      <div className="browser-shell__vertical-main">{main}</div>
     </div>
   );
 };
@@ -290,11 +325,7 @@ export const BrowserApp: React.FC = () => {
                 これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
                 垂直モードでも操作対象をアクティブペインに揃え、タイトルバーを共有する。
               */}
-                <TitleBar />
-                <div className="browser-shell__workspace">
-                  <PaneRow />
-                  <SidePanel />
-                </div>
+                <ShellFrame />
                 <BookmarkRootSelectorDialog />
               </div>
             </TabWindowHost>

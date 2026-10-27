@@ -55,6 +55,24 @@
   pointer-events: auto;
 }
 
+/* 変更理由: 1ペインの垂直モードでは、タブバーを画面の上端から下端まで伸ばし、
+   タイトルバーとワークスペースをその右に縦積みする。 */
+.browser-shell__vertical-frame {
+  display: flex;
+  flex: 1;
+  flex-direction: row;
+  min-width: 0;
+  min-height: 0;
+}
+
+.browser-shell__vertical-main {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
 /* ペインと補助ビューは独立してスクロールし、狭い幅でも本文を残す。 */
 .browser-shell__workspace {
   display: flex;
