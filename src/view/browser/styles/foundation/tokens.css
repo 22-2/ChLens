@@ -16,6 +16,10 @@
   --ref-overlay-handle-hit-size: 24px;
   --ref-rule-editor-height: 500px;
   --ref-rule-example-max-height: 360px;
+  --ref-media-viewer-width: 1400px;
+  --ref-media-viewer-height: 1000px;
+  --ref-media-viewer-viewport-width: 90vw;
+  --ref-media-viewer-viewport-height: 90vh;
   /* 変更理由: 独立した議論判定画像でも参考カードの寸法と書体を共有トークンから参照する。 */
   --ref-debate-card-width: 1024px;
   --ref-debate-id-width: 125px;
@@ -235,6 +239,15 @@
 
   /* Theme-independent system scales. */
   --sys-rule-editor-height: var(--ref-rule-editor-height);
+  /* 画像を見やすくしつつ、外側をクリックして閉じる余白を残す。 */
+  --sys-media-viewer-width: min(
+    var(--ref-media-viewer-viewport-width),
+    var(--ref-media-viewer-width)
+  );
+  --sys-media-viewer-height: min(
+    var(--ref-media-viewer-viewport-height),
+    var(--ref-media-viewer-height)
+  );
   --sys-rule-example-max-height: var(--ref-rule-example-max-height);
   --sys-space-0: var(--ref-space-0);
   --sys-toast-width: var(--ref-toast-width);
