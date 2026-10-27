@@ -378,6 +378,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     const responseHits: MinimapResponseHit[] = [];
     const entryByResNum = new Map(entries.map((entry) => [entry.resNum, entry]));
     const responseTotal = entries.length;
+    const markerStyles = viewWindow.getComputedStyle(canvas);
 
     if (responseTotal > 0) {
       for (const entry of entries) {
@@ -405,13 +406,22 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       const y = clamp(centerY, minY, maxY);
 
       // フォントの文字中心は環境で数pxずれるため、パスで描いてホバー線と中心を厳密に合わせる。
-      ctx.fillStyle = count >= 5 ? "rgba(220, 40, 40, 0.95)" : "rgba(255, 140, 0, 0.9)";
+      // 変更理由: 返信が集まるほど段階を分け、10件以上は紫でひと目で見つけられるようにする。
+      const markerColorToken =
+        count >= 10
+          ? "--sys-color-minimap-marker-very-popular"
+          : count >= 5
+            ? "--sys-color-minimap-marker-popular"
+            : "--sys-color-minimap-marker-reply";
+      ctx.fillStyle = markerStyles.getPropertyValue(markerColorToken).trim();
+      ctx.globalAlpha = count >= 5 ? 0.95 : 0.9;
       ctx.beginPath();
       ctx.moveTo(markerX - MINIMAP_MARKER_WIDTH, y);
       ctx.lineTo(markerX, y - MINIMAP_MARKER_HALF_HEIGHT);
       ctx.lineTo(markerX, y + MINIMAP_MARKER_HALF_HEIGHT);
       ctx.closePath();
       ctx.fill();
+      ctx.globalAlpha = 1;
       // 実際の三角記号より広い当たり判定を持たせ、細いミニマップでもクリックしやすくする。
       markerHits.push({
         resNum,

@@ -397,6 +397,7 @@
   flex-shrink: 0;
   align-items: center;
   padding-bottom: var(--sys-space-2);
+  border-bottom: 1px solid var(--sys-color-border);
 }
 
 .tab-bar__collapse {
