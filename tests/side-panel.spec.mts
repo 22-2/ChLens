@@ -5,6 +5,12 @@ test("サイドパネルの表示とビュー選択を再起動後も復元す�
   await page.getByRole("button", { name: "サイドパネルを開く" }).click();
   const panel = page.getByRole("complementary", { name: "サイドパネル" });
   await expect(panel).toBeVisible();
+  const resize = panel.getByRole("separator", { name: "サイドパネルの幅" });
+  const beforeWidth = (await panel.boundingBox())!.width;
+  await resize.focus();
+  await resize.press("ArrowLeft");
+  await expect.poll(async () => (await panel.boundingBox())!.width).toBeGreaterThan(beforeWidth);
+  const changedWidth = (await panel.boundingBox())!.width;
   await panel.getByRole("tab", { name: "画像一覧" }).click();
   await panel.getByRole("tab", { name: "画像一覧" }).press("Alt+ArrowLeft");
   await expect(panel.getByRole("tab", { name: "画像一覧" })).toHaveAttribute(
@@ -13,6 +19,7 @@ test("サイドパネルの表示とビュー選択を再起動後も復元す�
   );
   await page.reload();
   await expect(panel).toBeVisible();
+  await expect.poll(async () => (await panel.boundingBox())!.width).toBe(changedWidth);
   await expect(panel.getByRole("tab", { name: "画像一覧" })).toHaveAttribute(
     "aria-selected",
     "true",
