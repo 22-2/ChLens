@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { createLogger } from "src/app/logger";
 import {
   getArchiveReplayThreadCapabilities,
   useArchiveReplayPositionStore,
@@ -26,6 +27,12 @@ import { useTabBarOrientation } from "src/features/tabs/browser/use-tab-bar-orie
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useResponseJumpDialog } from "src/features/thread/browser/use-response-jump-dialog";
 import { clearCachedThreadReadState } from "src/features/thread-list/ui/thread-list-cache";
+import {
+  getThreadListSnapshots,
+  selectThreadListSnapshot,
+  type ThreadListSnapshot,
+  useSelectedThreadListSnapshot,
+} from "src/features/thread-list/ui/thread-list-snapshots";
 import { resolveBrowserCommands } from "src/view/browser/commands/browser-commands";
 import type { BrowserCommandContext } from "src/view/browser/commands/command-definition";
 import { commandPalette } from "src/view/browser/commands/command-palette-store";
@@ -98,6 +105,7 @@ interface SuggestionMenuState extends MenuPosition {
 }
 
 const OMNIBAR_MAX_SUGGESTIONS = 8;
+const logger = createLogger("view/browser");
 
 const NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
 const NOOP_OPEN_RELATED_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
@@ -141,6 +149,25 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(null);
   const [refreshMenuPosition, setRefreshMenuPosition] = useState<MenuPosition | null>(null);
+  const [snapshots, setSnapshots] = useState<ThreadListSnapshot[]>([]);
+  const selectedSnapshot = useSelectedThreadListSnapshot(viewTab.id);
+  const boardUrl = viewPage.type === "threadList" ? viewPage.boardUrl : null;
+  useEffect(() => {
+    if (!refreshMenuPosition || !boardUrl) return;
+    let cancelled = false;
+    // メニューを開くたびに取得し、別タブで保存された履歴も反映する。
+    void getThreadListSnapshots(boardUrl)
+      .then((entries) => {
+        if (!cancelled) setSnapshots(entries);
+      })
+      .catch((error: unknown) => {
+        logger.error("スレ一覧の履歴を読み込めませんでした:", error);
+        if (!cancelled) toast.error("スレ一覧の履歴を読み込めませんでした");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [boardUrl, refreshMenuPosition, toast]);
   const [forwardMenuPosition, setForwardMenuPosition] = useState<MenuPosition | null>(null);
   const [suggestionMenuState, setSuggestionMenuState] = useState<SuggestionMenuState | null>(null);
   // 変更理由: URL入力はタイトルのピルをクリックした間だけ、ピルと入れ替わる形で表示する。
@@ -518,6 +545,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       setMenuPosition(null);
       setBackMenuPosition(null);
       setForwardMenuPosition(null);
+      setSnapshots([]);
       setRefreshMenuPosition((prev) => (prev ? null : { x: e.clientX, y: e.clientY }));
     },
     [viewPage.type],
@@ -726,32 +754,55 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     ],
   );
 
-  const refreshMenuItems = useMemo(
-    () =>
+  const refreshMenuItems = useMemo<ContextMenuItem[]>(() => {
+    const items: ContextMenuItem[] =
       currentAutoRefreshPageKey != null
         ? [
             {
               id: "toggle-page-auto-refresh",
               label: isCurrentPageAutoRefreshEnabled ? "自動更新を停止" : "自動更新を開始",
               icon: isCurrentPageAutoRefreshEnabled ? <Pause size={14} /> : <RotateCw size={14} />,
-              onSelect: () => {
+              onSelect: () =>
                 dispatch(
                   tabActions.setAutoRefreshEnabled(
                     !isCurrentPageAutoRefreshEnabled,
                     currentAutoRefreshPageKey,
                   ),
-                );
-              },
+                ),
             },
-            {
-              id: "page-auto-refresh-note",
-              label: "アクティブなタブでのみ動作",
-              disabled: true,
-            },
+            { id: "page-auto-refresh-note", label: "アクティブなタブでのみ動作", disabled: true },
           ]
-        : [],
-    [currentAutoRefreshPageKey, dispatch, isCurrentPageAutoRefreshEnabled],
-  );
+        : [];
+    if (boardUrl) {
+      items.push(
+        { id: "snapshot-separator", separator: true },
+        {
+          id: "snapshot-heading",
+          label: "一覧の履歴（過去の一覧では自動更新を一時停止）",
+          disabled: true,
+        },
+        {
+          id: "snapshot-latest",
+          label: `${selectedSnapshot ? "" : "✓ "}最新の一覧`,
+          onSelect: () => selectThreadListSnapshot(viewTab.id, null),
+        },
+        ...snapshots.map((snapshot) => ({
+          id: snapshot.url,
+          label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${new Date(snapshot.last_updated).toLocaleString("ja-JP")}（${snapshot.threads.length}件）`,
+          onSelect: () => selectThreadListSnapshot(viewTab.id, snapshot),
+        })),
+      );
+    }
+    return items;
+  }, [
+    boardUrl,
+    currentAutoRefreshPageKey,
+    dispatch,
+    isCurrentPageAutoRefreshEnabled,
+    selectedSnapshot,
+    snapshots,
+    viewTab.id,
+  ]);
 
   // Android版Chromeのように頻繁に使う操作をメニューの最上段へまとめ、本文の横幅を優先する。
   const navigationMenuHeader = (

@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import "fake-indexeddb/auto";
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import * as snapshots from "src/features/thread-list/ui/thread-list-snapshots";
 import { container } from "src/service-container";
 import { registerTestFilterCommands } from "src/test-support/filter-commands";
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
@@ -627,6 +628,42 @@ describe("NavigationBar", () => {
     expect(within(actions).getByTitle("進む")).toBeInTheDocument();
     expect(within(actions).getByTitle("更新")).toBeInTheDocument();
     expect(within(actions).getByTitle("お気に入りに追加")).toBeInTheDocument();
+  });
+
+  it("更新の右クリックメニューから過去の一覧と最新の一覧を切り替える", async () => {
+    viewTab.currentIndex = 0;
+    const snapshot = {
+      url: "snapshot:test",
+      last_modified: "https://example.com/board/",
+      last_updated: 1,
+      threads: [],
+    };
+    const getSnapshots = vi
+      .spyOn(snapshots, "getThreadListSnapshots")
+      .mockResolvedValue([snapshot]);
+    function Selection() {
+      return (
+        <span data-testid="selection">
+          {snapshots.useSelectedThreadListSnapshot(viewTab.id)?.url ?? "latest"}
+        </span>
+      );
+    }
+    render(
+      <>
+        <NavigationBar />
+        <Selection />
+      </>,
+    );
+    fireEvent.click(screen.getByTitle("メニュー"));
+    fireEvent.contextMenu(screen.getByTitle("更新"));
+    expect(screen.getByText(/自動更新を開始/)).toBeInTheDocument();
+    fireEvent.click(await screen.findByText(/1970.*0件/));
+    expect(screen.getByTestId("selection")).toHaveTextContent("snapshot:test");
+    fireEvent.click(screen.getByTitle("メニュー"));
+    fireEvent.contextMenu(screen.getByTitle("更新"));
+    fireEvent.click(screen.getByText("最新の一覧"));
+    expect(screen.getByTestId("selection")).toHaveTextContent("latest");
+    getSnapshots.mockRestore();
   });
 
   it("戻る履歴メニューのタイトルを複数行表示にする", () => {

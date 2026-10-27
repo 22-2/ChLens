@@ -39,7 +39,9 @@ import {
 } from "src/features/thread-list/ui/thread-list-shared";
 import {
   getThreadListSnapshots,
+  selectThreadListSnapshot,
   type ThreadListSnapshot,
+  useSelectedThreadListSnapshot,
 } from "src/features/thread-list/ui/thread-list-snapshots";
 import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
@@ -163,7 +165,7 @@ export const ThreadListPage: React.FC<Props> = ({
   const pageCountKey = getThreadListPageCountKey(tabId, page.boardUrl);
   const bookmarkRevision = useBookmarkRevision();
   const [snapshots, setSnapshots] = useState<ThreadListSnapshot[]>([]);
-  const [selectedSnapshot, setSelectedSnapshot] = useState<ThreadListSnapshot | null>(null);
+  const selectedSnapshot = useSelectedThreadListSnapshot(tabId);
   const [snapshotRevision, setSnapshotRevision] = useState(0);
   const onSnapshotSaved = useCallback(() => setSnapshotRevision((revision) => revision + 1), []);
   const autoRefreshRequestRef = useRef<{ boardUrl: string; refreshKey: number } | null>(null);
@@ -201,8 +203,9 @@ export const ThreadListPage: React.FC<Props> = ({
   }, [page.boardUrl, snapshotRevision, toast]);
   useEffect(() => {
     // 板の切り替えや明示的な更新後は、保存済みの過去一覧から最新表示に戻す。
-    setSelectedSnapshot(null);
-  }, [page.boardUrl, refreshKey]);
+    selectThreadListSnapshot(tabId, null);
+    return () => selectThreadListSnapshot(tabId, null);
+  }, [page.boardUrl, refreshKey, tabId]);
   useThreadListReadStateSync({ boardUrl: page.boardUrl, isActive, setThreads });
   const [boardAutoRefreshIntervalMs, setBoardAutoRefreshIntervalMs] = useState(() =>
     readBoardAutoRefreshIntervalMs(page.boardUrl),
@@ -778,29 +781,6 @@ export const ThreadListPage: React.FC<Props> = ({
         busy={loading && isAutoRefreshing}
         visible={isActive}
       />
-      <div className="thread-list-page__snapshots">
-        <label>
-          <span>一覧の履歴</span>
-          <select
-            value={selectedSnapshot?.url ?? ""}
-            onFocus={() => setSnapshotRevision((revision) => revision + 1)}
-            onChange={(event) => {
-              setSelectedSnapshot(
-                snapshots.find((snapshot) => snapshot.url === event.target.value) ?? null,
-              );
-            }}
-          >
-            <option value="">最新の一覧</option>
-            {snapshots.map((snapshot) => (
-              <option key={snapshot.url} value={snapshot.url}>
-                {new Date(snapshot.last_updated).toLocaleString("ja-JP")}（{snapshot.threads.length}
-                件）
-              </option>
-            ))}
-          </select>
-        </label>
-        {selectedSnapshot && <span>過去の一覧を表示中（自動更新は一時停止）</span>}
-      </div>
       {showRefreshOverlay && (
         <div
           className={`thread-list-page__loading-overlay${loading ? " thread-list-page__loading-overlay--visible" : ""}`}
