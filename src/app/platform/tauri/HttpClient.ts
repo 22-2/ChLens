@@ -8,7 +8,6 @@ import type {
   HttpRequestOptions,
   HttpResponse,
 } from "src/app/platform/types";
-import { getUserAgent } from "src/app/platform/user-agent";
 
 const logger = createLogger("platform");
 
@@ -33,16 +32,17 @@ function decodeText(bytes: Uint8Array, mimeType: string | undefined): string {
   }
 }
 
-// 呼び出し側が明示したUser-Agentを優先し、無ければ設定で指定した値を付ける。
+// 板・スレ取得だけが userAgent を指定する。空文字のときはWebView自身のUser-Agentを使い、
+// 拡張機能版（ブラウザ標準のUA）と挙動を揃える。呼び出し側が明示したヘッダーを優先する。
 function withUserAgent(
   headers: Record<string, string> | undefined,
+  userAgent: string | undefined,
 ): Record<string, string> | undefined {
-  const userAgent = getUserAgent();
-  if (!userAgent) return headers;
+  if (userAgent === undefined) return headers;
   if (headers && Object.keys(headers).some((name) => name.toLowerCase() === "user-agent")) {
     return headers;
   }
-  return { ...headers, "User-Agent": userAgent };
+  return { ...headers, "User-Agent": userAgent || navigator.userAgent };
 }
 
 async function request(url: string, options: HttpRequestOptions = {}): Promise<SharedHttpResponse> {
@@ -50,7 +50,7 @@ async function request(url: string, options: HttpRequestOptions = {}): Promise<S
     request: {
       url,
       method: options.method,
-      headers: withUserAgent(options.headers),
+      headers: withUserAgent(options.headers, options.userAgent),
       body: typeof options.body === "string" ? options.body : undefined,
       bodyBase64:
         options.body instanceof ArrayBuffer

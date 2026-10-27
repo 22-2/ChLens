@@ -161,7 +161,7 @@ const ALL_SETTINGS_SECTIONS = [
         key: "useragent",
         title: "User-Agent",
         description:
-          "Tauri版で、通信と書き込みに使うUser-Agentです。空欄なら既定値を使います。ASCII文字だけを指定してください。",
+          "板・スレの取得と書き込みに使うUser-Agentです。空欄ならブラウザ自身のUser-Agentを使います。ASCII文字だけを指定してください。",
       },
       {
         kind: "boolean",

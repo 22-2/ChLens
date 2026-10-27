@@ -9,6 +9,7 @@ import {
 } from "packages/chlib/src/index";
 import { createLogger } from "src/app/logger";
 import { platform } from "src/app/platform";
+import { getUserAgent } from "src/app/platform/user-agent";
 import { runBoardRequest } from "src/core/board/board-request";
 import { chServerMoveDetect } from "src/core/board/ch-server-move-detect";
 import { Response } from "src/core/network/HTTP";
@@ -106,6 +107,7 @@ export default class Board {
                 method: "GET",
                 mimeType: `text/plain; charset=${xhrCharset}`,
                 headers,
+                userAgent: getUserAgent(),
               }),
             );
             // HttpResponseをResponseに変換

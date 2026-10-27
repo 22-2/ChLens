@@ -85,6 +85,11 @@ export interface HttpRequestOptions {
   mimeType?: string;
   /** HTTPで指定されたGETをHTTPSへ切り替える方針。未指定ならウィンドウで選んだ設定を使う。 */
   httpsMode?: HttpsMode;
+  /**
+   * 板・スレ取得で使うUser-Agent。空文字はプラットフォームの標準（ブラウザ自身のUA）を使う。
+   * 未指定の要求（画像・外部連携など）には影響しない。
+   */
+  userAgent?: string;
 }
 
 export interface HttpClient {

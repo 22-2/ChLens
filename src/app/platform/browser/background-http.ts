@@ -1,6 +1,7 @@
 import { fetchHttpsFirst } from "packages/chlib/src/fetcher/https-first";
 import { createLogger } from "src/app/logger";
 import { decodeBase64ArrayBuffer, encodeBase64 } from "src/app/platform/binary";
+import { applyUserAgentRule } from "src/app/platform/browser/user-agent-rule";
 import { QueuedHttpClient } from "src/app/platform/QueuedHttpClient";
 import type {
   BinaryHttpResponse,
@@ -26,6 +27,10 @@ async function fetchBinaryResponse(
         ? setTimeout(() => controller.abort(), options.timeout)
         : undefined;
       try {
+        // fetchではUser-Agentを上書きできないため、取得先ごとのDNRルールで差し替える。
+        if (options.userAgent !== undefined) {
+          await applyUserAgentRule(requestUrl, options.userAgent);
+        }
         const response = await fetch(requestUrl, {
           method: options.method ?? "GET",
           headers: options.headers,
@@ -88,6 +93,7 @@ export async function handleSharedHttpRequest(
           timeout: serializedOptions.timeout,
           mimeType: serializedOptions.mimeType,
           httpsMode: serializedOptions.httpsMode,
+          userAgent: serializedOptions.userAgent,
           body:
             serializedOptions.bodyBase64 !== undefined
               ? decodeBase64ArrayBuffer(serializedOptions.bodyBase64)

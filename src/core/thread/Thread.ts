@@ -21,6 +21,7 @@ import {
 } from "packages/chlib/src/index";
 import { createLogger } from "src/app/logger";
 import { platform } from "src/app/platform";
+import { getUserAgent } from "src/app/platform/user-agent";
 import { chServerMoveDetect } from "src/core/board/ch-server-move-detect";
 import { isMissingFromSubject, shouldForceSubjectCheck } from "src/core/board/SubjectPresence";
 import type { CorePorts } from "src/core/ports/registry";
@@ -200,6 +201,7 @@ export default class Thread {
                   method: "GET",
                   mimeType: `text/plain; charset=${charset}`,
                   headers: { ...headers },
+                  userAgent: getUserAgent(),
                 }),
             }
           : undefined,
