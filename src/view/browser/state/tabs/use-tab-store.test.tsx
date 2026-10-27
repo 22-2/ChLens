@@ -4,8 +4,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { container } from "src/service-container/index";
 import type { IHistoryService } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
+import { getPageViewStateKey } from "src/view/browser/page-type-definitions";
 import { getAutoRefreshPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
-import { getCurrentPage, getPageViewStateKey } from "src/view/browser/types";
+import { getCurrentPage } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { historyAddMock, historyGetByUrlMock, historyRemoveMock } = vi.hoisted(() => ({

@@ -1,4 +1,5 @@
 import { createLogger } from "src/app/logger";
+import { getPageViewStateKey } from "src/view/browser/page-type-definitions";
 import {
   getBrowserSessionJson,
   setBrowserSessionJson,
@@ -6,11 +7,7 @@ import {
 import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import type { TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
 import type { Page, Pane, PersistedTab, Tab, TabViewStates } from "src/view/browser/types";
-import {
-  createTabRuntimeState,
-  ensurePaneHasTab,
-  getPageViewStateKey,
-} from "src/view/browser/types";
+import { createTabRuntimeState, ensurePaneHasTab } from "src/view/browser/types";
 
 const logger = createLogger("view/browser");
 

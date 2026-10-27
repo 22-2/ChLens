@@ -1,3 +1,4 @@
+import { getPageIdentity } from "src/view/browser/page-type-definitions";
 import {
   getAutoRefreshPageKey,
   resetAutoRefreshState,
@@ -8,7 +9,6 @@ import {
   createTabFromPage,
   shouldFocusNewTabOnOpen,
 } from "src/view/browser/state/tabs/tab-store-new-tab";
-import { getPageIdentity } from "src/view/browser/state/tabs/tab-store-page-identity";
 import {
   canCloseTab,
   canOpenInRightPane,

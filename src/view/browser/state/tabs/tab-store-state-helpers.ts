@@ -1,10 +1,12 @@
-import { getPageIdentity } from "src/view/browser/state/tabs/tab-store-page-identity";
-import { type TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
 import {
   buildHierarchy,
+  getPageIdentity,
+  getPageViewStateKey,
+} from "src/view/browser/page-type-definitions";
+import { type TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
+import {
   ensurePaneHasTab,
   getCurrentPage,
-  getPageViewStateKey,
   type Page,
   type Pane,
   type Tab,

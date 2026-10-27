@@ -13,6 +13,7 @@ import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import { createLogger } from "src/app/logger";
 import { platform } from "src/app/platform";
 import { container } from "src/service-container/index";
+import { getPageIdentity, getPageViewStateKey } from "src/view/browser/page-type-definitions";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { recordAutoRefreshTransitions } from "src/view/browser/state/tabs/tab-store-debug";
 import {
@@ -29,7 +30,6 @@ import {
   createTabFromPage,
   readInitialPageFromLocation,
 } from "src/view/browser/state/tabs/tab-store-new-tab";
-import { getPageIdentity } from "src/view/browser/state/tabs/tab-store-page-identity";
 import { tabReducer } from "src/view/browser/state/tabs/tab-store-reducer";
 import { findTabAcrossPanes } from "src/view/browser/state/tabs/tab-store-selectors";
 import {
@@ -52,13 +52,7 @@ import {
   type TabStoreState,
 } from "src/view/browser/state/tabs/tab-store-types";
 import { useTabViewScope } from "src/view/browser/state/tabs/use-tab-view-scope";
-import {
-  getCurrentPage,
-  getPageViewStateKey,
-  type Page,
-  type Pane,
-  type TabViewState,
-} from "src/view/browser/types";
+import { getCurrentPage, type Page, type Pane, type TabViewState } from "src/view/browser/types";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import browser from "webextension-polyfill";
 

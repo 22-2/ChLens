@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from "react";
-import { getPageViewStateKey, type Page } from "src/view/browser/types";
+import { getPageViewStateKey } from "src/view/browser/page-type-definitions";
+import { type Page } from "src/view/browser/types";
 
 const cooldownUntilByScope = new Map<string, number>();
 const manualRefreshScopes = new Set<string>();

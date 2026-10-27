@@ -93,23 +93,37 @@ Obsidian の画面構造と今のコードは、次のように対応する。
 | `getState` / `setState` | `Page` の各項目と `TabViewState` | セッションに保存・復元する状態 |
 | `getEphemeralState` | スクロール位置などの一時状態 | |
 
-Obsidian では `registerView(type, creator)` で登録した View 自身が、アイコン・表示名・状態を知っている。同じく、ページ種別ごとの知識を1つの定義にまとめる。
+Obsidian では `registerView(type, creator)` で登録した View 自身が、アイコン・表示名・状態を知っている。同じく、ページ種別ごとの知識を1つの定義にまとめる。PR5 で、次の形にした。
 
 ```tsx
-api.registerPageType({
-  type: "thread",
-  icon: MessageSquare,
-  getTitle: (page) => page.title,
-  getIdentity: (page) => ..., // 今の getPageIdentity
-  capabilities: { refresh: true, filter: true },
-  render: (props) => <ThreadPage {...props} />,
-});
+// src/view/browser/page-type-definitions.ts（UI 部品層）
+export const PAGE_TYPE_DEFINITIONS: { [T in PageType]: PageTypeDefinition<PageOfType<T>> } = {
+  thread: {
+    icon: MessageSquareText,
+    refreshable: true,
+    filterable: true,
+    autoRefreshable: true,
+    getLocation: (page) => page.threadUrl, // page はスレのページに絞り込まれる
+    buildHierarchy: (page) => [...],
+  },
+  settings: { icon: Settings, refreshable: false, filterable: false, autoRefreshable: false, displayLabel: "設定" },
+  // ...
+};
+
+// src/view/browser/shell/page-renderers.tsx（組み立て層）
+const PAGE_RENDERERS: { [T in PageType]: (page: PageOfType<T>, context: PageRenderContext) => ReactNode } = {
+  thread: (page, context) => <ThreadPage page={page} ... />,
+  // ...
+};
 ```
 
-- `TabView`、`PageTypeIcon`、同一ページの判定、再取得・絞り込みの可否などは、この定義を引くだけにする。コマンドの `when` にある `page.type === ...` の判定も、できるものは `capabilities` で表す。
+- 定義（メタデータ）と描画先は別のモジュールに置く。描画先はページのコンポーネントを import するため組み立て層に置き、定義は UI 部品層に置いて、層の依存ルールを保つ。
+- 定義は種別ごとに型を絞った関数で書く。URL で区別する種別は `getLocation` を持ち、同一性・表示状態のキー・描画キー・表示 URL はすべてここから求める。種別ごとに「どの URL を使うか」を文字列で別々に書く形は、組み合わせの誤りを型で検出できず、別の板やスレが同じページとして扱われる誤りを黙って生むため採らない。
+- `TabView`、`PageTypeIcon`、同一ページの判定、再取得・絞り込みの可否などは、この定義を引くだけにする。コマンドの `when` にある `page.type === ...` の判定も、できるものは定義の項目で表す。
+- 全種別の出力（同一性・表示状態のキー・描画キー・表示 URL・階層・各可否）は `page-type-definitions.test.ts` で固定している。定義の書き方を変えるときは、このテストが変わらないことを確かめる。
 - `Page` はセッションに保存される形でもある。段階0では `Page` 型と保存形式を変えず、種別ごとの知識の置き場所だけを移す。未登録の種別が保存値に含まれていても、復元で失わず、画面が壊れないようにする。
 - 型の安全性を保つため、段階0では `Page` の union と `PageType` を残し、定義が全種別を網羅していることを型で検査する。外部から新しい種別を追加できるようにするかは段階1で決める。
-- Obsidian のように `View` クラスを継承して `containerEl` を直接操作する形にはしない。React コンポーネントを返す定義オブジェクトにする。
+- Obsidian のように `View` クラスを継承して `containerEl` を直接操作する形にはしない。React コンポーネントを返す対応表にする。
 - 名前の衝突を避ける。Obsidian の「View」はタブの中身を指すが、このアプリではタブの中身を「ページ」、サイドパネルの中身を「ビュー」と呼び分け、API も `registerPageType` と `addSidePanelView` のように分ける。
 
 ワークスペースの操作は、機能に `dispatch` を渡す代わりに、Obsidian の `Workspace` に当たる窓口から行う。
@@ -233,6 +247,7 @@ api.addStatusBarItem({
 - [x] **PR5. ページ種別の知識を定義へ集める（P2）**
   - 全種別の定義を1か所に作り、`TabView`・`PageTypeIcon`・同一ページの判定・再取得と絞り込みの可否が定義を引く形にする。`Page` 型と保存形式は変えない。
   - 完了：10種すべてのメタデータを定義し、アイコン、更新・絞り込み可否、自動更新対象、同一性、URL表示、履歴階層、描画キーの各判定を定義から参照する。描画先は組み立て層の対応表へ移し、`TabView` の分岐をなくした。`Page` 型と保存形式は維持した。
+  - 見直し：URL の使い方を種別ごとの文字列で表していた定義を、型を絞った `getLocation` などの関数に書き換えた。書き換え前に全種別の出力をテストで固定し、前後で一致することを確かめた。`types.ts` からの中継と、中継だけになっていた `tab-store-page-identity.ts` をなくし、呼び出し側は `page-type-definitions.ts` を直接 import する。移行で消えていた理由のコメント（クイックアクセスの同一性、新規タブの履歴）も戻した。
 - [ ] **PR6. ページ種別の定義を機能側へ移し、`api.workspace` の最小限の操作を用意する（P2）**
 - [ ] **PR7. 画面へ届けるコマンドを `api.workspace` 経由にする（P1 の残り、P2）**
   - コメント実況、フィルタの切り替えなど。直接呼べるようになった `CustomEvent` は、置き換えたあとに削除する。

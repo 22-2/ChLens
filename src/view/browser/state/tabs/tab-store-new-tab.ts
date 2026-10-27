@@ -1,8 +1,8 @@
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
+import { buildHierarchy } from "src/view/browser/page-type-definitions";
 import { readConfigValue } from "src/view/browser/state/tabs/tab-store-config";
 import { deriveBoardUrlFromThreadUrl } from "src/view/browser/state/tabs/tab-store-state-helpers";
 import {
-  buildHierarchy,
   createHomeTab,
   createTabRuntimeState,
   ensurePaneHasTab,

@@ -1,5 +1,5 @@
-import { PAGE_TYPE_DEFINITIONS } from "src/view/browser/page-type-definitions";
-import { getPageViewStateKey, type Page, type Tab } from "src/view/browser/types";
+import { getPageViewStateKey, PAGE_TYPE_DEFINITIONS } from "src/view/browser/page-type-definitions";
+import type { Page, Tab } from "src/view/browser/types";
 
 // 変更理由: スレ一覧が既読通知の発生元を判定するときも、画面側と同じURL正規化を使う。
 export function getAutoRefreshThreadPageKey(threadUrl: string): string {

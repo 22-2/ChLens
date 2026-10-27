@@ -16,203 +16,160 @@ import type { Page, PageType } from "src/view/browser/types";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
 
-type PageDisplayUrl =
-  | { kind: "literal"; value: string }
-  | { kind: "board-url" }
-  | { kind: "thread-url" };
+export type PageOfType<Type extends PageType> = Extract<Page, { type: Type }>;
 
-export interface PageTypeDefinition {
+export interface PageTypeDefinition<P extends Page = Page> {
   icon: ComponentType<LucideProps>;
   refreshable: boolean;
   filterable: boolean;
   autoRefreshable: boolean;
-  identity: "page-type" | "view-state";
-  viewStateKey: "page-type" | "board-url" | "thread-url";
-  displayUrl: PageDisplayUrl;
-  hierarchy: "home-only" | "home-and-page" | "thread-board";
-  renderKey: "page-type" | "board-url" | "thread-url";
+  /**
+   * URL で別ページを区別する種別だけが持つ。持つ種別は、同一性・表示状態のキー・
+   * 描画キー・ナビゲーションバーの表示 URL にこの値を使う。
+   */
+  getLocation?: (page: P) => string;
+  /** `getLocation` を持たない種別が、ナビゲーションバーの URL 欄に出す文言。 */
+  displayLabel?: string;
+  /** 新規タブの履歴。省略した種別は「ホーム → そのページ」にする。 */
+  buildHierarchy?: (page: P) => Page[];
+}
+
+type PageTypeDefinitions = { [Type in PageType]: PageTypeDefinition<PageOfType<Type>> };
+
+function createHomePage(): Page {
+  return { type: "home", title: "ホーム" };
 }
 
 /**
  * ページ種別ごとの共通メタデータ。
  * 変更理由: アイコンや更新・絞り込み可否、同一ページの扱いが複数の判定へ散らばると、
  * 新しい種別を追加したときに画面ごとの差が出るため、同じ定義から参照する。
+ * 種別ごとに型を絞った関数で書き、URL の取り出し方と種別の組み合わせを型で保証する。
  * 垂直タブバーではタイトルが隠れるためアイコンを必須にし、旧セッションの newTab も描画する。
  * 板ツリーを削除しても板を探す目印を保つため、ListTree は板一覧へ引き継ぐ。
  */
-export const PAGE_TYPE_DEFINITIONS = {
+export const PAGE_TYPE_DEFINITIONS: PageTypeDefinitions = {
   home: {
     icon: House,
     refreshable: false,
     filterable: false,
     autoRefreshable: false,
-    identity: "page-type",
-    viewStateKey: "page-type",
-    displayUrl: { kind: "literal", value: "" },
-    hierarchy: "home-only",
-    renderKey: "page-type",
+    buildHierarchy: () => [createHomePage()],
   },
   newTab: {
     icon: File,
     refreshable: false,
     filterable: false,
     autoRefreshable: false,
-    identity: "page-type",
-    viewStateKey: "page-type",
-    displayUrl: { kind: "literal", value: "" },
-    hierarchy: "home-only",
-    renderKey: "page-type",
+    buildHierarchy: () => [createHomePage()],
   },
   boardList: {
     icon: ListTree,
     refreshable: true,
     filterable: true,
     autoRefreshable: false,
-    identity: "page-type",
-    viewStateKey: "page-type",
-    displayUrl: { kind: "literal", value: "板一覧" },
-    hierarchy: "home-and-page",
-    renderKey: "page-type",
+    displayLabel: "板一覧",
   },
   threadList: {
     icon: LayoutList,
     refreshable: true,
     filterable: true,
     autoRefreshable: true,
-    identity: "view-state",
-    viewStateKey: "board-url",
-    displayUrl: { kind: "board-url" },
-    hierarchy: "home-and-page",
-    renderKey: "board-url",
+    getLocation: (page) => page.boardUrl,
   },
   thread: {
     icon: MessageSquareText,
     refreshable: true,
     filterable: true,
     autoRefreshable: true,
-    identity: "view-state",
-    viewStateKey: "thread-url",
-    displayUrl: { kind: "thread-url" },
-    hierarchy: "thread-board",
-    renderKey: "thread-url",
+    getLocation: (page) => page.threadUrl,
+    // 板一覧はホームから明示的に開く入口に限定し、祖先として自動生成しない。
+    // スレッドには板を祖先に含め、新規タブで開いたスレから同じ板へ戻れるようにする。
+    buildHierarchy: (page) => {
+      // 変更理由: 板URLの形式ごとの差をUIのページ階層へ持ち込まないため、導出は共通処理へ委譲する。
+      const boardUrl = getBoardUrlFromThreadUrl(page.threadUrl);
+      return [
+        createHomePage(),
+        { type: "threadList", title: boardUrl, boardUrl, boardTitle: boardUrl },
+        page,
+      ];
+    },
   },
   settings: {
     icon: Settings,
     refreshable: false,
     filterable: false,
     autoRefreshable: false,
-    identity: "page-type",
-    viewStateKey: "page-type",
-    displayUrl: { kind: "literal", value: "設定" },
-    hierarchy: "home-and-page",
-    renderKey: "page-type",
+    displayLabel: "設定",
   },
   bookmarkList: {
     icon: Bookmark,
     refreshable: false,
     filterable: true,
     autoRefreshable: false,
-    identity: "page-type",
-    viewStateKey: "page-type",
-    displayUrl: { kind: "literal", value: "ブックマーク" },
-    hierarchy: "home-and-page",
-    renderKey: "page-type",
+    displayLabel: "ブックマーク",
   },
   historyList: {
     icon: History,
     refreshable: true,
     filterable: true,
     autoRefreshable: false,
-    identity: "page-type",
-    viewStateKey: "page-type",
-    displayUrl: { kind: "literal", value: "閲覧履歴" },
-    hierarchy: "home-and-page",
-    renderKey: "page-type",
+    displayLabel: "閲覧履歴",
   },
   writeHistoryList: {
     icon: PenLine,
     refreshable: true,
     filterable: true,
     autoRefreshable: false,
-    identity: "page-type",
-    viewStateKey: "page-type",
-    displayUrl: { kind: "literal", value: "書き込み履歴" },
-    hierarchy: "home-and-page",
-    renderKey: "page-type",
+    displayLabel: "書き込み履歴",
   },
   logList: {
     icon: ScrollText,
     refreshable: true,
     filterable: true,
     autoRefreshable: false,
-    identity: "page-type",
-    viewStateKey: "page-type",
-    displayUrl: { kind: "literal", value: "ログ検索" },
-    hierarchy: "home-and-page",
-    renderKey: "page-type",
+    displayLabel: "ログ検索",
   },
-} as const satisfies Record<PageType, PageTypeDefinition>;
+};
 
-function getPageLocation(page: Page, strategy: PageTypeDefinition["viewStateKey"]): string | null {
-  if (strategy === "board-url" && page.type === "threadList") {
-    return page.boardUrl;
-  }
-  if (strategy === "thread-url" && page.type === "thread") {
-    return page.threadUrl;
-  }
-  return null;
+function getPageTypeDefinition<P extends Page>(page: P): PageTypeDefinition<P> {
+  // 変更理由: 対応表の型が種別とページの組み合わせを保証しているが、添字アクセスでは
+  // TypeScript が種別ごとの関数の引数を結び付けられないため、ここだけで型を戻す。
+  return PAGE_TYPE_DEFINITIONS[page.type] as unknown as PageTypeDefinition<P>;
+}
+
+function getPageLocation(page: Page): string | null {
+  return getPageTypeDefinition(page).getLocation?.(page) ?? null;
 }
 
 export function getPageViewStateKey(page: Page): string {
-  const strategy = PAGE_TYPE_DEFINITIONS[page.type].viewStateKey;
-  const location = getPageLocation(page, strategy);
+  const location = getPageLocation(page);
   if (location == null) return page.type;
-  return page.type + ":" + normalizePageLocation(location);
+  return `${page.type}:${normalizePageLocation(location)}`;
 }
 
 export function getPageIdentity(page: Page): string {
-  // クイックアクセスは種別ごとに区別し、スレ系は正規化したURLを含む状態キーで区別する。
-  return PAGE_TYPE_DEFINITIONS[page.type].identity === "view-state"
-    ? getPageViewStateKey(page)
-    : page.type;
+  // クイックアクセス3種を別IDとして扱い、
+  // 「既に開いている判定」で相互に潰し合って遷移不能になる回帰を防ぐ。
+  // スレ系は正規化したURLを含む表示状態のキーで区別する。
+  return getPageViewStateKey(page);
 }
 
 export function getDisplayUrl(page: Page): string {
-  const displayUrl = PAGE_TYPE_DEFINITIONS[page.type].displayUrl;
-  if (displayUrl.kind === "literal") return displayUrl.value;
-  const location = getPageLocation(
-    page,
-    displayUrl.kind === "board-url" ? "board-url" : "thread-url",
-  );
-  return location ?? "";
+  return getPageLocation(page) ?? getPageTypeDefinition(page).displayLabel ?? "";
 }
 
+// 新規タブ用: ページに対してカノニカルな階層スタックを構築する。
 export function buildHierarchy(page: Page): Page[] {
-  const homePage: Page = { type: "home", title: "ホーム" };
-  const hierarchy = PAGE_TYPE_DEFINITIONS[page.type].hierarchy;
-  if (hierarchy === "home-only") return [homePage];
-  if (hierarchy === "home-and-page") return [homePage, page];
-
-  // 新規タブ用の履歴は板一覧を祖先に含め、スレッドから同じ板へ戻れるようにする。
-  if (page.type !== "thread") {
-    throw new Error("スレッド以外に thread-board 階層が設定されています: " + page.type);
-  }
-  const boardUrl = getBoardUrlFromThreadUrl(page.threadUrl);
-  return [
-    homePage,
-    {
-      type: "threadList",
-      title: boardUrl,
-      boardUrl,
-      boardTitle: boardUrl,
-    },
-    page,
-  ];
+  const definition = getPageTypeDefinition(page);
+  if (definition.buildHierarchy) return definition.buildHierarchy(page);
+  // URLや別タブから直接開いた場合も、同じタブのホームへ戻れる履歴を持たせる。
+  return [createHomePage(), page];
 }
 
 export function getPageRenderKey(tabId: string, historyIndex: number, page: Page): string {
-  const strategy = PAGE_TYPE_DEFINITIONS[page.type].renderKey;
-  const location = getPageLocation(page, strategy);
-  const pageKey = location == null ? page.type : page.type + ":" + location;
-  return tabId + ":" + historyIndex + ":" + pageKey;
+  // 描画キーは移行前の書式を保ち、表示状態のキーと違って正規化前の URL を使う。
+  const location = getPageLocation(page);
+  const pageKey = location == null ? page.type : `${page.type}:${location}`;
+  return `${tabId}:${historyIndex}:${pageKey}`;
 }

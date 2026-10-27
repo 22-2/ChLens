@@ -48,13 +48,14 @@ import { useBrowserCommandRunner } from "src/view/browser/hooks/use-browser-comm
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { getDisplayUrl } from "src/view/browser/page-type-definitions";
 import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabPanes, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import { canGoBack, canGoForward, getCurrentPage, getDisplayUrl } from "src/view/browser/types";
+import { canGoBack, canGoForward, getCurrentPage } from "src/view/browser/types";
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Dialog } from "src/view/browser/ui/Dialog";

@@ -1,10 +1,10 @@
 import { memo, type RefObject, useEffect, useRef, useState } from "react";
 import { type ViewSurface, ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
-import { getPageRenderKey } from "src/view/browser/page-type-definitions";
+import { getPageRenderKey, getPageViewStateKey } from "src/view/browser/page-type-definitions";
 import { renderPage } from "src/view/browser/shell/page-renderers";
 import { TabErrorBoundary } from "src/view/browser/shell/TabErrorBoundary";
 import type { Tab } from "src/view/browser/types";
-import { getCurrentPage, getPageViewStateKey } from "src/view/browser/types";
+import { getCurrentPage } from "src/view/browser/types";
 
 interface TabPageContentProps {
   tab: Tab;
