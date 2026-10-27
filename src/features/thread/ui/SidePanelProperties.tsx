@@ -63,11 +63,21 @@ function ThreadProperties({ page, data }: { page: ThreadPage; data: ThreadSnapsh
         {boardUrl}
       </button>
     );
+  // 変更理由: 板URLと同じリンク操作で、プロパティから対象スレへ移動できるようにする。
+  const thread = (
+    <button
+      type="button"
+      className="side-panel__link"
+      onClick={() => dispatch(tabActions.navigate(page))}
+    >
+      {page.threadUrl}
+    </button>
+  );
   const unreadCount = countUnreadResponses(data.responses.length, readState);
   const status = data.expired ? "dat落ち" : data.error ? `取得失敗（${data.error}）` : "取得済み";
   const rows: [string, ReactNode][] = [
     ["スレ名", page.title],
-    ["URL", page.threadUrl],
+    ["スレ", thread],
     ["板", board],
     ["作成日時", formatTimestamp(stats.firstAt)],
     ["経過時間", stats.firstAt == null ? UNKNOWN : formatElapsed(stats.now - stats.firstAt)],
