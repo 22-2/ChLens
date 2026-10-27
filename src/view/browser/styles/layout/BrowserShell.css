@@ -70,7 +70,8 @@
   max-width: 50%;
   overflow: auto;
   border-left: 1px solid var(--sys-color-border);
-  background: var(--sys-color-surface-muted);
+  /* 変更理由: サイドパネルを垂直タブバーと同じタブストリップ色に揃える。 */
+  background: var(--sys-color-tab-strip);
 }
 .side-panel__resize {
   position: absolute;
