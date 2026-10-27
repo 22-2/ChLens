@@ -1,11 +1,17 @@
 import { DEFAULT_IMAGE_SIMILARITY, hammingDistance64 } from "@chlen/chlib";
 import { ImageOff } from "lucide-react";
 import { createLogger } from "src/app/logger";
+import { createImageThumbnailFromElement } from "src/features/media/browser/image-hash-reader";
 import {
   addImageMenuProvider,
   type ImageMenuContext,
 } from "src/features/media/browser/image-menu-contributions";
 import { useImageHashStore } from "src/features/media/browser/use-image-hash-store";
+import {
+  findSimilarImageRecordBySourceUrl,
+  pruneSimilarImageRecords,
+  saveSimilarImageRecord,
+} from "src/features/ng/browser/similar-image-records";
 import { container } from "src/service-container/index";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
 
@@ -42,6 +48,13 @@ export async function registerSimilarImage({
   image,
   targetWindow,
 }: ImageMenuContext): Promise<void> {
+  // 同じURLの画像は、ハッシュを求める前に登録済みと分かる（ルールが残っている場合だけ）。
+  const sameUrlRecord = await findSimilarImageRecordBySourceUrl(imageKey);
+  if (sameUrlRecord && container.ng.hasImageHash(sameUrlRecord.hash)) {
+    container.toast.info("この画像は類似画像NGに登録済みです", { targetWindow });
+    return;
+  }
+
   let hash: string;
   try {
     hash = await useImageHashStore.getState().getOrComputeHash(imageKey, image);
@@ -76,6 +89,35 @@ export async function registerSimilarImage({
   container.toast.success("類似画像NGに登録しました。取り消すときは設定のNGから削除してください", {
     targetWindow,
   });
+  await saveRegisteredImageRecord({ imageKey, image, hash });
+}
+
+/**
+ * 登録した画像の縮小画像と元のURLを残す。ルールの登録はもう済んでいるので、
+ * 失敗してもログを出すだけにする（NGエディタで縮小画像が出ないだけで、判定には影響しない）。
+ */
+async function saveRegisteredImageRecord({
+  imageKey,
+  image,
+  hash,
+}: {
+  imageKey: string;
+  image: HTMLImageElement;
+  hash: string;
+}): Promise<void> {
+  try {
+    const thumbnailDataUrl = await createImageThumbnailFromElement(image);
+    await saveSimilarImageRecord({
+      hash,
+      thumbnailDataUrl,
+      sourceUrl: imageKey,
+      addedAt: Date.now(),
+    });
+    // NGエディタでルールを消した画像の記録は、次に登録したときにまとめて捨てる。
+    await pruneSimilarImageRecords((registered) => container.ng.hasImageHash(registered));
+  } catch (error) {
+    logger.error("類似画像NGに登録した画像の記録を保存できませんでした", { imageKey, hash, error });
+  }
 }
 
 /** 画像の右クリックメニューに「類似画像NGに登録」を足す。 */

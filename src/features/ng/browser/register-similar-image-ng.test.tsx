@@ -10,6 +10,19 @@ import type { INGService, IToastService } from "src/service-container/interfaces
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { loggerError } = vi.hoisted(() => ({ loggerError: vi.fn() }));
+const records = vi.hoisted(() => ({
+  findSimilarImageRecordBySourceUrl: vi.fn(),
+  saveSimilarImageRecord: vi.fn(),
+  pruneSimilarImageRecords: vi.fn(),
+}));
+vi.mock("src/features/ng/browser/similar-image-records", () => records);
+const { createImageThumbnailFromElement } = vi.hoisted(() => ({
+  createImageThumbnailFromElement: vi.fn(),
+}));
+vi.mock("src/features/media/browser/image-hash-reader", () => ({
+  createImageThumbnailFromElement,
+  computeImageHashFromElement: vi.fn(),
+}));
 vi.mock("src/app/logger", () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: loggerError }),
 }));
@@ -37,6 +50,10 @@ describe("類似画像NGへの登録", () => {
     hasImageHash.mockReturnValue(false);
     confirm.mockReturnValue(true);
     getOrComputeHash.mockResolvedValue(HASH);
+    records.findSimilarImageRecordBySourceUrl.mockResolvedValue(null);
+    records.saveSimilarImageRecord.mockResolvedValue(undefined);
+    records.pruneSimilarImageRecords.mockResolvedValue(undefined);
+    createImageThumbnailFromElement.mockResolvedValue("data:image/jpeg;base64,AAAA");
     container.ng = {
       isNGBoard: vi.fn().mockReturnValue(null),
       isNGThread: vi.fn().mockReturnValue(null),
@@ -127,5 +144,45 @@ describe("類似画像NGへの登録", () => {
     });
     expect(toast.error).toHaveBeenCalledWith("類似画像NGに登録できませんでした", { targetWindow });
     expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("登録したら縮小画像と元のURLを記録し、消えたルールの記録を捨てる", async () => {
+    await registerSimilarImage({ imageKey, image, targetWindow });
+    expect(createImageThumbnailFromElement).toHaveBeenCalledWith(image);
+    expect(records.saveSimilarImageRecord).toHaveBeenCalledWith({
+      hash: HASH,
+      thumbnailDataUrl: "data:image/jpeg;base64,AAAA",
+      sourceUrl: imageKey,
+      addedAt: expect.any(Number),
+    });
+    expect(records.pruneSimilarImageRecords).toHaveBeenCalled();
+  });
+
+  it("同じURLの画像が登録済みなら、ハッシュを求めずに伝える", async () => {
+    records.findSimilarImageRecordBySourceUrl.mockResolvedValue({ hash: HASH });
+    hasImageHash.mockReturnValue(true);
+    await registerSimilarImage({ imageKey, image, targetWindow });
+    expect(getOrComputeHash).not.toHaveBeenCalled();
+    expect(add).not.toHaveBeenCalled();
+    expect(toast.info).toHaveBeenCalledWith("この画像は類似画像NGに登録済みです", { targetWindow });
+  });
+
+  it("同じURLの記録があっても、ルールを消していれば登録し直せる", async () => {
+    records.findSimilarImageRecordBySourceUrl.mockResolvedValue({ hash: HASH });
+    hasImageHash.mockReturnValue(false);
+    await registerSimilarImage({ imageKey, image, targetWindow });
+    expect(add).toHaveBeenCalledWith(buildSimilarImageRuleDsl(HASH));
+  });
+
+  it("記録を残せなくても登録は済ませ、ログを出す", async () => {
+    const error = new Error("縮小できない");
+    createImageThumbnailFromElement.mockRejectedValue(error);
+    await registerSimilarImage({ imageKey, image, targetWindow });
+    expect(add).toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalled();
+    expect(loggerError).toHaveBeenCalledWith(
+      "類似画像NGに登録した画像の記録を保存できませんでした",
+      { imageKey, hash: HASH, error },
+    );
   });
 });

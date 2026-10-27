@@ -122,4 +122,37 @@ export async function verifySimilarImageNgRegistration(
   await page.keyboard.press("Escape");
   await expect(thumb(3)).toHaveClass(/res__thumb--blurred/);
   await expect(thumb(3)).not.toHaveClass(/res__thumb--hash-pending/);
+
+  // 設定のNGエディタで、登録したハッシュにカーソルを合わせると、登録時の縮小画像と元のURLが出る。
+  await page.getByTitle("メニュー", { exact: true }).click();
+  await page.getByTitle("設定を開く", { exact: true }).click();
+  const settings = page.locator('.content-area__tab-panel[data-active="true"]');
+  await settings.getByRole("button", { name: /^NG/ }).click();
+  const hashToken = settings
+    .locator(".monaco-editor .view-lines span span")
+    .filter({ hasText: /^"[\da-f]{16}"$/u })
+    .first();
+  await expect(hashToken).toBeVisible();
+  await hashToken.hover();
+  // Monacoは非表示のホバー要素も持つため、縮小画像を含むものに絞る。
+  const hover = page.locator(".monaco-hover").filter({ has: page.locator("img") });
+  const hoverImage = hover.locator("img");
+  await expect(hoverImage).toHaveAttribute("src", /^data:image\/jpeg;base64,/u);
+  await expect(hover).toContainText(`${localBoard.origin}/img/1.png`);
+  // 編集欄の縁で切れず、縮小画像が画面内に表示されている。
+  await expect
+    .poll(() => hoverImage.evaluate((image) => (image as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+  // 縁で切れたり隠れたりしていれば、画像の中心にある要素は画像にならない。
+  await expect
+    .poll(() =>
+      hoverImage.evaluate((image) => {
+        const rect = image.getBoundingClientRect();
+        return (
+          rect.height > 0 &&
+          document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) === image
+        );
+      }),
+    )
+    .toBe(true);
 }

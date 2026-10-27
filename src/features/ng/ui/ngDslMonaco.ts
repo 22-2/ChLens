@@ -5,6 +5,7 @@ import {
   type RuleDslCompletionCandidate,
 } from "@chlen/chlib";
 import type * as Monaco from "monaco-editor";
+import { getSimilarImageRecord } from "src/features/ng/browser/similar-image-records";
 
 type MonacoNamespace = typeof Monaco;
 
@@ -89,6 +90,56 @@ function toCompletionItem(
   };
 }
 
+interface LineSource {
+  getLineContent(lineNumber: number): string;
+}
+
+const IMAGE_HASH_VALUE = /"([\da-fA-F]{16})"/gu;
+const IMAGE_CONDITION_LINE = /^\s*when\s+image\s+similar\b/u;
+const IMAGE_CONDITION_LIST_HEADER = /^\s*when\s+image\s+similar\s*:\s*$/u;
+
+function indentOf(line: string): number {
+  return /^\s*/u.exec(line)?.[0].length ?? 0;
+}
+
+/** その行の値が、類似画像NGの条件（when image similar の行か、その一覧の値）か。 */
+function isImageHashLine(model: LineSource, lineNumber: number): boolean {
+  const line = model.getLineContent(lineNumber);
+  if (IMAGE_CONDITION_LINE.test(line)) return true;
+  const indent = indentOf(line);
+  for (let previous = lineNumber - 1; previous >= 1; previous--) {
+    const content = model.getLineContent(previous);
+    if (!content.trim()) continue;
+    if (indentOf(content) < indent) return IMAGE_CONDITION_LIST_HEADER.test(content);
+  }
+  return false;
+}
+
+/**
+ * カーソル位置にある類似画像NGのハッシュ（引用符の中）を探す。
+ * 本文の条件などに16桁の文字列があっても、画像の条件でなければ扱わない。
+ */
+export function findImageHashAt(
+  model: LineSource,
+  lineNumber: number,
+  column: number,
+): { hash: string; startColumn: number; endColumn: number } | null {
+  if (!isImageHashLine(model, lineNumber)) return null;
+  for (const match of model.getLineContent(lineNumber).matchAll(IMAGE_HASH_VALUE)) {
+    // Monacoの列は1始まり。引用符を含めた範囲にカーソルがあれば対象にする。
+    const startColumn = (match.index ?? 0) + 1;
+    const endColumn = startColumn + match[0].length;
+    if (column >= startColumn && column <= endColumn) {
+      return { hash: match[1]!.toLowerCase(), startColumn, endColumn };
+    }
+  }
+  return null;
+}
+
+function formatRecordedAt(addedAt: number): string {
+  return new Date(addedAt).toLocaleString("ja-JP");
+}
+
 export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
   if (monaco.languages.getLanguages().some(({ id }) => id === NG_DSL_LANGUAGE_ID)) return;
   monaco.languages.register({ id: NG_DSL_LANGUAGE_ID });
@@ -149,7 +200,8 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
     ],
     indentationRules: {
       increaseIndentPattern: /:\s*$/u,
-      decreaseIndentPattern: /^(?:hide|collapse|highlight):/u,
+      // 動作の一覧から作り、blurなど動作を足したときに漏れないようにする。
+      decreaseIndentPattern: new RegExp(`^(?:${actionPattern}):`, "u"),
     },
   });
 
@@ -179,6 +231,40 @@ export function ensureNgDslLanguage(monaco: MonacoNamespace): void {
               : createCommandRange(model, position),
           ),
         ),
+      };
+    },
+  });
+
+  // 類似画像NGのハッシュにカーソルを合わせると、登録したときの縮小画像と元のURLを出す。
+  monaco.languages.registerHoverProvider(NG_DSL_LANGUAGE_ID, {
+    async provideHover(model, position) {
+      const found = findImageHashAt(model, position.lineNumber, position.column);
+      if (!found) return null;
+      const range = {
+        startLineNumber: position.lineNumber,
+        startColumn: found.startColumn,
+        endLineNumber: position.lineNumber,
+        endColumn: found.endColumn,
+      };
+      const record = await getSimilarImageRecord(found.hash);
+      if (!record) {
+        return {
+          range,
+          contents: [
+            {
+              value:
+                "登録したときの画像の記録はありません（手で書いたハッシュか、記録を残す前に登録したものです）",
+            },
+          ],
+        };
+      }
+      return {
+        range,
+        contents: [
+          { value: `![類似画像NGに登録した画像](${record.thumbnailDataUrl})` },
+          { value: `元の画像: \`${record.sourceUrl}\`` },
+          { value: `登録: ${formatRecordedAt(record.addedAt)}` },
+        ],
       };
     },
   });

@@ -10,7 +10,7 @@ vi.mock("src/app/platform", () => ({ platform: { http: { fetchBinary } } }));
 vi.mock("src/app/platform/runtime", () => ({ isTauriRuntime }));
 
 import { IMAGE_HASH_CANVAS_SIZE } from "../domain/image-blockhash";
-import { computeImageHashFromElement } from "./image-hash-reader";
+import { computeImageHashFromElement, createImageThumbnailFromElement } from "./image-hash-reader";
 
 const SIZE = IMAGE_HASH_CANVAS_SIZE;
 // 左半分が白、右半分が黒のピクセル。ハッシュは "f0f0f0f0f0f0f0f0" になる。
@@ -27,28 +27,40 @@ const HALF_WHITE = (() => {
 
 function fakeDocument(options: { taintedSources?: Set<unknown> } = {}) {
   const drawn: unknown[] = [];
+  const canvases: { width: number; height: number }[] = [];
   let lastSource: unknown;
+  const assertReadable = () => {
+    if (options.taintedSources?.has(lastSource)) {
+      throw new DOMException("The canvas has been tainted", "SecurityError");
+    }
+  };
   const document = {
-    createElement: () => ({
-      width: 0,
-      height: 0,
-      getContext: () => ({
-        fillStyle: "",
-        fillRect: vi.fn(),
-        drawImage: (source: unknown) => {
-          drawn.push(source);
-          lastSource = source;
+    createElement: () => {
+      const canvas = {
+        width: 0,
+        height: 0,
+        toDataURL: () => {
+          assertReadable();
+          return "data:image/jpeg;base64,THUMB";
         },
-        getImageData: () => {
-          if (options.taintedSources?.has(lastSource)) {
-            throw new DOMException("The canvas has been tainted", "SecurityError");
-          }
-          return { width: SIZE, height: SIZE, data: HALF_WHITE };
-        },
-      }),
-    }),
+        getContext: () => ({
+          fillStyle: "",
+          fillRect: vi.fn(),
+          drawImage: (source: unknown) => {
+            drawn.push(source);
+            lastSource = source;
+          },
+          getImageData: () => {
+            assertReadable();
+            return { width: SIZE, height: SIZE, data: HALF_WHITE };
+          },
+        }),
+      };
+      canvases.push(canvas);
+      return canvas;
+    },
   } as unknown as Document;
-  return { document, drawn };
+  return { document, drawn, canvases };
 }
 
 function image(src: string, ownerDocument: Document): HTMLImageElement {
@@ -112,5 +124,39 @@ describe("表示中の画像からハッシュを読む", () => {
     await expect(
       computeImageHashFromElement(image("https://example.com/a.jpg", document)),
     ).rejects.toThrow("HTTP 404");
+  });
+});
+
+describe("登録した画像の縮小画像", () => {
+  beforeEach(() => {
+    fetchBinary.mockReset();
+    isTauriRuntime.mockReturnValue(false);
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn(async () => ({ width: 300, height: 150, close: vi.fn() })),
+    );
+  });
+
+  it("長辺96pxに縮めたJPEGを作る", async () => {
+    const { document, canvases } = fakeDocument();
+    const img = Object.assign(image("https://example.com/a.jpg", document), {
+      naturalWidth: 400,
+      naturalHeight: 200,
+    });
+    await expect(createImageThumbnailFromElement(img)).resolves.toBe(
+      "data:image/jpeg;base64,THUMB",
+    );
+    expect(canvases[0]).toMatchObject({ width: 96, height: 48 });
+  });
+
+  it("Tauriでは取り直した画像から作る", async () => {
+    isTauriRuntime.mockReturnValue(true);
+    fetchBinary.mockResolvedValue({ status: 200, headers: {}, body: new ArrayBuffer(4) });
+    const { document, canvases } = fakeDocument();
+    await expect(
+      createImageThumbnailFromElement(image("https://example.com/a.jpg", document)),
+    ).resolves.toBe("data:image/jpeg;base64,THUMB");
+    expect(fetchBinary).toHaveBeenCalledWith("https://example.com/a.jpg");
+    expect(canvases[0]).toMatchObject({ width: 96, height: 48 });
   });
 });

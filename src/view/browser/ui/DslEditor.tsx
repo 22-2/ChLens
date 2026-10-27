@@ -136,6 +136,10 @@ export function DslEditor({
             scrollBeyondLastLine: false,
             quickSuggestions: { other: true, comments: false, strings: true },
             suggestOnTriggerCharacters: true,
+            // ホバーは行の下に開く。上に開くと、先頭付近の行で縮小画像（類似画像NG）が編集欄の上端で切れるため。
+            // fixedOverflowWidgets で編集欄の外へ出す方法は、NGと置換の編集欄を切り替えたときに
+            // 前の編集欄の補完一覧が残ってクリックを奪い、入力できなくなったので使わない。
+            hover: { above: false },
           }}
         />
       </div>
