@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { registerFilterToggle } from "src/view/browser/extension/page-actions";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
@@ -48,7 +48,8 @@ export function useQuickAccessFilterToolbar({
     }
   }, [isFilterOpen]);
 
-  useEffect(() => {
+  // 画面切替時に旧ページの登録を先に解除し、Preactの遅延Effectで新ページが拒否されないようにする。
+  useLayoutEffect(() => {
     if (!isActive) return;
     // 表示中の窓とタブだけを対象にし、別窓への移動や非表示時は解除する。
     return registerFilterToggle(viewWindow, tabId, () => {

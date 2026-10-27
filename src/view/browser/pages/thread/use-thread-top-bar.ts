@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { registerFilterToggle } from "src/view/browser/extension/page-actions";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
@@ -129,7 +129,8 @@ export function useThreadTopBar({
     return () => viewWindow.removeEventListener(SEARCH_TOGGLE_EVENT, handleSearchToggle);
   }, [openFilterToolbarForSearch, viewWindow]);
 
-  useEffect(() => {
+  // Preactの遅延Effectでは旧ページの解除より先に新ページの登録が走るため、同期して切り替える。
+  useLayoutEffect(() => {
     // 非表示のタブは操作を受けず、画面終了時には古いハンドラーを解除する。
     if (!isActive) return;
     return registerFilterToggle(viewWindow, tabId, toggleFilterToolbar);

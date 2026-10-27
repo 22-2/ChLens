@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { registerThreadFilterModeToggle } from "src/view/browser/extension/page-actions";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ThreadFilter } from "src/view/browser/types";
@@ -24,7 +24,8 @@ export function useThreadFilterModeToggle({
 }: UseThreadFilterModeToggleParams): void {
   const { window: viewWindow } = useViewSurface();
 
-  useEffect(() => {
+  // 同じタブのスレ遷移で、旧ページの解除と新ページの登録を同期させる。
+  useLayoutEffect(() => {
     if (!isActive) return;
     // 表示している窓とタブにだけ登録し、非表示・別窓移動時には解除する。
     return registerThreadFilterModeToggle(viewWindow, tabId, (filter) => {
