@@ -1,10 +1,23 @@
 import { createLogger } from "src/app/logger";
+import { platform } from "src/app/platform";
 import {
   type AuxiliaryWindowOptions,
   createAuxiliaryWindowRoot,
 } from "src/features/auxiliary-window/browser/auxiliary-window-root";
 
 const logger = createLogger("auxiliary-window");
+
+/** プラットフォームがOS窓を管理する場合は、DOMとOSの両方を閉じる。 */
+export function closeAuxiliaryWindow(targetWindow: Window): void {
+  if (targetWindow.closed) return;
+  if (platform.window.closePopup) {
+    void platform.window.closePopup(targetWindow).catch((error: unknown) => {
+      logger.error("別窓を閉じられませんでした", error);
+    });
+  } else {
+    targetWindow.close();
+  }
+}
 
 export interface AuxiliaryWindowWatcherParams {
   window: Window;
@@ -80,9 +93,7 @@ export function watchAuxiliaryWindow(params: AuxiliaryWindowWatcherParams): Auxi
 
   const release = () => {
     unwatch();
-    if (!targetWindow.closed) {
-      targetWindow.close();
-    }
+    closeAuxiliaryWindow(targetWindow);
   };
 
   // pagehideは再読み込み・ページ移動・終了のいずれでも発火し、beforeunloadと違って

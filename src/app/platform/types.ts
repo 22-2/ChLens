@@ -34,6 +34,9 @@ export interface WindowManager {
   /** DOMのfocusだけで前面へ戻らない環境では、OS側の別窓も復元してフォーカスする。 */
   focusPopup?(popup: Window): Promise<void>;
 
+  /** DOMのcloseだけでOS窓が閉じない環境では、対応する別窓も閉じる。 */
+  closePopup?(popup: Window): Promise<void>;
+
   /**
    * 現在のウィンドウ/タブを閉じる
    */

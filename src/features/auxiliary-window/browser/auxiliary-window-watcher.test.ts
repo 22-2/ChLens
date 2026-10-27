@@ -5,8 +5,10 @@ vi.mock("src/app/logger", () => ({ createLogger: () => loggerMock }));
 
 const mocks = vi.hoisted(() => ({
   createAuxiliaryWindowRoot: vi.fn(),
+  window: { closePopup: undefined as ((popup: Window) => Promise<void>) | undefined },
 }));
 
+vi.mock("src/app/platform", () => ({ platform: { window: mocks.window } }));
 vi.mock("src/features/auxiliary-window/browser/auxiliary-window-root", () => ({
   createAuxiliaryWindowRoot: mocks.createAuxiliaryWindowRoot,
 }));
@@ -53,6 +55,7 @@ function setup(overrides: { isCurrent?: boolean; options?: typeof OPTIONS | null
 describe("watchAuxiliaryWindow", () => {
   afterEach(() => {
     mocks.createAuxiliaryWindowRoot.mockReset();
+    mocks.window.closePopup = undefined;
     vi.restoreAllMocks();
   });
 
@@ -140,6 +143,26 @@ describe("watchAuxiliaryWindow", () => {
 
     expect(fake.close).toHaveBeenCalledTimes(1);
     expect(onClosed).not.toHaveBeenCalled();
+  });
+
+  it("OS窓を閉じるプラットフォーム操作があればそちらへ委ねる", () => {
+    const closePopup = vi.fn().mockResolvedValue(undefined);
+    mocks.window.closePopup = closePopup;
+    const { fake, watcher } = setup();
+    watcher.release();
+    expect(closePopup).toHaveBeenCalledWith(fake);
+    expect(fake.close).not.toHaveBeenCalled();
+  });
+
+  it("OS窓を閉じる操作の失敗をログに出す", async () => {
+    const error = new Error("閉じられません");
+    mocks.window.closePopup = vi.fn().mockRejectedValue(error);
+    loggerMock.error.mockClear();
+    const { watcher } = setup();
+    watcher.release();
+    await vi.waitFor(() =>
+      expect(loggerMock.error).toHaveBeenCalledWith("別窓を閉じられませんでした", error),
+    );
   });
 
   it("releaseは既に閉じた窓へcloseを重ねない", () => {
