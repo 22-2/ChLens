@@ -30,11 +30,11 @@ export function SidePanelExtract({ tabId, page }: { tabId: string; page: ThreadP
   const results = useMemo(() => {
     if (!data || !query.trim()) return [];
     const matched = new Set(
-      findThreadMatches(buildThreadFindIndex(data.responses), query.trim())
+      findThreadMatches(buildThreadFindIndex(data.visibleResponses), query.trim())
         .filter((match) => match.field === "body")
         .map((match) => match.resNum),
     );
-    return data.responses.filter((response) => matched.has(response.num));
+    return data.visibleResponses.filter((response) => matched.has(response.num));
   }, [data, query]);
   return (
     <div className="side-panel__content">

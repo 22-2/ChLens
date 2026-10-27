@@ -198,7 +198,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     }
     publishThreadSnapshot(tabId, snapshotOwner, {
       threadUrl: page.threadUrl,
-      responses: extractableResponses,
+      responses,
+      visibleResponses: extractableResponses,
+      updatedAt: Date.now(),
       loading: isInitialLoading,
       error,
       expired,
@@ -207,6 +209,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     tabId,
     snapshotOwner,
     page.threadUrl,
+    responses,
     extractableResponses,
     isInitialLoading,
     error,

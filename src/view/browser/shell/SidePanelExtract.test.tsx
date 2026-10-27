@@ -23,6 +23,8 @@ describe("抽出レス", () => {
     publishThreadSnapshot("tab", Symbol(), {
       threadUrl: page.threadUrl,
       responses: [{ num: 1, name: "名", mail: "", date: "", message: "テスト本文" }],
+      visibleResponses: [{ num: 1, name: "名", mail: "", date: "", message: "テスト本文" }],
+      updatedAt: 0,
       loading: false,
       error: null,
       expired: false,
@@ -37,6 +39,8 @@ describe("抽出レス", () => {
     publishThreadSnapshot("tab", Symbol(), {
       threadUrl: page.threadUrl,
       responses: [{ num: 1, name: "名", mail: "", date: "", message: "テスト本文" }],
+      visibleResponses: [{ num: 1, name: "名", mail: "", date: "", message: "テスト本文" }],
+      updatedAt: 0,
       loading: false,
       error: null,
       expired: false,
@@ -51,6 +55,8 @@ describe("抽出レス", () => {
     publishThreadSnapshot("tab", Symbol(), {
       threadUrl: "https://example.com/other",
       responses: [{ num: 1, name: "名", mail: "", date: "", message: "本文" }],
+      visibleResponses: [{ num: 1, name: "名", mail: "", date: "", message: "本文" }],
+      updatedAt: 0,
       loading: false,
       error: null,
       expired: false,

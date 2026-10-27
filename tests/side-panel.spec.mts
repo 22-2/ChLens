@@ -49,3 +49,17 @@ test("抽出結果を強調し、本文のレスへ移動する", async ({ page,
     "レス本文マーカー42",
   );
 });
+
+test("スレプロパティに表示中のスレの情報を出す", async ({ page, extensionId, localBoard }) => {
+  const thread = localBoard.addLargeThread(150);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, 150);
+  await page.getByRole("button", { name: "サイドパネルを開く" }).click();
+  const panel = page.getByRole("complementary", { name: "サイドパネル" });
+  await panel.getByRole("tab", { name: "スレプロパティ" }).click();
+  const property = (label: string) =>
+    panel.locator(".side-panel__property").filter({ has: page.getByText(label, { exact: true }) });
+  await expect(property("レス数").locator("dd")).toHaveText("150");
+  await expect(property("状態").locator("dd")).toHaveText("取得済み");
+  await expect(panel.getByRole("img", { name: "勢い推移グラフ" })).toBeVisible();
+});

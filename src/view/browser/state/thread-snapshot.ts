@@ -3,7 +3,12 @@ import { create } from "zustand";
 
 export interface ThreadSnapshot {
   threadUrl: string;
+  /** 取得済みの全レス。レス数や勢いは NG に関係なくスレ全体で数える。 */
   responses: readonly IRes[];
+  /** 本文で表示されるレス。抽出など本文に対応する一覧は NG で隠れたレスを含めない。 */
+  visibleResponses: readonly IRes[];
+  /** 公開した時刻。経過時間や勢いの基準にし、描画のたびに値が変わらないようにする。 */
+  updatedAt: number;
   loading: boolean;
   error: string | null;
   expired: boolean;

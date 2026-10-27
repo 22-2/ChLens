@@ -11,6 +11,8 @@ describe("スレッド表示の共有状態", () => {
     const snapshot = {
       threadUrl: "https://example.com/thread",
       responses: [],
+      visibleResponses: [],
+      updatedAt: 0,
       loading: false,
       error: null,
       expired: false,

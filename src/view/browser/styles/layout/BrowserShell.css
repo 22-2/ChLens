@@ -150,3 +150,42 @@
   background: var(--sys-color-warning-surface);
   color: var(--sys-color-warning-fg);
 }
+
+.side-panel__properties {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: var(--sys-space-3);
+  margin: 0 0 var(--sys-space-4);
+}
+/* 項目名の列幅を行どうしで揃えるため、各行は一覧の列を共有する。 */
+.side-panel__property {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  padding: var(--sys-space-2) 0;
+  border-bottom: 1px solid var(--sys-color-border);
+}
+.side-panel__property dt {
+  color: var(--sys-color-text-muted);
+}
+.side-panel__property dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.side-panel__link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sys-color-link);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.side-panel__link:hover {
+  text-decoration: underline;
+}
+.side-panel__link:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: 2px;
+}
