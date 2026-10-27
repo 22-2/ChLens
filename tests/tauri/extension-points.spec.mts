@@ -36,6 +36,19 @@ test("別窓への移動と復帰後もフィルター操作が対象のスレ�
   });
   await page.getByTestId("title-bar-title").click({ button: "right" });
   await page.getByRole("button", { name: "別窓で開く", exact: true }).click();
+  const nativePopupLabels = () =>
+    page.evaluate(async () => {
+      const api = (
+        window as typeof window & {
+          __TAURI_INTERNALS__: { invoke: (command: string) => Promise<string[]> };
+        }
+      ).__TAURI_INTERNALS__;
+      return (await api.invoke("plugin:window|get_all_windows")).filter((label) =>
+        label.startsWith("chlens-popup-"),
+      );
+    });
+  await expect.poll(nativePopupLabels).toHaveLength(1);
+  const [popupLabel] = await nativePopupLabels();
   const popupState = () =>
     page.evaluate(() => {
       const child = (window as typeof window & { __e2eTabWindow?: Window | null }).__e2eTabWindow;
@@ -96,6 +109,8 @@ test("別窓への移動と復帰後もフィルター操作が対象のスレ�
   });
   await expect(page.getByTestId("title-bar-title")).toHaveText(second.title);
   await expect.poll(popupState).toMatchObject({ open: false });
+  // WindowProxyが閉じてもOS窓が空のまま残ることがあるため、ネイティブ側も確認する。
+  await expect.poll(nativePopupLabels).not.toContain(popupLabel);
   await expect(mainPanel.locator('[data-res-num="3"]')).toBeVisible();
   await mainCount.click();
   await expect(mainFilter).toBeVisible();
