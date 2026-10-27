@@ -1,17 +1,10 @@
-import { LayoutList, MessageSquareText } from "lucide-react";
+import { MessageSquareText } from "lucide-react";
 import { createHomePage } from "src/view/browser/core-page-type-definitions";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
 import { type PageOfType, type PageTypeDefinition } from "src/view/browser/page-type-definitions";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 export const THREAD_PAGE_TYPE_DEFINITIONS = {
-  threadList: {
-    icon: LayoutList,
-    refreshable: true,
-    filterable: true,
-    autoRefreshable: true,
-    getLocation: (page) => page.boardUrl,
-  },
   thread: {
     icon: MessageSquareText,
     refreshable: true,
@@ -31,12 +24,10 @@ export const THREAD_PAGE_TYPE_DEFINITIONS = {
     },
   },
 } satisfies {
-  threadList: PageTypeDefinition<PageOfType<"threadList">>;
   thread: PageTypeDefinition<PageOfType<"thread">>;
 };
 
-/** thread 機能が所有するスレ一覧・スレッドの共通メタデータを登録する。 */
+/** thread 機能が所有するスレッドの共通メタデータを登録する。 */
 export function registerThreadPageTypes(api: ExtensionApi): void {
-  api.registerPageType("threadList", THREAD_PAGE_TYPE_DEFINITIONS.threadList);
   api.registerPageType("thread", THREAD_PAGE_TYPE_DEFINITIONS.thread);
 }
