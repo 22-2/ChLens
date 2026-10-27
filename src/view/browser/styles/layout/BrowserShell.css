@@ -39,6 +39,10 @@
   padding-right: var(--sys-space-8);
 }
 
+.browser-shell[data-zen-mode="true"] .thread-page--with-minimap .thread-find-bar {
+  padding-right: var(--sys-space-2);
+}
+
 .zen-mode__palette {
   position: fixed;
   z-index: var(--sys-z-omnibar);
