@@ -161,6 +161,7 @@ describe("NavigationBar", () => {
       get: bookmarkGetMock,
       add: bookmarkAddMock,
       remove: bookmarkRemoveMock,
+      clearReadState: vi.fn(),
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: vi.fn(),
@@ -913,6 +914,7 @@ describe("NavigationBar titlebar slot", () => {
       get: vi.fn(),
       add: vi.fn(),
       remove: vi.fn(),
+      clearReadState: vi.fn(),
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: vi.fn(),
@@ -965,7 +967,7 @@ describe("NavigationBar titlebar slot", () => {
     expect(slot.querySelector('[title="メニュー"]')).not.toBeNull();
   });
 
-  it("垂直では非アクティブペインも自ペインの受け口へポータルする", () => {
+  it("垂直でも非アクティブペインの操作欄を表示しない", () => {
     paneHolder.panes = [{ id: "pane-1" }, { id: "pane-2" }];
     paneHolder.activePaneId = "pane-2";
 
@@ -975,7 +977,7 @@ describe("NavigationBar titlebar slot", () => {
       </div>,
     );
 
-    expect(slot.querySelector(".nav-bar--titlebar")).not.toBeNull();
+    expect(slot.querySelector(".nav-bar--titlebar")).toBeNull();
   });
 
   it("垂直では別ペインの受け口へポータルしない", () => {

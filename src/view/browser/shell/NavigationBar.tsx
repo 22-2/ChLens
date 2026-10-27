@@ -184,11 +184,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // 変更理由: 受け口へポータルしてペイン上部の高さを本文へ返す。
   // スロットが無い環境（テスト等）では従来どおりインライン表示する。
   // blur処理からも参照するため、描画部より前で定義する。
-  const useTitleBarSlot = titleBarSlot !== null;
+  const useTitleBarSlot = isActivePane && titleBarSlot !== null;
   // 変更理由: 水平モードの共通タイトルバーには受け口がアクティブペインの分しかない。
   // 非アクティブペインのボタンをタブバー横へインライン表示すると位置が変わるため描画しない。
-  const hideInactiveChrome =
-    tabBarOrientation === "horizontal" && !isActivePane && !useTitleBarSlot;
+  // 共通タイトルバーでは向きに関係なく、非アクティブペインの操作欄を表示しない。
+  const hideInactiveChrome = !isActivePane;
 
   const replayPosition = useArchiveReplayPositionStore((state) => state.position);
   const threadCapabilities =
@@ -917,7 +917,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           <Filter size={13} />
         </button>
       ) : null}
-      {isUrlEditing && !commandCenterSlot && !isZenMode ? omnibar : null}
+      {isUrlEditing && isActivePane && !commandCenterSlot && !isZenMode ? omnibar : null}
 
       <button
         ref={menuButtonRef}
@@ -985,10 +985,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           : chrome}
       {/* 変更理由: 入力欄はタイトルバー中央のピルと同じ位置へ出す。受け口がない環境
           （テスト等）では上のボタン群と同じ場所へインライン表示する。 */}
-      {isUrlEditing && isZenMode && portalContainer
+      {isUrlEditing && isActivePane && isZenMode && portalContainer
         ? createPortal(<div className="zen-mode__palette">{omnibar}</div>, portalContainer)
         : null}
-      {isUrlEditing && !isZenMode && commandCenterSlot
+      {isUrlEditing && isActivePane && !isZenMode && commandCenterSlot
         ? createPortal(omnibar, commandCenterSlot)
         : null}
       {suggestionMenuState ? (

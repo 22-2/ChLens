@@ -131,11 +131,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const paneBody = (
     <>
       <ActiveThreadBridgeState isActive={isActive} />
-      <ContentArea
-        isOverlayTarget={isActive}
-        onSearchNextThread={searchNextThread}
-        onSearchSimilarThreads={searchSimilarThreads}
-      />
+      <ContentArea isOverlayTarget={isActive} onSearchSimilarThreads={searchSimilarThreads} />
       <BottomPanel />
       {/* コマンドとナビゲーションを同じオムニバーへ集約し、
           操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}
@@ -195,7 +191,6 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
                   <div className="pane-column__vertical-body">
                     <TabBar orientation="vertical" />
                     <div className="pane-column__vertical-main">
-                      <TitleBar />
                       <div className="pane-column__chrome">{navigationBar}</div>
                       {paneBody}
                     </div>
@@ -282,9 +277,9 @@ export const BrowserApp: React.FC = () => {
                 {/*
                 水平モードではタイトルと必須のレイアウト操作はペインの外に置く。
                 これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
-                垂直モードではタイトルバーもペイン単位にするため、共通バーは表示しない。
+                垂直モードでも操作対象をアクティブペインに揃え、タイトルバーを共有する。
               */}
-                {shellTabBarOrientation === "vertical" ? null : <TitleBar />}
+                <TitleBar />
                 <PaneRow />
                 <BookmarkRootSelectorDialog />
               </div>
