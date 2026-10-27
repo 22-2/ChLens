@@ -217,8 +217,9 @@ api.addStatusBarItem({
   - 移す先は `features/media`。`container.imgurImages` だけで完結し、ペインや画面の状態に触らないため、機能側での登録と所有者ごとの解除を最も単純な形で試せる。
   - 完了：ID を `media.delete-thread-imgur-images` / `media.delete-all-imgur-images` に変更し、機能側の `registerMediaCommands` から登録する。スレ内の画像 URL は引き続き保存済みログから読み取る。
   - 表示順を維持するため、登録 API に既存コマンド ID の直前へ挿入する指定を追加した。PR1 の API を機能側で使い、単体解除も確認した。
-- [ ] **PR3. お気に入りのコマンドを機能側へ移す（P1）**
+- [x] **PR3. お気に入りのコマンドを機能側へ移す（P1）**
   - 既存の `CommandTarget` / `CommandRequest` の実行経路と、登録 API との関係を確かめる。
+  - 完了：現在ページの切り替えとブックマークリストを開くコマンドを `features/bookmark` の `registerBookmarkCommands` へ移した。切り替えは既存の `TARGET_BOOKMARK_TOGGLE` を利用し、ID を `bookmark.toggle` / `bookmark.open-list` に変更した。従来の表示位置も維持する。
 - [ ] **PR4. 残りの機能固有コマンドを移す（P1）**
   - 自動更新、次スレなど。段階0では既存の `BrowserCommandContext` を使ってよい。
   - コメント実況のように `CustomEvent` で画面へ届けているコマンドは、PR4 では移さない（PR7 で扱う）。

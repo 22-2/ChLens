@@ -1,7 +1,6 @@
 import {
   Archive,
   ArrowLeftRight,
-  Bookmark,
   Clipboard,
   Columns2,
   ExternalLink,
@@ -22,7 +21,6 @@ import {
   RotateCw,
   Search,
   Settings,
-  Star,
   Timer,
   Trash2,
   X,
@@ -430,22 +428,6 @@ function toggleConfigSwitch(key: string): void {
   persistConfigValue(key, isConfigSwitchOn(key) ? "off" : "on", "コマンドパレット");
 }
 
-async function toggleBookmark(context: BrowserCommandContext): Promise<void> {
-  const target = getCommandPageTarget(context.viewPage);
-  if (!target) return;
-
-  const isBookmarked = Boolean(container.bookmark.get(target.url));
-  // 変更理由: パレットとコンテキストメニューが同じ対象コマンドを通ることで、
-  // 非同期の保存完了と別窓の通知先を入口ごとに実装しないようにする。
-  await executeCommandRequest(
-    { id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_TOGGLE, args: { target } },
-    { surface: getCommandSurface(context), toast: getCommandToast(context) },
-  );
-  getCommandToast(context).info(
-    isBookmarked ? "ブックマークを削除しました" : "ブックマークに追加しました",
-  );
-}
-
 async function copyWithNotice(
   context: BrowserCommandContext,
   text: string,
@@ -602,15 +584,6 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
       }
       dispatch(tabActions.reopenClosedTab());
     },
-  },
-  {
-    id: "navigation.open-bookmarks",
-    label: "ブックマークリストを開く",
-    englishLabel: "Open Bookmarks",
-    keywords: ["お気に入り", "favorite", "bookmark"],
-    group: "navigation",
-    icon: Bookmark,
-    run: (context) => openQuickAccessPage(context, createQuickAccessPage("bookmarkList")),
   },
   {
     id: "navigation.open-history",
@@ -858,16 +831,6 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
       if (canWriteToThread === false) return;
       toggleWritePanel();
     },
-  },
-  {
-    id: "page.toggle-bookmark",
-    label: "現在のページのブックマークを切り替え",
-    englishLabel: "Toggle Bookmark for Current Page",
-    keywords: ["お気に入り", "star", "bookmark"],
-    group: "page",
-    icon: Star,
-    when: ({ viewPage }) => getCommandPageTarget(viewPage) != null,
-    run: toggleBookmark,
   },
   {
     id: "page.open-board",
