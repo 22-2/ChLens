@@ -3,8 +3,8 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useMediaImageStore } from "src/features/media/browser/use-media-image-store";
 import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
+import { SidePanelImages } from "src/features/media/ui/SidePanelImages";
 import type { IRes } from "src/service-container/interfaces";
-import { SidePanelImages } from "src/view/browser/shell/SidePanelImages";
 import { publishThreadSnapshot, useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 

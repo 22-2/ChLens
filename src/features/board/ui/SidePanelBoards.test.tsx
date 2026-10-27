@@ -1,14 +1,14 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { SidePanelBoards } from "src/view/browser/shell/SidePanelBoards";
+import { SidePanelBoards } from "src/features/board/ui/SidePanelBoards";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({ dispatch: vi.fn(), update: vi.fn() }));
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabStore: () => ({ dispatch: mocks.dispatch }),
 }));
-vi.mock("src/view/browser/pages/board-list/use-board-list-logic", () => ({
+vi.mock("src/features/board/browser/use-board-list-logic", () => ({
   useBoardListLogic: () => ({
     loading: false,
     error: null,
@@ -16,7 +16,7 @@ vi.mock("src/view/browser/pages/board-list/use-board-list-logic", () => ({
     updateOpenStates: mocks.update,
   }),
 }));
-vi.mock("src/view/browser/pages/board-list/use-board-list-display", () => ({
+vi.mock("src/features/board/browser/use-board-list-display", () => ({
   useBoardListDisplay: () => ({
     searchQuery: "",
     setSearchQuery: vi.fn(),

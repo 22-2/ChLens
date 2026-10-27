@@ -1,5 +1,5 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { useBoardListDisplay } from "src/view/browser/pages/board-list/use-board-list-display";
+import { useBoardListDisplay } from "src/features/board/browser/use-board-list-display";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { updateViewState } = vi.hoisted(() => ({ updateViewState: vi.fn() }));

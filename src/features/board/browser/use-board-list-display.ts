@@ -5,7 +5,7 @@ import {
   buildCategoryId,
   deriveOpenedBoardTitle,
   normalizeBoardUrlForRemove,
-} from "src/view/browser/pages/board-list/board-list-utils";
+} from "src/features/board/domain/board-list-utils";
 import { useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
 
 interface DisplayBoard {

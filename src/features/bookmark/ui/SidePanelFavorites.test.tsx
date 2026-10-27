@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { SidePanelFavorites } from "src/view/browser/shell/SidePanelFavorites";
+import { SidePanelFavorites } from "src/features/bookmark/ui/SidePanelFavorites";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
     },
   ]),
 }));
-vi.mock("src/view/browser/pages/BookmarkListPage", () => ({ readBookmarks: mocks.read }));
+vi.mock("src/features/bookmark/browser/read-bookmarks", () => ({ readBookmarks: mocks.read }));
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabStore: () => ({ dispatch: mocks.dispatch }),
 }));

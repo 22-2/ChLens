@@ -14,7 +14,7 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   }),
 }));
 // 書き込み欄は書き込み機能のテストで確かめ、枠の検証では投稿処理の依存を読み込まない。
-vi.mock("src/view/browser/shell/SidePanelWrite", () => ({ SidePanelWrite: () => null }));
+vi.mock("src/features/write/ui/SidePanelWrite", () => ({ SidePanelWrite: () => null }));
 
 describe("サイドパネル", () => {
   afterEach(() => {
@@ -44,10 +44,10 @@ describe("サイドパネル", () => {
   });
 });
 
-vi.mock("src/view/browser/shell/SidePanelBoards", () => ({
+vi.mock("src/features/board/ui/SidePanelBoards", () => ({
   SidePanelBoards: () => <div>板一覧</div>,
 }));
 
-vi.mock("src/view/browser/shell/SidePanelFavorites", () => ({
+vi.mock("src/features/bookmark/ui/SidePanelFavorites", () => ({
   SidePanelFavorites: () => <div>お気に入り</div>,
 }));

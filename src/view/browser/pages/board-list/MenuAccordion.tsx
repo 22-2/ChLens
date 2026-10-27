@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import React, { useCallback } from "react";
-import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
+import { buildCategoryId } from "src/features/board/domain/board-list-utils";
 import { Accordion } from "src/view/browser/ui/Accordion";
 
 interface Board {

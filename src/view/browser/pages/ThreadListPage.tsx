@@ -6,6 +6,7 @@ import {
   MIN_BOARD_AUTO_REFRESH_MS,
   readBoardAutoRefreshIntervalMs,
 } from "src/features/auto-refresh/browser/auto-refresh-config";
+import { isResolvedBoardTitle } from "src/features/board/domain/board-list-utils";
 import {
   readBookmarkStatus,
   useBookmarkRevision,
@@ -58,7 +59,6 @@ import {
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
-import { isResolvedBoardTitle } from "src/view/browser/pages/board-list/board-list-utils";
 import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
 import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";

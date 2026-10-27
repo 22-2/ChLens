@@ -1,6 +1,6 @@
-import { buildCategoryId } from "src/view/browser/pages/board-list/board-list-utils";
-import { useBoardListDisplay } from "src/view/browser/pages/board-list/use-board-list-display";
-import { useBoardListLogic } from "src/view/browser/pages/board-list/use-board-list-logic";
+import { useBoardListDisplay } from "src/features/board/browser/use-board-list-display";
+import { useBoardListLogic } from "src/features/board/browser/use-board-list-logic";
+import { buildCategoryId } from "src/features/board/domain/board-list-utils";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 

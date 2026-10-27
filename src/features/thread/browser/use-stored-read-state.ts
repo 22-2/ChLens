@@ -4,13 +4,13 @@ import { createLogger } from "src/app/logger";
 import { container } from "src/service-container/index";
 import type { IReadState } from "src/service-container/interfaces";
 
-const logger = createLogger("view/browser");
+const logger = createLogger("thread");
 
 /**
  * 表示中のスレの既読状態を読み、保存のたびに追従する。
  * 保存先によって URL の正規化が異なるため、履歴と同じ規則で比較する。
  */
-export function useSidePanelReadState(threadUrl: string): IReadState | null {
+export function useStoredReadState(threadUrl: string): IReadState | null {
   const [state, setState] = useState<{ url: string; readState: IReadState | null }>({
     url: threadUrl,
     readState: null,

@@ -1,6 +1,6 @@
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react";
-import { useBoardListDisplay } from "src/view/browser/pages/board-list/use-board-list-display";
-import { useBoardListLogic } from "src/view/browser/pages/board-list/use-board-list-logic";
+import { useBoardListDisplay } from "src/features/board/browser/use-board-list-display";
+import { useBoardListLogic } from "src/features/board/browser/use-board-list-logic";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { config, setConfig, updateViewState, warn, persistedViewState } = vi.hoisted(() => ({

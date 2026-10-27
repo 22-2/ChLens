@@ -1,11 +1,11 @@
 import { BookOpen, Image, Info, ListTree, Pencil, Search } from "lucide-react";
 import { useRef } from "react";
-import { SidePanelBoards } from "src/view/browser/shell/SidePanelBoards";
-import { SidePanelExtract } from "src/view/browser/shell/SidePanelExtract";
-import { SidePanelFavorites } from "src/view/browser/shell/SidePanelFavorites";
-import { SidePanelImages } from "src/view/browser/shell/SidePanelImages";
-import { SidePanelProperties } from "src/view/browser/shell/SidePanelProperties";
-import { SidePanelWrite } from "src/view/browser/shell/SidePanelWrite";
+import { SidePanelBoards } from "src/features/board/ui/SidePanelBoards";
+import { SidePanelFavorites } from "src/features/bookmark/ui/SidePanelFavorites";
+import { SidePanelImages } from "src/features/media/ui/SidePanelImages";
+import { SidePanelExtract } from "src/features/thread/ui/SidePanelExtract";
+import { SidePanelProperties } from "src/features/thread/ui/SidePanelProperties";
+import { SidePanelWrite } from "src/features/write/ui/SidePanelWrite";
 import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";

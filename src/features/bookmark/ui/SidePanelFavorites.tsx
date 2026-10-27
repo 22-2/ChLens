@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { createLogger } from "src/app/logger";
+import { type BookmarkEntry, readBookmarks } from "src/features/bookmark/browser/read-bookmarks";
 import {
   BookmarkContextMenu,
   type BookmarkContextMenuState,
 } from "src/features/bookmark/ui/BookmarkContextMenu";
 import { container } from "src/service-container/index";
-import { type BookmarkEntry, readBookmarks } from "src/view/browser/pages/BookmarkListPage";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";

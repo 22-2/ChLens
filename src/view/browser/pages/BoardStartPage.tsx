@@ -5,9 +5,9 @@ import {
   OPENED_BOARDS_CONFIG_KEY,
   parseOpenedBoardEntries,
 } from "src/core/board/opened-board-entries";
+import { isResolvedBoardTitle } from "src/features/board/domain/board-list-utils";
 import { container } from "src/service-container/index";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
-import { isResolvedBoardTitle } from "src/view/browser/pages/board-list/board-list-utils";
 import { FavoriteBoardsSection } from "src/view/browser/pages/FavoriteBoardsSection";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";

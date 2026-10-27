@@ -1,12 +1,12 @@
 import { type ReactNode, useMemo } from "react";
+import { collectThreadImages } from "src/features/media/domain/thread-images";
+import { useStoredReadState } from "src/features/thread/browser/use-stored-read-state";
 import {
   buildMomentumGraphData,
   calculateIkioi,
   collectResTimestamps,
 } from "src/features/thread/domain/thread-momentum";
 import { MomentumLineChart } from "src/features/thread/ui/MomentumLineChart";
-import { collectThreadImages } from "src/view/browser/shell/side-panel-images";
-import { useSidePanelReadState } from "src/view/browser/shell/use-side-panel-read-state";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
@@ -47,7 +47,7 @@ export function SidePanelProperties({ tabId, page }: { tabId: string; page: Thre
       imageCount: collectThreadImages(data.responses, data.messageProtocol).length,
     };
   }, [data]);
-  const readState = useSidePanelReadState(page.threadUrl);
+  const readState = useStoredReadState(page.threadUrl);
 
   if (!data || !stats) return <p className="side-panel__empty">スレッドの情報を取得できません。</p>;
   if (data.loading) return <p className="side-panel__empty">スレッドを読み込み中…</p>;

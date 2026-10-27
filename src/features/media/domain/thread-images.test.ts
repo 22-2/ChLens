@@ -1,7 +1,7 @@
 import type { IRes } from "src/service-container/interfaces";
 import { describe, expect, it } from "vite-plus/test";
 
-import { collectThreadImages } from "./side-panel-images";
+import { collectThreadImages } from "./thread-images";
 
 function res(num: number, message: string): IRes {
   return { num, name: "", mail: "", date: "", message };

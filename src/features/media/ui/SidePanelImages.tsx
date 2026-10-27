@@ -6,9 +6,9 @@ import {
   useMediaViewerStore,
 } from "src/features/media/browser/use-media-viewer-store";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
+import { collectThreadImages } from "src/features/media/domain/thread-images";
 import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
-import { collectThreadImages } from "src/view/browser/shell/side-panel-images";
 import { useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
