@@ -1,4 +1,4 @@
-import { ExternalLink, Undo2 } from "lucide-react";
+import { Copy, ExternalLink, Trash2, Undo2 } from "lucide-react";
 import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { Spinner } from "src/view/browser/ui/Spinner";
@@ -56,12 +56,14 @@ export function MediaViewer({
             {
               id: "copy-image",
               label: "画像をコピー",
+              icon: <Copy size={14} />,
               disabled: isLoading || !imageIsLoaded,
               onSelect: onCopy,
             },
             {
               id: "open-in-browser",
               label: "ブラウザで開く",
+              icon: <ExternalLink size={14} />,
               // 別窓からも操作元の窓で開き、外部リンク確認の設定を維持する。
               onSelect: () =>
                 requestExternalLink(viewer.label, {
@@ -76,6 +78,7 @@ export function MediaViewer({
                   {
                     id: "discard-image",
                     label: "画像を破棄",
+                    icon: <Trash2 size={14} />,
                     danger: true,
                     onSelect: () => useMediaImageStore.getState().discardImage(viewer.label),
                   },
