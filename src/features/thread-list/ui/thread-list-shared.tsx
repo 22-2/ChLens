@@ -6,6 +6,7 @@ import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { countUnreadResponses } from "src/features/thread/domain/unread-count";
 import type { IThread } from "src/service-container/interfaces";
 import type { ColumnDef } from "src/view/browser/components/SimpleDataTable";
+import { formatRelativeTime } from "src/view/browser/utils/date-time";
 
 const logger = createLogger("thread-list");
 
@@ -151,40 +152,6 @@ export function calcHeat(now: number, created: number, resCount: number): string
   return (resCount / elapsed).toFixed(1);
 }
 
-const relativeTimeFormatter = new Intl.RelativeTimeFormat("ja-JP", { numeric: "auto" });
-
-/** スレ一覧は相対時間を短く表示し、正確な時刻は列のツールチップで確認できるようにする。 */
-export function formatThreadCreatedAt(createdAt: number, now = Date.now()): string {
-  if (!Number.isFinite(createdAt) || createdAt <= 0) return "-";
-
-  const difference = createdAt - now;
-  const absoluteDifference = Math.abs(difference);
-  if (absoluteDifference < 60_000) {
-    return difference < 0 ? "たった今" : "まもなく";
-  }
-
-  let unit: Intl.RelativeTimeFormatUnit;
-  let unitMs: number;
-  if (absoluteDifference < 3_600_000) {
-    unit = "minute";
-    unitMs = 60_000;
-  } else if (absoluteDifference < 86_400_000) {
-    unit = "hour";
-    unitMs = 3_600_000;
-  } else if (absoluteDifference < 2_592_000_000) {
-    unit = "day";
-    unitMs = 86_400_000;
-  } else if (absoluteDifference < 31_536_000_000) {
-    unit = "month";
-    unitMs = 2_592_000_000;
-  } else {
-    unit = "year";
-    unitMs = 31_536_000_000;
-  }
-
-  return relativeTimeFormatter.format(Math.round(difference / unitMs), unit);
-}
-
 export function formatExactThreadCreatedAt(createdAt: number): string {
   const date = new Date(createdAt);
   if (!Number.isFinite(createdAt) || Number.isNaN(date.getTime())) return "-";
@@ -277,6 +244,6 @@ export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
     cellClassName: "thread-list__created-at",
     sortable: true,
     cellTooltip: ({ thread }) => formatExactThreadCreatedAt(thread.createdAt),
-    cell: ({ thread }) => formatThreadCreatedAt(thread.createdAt),
+    cell: ({ thread }) => formatRelativeTime(thread.createdAt),
   },
 ];

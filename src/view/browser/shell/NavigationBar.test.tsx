@@ -635,7 +635,7 @@ describe("NavigationBar", () => {
     const snapshot = {
       url: "snapshot:test",
       last_modified: "https://example.com/board/",
-      last_updated: 1,
+      last_updated: Date.now() - 5 * 60_000,
       threads: [],
     };
     const getSnapshots = vi
@@ -657,7 +657,7 @@ describe("NavigationBar", () => {
     fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.contextMenu(screen.getByTitle("更新"));
     expect(screen.getByText(/自動更新を開始/)).toBeInTheDocument();
-    fireEvent.click(await screen.findByText(/1970.*0件/));
+    fireEvent.click(await screen.findByText("5 分前（0件）"));
     expect(screen.getByTestId("selection")).toHaveTextContent("snapshot:test");
     fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.contextMenu(screen.getByTitle("更新"));

@@ -68,6 +68,7 @@ import { canGoBack, canGoForward, getCurrentPage } from "src/view/browser/types"
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Dialog } from "src/view/browser/ui/Dialog";
+import { formatRelativeTime } from "src/view/browser/utils/date-time";
 import {
   useFilterToolbarOpen,
   useFilterToolbarPinned,
@@ -788,7 +789,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         },
         ...snapshots.map((snapshot) => ({
           id: snapshot.url,
-          label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${new Date(snapshot.last_updated).toLocaleString("ja-JP")}（${snapshot.threads.length}件）`,
+          label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${formatRelativeTime(snapshot.last_updated)}（${snapshot.threads.length}件）`,
           onSelect: () => selectThreadListSnapshot(viewTab.id, snapshot),
         })),
       );
