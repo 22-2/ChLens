@@ -26,6 +26,10 @@ import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer
 import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/features/next-thread/browser/use-auto-next-thread-setting";
 import { NextThreadSearchDialog } from "src/features/next-thread/ui/NextThreadSearchDialog";
+import {
+  useIsNgTemporarilyDisabled,
+  useNgDisplayMode,
+} from "src/features/ng/browser/use-ng-status";
 import type { ContextMenuPopupItem } from "src/features/popup/browser/popup-types";
 import { useThreadPopupManager } from "src/features/popup/browser/use-popup-manager";
 import { PopupRenderer } from "src/features/popup/ui/PopupRenderer";
@@ -76,6 +80,10 @@ import {
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import {
+  publishThreadSnapshot,
+  removeThreadSnapshot,
+} from "src/view/browser/state/thread-snapshot";
+import {
   canGoBack,
   canGoForward,
   type Tab,
@@ -83,6 +91,7 @@ import {
 } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
+import { resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
   buildBlurredResSet,
@@ -146,6 +155,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const refreshController = useThreadRefreshController(refreshKey);
   const {
     responses,
+    visibleResponses,
     loading,
     isInitialLoading,
     isCacheResolved,
@@ -166,6 +176,43 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
+  // 表示面ごとに取得を重複させず、このタブの最新結果を補助ビューへ公開する。
+  const [snapshotOwner] = useState(() => Symbol("thread-snapshot"));
+  const isNgDisabled = useIsNgTemporarilyDisabled();
+  const ngMode = useNgDisplayMode();
+  const extractableResponses = useMemo(
+    () =>
+      visibleResponses.filter(
+        (res) =>
+          isNgDisabled ||
+          !(res.ng || res.class?.includes("ng")) ||
+          resolveNgDisplayMode(ngMode, res.ng) === "highlight-ng",
+      ),
+    [visibleResponses, isNgDisabled, ngMode],
+  );
+  useEffect(() => () => removeThreadSnapshot(tabId, snapshotOwner), [tabId, snapshotOwner]);
+  useEffect(() => {
+    if (isArchiveReplay) {
+      removeThreadSnapshot(tabId, snapshotOwner);
+      return;
+    }
+    publishThreadSnapshot(tabId, snapshotOwner, {
+      threadUrl: page.threadUrl,
+      responses: extractableResponses,
+      loading: isInitialLoading,
+      error,
+      expired,
+    });
+  }, [
+    tabId,
+    snapshotOwner,
+    page.threadUrl,
+    extractableResponses,
+    isInitialLoading,
+    error,
+    expired,
+    isArchiveReplay,
+  ]);
   const requestManualRefresh = useCallback(() => {
     if (!threadCapabilities.canRefresh) return;
     runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
