@@ -16,6 +16,7 @@ import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-ac
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabDispatch, useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
 import { Spinner } from "src/view/browser/ui/Spinner";
+import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
 
 const logger = createLogger("view/browser");
 
@@ -39,6 +40,7 @@ const COLUMNS: ColumnDef<BookmarkEntry>[] = [
     headerClassName: "simple-data-table__th--title",
     cellClassName: "simple-data-table__title",
     sortable: true,
+    searchable: true,
     cell: (row) => row.title,
   },
   {
@@ -46,6 +48,7 @@ const COLUMNS: ColumnDef<BookmarkEntry>[] = [
     header: "板",
     cellClassName: "simple-data-table__count",
     sortable: true,
+    searchable: true,
     cell: (row) => row.boardTitle,
   },
   {
@@ -192,10 +195,9 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
   }, []);
 
   const filtered = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    const rows = normalizedQuery
+    const rows = searchQuery.trim()
       ? entries.filter((entry) =>
-          `${entry.title} ${entry.boardTitle}`.toLowerCase().includes(normalizedQuery),
+          [entry.title, entry.boardTitle].some((text) => matchesSearchQuery(text, searchQuery)),
         )
       : entries;
 
@@ -283,6 +285,7 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
       <SimpleDataTable
         columns={COLUMNS}
         rows={filtered}
+        highlightQuery={searchQuery}
         getRowKey={(row) => row.url}
         getRowTooltip={(row) => row.title}
         onRowClick={openEntry}

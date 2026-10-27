@@ -13,6 +13,7 @@ import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
 
 const logger = createLogger("view/browser");
 
@@ -189,6 +190,7 @@ const COLUMNS: ColumnDef<HistoryEntry>[] = [
     headerClassName: "simple-data-table__th--title",
     cellClassName: "simple-data-table__title",
     sortable: true,
+    searchable: true,
     cell: (row) => row.title,
   },
   {
@@ -197,6 +199,7 @@ const COLUMNS: ColumnDef<HistoryEntry>[] = [
     headerClassName: "simple-data-table__th--history-board",
     cellClassName: "simple-data-table__history-board",
     sortable: true,
+    searchable: true,
     cell: (row) => row.boardTitle || "-",
   },
   {
@@ -510,10 +513,9 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
   }, []);
 
   const filtered = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    const rows = normalizedQuery
+    const rows = searchQuery.trim()
       ? entries.filter((entry) =>
-          `${entry.title} ${entry.boardTitle}`.toLowerCase().includes(normalizedQuery),
+          [entry.title, entry.boardTitle].some((text) => matchesSearchQuery(text, searchQuery)),
         )
       : entries;
 
@@ -637,6 +639,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
         <VirtualizedDataTable
           columns={COLUMNS}
           rows={filtered}
+          highlightQuery={searchQuery}
           getRowKey={(row) => row.url}
           getRowTooltip={(row) => row.title}
           onRowClick={openEntry}

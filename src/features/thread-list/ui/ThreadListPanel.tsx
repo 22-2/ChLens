@@ -54,6 +54,7 @@ import {
   resolveBoardUrlForBrowser,
 } from "src/view/browser/utils/link-routing";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
+import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
 import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 const logger = createLogger("thread-list");
@@ -395,14 +396,14 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       isBookmarked: readBookmarkStatus(thread.url),
       unreadCount: getThreadUnreadCount(thread),
       heat: Number.parseFloat(calcHeat(now, thread.createdAt, thread.resCount)),
+      highlightQuery: searchQuery,
     }));
 
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
       list.splice(
         0,
         list.length,
-        ...list.filter(({ thread }) => thread.title.toLowerCase().includes(query)),
+        ...list.filter(({ thread }) => matchesSearchQuery(thread.title, searchQuery)),
       );
     }
 
@@ -661,6 +662,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
             <SimpleDataTable
               columns={THREAD_LIST_COLUMNS}
               rows={visibleDisplayThreads}
+              highlightQuery={searchQuery}
               sections={threadSections}
               getRowKey={({ thread }) => thread.url}
               getRowTooltip={({ thread }) => thread.title}

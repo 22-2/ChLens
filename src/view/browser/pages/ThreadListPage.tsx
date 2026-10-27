@@ -84,6 +84,7 @@ import {
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
+import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
 import { ThreadListView } from "src/view/shared/ThreadListView";
 
 const logger = createLogger("view/browser");
@@ -494,12 +495,12 @@ export const ThreadListPage: React.FC<Props> = ({
       isBookmarked: readBookmarkStatus(t.url),
       unreadCount: getThreadUnreadCount(t),
       heat: parseFloat(calcHeat(now, t.createdAt, t.resCount)),
+      highlightQuery: searchQuery,
     }));
 
     // テキスト検索フィルタ
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(({ thread }) => thread.title.toLowerCase().includes(q));
+      list = list.filter(({ thread }) => matchesSearchQuery(thread.title, searchQuery));
     }
 
     // sortColumn が null の間は取得順を維持し、デフォルト状態へ戻せるようにする。
@@ -823,6 +824,7 @@ export const ThreadListPage: React.FC<Props> = ({
       <SimpleDataTable
         columns={THREAD_LIST_COLUMNS}
         rows={visibleDisplayThreads}
+        highlightQuery={searchQuery}
         sections={threadSections}
         getRowKey={({ thread }) => thread.url}
         getRowTooltip={({ thread }) => thread.title}

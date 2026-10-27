@@ -3,6 +3,7 @@ import { createLogger } from "src/app/logger";
 import type { LogRecord, LogSearchPreview } from "src/core/storage/Cache";
 import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
+import { SearchHighlight } from "src/view/browser/components/SearchHighlight";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
@@ -11,7 +12,7 @@ import { useTabDispatch, useTabViewState } from "src/view/browser/state/tabs/use
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
-import { findSearchMatchRanges } from "src/view/browser/utils/search-highlight";
+import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
 
 const logger = createLogger("view/browser");
 
@@ -73,23 +74,7 @@ function toLogEntry(
 }
 
 function renderHighlightedPreview(text: string, query: string): React.ReactNode {
-  // 変更理由: スレ内検索と同じ正規化・一致範囲を使い、半角全角やかなの違いも同じ色で示す。
-  const ranges = findSearchMatchRanges(text, query);
-  if (ranges.length === 0) return text;
-
-  const content: React.ReactNode[] = [];
-  let cursor = 0;
-  for (const range of ranges) {
-    if (range.start > cursor) content.push(text.slice(cursor, range.start));
-    content.push(
-      <mark key={`${range.start}-${range.end}`} className="res__search-match">
-        {text.slice(range.start, range.end)}
-      </mark>,
-    );
-    cursor = range.end;
-  }
-  if (cursor < text.length) content.push(text.slice(cursor));
-  return content;
+  return <SearchHighlight text={text} query={query} />;
 }
 
 const COLUMNS: ColumnDef<LogEntry>[] = [
@@ -99,6 +84,7 @@ const COLUMNS: ColumnDef<LogEntry>[] = [
     headerClassName: "simple-data-table__th--title",
     cellClassName: "simple-data-table__title",
     sortable: true,
+    searchable: true,
     cell: (row) => row.title,
   },
   {
@@ -107,6 +93,7 @@ const COLUMNS: ColumnDef<LogEntry>[] = [
     headerClassName: "simple-data-table__th--history-board",
     cellClassName: "simple-data-table__history-board",
     sortable: true,
+    searchable: true,
     cell: (row) => row.boardTitle || "-",
   },
   {
@@ -372,14 +359,13 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
   }, []);
 
   const filtered = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
     let rows = entries;
-    if (normalizedQuery) {
+    if (searchQuery.trim()) {
       if (searchMode === "body") {
         rows = bodyMatchedEntries ?? [];
       } else {
         rows = entries.filter((entry) =>
-          `${entry.title} ${entry.boardTitle}`.toLowerCase().includes(normalizedQuery),
+          [entry.title, entry.boardTitle].some((text) => matchesSearchQuery(text, searchQuery)),
         );
       }
     }
@@ -496,6 +482,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
         <VirtualizedDataTable
           columns={showResponsePreview ? BODY_SEARCH_COLUMNS : COLUMNS}
           rows={filtered}
+          highlightQuery={searchQuery}
           getRowKey={(row) => row.url}
           getRowTooltip={(row) => row.title}
           onRowClick={openEntry}
