@@ -360,6 +360,25 @@
   background: var(--sys-color-link-card-hover-bg);
 }
 
+.res__save-images {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+  margin: var(--sys-space-3) 0 0 var(--sys-space-8);
+  padding: var(--sys-space-2) var(--sys-space-4);
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-thumbnail-surface);
+  color: inherit;
+  font-size: var(--sys-font-size-xs);
+  cursor: pointer;
+}
+
+.res__save-images:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
 .res__thumbs {
   /* Keep response attachments in a predictable three-column rhythm. */
   display: grid;
