@@ -84,7 +84,6 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
     "https://menu.5ch.io/bbsmenu.html\nhttps://menu.2ch.sc/bbsmenu.html\n// open2chは一度手動でbbsmenuのURLへアクセスする必要があります。\n// https://menu.open2ch.net/bbsmenu.html\n",
   bbsmenu_option: "",
   other_board_titles: "{}",
-  useragent: "",
   imgur_access_token: "",
   imgur_client_id: "",
   format_2chnet: "html",

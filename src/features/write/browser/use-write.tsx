@@ -175,7 +175,6 @@ async function submitTauriWrite(
     action: request.action,
     bootstrapUrl: request.bootstrapUrl,
     referer: request.referer,
-    userAgent: container.config.get("useragent"),
     // eddibbはCookieをメール欄のトークンより優先するため、明示したトークンで再認証するときは古いCookieを送らない。
     excludedCookies: isWriteAuthToken(request.action, mail) ? ["edge-token"] : [],
     body: encodeWriteFields(request.fields, request.charset),
