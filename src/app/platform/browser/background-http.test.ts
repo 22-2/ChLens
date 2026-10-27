@@ -1,10 +1,6 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-vi.mock("src/app/platform/browser/user-agent-rule", () => ({
-  applyUserAgentRule: vi.fn(async () => {}),
-}));
-
 import { handleSharedHttpRequest } from "./background-http";
 
 describe("拡張機能全ウィンドウ共有HTTPキュー", () => {
