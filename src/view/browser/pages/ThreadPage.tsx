@@ -34,12 +34,14 @@ import { useThreadPopupManager } from "src/features/popup/browser/use-popup-mana
 import { PopupRenderer } from "src/features/popup/ui/PopupRenderer";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
+import { useStoredReadState } from "src/features/thread/browser/use-stored-read-state";
 import { useThreadData } from "src/features/thread/browser/use-thread-data";
 import { useThreadFind } from "src/features/thread/browser/use-thread-find";
 import { useThreadRefreshController } from "src/features/thread/browser/use-thread-refresh-controller";
 import { useThreadSnapshotPublisher } from "src/features/thread/browser/use-thread-snapshot-publisher";
 import type { VirtualKey } from "src/features/thread/browser/use-thread-virtual-list";
 import {
+  READ_LINE_KEY,
   REPLAY_LINE_KEY,
   useThreadVirtualList,
 } from "src/features/thread/browser/use-thread-virtual-list";
@@ -67,6 +69,7 @@ import { useOwnResTracking } from "src/view/browser/pages/thread/use-own-res-tra
 import { useResInteractionHandlers } from "src/view/browser/pages/thread/use-res-interaction-handlers";
 import { useThreadFilterDefaultOpenSetting } from "src/view/browser/pages/thread/use-thread-filter-default-open-setting";
 import { useThreadFilterModeToggle } from "src/view/browser/pages/thread/use-thread-filter-mode-toggle";
+import { useThreadReadPositionMode } from "src/view/browser/pages/thread/use-thread-read-position-mode";
 import { useThreadReadState } from "src/view/browser/pages/thread/use-thread-read-state";
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 import { useThreadStatusSync } from "src/view/browser/pages/thread/use-thread-status-sync";
@@ -643,6 +646,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   );
 
   const imageBlurConfig = useImageBlurConfig();
+  const readPositionMode = useThreadReadPositionMode();
+  const storedReadState = useStoredReadState(page.threadUrl);
+  const [manualReadNum, setManualReadNum] = useState<number | null>(null);
+  useEffect(() => {
+    setManualReadNum(storedReadState?.read ?? null);
+  }, [storedReadState?.read, page.threadUrl]);
 
   const replayBoundary =
     isArchiveReplay && replayPosition
@@ -652,12 +661,19 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           replayPosition.responseNumber,
         )
       : -1;
+  const readBoundary =
+    !isArchiveReplay && readPositionMode === "manual" && manualReadNum != null
+      ? displayedResponses.findIndex((response) => response.num > manualReadNum) >= 0
+        ? displayedResponses.findIndex((response) => response.num > manualReadNum)
+        : displayedResponses.length
+      : -1;
 
   // 変更理由: 全レスを描画すると、レス数とタブ数に比例して描画負荷とメモリが増えるため、
   // 表示範囲のレスだけを描画する。位置の計算・ジャンプ・既読位置の計測はここへまとめる。
   const virtualList = useThreadVirtualList({
     responses: displayedResponses,
     replayBoundary,
+    readBoundary,
     scrollContainerRef: effectiveScrollContainerRef,
     // 自動更新で追従している間は、新着の実測で高さが変わっても最下部に留める。
     stickToEnd:
@@ -681,7 +697,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     rootRef,
   });
 
-  const { scrollToResponse, isInitialReadStateResolved } = useThreadReadState({
+  const { scrollToResponse, isInitialReadStateResolved, markReadThrough } = useThreadReadState({
     tabId,
     threadUrl: page.threadUrl,
     isActive,
@@ -690,7 +706,15 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     rootRef,
     scrollToResponse: virtualList.scrollToResponse,
     measureReadState: virtualList.measureReadState,
+    readPositionMode,
   });
+  const markReadThroughAndShowLine = useCallback(
+    async (resNum: number) => {
+      await markReadThrough(resNum);
+      setManualReadNum(resNum);
+    },
+    [markReadThrough],
+  );
 
   const handleMinimapResponseClick = useCallback(
     (resNum: number, options: { scroll: boolean; align?: "start" | "center" }) => {
@@ -784,6 +808,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setSearchQuery,
     setMiniAaResNums,
     setResponses,
+    markReadThrough:
+      !isArchiveReplay && readPositionMode === "manual" && isInitialReadStateResolved
+        ? markReadThroughAndShowLine
+        : undefined,
   });
 
   const contextMenuHeader = useCallback(
@@ -848,6 +876,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         active={isActive && !loading && isInitialReadStateResolved}
       />
     ) : null;
+  const readLine =
+    readBoundary >= 0 ? (
+      <div className="thread-page__replay-position" role="separator" aria-label="ここまで読んだ">
+        <span>ここまで読んだ</span>
+      </div>
+    ) : null;
 
   const displayedResponseByNum = useMemo(
     () => new Map(displayedResponses.map((res) => [res.num, res])),
@@ -855,6 +889,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   );
   const renderVirtualItem = (key: VirtualKey) => {
     if (key === REPLAY_LINE_KEY) return replayLine;
+    if (key === READ_LINE_KEY) return readLine;
     const res = typeof key === "number" ? displayedResponseByNum.get(key) : undefined;
     if (!res) return null;
     const idCount = res.id ? (indexes.idIndex.get(res.id)?.size ?? 0) : 0;

@@ -31,6 +31,7 @@ export type VirtualKey = string | number;
 
 /** 過去実況の再生位置を示す線。レスと同じ並びに入れ、位置計算を共通にする。 */
 export const REPLAY_LINE_KEY = "archive-replay-line";
+export const READ_LINE_KEY = "thread-read-line";
 
 export interface ThreadResponseLayout {
   getListTop: () => number | null;
@@ -48,6 +49,7 @@ export interface ThreadScrollToResponseOptions {
 interface UseThreadVirtualListParams {
   responses: readonly IRes[];
   replayBoundary: number;
+  readBoundary?: number;
   scrollContainerRef: RefObject<HTMLElement | null>;
   stickToEnd: boolean;
   debugKey: string;
@@ -76,6 +78,7 @@ const WIDTH_BUCKET_PX = 16;
 export function useThreadVirtualList({
   responses,
   replayBoundary,
+  readBoundary = -1,
   scrollContainerRef,
   stickToEnd,
   debugKey,
@@ -103,8 +106,12 @@ export function useThreadVirtualList({
     const nums: VirtualKey[] = responses.map((res) => res.num);
     if (replayBoundary >= 0 && replayBoundary <= nums.length)
       nums.splice(replayBoundary, 0, REPLAY_LINE_KEY);
+    if (readBoundary >= 0 && readBoundary <= responses.length) {
+      const replayLineOffset = replayBoundary >= 0 && replayBoundary <= readBoundary ? 1 : 0;
+      nums.splice(readBoundary + replayLineOffset, 0, READ_LINE_KEY);
+    }
     return nums;
-  }, [replayBoundary, responses]);
+  }, [readBoundary, replayBoundary, responses]);
   const estimateInput = useLatestRef({ resByNum, metrics });
   const keyIndex = useMemo(() => new Map(keys.map((key, index) => [key, index])), [keys]);
   const estimateSize = useCallback(
