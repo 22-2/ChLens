@@ -228,7 +228,7 @@ api.addStatusBarItem({
 - [ ] **PR4. 残りの機能固有コマンドを移す（P1）**
   - 自動更新、次スレなど。段階0では既存の `BrowserCommandContext` を使ってよい。
   - コメント実況のように `CustomEvent` で画面へ届けているコマンドは、PR4 では移さない（PR7 で扱う）。
-  - 進捗：自動更新の切り替えを `features/auto-refresh`、次スレ検索と自動次スレ設定を `features/next-thread` へ移した。機能IDへ変更し、既存コンテキストの操作と表示順を維持した。
+  - 進捗：自動更新の切り替えを `features/auto-refresh`、次スレ検索と自動次スレ設定を `features/next-thread`、過去実況再生の起動を `features/archive-replay` へ移した。機能IDへ変更し、既存コンテキストの操作と表示順を維持した。
 - [ ] **PR5. ページ種別の知識を定義へ集める（P2）**
   - 全種別の定義を1か所に作り、`TabView`・`PageTypeIcon`・同一ページの判定・再取得と絞り込みの可否が定義を引く形にする。`Page` 型と保存形式は変えない。
 - [ ] **PR6. ページ種別の定義を機能側へ移し、`api.workspace` の最小限の操作を用意する（P2）**

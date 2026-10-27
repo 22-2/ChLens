@@ -15,7 +15,6 @@ import {
   PanelLeft,
   PanelRight,
   PenLine,
-  PlayCircle,
   RotateCcw,
   RotateCw,
   Settings,
@@ -497,23 +496,6 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
     group: "navigation",
     icon: Archive,
     run: (context) => openQuickAccessPage(context, createQuickAccessPage("logList")),
-  },
-  {
-    id: "navigation.open-archive-replay",
-    label: "過去実況再生を開く",
-    englishLabel: "Open Archive Replay",
-    description: "複数の実況スレッドを投稿時刻順につないで再生します",
-    keywords: ["過去実況", "実況再生", "コメント再生", "archive replay", "replay"],
-    group: "navigation",
-    icon: PlayCircle,
-    when: () => isTauriRuntime(),
-    // 変更理由: 過去ログ検索とは別に、複数スレッドを時刻順で再生する入口を
-    // Tauri版のコマンドパレットへ限定して公開し、ブラウザ版で未対応の再生窓を
-    // 誤って開かないようにする。
-    run: ({ openArchiveReplayWindow }) => {
-      if (!isTauriRuntime()) return;
-      openArchiveReplayWindow();
-    },
   },
   {
     id: "navigation.open-siki-log",
