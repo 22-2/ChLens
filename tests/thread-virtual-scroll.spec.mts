@@ -169,7 +169,8 @@ test.describe("大きなスレッドのスクロール位置", () => {
 
     const panel = page.locator(ACTIVE_PANEL);
     const box = (await panel.boundingBox())!;
-    const correctionsBefore = (await readVirtualListState(page))!.corrections;
+    // TanStack Virtual へ切り替えてから補正回数は取れないため、未実測のレス数が減ったかで実測が進んだことを見る。
+    const estimatedBefore = (await readVirtualListState(page))!.estimatedCount;
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     for (let step = 0; step < WHEEL_STEPS; step++) {
       const before = await readViewportAnchor(page);
@@ -191,9 +192,9 @@ test.describe("大きなスレッドのスクロール位置", () => {
       ).not.toBeNull();
       expect(Math.abs(moved! - panelTop - before!.offset - WHEEL_DELTA)).toBeLessThanOrEqual(1);
     }
-    // 推定値と実測値が食い違って補正が実際に起きた状態で、上の位置が保たれていたことを確かめる。
+    // 未実測のレスが実測へ置き換わり、推定値と実測値の食い違いが起きた状態で、上の位置が保たれていたことを確かめる。
     const state = await readVirtualListState(page);
-    expect(state!.corrections).toBeGreaterThan(correctionsBefore);
+    expect(state!.estimatedCount).toBeLessThan(estimatedBefore);
   });
 
   test("Ctrl+Fのページ内検索は表記ゆれをまとめて探し、描画していないレスの一致へも移動する", async ({

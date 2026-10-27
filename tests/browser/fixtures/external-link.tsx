@@ -16,7 +16,12 @@ import { requestExternalLink } from "src/view/browser/utils/external-link";
 
 import { recordOpen } from "./external-link-platform";
 
-const config = new Map([["confirm_external_links", "on"]]);
+// 既定の手動取得では最初のクリックが画像の取得になり、ビューアーや外部起動の確認まで進まない。
+// この画面では外部リンクの確認を検証するため、画像は自動で取得させる。
+const config = new Map([
+  ["confirm_external_links", "on"],
+  ["manual_image_loading", "off"],
+]);
 const listeners = new Map<unknown, (data: { key?: string }) => void>();
 container.config = {
   get: (key) => config.get(key) ?? null,

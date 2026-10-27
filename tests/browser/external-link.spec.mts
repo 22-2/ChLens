@@ -5,7 +5,12 @@ import { expect, type Page, test } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite-plus";
 
 test.describe.configure({ mode: "default" });
-test.use({ headless: false, channel: "msedge", viewport: { width: 1120, height: 800 } });
+// 変更理由: CI の Ubuntu には画面も Edge もなく、表示ありの Edge は起動できずに全件失敗していた。
+// CI では導入済みの Chromium を画面なしで使い、手元では offstage-windows の隠しデスクトップに Edge を出す。
+test.use({
+  ...(process.env.CI ? {} : { headless: false, channel: "msedge" }),
+  viewport: { width: 1120, height: 800 },
+});
 const root = fileURLToPath(new URL("../..", import.meta.url));
 let server: ViteDevServer;
 let origin: string;
@@ -15,15 +20,17 @@ test.beforeAll(async () => {
     configFile: false,
     root,
     resolve: {
-      alias: {
-        "src/app/platform/index": path.join(
-          root,
-          "tests/browser/fixtures/external-link-platform.ts",
-        ),
-        src: path.join(root, "src"),
-        packages: path.join(root, "packages"),
-        "@chlen/chlib": path.join(root, "packages/chlib/src/index.ts"),
-      },
+      // 変更理由: platform は `src/app/platform` と `.../index` の両方で import されるため、
+      // どちらも記録用の差し替えへ向ける。片方だけだと実際の拡張機能 API を読み込んで画面が開かない。
+      alias: [
+        {
+          find: /^src\/app\/platform(?:\/index)?$/,
+          replacement: path.join(root, "tests/browser/fixtures/external-link-platform.ts"),
+        },
+        { find: /^src\//, replacement: `${path.join(root, "src")}/` },
+        { find: /^packages\//, replacement: `${path.join(root, "packages")}/` },
+        { find: "@chlen/chlib", replacement: path.join(root, "packages/chlib/src/index.ts") },
+      ],
     },
     server: { host: "127.0.0.1", port: 0, hmr: false, watch: null },
   });

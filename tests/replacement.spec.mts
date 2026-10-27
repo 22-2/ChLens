@@ -45,6 +45,10 @@ test("NG内の置換タブから先頭のBEアイコンを削除し、本文と�
       ),
     });
   });
+  // 画像は既定で手動取得になり、サムネイル要素が出ない。ここではサムネイルのURLを検証するため自動で取得させる。
+  await page.addInitScript(() => {
+    localStorage.setItem("config_manual_image_loading", "off");
+  });
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.getByTestId("title-bar-title").click();
   const urlInput = page.getByPlaceholder("URLを入力");
