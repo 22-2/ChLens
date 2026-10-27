@@ -1,3 +1,4 @@
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import {
   executeTabCommandRequest,
   TAB_COMMAND_IDS,
@@ -281,3 +282,5 @@ describe("tab-command-runtime", () => {
     expect(runtime.dispatch).not.toHaveBeenCalled();
   });
 });
+
+setupTestPageTypes();

@@ -1,3 +1,4 @@
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { isPageFilterable } from "src/view/browser/utils/filterable-pages";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -18,3 +19,5 @@ describe("フィルター対象ページ", () => {
     expect(isPageFilterable(pageType)).toBe(false);
   });
 });
+
+setupTestPageTypes();

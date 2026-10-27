@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { TabBar } from "src/features/tabs/ui/TabBar";
 import { container } from "src/service-container/index";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const dispatchMock = vi.fn();
@@ -1313,3 +1314,5 @@ describe("TabBar bookmark", () => {
     expect(document.querySelector(".tab-bar__bookmark")).toBeNull();
   });
 });
+
+setupTestPageTypes();

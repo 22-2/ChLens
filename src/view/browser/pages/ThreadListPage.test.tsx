@@ -18,6 +18,7 @@ import type {
   IToastService,
 } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { getAutoRefreshThreadPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
@@ -1556,3 +1557,5 @@ describe("ThreadListPage", () => {
     });
   });
 });
+
+setupTestPageTypes();

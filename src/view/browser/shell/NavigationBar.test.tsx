@@ -3,6 +3,7 @@ import "fake-indexeddb/auto";
 
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { container } from "src/service-container";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import {
   browserCommandRegistry,
   registerCoreCommands,
@@ -1128,3 +1129,5 @@ describe("NavigationBar titlebar slot", () => {
     expect(container.querySelector(".nav-bar__url-input")).toBeNull();
   });
 });
+
+setupTestPageTypes();

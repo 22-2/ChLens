@@ -1,3 +1,4 @@
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { loadTabStoreSession } from "src/view/browser/state/tabs/tab-store-session";
 import { createHomeTab, getCurrentPage, type Tab } from "src/view/browser/types";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -184,3 +185,5 @@ describe("下部パネルのセッション", () => {
     });
   });
 });
+
+setupTestPageTypes();

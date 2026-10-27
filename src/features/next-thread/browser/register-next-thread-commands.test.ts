@@ -1,5 +1,6 @@
 import { container } from "src/service-container";
 import { stubService } from "src/service-container/test-stubs";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import {
   browserCommandRegistry,
   executeBrowserCommand,
@@ -107,3 +108,5 @@ describe("次スレコマンド登録", () => {
     expect(configSet).toHaveBeenCalledWith("auto_next_thread", "on");
   });
 });
+
+setupTestPageTypes();

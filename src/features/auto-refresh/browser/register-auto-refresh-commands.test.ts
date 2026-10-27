@@ -1,5 +1,6 @@
 import { container } from "src/service-container";
 import { stubService } from "src/service-container/test-stubs";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import {
   browserCommandRegistry,
   executeBrowserCommand,
@@ -93,3 +94,5 @@ describe("自動更新コマンド登録", () => {
     await expect(executeBrowserCommand("auto-refresh.toggle", context)).resolves.toBe(false);
   });
 });
+
+setupTestPageTypes();

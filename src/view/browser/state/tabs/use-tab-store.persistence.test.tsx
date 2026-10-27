@@ -5,6 +5,7 @@ import { startTransition } from "react";
 import { container } from "src/service-container/index";
 import type { IHistoryService } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import type { ScopedTabAction, TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
 import { createHomeTab, getCurrentPage } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -51,7 +52,11 @@ function savedState(): TabStoreState {
   };
 }
 
+const afterTestPageTypes: Array<() => void> = [];
+
 async function renderViewer() {
+  const { registerTestPageTypes } = await import("src/test-support/page-types-test-setup");
+  afterTestPageTypes.push(registerTestPageTypes());
   const { TabProvider, useTabStore, useTabPanes } =
     await import("src/view/browser/state/tabs/use-tab-store");
   let dispatchForTest: (action: ScopedTabAction) => void = () => {
@@ -103,6 +108,7 @@ describe("タブセッションの操作時保存と再読み込み", () => {
 
   afterEach(() => {
     cleanup();
+    for (const dispose of afterTestPageTypes.splice(0)) dispose();
     window.history.replaceState(null, "", originalUrl);
     vi.unstubAllGlobals();
     vi.resetModules();
@@ -210,3 +216,5 @@ describe("タブセッションの操作時保存と再読み込み", () => {
     });
   });
 });
+
+setupTestPageTypes();

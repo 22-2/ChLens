@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
 import type { PageType } from "src/view/browser/types";
 import { describe, expect, it } from "vite-plus/test";
@@ -33,3 +34,5 @@ describe("PageTypeIcon", () => {
     }
   });
 });
+
+setupTestPageTypes();

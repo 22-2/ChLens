@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { container } from "src/service-container/index";
 import type { IHistoryService } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { getPageViewStateKey } from "src/view/browser/page-type-definitions";
 import { getAutoRefreshPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { getCurrentPage } from "src/view/browser/types";
@@ -70,6 +71,14 @@ function createMemoryStorage(): Storage {
   };
 }
 
+const afterTestPageTypes: Array<() => void> = [];
+
+async function resetModulesWithPageTypes() {
+  vi.resetModules();
+  const { registerTestPageTypes } = await import("src/test-support/page-types-test-setup");
+  afterTestPageTypes.push(registerTestPageTypes());
+}
+
 describe("TabProvider auto refresh state", () => {
   beforeEach(() => {
     const localStorageMock = createMemoryStorage();
@@ -114,12 +123,13 @@ describe("TabProvider auto refresh state", () => {
 
   afterEach(() => {
     cleanup();
+    for (const dispose of afterTestPageTypes.splice(0)) dispose();
     vi.resetModules();
     vi.unstubAllGlobals();
   });
 
   it("別ページへ移動した時点で自動更新状態を解除する", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -199,7 +209,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("戻るで移動してきたページでも自動更新状態は復元しない", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -275,7 +285,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("セッション保存時に自動更新状態を永続化しない", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -365,7 +375,7 @@ describe("TabProvider auto refresh state", () => {
       }),
     );
 
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -395,7 +405,7 @@ describe("TabProvider auto refresh state", () => {
   it.each([true, false])(
     "dat落ち時のON状態が%sでも再開連打を拒否し、次スレでは解除する",
     async (initiallyEnabled) => {
-      vi.resetModules();
+      await resetModulesWithPageTypes();
       const { TabProvider, useTabStore } =
         await import("src/view/browser/state/tabs/use-tab-store");
 
@@ -506,7 +516,7 @@ describe("TabProvider auto refresh state", () => {
   );
 
   it("OPEN_IN_NEW_TAB では現在タブのページタイトルを変更しない", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     // 現仕様では新規タブを開くと既定でそちらへフォーカスが移る。
     // このテストの主眼は「元タブのページが汚染されないこと」なので、
     // 背景オープン設定にしてアクティブタブを元のままに固定して検証する。
@@ -576,7 +586,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("OPEN_IN_NEW_TAB した背景スレは表示前でも閲覧履歴へ記録する", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -638,7 +648,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("URL直開きのスレはタイトル解決後に同じ履歴レコードを補正する", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -714,7 +724,7 @@ describe("TabProvider auto refresh state", () => {
   it("新しいタブでURL直開きしたスレも描画中のタブIDで履歴タイトルを補正する", async () => {
     // reducerを2回評価していた頃は、履歴記録に使うタブIDと描画されたタブIDが食い違い、
     // タイトル解決後の補正が対象の閲覧記録を見つけられずURLのまま残っていた。
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
     const threadUrl = "https://example.com/test/read.cgi/board-a/2/";
 
@@ -780,7 +790,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("履歴からURLだけで開いた過去スレは既存タイトルを引き継ぐ", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     historyGetByUrlMock.mockResolvedValueOnce([
       {
         url: "https://example.com/test/read.cgi/board-a/1/",
@@ -837,7 +847,7 @@ describe("TabProvider auto refresh state", () => {
   ])(
     "新規スレは背景で開き、既存スレにはフォーカスする（設定=$focusSetting、背景指定=$background）",
     async ({ focusSetting, background }) => {
-      vi.resetModules();
+      await resetModulesWithPageTypes();
       localStorage.setItem("config_focus_new_tab_on_open", focusSetting);
       const { TabProvider, useTabStore } =
         await import("src/view/browser/state/tabs/use-tab-store");
@@ -908,7 +918,7 @@ describe("TabProvider auto refresh state", () => {
   );
 
   it("OPEN_IN_NEW_TAB は設定オン時に新しいタブをアクティブにする", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     localStorage.setItem("config_focus_new_tab_on_open", "on");
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
@@ -969,7 +979,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("NAVIGATE は別タブに同じページがあっても現在タブの履歴に積む", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     // 既存スレを別タブで開く操作は背景前提なので、
     // フォーカス移動でアクティブタブが入れ替わらないよう背景オープン設定にする。
     localStorage.setItem("config_focus_new_tab_on_open", "off");
@@ -1068,7 +1078,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("描画対象タブを指定した操作はペインのactiveTabへ作用しない", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabDispatchForTab, useTabStore } =
       await import("src/view/browser/state/tabs/use-tab-store");
 
@@ -1158,7 +1168,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("別窓の表示対象とペインの選択対象を分離する", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
     const { TabViewScopeProvider } = await import("src/view/browser/state/tabs/use-tab-view-scope");
     const { tabActions } = await import("src/view/browser/state/tabs/tab-store-actions");
@@ -1251,7 +1261,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("クイックアクセス間の遷移で既存ページ判定が誤爆せず切り替わる", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -1314,7 +1324,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("同一タブでスレURLへ遷移した時は戻るで前のスレへ戻る", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -1399,7 +1409,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("ホームからURL直開きしたスレはスレ一覧を経由してホームへ戻る", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -1454,7 +1464,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("UPDATE_TITLE_FOR_TAB は対象タブだけを更新し、アクティブタブを汚染しない", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     // 背景タブを開いた状態を作るため、新規タブのフォーカス移動を無効化する。
     localStorage.setItem("config_focus_new_tab_on_open", "off");
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
@@ -1536,7 +1546,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("ホームから板URLを直接開くと履歴に積まれ、進むは効かない", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -1587,7 +1597,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("新規タブ操作は通常のホームを追加し、進むは効かない", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -1629,7 +1639,7 @@ describe("TabProvider auto refresh state", () => {
   it("関連する板モードの新規タブはスレ履歴内の確定板名を再利用する", async () => {
     localStorage.setItem("config_new_tab_page_mode", "related_board");
 
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -1694,7 +1704,7 @@ describe("TabProvider auto refresh state", () => {
   it("関連板から別板のスレをURL直開きした戻るで前居た板へ戻る", async () => {
     localStorage.setItem("config_new_tab_page_mode", "related_board");
 
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -1790,7 +1800,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("板ページから新規タブで開いたスレは戻る時に板URLではなく板タイトルを維持する", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
 
     function Harness() {
@@ -1863,7 +1873,7 @@ describe("TabProvider auto refresh state", () => {
   });
 
   it("タブごとの検索状態をスレ遷移とセッション保存で維持する", async () => {
-    vi.resetModules();
+    await resetModulesWithPageTypes();
     const { TabProvider, useTabStore } = await import("src/view/browser/state/tabs/use-tab-store");
     const thread1 = {
       type: "thread" as const,
@@ -1950,3 +1960,5 @@ describe("TabProvider auto refresh state", () => {
     });
   });
 });
+
+setupTestPageTypes();

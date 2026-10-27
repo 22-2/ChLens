@@ -1,3 +1,4 @@
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import {
   buildHierarchy,
   getDisplayUrl,
@@ -219,3 +220,5 @@ describe("ページ種別の定義", () => {
     expect(new Set(identities).size).toBe(identities.length);
   });
 });
+
+setupTestPageTypes();

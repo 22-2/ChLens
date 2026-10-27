@@ -12,6 +12,7 @@ import type {
   IThreadService,
   IUtil,
 } from "src/service-container/interfaces";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
@@ -714,3 +715,5 @@ describe("useThreadData Phase 0 contracts", () => {
     expect(result.current.missingFromSubject).toBe(false);
   });
 });
+
+setupTestPageTypes();

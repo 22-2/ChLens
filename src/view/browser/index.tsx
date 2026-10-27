@@ -1,4 +1,3 @@
-import "src/view/browser/shell/register-built-in-page-types";
 import "src/view/browser/styles/index.css";
 
 import { createRoot } from "react-dom/client";
@@ -17,7 +16,11 @@ import {
   browserCommandRegistry,
   registerCoreCommands,
 } from "src/view/browser/commands/browser-commands";
-import { createExtensionOwner } from "src/view/browser/extension/extension-api";
+import {
+  createExtensionOwner,
+  type ExtensionOwner,
+} from "src/view/browser/extension/extension-api";
+import { registerBuiltInPageTypes } from "src/view/browser/shell/register-built-in-page-types";
 
 // 起動処理のエラーも外部CLIから読めるよう、boot より前に記録を始める。
 installConsoleCapture();
@@ -38,12 +41,22 @@ void boot("/view/index.html", () => {
   // 同じ基準の直前へ入る機能どうしは、登録した順に並ぶ（例：auto-refresh と next-thread は
   // どちらも Zen モードの直前に入り、自動更新 → 自動次スレの順を保つため auto-refresh を先にする）。
   // 所有者はアプリの終了まで生きるため、解除は呼ばない。
-  registerCoreCommands(createExtensionOwner("core", browserCommandRegistry).api);
-  registerMediaCommands(createExtensionOwner("media", browserCommandRegistry).api);
-  registerBookmarkCommands(createExtensionOwner("bookmark", browserCommandRegistry).api);
-  registerAutoRefreshCommands(createExtensionOwner("auto-refresh", browserCommandRegistry).api);
-  registerNextThreadCommands(createExtensionOwner("next-thread", browserCommandRegistry).api);
-  registerArchiveReplayCommands(createExtensionOwner("archive-replay", browserCommandRegistry).api);
+  const owners = new Map<string, ExtensionOwner>();
+  const getApi = (id: string) => {
+    let owner = owners.get(id);
+    if (!owner) {
+      owner = createExtensionOwner(id, browserCommandRegistry);
+      owners.set(id, owner);
+    }
+    return owner.api;
+  };
+  registerBuiltInPageTypes(getApi);
+  registerCoreCommands(getApi("core"));
+  registerMediaCommands(getApi("media"));
+  registerBookmarkCommands(getApi("bookmark"));
+  registerAutoRefreshCommands(getApi("auto-refresh"));
+  registerNextThreadCommands(getApi("next-thread"));
+  registerArchiveReplayCommands(getApi("archive-replay"));
   const container = document.getElementById("root");
   if (!container) return;
   createRoot(container).render(<BrowserApp />);
