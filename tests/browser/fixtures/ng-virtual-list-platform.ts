@@ -5,6 +5,24 @@ function unexpected(name: string): never {
 }
 
 export const platform = {
-  http: { fetch: async () => unexpected("platform.http.fetch") },
+  http: {
+    fetch: async (url: string) => {
+      if (!url.endsWith("/2/status/1234567890123456789")) return unexpected("platform.http.fetch");
+      // 取得中の仮表示と取得後の高さを別々に計測させる。
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      return {
+        status: 200,
+        body: JSON.stringify({
+          code: 200,
+          status: {
+            type: "status",
+            id: "1234567890123456789",
+            text: "投稿本文".repeat(100),
+            author: { name: "投稿者", screen_name: "example" },
+          },
+        }),
+      };
+    },
+  },
   window: { openUrlInTab: async () => unexpected("platform.window.openUrlInTab") },
 };

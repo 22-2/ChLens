@@ -41,7 +41,12 @@ const sourceResponses: IRes[] = Array.from({ length: 800 }, (_, index) => ({
   name: "検証用の名無し",
   mail: "",
   date: "2026/10/25 12:00:00",
-  message: index < 3 ? imageMessage([15, 16, 14][index]!) : `通常のレス ${index + 1}`,
+  message:
+    index === 2 && location.search === "?twitter"
+      ? "https://x.com/example/status/1234567890123456789"
+      : index < 3
+        ? imageMessage([15, 16, 14][index]!)
+        : `通常のレス ${index + 1}`,
 }));
 
 function evaluateResponses(): IRes[] {

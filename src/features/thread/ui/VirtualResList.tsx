@@ -1,5 +1,5 @@
 import type { ReactVirtualizer } from "@tanstack/react-virtual";
-import { type ReactNode, useLayoutEffect, useRef } from "react";
+import { type ReactNode, useCallback, useLayoutEffect, useRef } from "react";
 import type { VirtualKey } from "src/features/thread/browser/use-thread-virtual-list";
 
 interface VirtualResListProps {
@@ -29,6 +29,13 @@ export function VirtualResList({
 }: VirtualResListProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const virtualItems = virtualizer.getVirtualItems();
+  const setListRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      listRef.current = node;
+      virtualizer.containerRef(node);
+    },
+    [virtualizer],
+  );
 
   useLayoutEffect(() => {
     if (highlightKey === null) return;
@@ -44,7 +51,7 @@ export function VirtualResList({
   }, [highlightKey, onHighlightApplied, virtualItems]);
 
   return (
-    <div ref={listRef} className="virtual-res-list" style={{ height: virtualizer.getTotalSize() }}>
+    <div ref={setListRef} className="virtual-res-list">
       {virtualItems.map((item) => (
         <div
           key={String(item.key)}
@@ -52,7 +59,6 @@ export function VirtualResList({
           data-index={item.index}
           ref={virtualizer.measureElement}
           className="virtual-res-list__item"
-          style={{ transform: `translateY(${item.start - virtualizer.options.scrollMargin}px)` }}
         >
           {renderItem(keys[item.index]!)}
         </div>

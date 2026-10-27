@@ -15,6 +15,7 @@ import { copyPngImageWithNotice } from "src/view/browser/utils/clipboard";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
 
 import { deleteImgurImage } from "../application/imgur-deletehash";
+import { getImageDownloadFilename } from "./image-save";
 import { createViewerClipboardPng } from "./media-viewer-copy";
 import type { ViewerState } from "./media-viewer-types";
 import {
@@ -59,25 +60,6 @@ export interface MediaViewerProps {
   onClose: () => void;
   onImageLoad: () => void;
   onImageError: () => void;
-}
-
-function sanitizeDownloadFilename(name: string): string {
-  // eslint-disable-next-line no-control-regex
-  return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_");
-}
-
-function getViewerDownloadFilename(url: string): string {
-  try {
-    const parsed = new window.URL(url);
-    const lastSegment = parsed.pathname.split("/").filter(Boolean).at(-1);
-    if (lastSegment) {
-      return sanitizeDownloadFilename(lastSegment);
-    }
-  } catch {
-    // URL パース失敗時は fallback 名で保存する。
-  }
-
-  return "image";
 }
 
 function getViewerStageViewportSize(stage: HTMLDivElement): ViewerSize {
@@ -534,7 +516,7 @@ export function useMediaViewerController(
 
   const saveViewerImage = async () => {
     try {
-      await platformDownloadManager.save(viewer.src, getViewerDownloadFilename(viewer.src));
+      await platformDownloadManager.save(viewer.src, getImageDownloadFilename(viewer.src));
       if (isTauriRuntime()) {
         // メディアビューア表示中でも結果が分かるよう、共通Toast（ビューアより高いz順）で通知する。
         toast.success("画像をダウンロードしました");
