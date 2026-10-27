@@ -7,7 +7,10 @@ import { SidePanelExtract } from "src/features/thread/ui/SidePanelExtract";
 import { SidePanelProperties } from "src/features/thread/ui/SidePanelProperties";
 import { SidePanelWrite } from "src/features/write/ui/SidePanelWrite";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
-import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
+import {
+  clampSidePanelWidth,
+  normalizeSidePanel,
+} from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 
@@ -49,10 +52,7 @@ export function SidePanel() {
           if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
             event.preventDefault();
             update({
-              width: Math.max(
-                200,
-                Math.min(600, state.width + (event.key === "ArrowLeft" ? 20 : -20)),
-              ),
+              width: clampSidePanelWidth(state.width + (event.key === "ArrowLeft" ? 20 : -20)),
             });
           }
         }}
@@ -64,7 +64,7 @@ export function SidePanel() {
           target.onpointermove = (moveEvent) => {
             target.parentElement?.style.setProperty(
               "width",
-              `${Math.max(200, Math.min(600, width + start - moveEvent.clientX))}px`,
+              `${clampSidePanelWidth(width + start - moveEvent.clientX)}px`,
             );
           };
           const cleanup = () => {
@@ -74,7 +74,7 @@ export function SidePanel() {
           };
           target.onpointerup = (endEvent) => {
             cleanup();
-            update({ width: Math.max(200, Math.min(600, width + start - endEvent.clientX)) });
+            update({ width: clampSidePanelWidth(width + start - endEvent.clientX) });
           };
           target.onpointercancel = () => {
             cleanup();
