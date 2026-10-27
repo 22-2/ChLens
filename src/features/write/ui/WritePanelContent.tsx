@@ -58,7 +58,7 @@ export const WritePanelContent: React.FC<WritePanelContentProps> = (props) => {
     isEditorBusy,
     moveEditor,
     openWriteWindow,
-    requestWriteWindowFocus,
+    requestEditorFocus,
     selectedThreadUrl,
     selectThread,
     appendDraft,
@@ -86,7 +86,7 @@ export const WritePanelContent: React.FC<WritePanelContentProps> = (props) => {
   if (!isEditorHere) {
     const moveHere = () => {
       if (!moveEditor(place)) return;
-      if (place === "side") requestWriteWindowFocus();
+      if (place === "side") requestEditorFocus();
       else bottomPanel?.requestWritePanelFocus();
     };
     return (
@@ -144,8 +144,8 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     targets,
     selectThread,
     openWriteWindow,
-    writeWindowFocusRequestId,
-    consumeWriteWindowFocusRequest,
+    editorFocusRequestId,
+    consumeEditorFocusRequest,
     setEditorBusy,
   } = useWriteSessionControls();
   const fallbackThreadUrl = viewPage.type === "thread" ? viewPage.threadUrl : "";
@@ -238,7 +238,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
   const writeErrorMessage = statusText || "書き込みに失敗しました";
 
   useEffect(() => {
-    const requestId = isOutsidePane ? writeWindowFocusRequestId : writePanelFocusRequestId;
+    const requestId = isOutsidePane ? editorFocusRequestId : writePanelFocusRequestId;
     if (requestId == null) {
       return;
     }
@@ -252,7 +252,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
       // パネルを開いた描画が終わってからフォーカスし、ユーザーがすぐ入力できる状態にする。
       textarea.focus({ preventScroll: true });
       if (isOutsidePane) {
-        consumeWriteWindowFocusRequest(requestId);
+        consumeEditorFocusRequest(requestId);
       } else {
         bottomPanel?.consumeWritePanelFocusRequest(requestId);
       }
@@ -261,11 +261,11 @@ const WritePanelEditor: React.FC<WritePanelContentProps> = ({
     return () => viewWindow.cancelAnimationFrame(frameId);
   }, [
     bottomPanel,
-    consumeWriteWindowFocusRequest,
+    consumeEditorFocusRequest,
     isOutsidePane,
     viewWindow,
     writePanelFocusRequestId,
-    writeWindowFocusRequestId,
+    editorFocusRequestId,
   ]);
   const uploadStatusIsVisible =
     isImgurUploading ||

@@ -38,7 +38,7 @@ const mocks = vi.hoisted(() => ({
   isEditorBusy: false,
   moveEditor: vi.fn(() => true),
   setEditorBusy: vi.fn(),
-  requestWriteWindowFocus: vi.fn(),
+  requestEditorFocus: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   toastInfo: vi.fn(),
@@ -122,7 +122,7 @@ vi.mock("src/features/write/browser/use-write-session", () => ({
     isEditorBusy: mocks.isEditorBusy,
     moveEditor: mocks.moveEditor,
     setEditorBusy: mocks.setEditorBusy,
-    requestWriteWindowFocus: mocks.requestWriteWindowFocus,
+    requestEditorFocus: mocks.requestEditorFocus,
     writeWindowRoot: null,
     selectedThreadUrl: mocks.selectedThreadUrl,
     targets: mocks.targets,
@@ -158,7 +158,7 @@ describe("WritePanelContent", () => {
     mocks.isEditorBusy = false;
     mocks.moveEditor.mockClear();
     mocks.setEditorBusy.mockClear();
-    mocks.requestWriteWindowFocus.mockClear();
+    mocks.requestEditorFocus.mockClear();
     mocks.writePanelInsertRequest = null;
     mocks.status = "idle";
     mocks.statusText = "";

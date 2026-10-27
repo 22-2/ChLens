@@ -23,7 +23,7 @@ export const WritePanelToggleItem: React.FC = () => {
     editorPlace,
     openWriteWindow,
     selectThread,
-    requestWriteWindowFocus,
+    requestEditorFocus,
     showSideEditor,
   } = useWriteSessionControls();
 
@@ -48,7 +48,7 @@ export const WritePanelToggleItem: React.FC = () => {
           if (isWindowOpen) {
             // 共有窓が既にある場合は下部パネルを再表示せず、同じエディタへ戻す。
             if (openWriteWindow()) {
-              requestWriteWindowFocus();
+              requestEditorFocus();
             }
             return;
           }
