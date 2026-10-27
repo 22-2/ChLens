@@ -121,8 +121,6 @@ export const CONFIG_KEYS_OUTSIDE_SETTINGS_FORM = [
   "bbsmenu_option",
   // 利用者が設定した板名のキャッシュ（JSON）。
   "other_board_titles",
-  // 書き込みリクエストへ付けるUser-Agent文字列。
-  "useragent",
   // Imgur APIの利用者アクセストークン。外部連携パネルで編集する。
   "imgur_access_token",
   // Imgur APIクライアントID。外部連携パネルで編集する。

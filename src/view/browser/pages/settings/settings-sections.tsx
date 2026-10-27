@@ -157,6 +157,13 @@ const ALL_SETTINGS_SECTIONS = [
         widget: "radio",
       },
       {
+        kind: "string",
+        key: "useragent",
+        title: "User-Agent",
+        description:
+          "Tauri版で、通信と書き込みに使うUser-Agentです。空欄なら既定値を使います。ASCII文字だけを指定してください。",
+      },
+      {
         kind: "boolean",
         key: "confirm_external_links",
         title: "外部リンクを開く前に確認する",
