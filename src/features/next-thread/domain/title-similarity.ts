@@ -30,6 +30,52 @@ export function calculateBaseTitleSimilarity(leftTitle: string, rightTitle: stri
   return calculateTitleSimilarity(stripNewsBadge(leftTitle), stripNewsBadge(rightTitle));
 }
 
+/**
+ * 文字2-gramの集合どうしのJaccard係数（共通要素数 ÷ 和集合の要素数）。
+ * 語順の入れ替えや前後の飾りの追加に強く、順序を前提にするLCS・編集距離を補う。
+ */
+export function calculateBigramJaccard(leftTitle: string, rightTitle: string): number {
+  const left = toBigramSet(normalizeThreadTitle(leftTitle));
+  const right = toBigramSet(normalizeThreadTitle(rightTitle));
+  if (left.size === 0 || right.size === 0) {
+    // 装飾を除いて空になったタイトル同士には、同じ話題だという根拠がない。
+    return 0;
+  }
+
+  let intersection = 0;
+  for (const gram of left) {
+    if (right.has(gram)) {
+      intersection += 1;
+    }
+  }
+  return intersection / (left.size + right.size - intersection);
+}
+
+function toBigramSet(title: string): Set<string> {
+  const characters = Array.from(title);
+  if (characters.length < 2) {
+    // 1文字だけのタイトルは2-gramが作れないため、その1文字を要素として扱う。
+    return new Set(characters);
+  }
+
+  const grams = new Set<string>();
+  for (let index = 0; index < characters.length - 1; index += 1) {
+    grams.add(characters[index] + characters[index + 1]);
+  }
+  return grams;
+}
+
+/**
+ * 類似スレ検索用の話題の近さ。
+ * 変更理由: 自動の次スレ判定は誤移動を避けるため従来の類似度のしきい値に依存している。
+ * n-gramで上がる値がそのしきい値へ影響しないよう、手動の類似スレ検索だけがこちらを使う。
+ */
+export function calculateTopicTitleSimilarity(leftTitle: string, rightTitle: string): number {
+  const left = stripNewsBadge(leftTitle);
+  const right = stripNewsBadge(rightTitle);
+  return Math.max(calculateTitleSimilarity(left, right), calculateBigramJaccard(left, right));
+}
+
 export function hasProgramTitleContinuation(currentTitle: string, candidateTitle: string): boolean {
   const currentBase = normalizeThreadTitle(stripSequenceDecoration(currentTitle));
   const candidateBase = normalizeThreadTitle(stripSequenceDecoration(candidateTitle));

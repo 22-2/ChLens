@@ -17,7 +17,7 @@ import {
   NEXT_THREAD_MIN_SIMILARITY,
 } from "src/features/next-thread/domain/next-thread-types";
 import {
-  calculateBaseTitleSimilarity,
+  calculateTopicTitleSimilarity,
   normalizeThreadTitle,
 } from "src/features/next-thread/domain/title-similarity";
 import type { IThread } from "src/service-container/interfaces";
@@ -38,6 +38,7 @@ export type {
 } from "src/features/next-thread/domain/next-thread-types";
 export { extractThreadSequenceNumber } from "src/features/next-thread/domain/thread-sequence";
 export {
+  calculateBigramJaccard,
   calculateTitleSimilarity,
   normalizeThreadTitle,
 } from "src/features/next-thread/domain/title-similarity";
@@ -93,7 +94,7 @@ export function findSimilarThreadCandidates(
     )
     .map((thread) => ({
       thread,
-      similarity: calculateBaseTitleSimilarity(currentThread.title, thread.title),
+      similarity: calculateTopicTitleSimilarity(currentThread.title, thread.title),
     }))
     .filter((candidate) => candidate.similarity >= NEXT_THREAD_MIN_SIMILARITY)
     .sort(
