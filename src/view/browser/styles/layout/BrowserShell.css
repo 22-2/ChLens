@@ -135,3 +135,18 @@
 .side-panel__entry:hover {
   background: var(--sys-color-list-hover-bg);
 }
+
+.side-panel__response {
+  display: grid;
+  gap: var(--sys-space-2);
+  border-bottom: 1px solid var(--sys-color-border);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.side-panel__response strong {
+  color: var(--sys-color-accent-text);
+}
+.side-panel__response mark {
+  background: var(--sys-color-warning-surface);
+  color: var(--sys-color-warning-fg);
+}

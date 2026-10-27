@@ -1,6 +1,7 @@
 import { BookOpen, Image, Info, ListTree, Pencil, Search } from "lucide-react";
 import { useRef } from "react";
 import { SidePanelBoards } from "src/view/browser/shell/SidePanelBoards";
+import { SidePanelExtract } from "src/view/browser/shell/SidePanelExtract";
 import { SidePanelFavorites } from "src/view/browser/shell/SidePanelFavorites";
 import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
@@ -18,7 +19,7 @@ type ViewId = keyof typeof views;
 
 export function SidePanel() {
   const { state: saved, dispatch } = useSidePanelState();
-  const { viewTab } = useTabStore();
+  const { viewTab, viewPage } = useTabStore();
   const state = normalizeSidePanel(saved);
   const dragged = useRef<string | null>(null);
   const update = (patch: Partial<typeof state>) =>
@@ -121,6 +122,16 @@ export function SidePanel() {
         <SidePanelBoards key={viewTab.id} tabId={viewTab.id} />
       ) : state.activeView === "favorites" ? (
         <SidePanelFavorites />
+      ) : state.activeView === "extract" ? (
+        viewPage.type === "thread" ? (
+          <SidePanelExtract
+            key={`${viewTab.id}:${viewPage.threadUrl}`}
+            tabId={viewTab.id}
+            page={viewPage}
+          />
+        ) : (
+          <p className="side-panel__empty">スレッドを開くと表示されます。</p>
+        )
       ) : (
         <p className="side-panel__empty">このビューは準備中です。</p>
       )}

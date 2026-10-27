@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures.mjs";
+import { openThreadFromBoard, waitForThreadLoaded } from "./thread-scroll-helpers.mjs";
 
 test("サイドパネルの表示とビュー選択を再起動後も復元する", async ({ page, extensionId }) => {
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
@@ -30,4 +31,21 @@ test("サイドパネルの表示とビュー選択を再起動後も復元す�
   await expect(panel.getByRole("tab").nth(1)).toHaveAccessibleName("画像一覧");
   await page.getByRole("button", { name: "サイドパネルを閉じる" }).click();
   await expect(panel).toBeHidden();
+});
+
+test("抽出結果を強調し、本文のレスへ移動する", async ({ page, extensionId, localBoard }) => {
+  const thread = localBoard.addLargeThread(150);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, 150);
+  await page.getByRole("button", { name: "サイドパネルを開く" }).click();
+  const panel = page.getByRole("complementary", { name: "サイドパネル" });
+  await panel.getByRole("tab", { name: "抽出レス" }).click();
+  const search = panel.getByRole("searchbox", { name: "レスを抽出" });
+  await expect(panel.locator(".side-panel__response")).toHaveCount(0);
+  await search.fill("レス本文マーカー42");
+  await expect(panel.locator("mark")).toHaveText("レス本文マーカー42");
+  await panel.getByRole("button", { name: /レス本文マーカー42/ }).click();
+  await expect(page.locator('.content-area__tab-panel[data-active="true"]')).toContainText(
+    "レス本文マーカー42",
+  );
 });
