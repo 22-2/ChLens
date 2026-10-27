@@ -43,6 +43,8 @@ interface CacheLogRecord {
   resLength: number | null;
   datSize: number | null;
   lastUpdated: number;
+  data?: string | null;
+  parsed?: string | null;
 }
 
 interface HistoryRecord {
@@ -240,23 +242,31 @@ export const tauriCacheRepository = {
     return query;
   },
 
-  async searchLogs(query: string, offset = 0, limit = -1): Promise<CacheLogRecord[]> {
+  async searchLogs(
+    query: string,
+    offset = 0,
+    limit = -1,
+    includeContent = false,
+  ): Promise<CacheLogRecord[]> {
     const { db } = await getTauriDrizzleContext();
     // 本文(data)・parsed_json・タイトルを LIKE で横断検索する。
     // % と _ は LIKE のワイルドカードなのでエスケープする。
     const escaped = query.replace(/[\\%_]/g, (c) => `\\${c}`);
     const pattern = `%${escaped}%`;
+    // 変更理由: レスプレビューを作るページ検索だけ本文も返し、通常のログ検索では本文の転送を避ける。
+    const columns = {
+      url: cacheTable.url,
+      title: cacheTable.title,
+      threadUrl: cacheTable.threadUrl,
+      boardUrl: cacheTable.boardUrl,
+      boardTitle: cacheTable.boardTitle,
+      resLength: cacheTable.resLength,
+      datSize: cacheTable.datSize,
+      lastUpdated: cacheTable.lastUpdated,
+      ...(includeContent ? { data: cacheTable.data, parsed: cacheTable.parsedJson } : {}),
+    };
     const searchQuery = db
-      .select({
-        url: cacheTable.url,
-        title: cacheTable.title,
-        threadUrl: cacheTable.threadUrl,
-        boardUrl: cacheTable.boardUrl,
-        boardTitle: cacheTable.boardTitle,
-        resLength: cacheTable.resLength,
-        datSize: cacheTable.datSize,
-        lastUpdated: cacheTable.lastUpdated,
-      })
+      .select(columns)
       .from(cacheTable)
       .where(
         and(

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
-import type { LogRecord } from "src/core/storage/Cache";
+import type { LogRecord, LogSearchPreview } from "src/core/storage/Cache";
 import { container } from "src/service-container/index";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
@@ -11,6 +11,7 @@ import { useTabDispatch, useTabViewState } from "src/view/browser/state/tabs/use
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
+import { findSearchMatchRanges } from "src/view/browser/utils/search-highlight";
 
 const logger = createLogger("view/browser");
 
@@ -39,6 +40,8 @@ interface LogEntry {
   boardTitle: string;
   resLength: number;
   lastUpdated: number;
+  preview: LogSearchPreview | null;
+  previewQuery: string;
 }
 
 /** 板URLから表示用の板名（host/board）を導出する。 */
@@ -53,7 +56,10 @@ function deriveBoardLabel(boardUrl: string, threadUrl: string): string {
   }
 }
 
-function toLogEntry(record: LogRecord): LogEntry {
+function toLogEntry(
+  record: LogRecord & { preview?: LogSearchPreview | null },
+  previewQuery = "",
+): LogEntry {
   return {
     url: record.url,
     threadUrl: record.threadUrl,
@@ -61,7 +67,29 @@ function toLogEntry(record: LogRecord): LogEntry {
     boardTitle: record.boardTitle || deriveBoardLabel(record.boardUrl, record.threadUrl),
     resLength: record.resLength ?? 0,
     lastUpdated: record.lastUpdated,
+    preview: record.preview ?? null,
+    previewQuery,
   };
+}
+
+function renderHighlightedPreview(text: string, query: string): React.ReactNode {
+  // 変更理由: スレ内検索と同じ正規化・一致範囲を使い、半角全角やかなの違いも同じ色で示す。
+  const ranges = findSearchMatchRanges(text, query);
+  if (ranges.length === 0) return text;
+
+  const content: React.ReactNode[] = [];
+  let cursor = 0;
+  for (const range of ranges) {
+    if (range.start > cursor) content.push(text.slice(cursor, range.start));
+    content.push(
+      <mark key={`${range.start}-${range.end}`} className="res__search-match">
+        {text.slice(range.start, range.end)}
+      </mark>,
+    );
+    cursor = range.end;
+  }
+  if (cursor < text.length) content.push(text.slice(cursor));
+  return content;
 }
 
 const COLUMNS: ColumnDef<LogEntry>[] = [
@@ -99,6 +127,25 @@ const COLUMNS: ColumnDef<LogEntry>[] = [
   },
 ];
 
+const RESPONSE_PREVIEW_COLUMN: ColumnDef<LogEntry> = {
+  key: "preview",
+  header: "レスプレビュー",
+  visibilityLabel: "レスプレビュー",
+  headerClassName: "simple-data-table__th--log-preview",
+  cellClassName: "simple-data-table__log-preview",
+  cell: (row) =>
+    row.preview ? (
+      <div className="log-search-preview">
+        <span className="log-search-preview__number">レス{row.preview.responseNumber}</span>
+        <span className="log-search-preview__text">
+          {renderHighlightedPreview(row.preview.text, row.previewQuery)}
+        </span>
+      </div>
+    ) : null,
+};
+
+const BODY_SEARCH_COLUMNS = [...COLUMNS, RESPONSE_PREVIEW_COLUMN];
+
 const COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_log_list_columns_visibility";
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
@@ -132,7 +179,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
       direction: persistedViewState.sortDirection === "desc" ? "desc" : "asc",
     };
   });
-  // 既定はタイトル検索。ボタンで本文（全文）検索に切り替える。
+  // 既定はタイトル・板検索。選択欄で本文（全文）検索に切り替える。
   const [searchMode, setSearchMode] = useState<"title" | "body">(
     () => persistedViewState.searchMode ?? "title",
   );
@@ -185,7 +232,9 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
       nextOffsetRef.current += pageLogs.length;
       setHasMore(logs.length > PAGE_SIZE);
       setEntries((previous) =>
-        reset ? pageLogs.map(toLogEntry) : [...previous, ...pageLogs.map(toLogEntry)],
+        reset
+          ? pageLogs.map((log) => toLogEntry(log))
+          : [...previous, ...pageLogs.map((log) => toLogEntry(log))],
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "ログの読み込みに失敗しました");
@@ -255,7 +304,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
             if (cancelled) return;
             offset = page.nextOffset;
             for (const result of page.logs) {
-              matchedEntries.push(toLogEntry(result));
+              matchedEntries.push(toLogEntry(result, query));
             }
 
             if (!page.hasMore) {
@@ -363,6 +412,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
 
   const shouldLoadCompleteDataset =
     searchMode === "title" && (searchQuery.trim().length > 0 || sortState.column !== null);
+  const showResponsePreview = searchMode === "body" && searchQuery.trim() !== "";
 
   useEffect(() => {
     if (!shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
@@ -433,9 +483,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
               className="search-bar__scope-select"
               aria-label="検索範囲"
               value={searchMode}
-              onChange={(event) =>
-                setSearchMode(event.target.value === "body" ? "body" : "title")
-              }
+              onChange={(event) => setSearchMode(event.target.value === "body" ? "body" : "title")}
             >
               <option value="title">タイトル・板</option>
               <option value="body">本文</option>
@@ -446,7 +494,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
       {error ? <div className="thread-list-page__notice">{error}</div> : null}
       <div className="history-list-page__table">
         <VirtualizedDataTable
-          columns={COLUMNS}
+          columns={showResponsePreview ? BODY_SEARCH_COLUMNS : COLUMNS}
           rows={filtered}
           getRowKey={(row) => row.url}
           getRowTooltip={(row) => row.title}
