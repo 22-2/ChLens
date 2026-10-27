@@ -688,6 +688,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     stickToEnd:
       isActiveAutoRefreshEnabled && !isFilterEnabled && canAutoScroll && !isThreadDisplayPaused,
     debugKey: `virtual-list:${tabId}`,
+    isActive,
   });
 
   const { measureReadState: measureVirtualReadState, highlightResponse: highlightVirtualResponse } =
