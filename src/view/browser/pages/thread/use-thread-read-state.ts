@@ -5,6 +5,7 @@ import type { ThreadScrollToResponseOptions } from "src/features/thread/browser/
 import { container } from "src/service-container/index";
 import type { IReadState, IRes } from "src/service-container/interfaces";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import type { ThreadReadPositionMode } from "src/view/browser/pages/thread/use-thread-read-position-mode";
 import {
   consumePendingThreadResJump,
   findThreadScrollContainer,
@@ -21,6 +22,7 @@ interface UseThreadReadStateParams {
   isActive: boolean;
   responses: IRes[];
   loading: boolean;
+  initialResNum?: number;
   rootRef: RefObject<HTMLDivElement | null>;
   /**
    * 指定レスへスクロールする。並びにないレスなら false。
@@ -32,11 +34,13 @@ interface UseThreadReadStateParams {
   measureReadState: (
     received: number,
   ) => Pick<IReadState, "last" | "read" | "received" | "offset"> | null;
+  readPositionMode?: ThreadReadPositionMode;
 }
 
 interface UseThreadReadStateResult {
   isInitialReadStateResolved: boolean;
   scrollToResponse: (resNum: number, options?: ThreadScrollToResponseOptions) => boolean;
+  markReadThrough: (resNum: number) => Promise<void>;
 }
 
 export function useThreadReadState({
@@ -45,9 +49,11 @@ export function useThreadReadState({
   isActive,
   responses,
   loading,
+  initialResNum,
   rootRef,
   scrollToResponse,
   measureReadState,
+  readPositionMode = "auto",
 }: UseThreadReadStateParams): UseThreadReadStateResult {
   const { window: viewWindow } = useViewSurface();
   const [initialReadState, setInitialReadState] = useState<IReadState | null>(null);
@@ -58,7 +64,7 @@ export function useThreadReadState({
   const saveReadStateTimerRef = useRef<number | null>(null);
 
   const saveCurrentReadState = useCallback(async () => {
-    if (!isActive || !isInitialReadStateResolved) return;
+    if (readPositionMode !== "auto" || !isActive || !isInitialReadStateResolved) return;
 
     const measuredReadState = measureReadState(responses.length);
     if (!measuredReadState) return;
@@ -89,7 +95,38 @@ export function useThreadReadState({
     } catch (error) {
       logger.error(error);
     }
-  }, [isActive, isInitialReadStateResolved, threadUrl, responses.length, measureReadState]);
+  }, [
+    isActive,
+    isInitialReadStateResolved,
+    readPositionMode,
+    threadUrl,
+    responses.length,
+    measureReadState,
+  ]);
+
+  const markReadThrough = useCallback(
+    async (resNum: number) => {
+      if (!Number.isFinite(resNum) || resNum <= 0) return;
+      // 既存の既読保存先を使い、手動位置もブックマークや板一覧の既読数と同期する。
+      const nextReadState: IReadState = {
+        url: threadUrl,
+        last: Math.trunc(resNum),
+        read: Math.trunc(resNum),
+        received: Math.max(latestReadStateRef.current?.received ?? 0, responses.length),
+        offset: null,
+        date: Date.now(),
+      };
+      latestReadStateRef.current = nextReadState;
+      setInitialReadState(nextReadState);
+      try {
+        await container.readState.set(nextReadState);
+      } catch (error) {
+        logger.error("手動の既読位置の保存に失敗しました", { threadUrl, resNum, error });
+        throw error;
+      }
+    },
+    [responses.length, threadUrl],
+  );
 
   const scheduleReadStateSave = useCallback(() => {
     if (saveReadStateTimerRef.current != null) {
@@ -198,7 +235,9 @@ export function useThreadReadState({
       return;
     }
 
-    if (initialReadState?.last) {
+    // URLの指定は保存済み位置より優先し、存在しない場合は保存位置へ戻す。
+    const jumpedToUrl = initialResNum != null && scrollToResponse(initialResNum);
+    if (!jumpedToUrl && initialReadState?.last) {
       scrollToResponse(initialReadState.last, {
         highlight: false,
         // 保存値のnullはoffset未設定を表すため、スクロールAPIにはundefinedで渡す。
@@ -213,6 +252,7 @@ export function useThreadReadState({
   }, [
     hasLoadedInitialReadState,
     initialReadState,
+    initialResNum,
     isActive,
     isInitialReadStateResolved,
     loading,
@@ -224,7 +264,13 @@ export function useThreadReadState({
   ]);
 
   useEffect(() => {
-    if (!isActive || !isInitialReadStateResolved || responses.length === 0) return;
+    if (
+      readPositionMode !== "auto" ||
+      !isActive ||
+      !isInitialReadStateResolved ||
+      responses.length === 0
+    )
+      return;
 
     const scrollContainer = findThreadScrollContainer(rootRef.current);
     if (!scrollContainer) return;
@@ -245,6 +291,7 @@ export function useThreadReadState({
     };
   }, [
     isActive,
+    readPositionMode,
     isInitialReadStateResolved,
     responses.length,
     rootRef,
@@ -254,14 +301,27 @@ export function useThreadReadState({
   ]);
 
   useEffect(() => {
-    if (!isActive || !isInitialReadStateResolved || loading || responses.length === 0) {
+    if (
+      readPositionMode !== "auto" ||
+      !isActive ||
+      !isInitialReadStateResolved ||
+      loading ||
+      responses.length === 0
+    ) {
       return;
     }
 
     // 変更理由: 自動更新で received だけ増えたケースはスクロールイベントが発生しないため、
     // レス数変化時にも保存を予約して未読数の取りこぼしを防ぐ。
     scheduleReadStateSave();
-  }, [isActive, isInitialReadStateResolved, loading, responses.length, scheduleReadStateSave]);
+  }, [
+    isActive,
+    isInitialReadStateResolved,
+    loading,
+    readPositionMode,
+    responses.length,
+    scheduleReadStateSave,
+  ]);
 
   useEffect(() => {
     const handlePageHide = () => {
@@ -277,5 +337,5 @@ export function useThreadReadState({
     };
   }, [saveCurrentReadState, viewWindow]);
 
-  return { isInitialReadStateResolved, scrollToResponse };
+  return { isInitialReadStateResolved, scrollToResponse, markReadThrough };
 }

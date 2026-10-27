@@ -73,6 +73,13 @@ vi.mock("@monaco-editor/react", () => ({
   useMonaco: () => null,
 }));
 vi.mock("src/view/browser/hooks/use-theme", () => ({ useTheme: () => "light" }));
+// 遅延読込の完了を待ってから編集し、保存のタイマーだけを制御する。
+vi.mock("src/view/browser/ui/monacoDslRuntime", () => ({
+  initializeDslMonaco: async () => ({
+    languages: { getLanguages: () => [{ id: "replacement-dsl" }] },
+    editor: { setTheme: vi.fn() },
+  }),
+}));
 
 // 画面と同じく、サービスコンテナの config を使う置換設定のインスタンスを1つだけ作る。
 const replaceStrTxt = createReplaceStrTxt(container);
@@ -177,10 +184,11 @@ describe("設定画面のタブ単位の表示状態", () => {
 
   it("置換ルールの編集中は診断だけを表示し、修正後に自動保存する", async () => {
     await renderViewer();
-    vi.useFakeTimers();
     fireEvent.click(screen.getByRole("button", { name: /^NG/ }));
     fireEvent.click(screen.getByRole("tab", { name: "文字列置換" }));
-    fireEvent.change(screen.getByLabelText("置換ルール"), {
+    const editor = await screen.findByLabelText("置換ルール");
+    vi.useFakeTimers();
+    fireEvent.change(editor, {
       target: { value: 'replace body:\n  from "a"' },
     });
     await act(async () => {

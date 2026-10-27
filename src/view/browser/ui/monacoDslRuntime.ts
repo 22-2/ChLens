@@ -19,11 +19,7 @@ import "monaco-editor/esm/vs/editor/contrib/wordPartOperations/browser/wordPartO
 import { loader } from "@monaco-editor/react";
 import * as Monaco from "monaco-editor/esm/vs/editor/editor.api.js";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
-
-type MonacoEnvironmentLike = {
-  getWorker?: (moduleId: string, label: string) => Worker;
-  [key: string]: unknown;
-};
+import { configureDslMonacoWorker } from "src/view/browser/ui/monacoDslWorker";
 
 let initialization: Promise<typeof Monaco> | undefined;
 
@@ -34,14 +30,7 @@ export function initializeDslMonaco(): Promise<typeof Monaco> {
 }
 
 function initialize(): Promise<typeof Monaco> {
-  const globalScope = globalThis as typeof globalThis & {
-    MonacoEnvironment?: MonacoEnvironmentLike;
-  };
-
-  globalScope.MonacoEnvironment = {
-    ...globalScope.MonacoEnvironment,
-    getWorker: () => new editorWorker(),
-  };
+  configureDslMonacoWorker(editorWorker);
   loader.config({ monaco: Monaco });
   return loader.init();
 }

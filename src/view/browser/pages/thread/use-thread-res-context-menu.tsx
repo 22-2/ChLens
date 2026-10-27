@@ -64,6 +64,7 @@ interface UseThreadResContextMenuParams {
   setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
   setMiniAaResNums: React.Dispatch<React.SetStateAction<Set<number>>>;
   setResponses: React.Dispatch<React.SetStateAction<IRes[]>>;
+  markReadThrough?: (resNum: number) => Promise<void>;
 }
 
 interface UseThreadResContextMenuResult {
@@ -91,6 +92,7 @@ export function useThreadResContextMenu({
   setSearchQuery,
   setMiniAaResNums,
   setResponses,
+  markReadThrough,
 }: UseThreadResContextMenuParams): UseThreadResContextMenuResult {
   // フィルタ解除直後のDOM更新完了を待ってからジャンプしないと、
   // 対象レスがまだ存在せずスクロールに失敗するため hook 内で保留する。
@@ -253,6 +255,28 @@ export function useThreadResContextMenu({
 
       // 先頭の条件付き項目（過去実況シーク、フィルタ解除ジャンプ、ポップアップ用ジャンプ）
       const conditionalTopItems: ContextMenuItem[] = [
+        ...(markReadThrough
+          ? [
+              {
+                id: "mark-read-through",
+                label: "ここまで読んだ",
+                icon: <ArrowDown size={14} />,
+                onSelect: () => {
+                  void markReadThrough(targetRes.num)
+                    .then(() => toast.success(`${targetRes.num}まで読んだ位置を記録しました`))
+                    .catch((error: unknown) => {
+                      logger.error("手動の既読位置の記録に失敗しました", {
+                        threadUrl: page.threadUrl,
+                        responseNumber: targetRes.num,
+                        error,
+                      });
+                      toast.error("読んだ位置を記録できませんでした");
+                    });
+                },
+              },
+              { id: "sep-read-position", separator: true },
+            ]
+          : []),
         ...(isTauriRuntime() && !fromPopup
           ? [
               {
@@ -462,6 +486,7 @@ export function useThreadResContextMenu({
       filter,
       handleAnchorClick,
       isAutoRefreshEnabled,
+      markReadThrough,
       miniAaResNums,
       openWritePanelWithText,
       ownResNums,

@@ -17,6 +17,8 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   thread_filter_default_open: "off",
   // 更新コントロールで選ぶスレッド表示形式。未変更時は従来どおり通常表示にする。
   thread_display_mode: "normal",
+  // 読み位置の復元は従来どおり自動で行い、必要な利用者だけ手動記録へ切り替える。
+  thread_read_position_mode: "auto",
   image_blur: "on",
   image_blur_word: ".{0,5}[^ァ-ヺ^ー]グロ(?:[^ァ-ヺ^ー].{0,5}|$)|.{0,5}死ね.{0,5}",
   // 変更理由: 画像の自動取得はIP漏洩や不快な画像の即時表示につながるため、既定は手動取得にする。

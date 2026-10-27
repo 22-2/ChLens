@@ -25,6 +25,7 @@ describe("短縮URLの入力経路", () => {
         type: "thread",
         title: "https://bbs.example.com/test/read.cgi/board-key/123/?q=1#45",
         threadUrl: "https://bbs.example.com/test/read.cgi/board-key/123/?q=1#45",
+        ...(path.endsWith("/45") ? { initialResNum: 45 } : {}),
       };
       expect(parseInternalBrowserPageStrict(input)).toEqual(expected);
       expect(parseOmnibarBrowserPage(input)).toEqual(expected);

@@ -307,6 +307,23 @@ const ALL_SETTINGS_SECTIONS = [
     [
       {
         kind: "divider",
+        id: "read-position",
+        title: "位置の復元",
+      },
+      {
+        kind: "string",
+        key: "thread_read_position_mode",
+        title: "位置の復元設定",
+        description:
+          "自動は現在の閲覧位置を復元します。手動はレスの右クリックメニューから「ここまで読んだ」を記録します。",
+        options: [
+          { const: "auto", title: "自動" },
+          { const: "manual", title: "手動" },
+        ],
+        widget: "segmented",
+      },
+      {
+        kind: "divider",
         id: "auto-scroll",
         title: "自動スクロール",
       },

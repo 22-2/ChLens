@@ -23,8 +23,12 @@ vi.mock("@monaco-editor/react", () => ({
   useMonaco: () => null,
 }));
 vi.mock("src/view/browser/hooks/use-theme", () => ({ useTheme: () => "light" }));
-vi.mock("src/app/platform", () => ({
-  platform: { window: { getAssetUrl: (path: string) => `chrome-extension://test${path}` } },
+// 実際のMonacoはブラウザ専用なので、遅延初期化後の画面操作をテストする。
+vi.mock("src/view/browser/ui/monacoDslRuntime", () => ({
+  initializeDslMonaco: async () => ({
+    languages: { getLanguages: () => [{ id: "replacement-dsl" }] },
+    editor: { setTheme: vi.fn() },
+  }),
 }));
 
 afterEach(() => {
@@ -33,27 +37,12 @@ afterEach(() => {
 });
 
 describe("置換ルールの編集と診断", () => {
-  it("Monacoワーカーは拡張機能の絶対URLで直接起動する", async () => {
-    const worker = vi.fn(function Worker() {});
-    vi.stubGlobal("Worker", worker);
-    const environment = (
-      globalThis as typeof globalThis & {
-        MonacoEnvironment: { getWorker: (moduleId: string, label: string) => Worker };
-      }
-    ).MonacoEnvironment;
-    await environment.getWorker("", "editor");
-    expect(worker).toHaveBeenCalledWith(
-      "chrome-extension://test/lib/monaco/vs/assets/editor.worker.js",
-      { name: "monaco-editor" },
-    );
-  });
-
-  it("位置付き診断を表示し、修正すると診断を消す", () => {
+  it("位置付き診断を表示し、修正すると診断を消す", async () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <ReplacementEditor value={'replace body:\n  from "a"\n  to bare'} onChange={onChange} />,
     );
-    expect(screen.getByRole("alert").textContent).toContain("3行3列");
+    expect((await screen.findByRole("alert")).textContent).toContain("3行3列");
     fireEvent.change(screen.getByLabelText("置換ルール"), {
       target: { value: 'replace body:\n  from "a"\n  to "b"' },
     });

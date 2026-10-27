@@ -27,6 +27,15 @@ describe("link-routing", () => {
     setItestServerMapForTesting([]);
   });
 
+  it("レス指定をスレッドの正規URLとは別に保持する", () => {
+    expect(parseInternalBrowserPage("https://example.com/test/read.cgi/software/123/45")).toEqual(
+      expect.objectContaining({
+        threadUrl: "https://example.com/test/read.cgi/software/123/",
+        initialResNum: 45,
+      }),
+    );
+  });
+
   it("対応ホストの板URLだけを threadList として扱う", () => {
     expect(parseInternalBrowserPage("https://egg.5ch.io/software/")).toEqual({
       type: "threadList",
@@ -117,6 +126,7 @@ describe("link-routing", () => {
       type: "thread",
       title: "https://kako.5ch.io/test/read.cgi/exampleboard/1000000008/",
       threadUrl: "https://kako.5ch.io/test/read.cgi/exampleboard/1000000008/",
+      initialResNum: 20,
     });
   });
 
