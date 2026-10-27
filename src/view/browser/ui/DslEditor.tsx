@@ -1,46 +1,11 @@
-import Editor, { loader, useMonaco } from "@monaco-editor/react";
+import Editor from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
-import { useCallback, useEffect, useRef } from "react";
-import { platform } from "src/app/platform";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createLogger } from "src/app/logger";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { Alert } from "src/view/browser/ui/Alert";
 
-type MonacoEnvironmentLike = {
-  getWorker?: (moduleId: string, label: string) => Worker;
-  getWorkerUrl?: (moduleId: string, label: string) => string;
-  [key: string]: unknown;
-};
-
-// 拡張機能・Tauriの絶対URLをそのまま使い、表示ページの階層に依存させない。
-// 独自DSLでは言語サービスを使わないため、編集用ワーカーだけで動作させる。
-const resolveWorkerUrl = (): string =>
-  platform.window.getAssetUrl("/lib/monaco/vs/assets/editor.worker.js");
-
-// loader.config も絶対パスにするっす
-loader.config({
-  paths: {
-    vs: "/lib/monaco/vs", // 直接指定するのが一番確実っす
-  },
-});
-
-const configureMonacoEnvironment = (): void => {
-  const globalScope = globalThis as typeof globalThis & {
-    MonacoEnvironment?: MonacoEnvironmentLike;
-  };
-
-  globalScope.MonacoEnvironment = {
-    ...globalScope.MonacoEnvironment,
-    getWorker: () => {
-      const url = resolveWorkerUrl();
-      // 同一オリジンのローカル資産なら、拡張機能のCSPでも許可される通常のWorkerを使える。
-      return new Worker(url, {
-        name: "monaco-editor",
-      });
-    },
-  };
-};
-
-configureMonacoEnvironment();
+const logger = createLogger("DslEditor");
 
 export interface DslDiagnostic {
   readonly line: number;
@@ -68,13 +33,31 @@ export function DslEditor({
   registerLanguage,
   diagnostics = NO_DIAGNOSTICS,
 }: DslEditorProps) {
-  const monaco = useMonaco();
+  const [monaco, setMonaco] = useState<typeof Monaco | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const theme = useTheme();
   const monacoTheme = theme === "dark" ? "vs-dark" : "vs";
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
 
   useEffect(() => {
-    configureMonacoEnvironment();
+    let cancelled = false;
+
+    void import("src/view/browser/ui/monacoDslRuntime")
+      .then(({ initializeDslMonaco }) => initializeDslMonaco())
+      .then((api) => {
+        if (!cancelled) setMonaco(api);
+      })
+      .catch((error: unknown) => {
+        logger.error("Monacoの初期化に失敗しました:", error);
+        if (!cancelled) setLoadFailed(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (monaco) {
       registerLanguage(monaco);
       monaco.editor.setTheme(monacoTheme);
@@ -104,6 +87,22 @@ export function DslEditor({
     if (monaco) updateMarkers(monaco, editorRef.current?.getModel() ?? null);
   }, [monaco, updateMarkers]);
 
+  if (!monaco) {
+    return (
+      <div className="dsl-editor">
+        <div className="dsl-editor__surface">
+          {loadFailed ? (
+            <Alert variant="danger" title="エディターを読み込めませんでした">
+              設定画面を閉じて、もう一度開いてください。
+            </Alert>
+          ) : (
+            <div role="status">エディターを読み込んでいます…</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dsl-editor">
       <div className="dsl-editor__surface">
@@ -115,7 +114,6 @@ export function DslEditor({
             if (next !== undefined) onChange(next);
           }}
           beforeMount={(api) => {
-            configureMonacoEnvironment();
             registerLanguage(api);
             api.editor.setTheme(monacoTheme);
           }}

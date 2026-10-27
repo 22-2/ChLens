@@ -59,7 +59,7 @@ import { defineConfig, lazyPlugins, Plugin } from "vite-plus";
 
 // ─── plugin: browser HTML (without Pug) ─────────────────────────────────────
 
-function browserHtmlPlugin(outputDir: string, entry: string, platform: string): Plugin {
+function browserHtmlPlugin(outputDir: string, entry: string): Plugin {
   const manifestJson = fs.readJsonSync("src/manifest.json");
 
   return {
@@ -73,14 +73,8 @@ function browserHtmlPlugin(outputDir: string, entry: string, platform: string): 
       // 旧Pugテンプレートを経由せずに互換HTMLをここで固定生成する。
       // no-referrer だと YouTube 埋め込みが client identity 不足で 153 になりやすいため、
       // クロスオリジンでは origin だけ送る既定寄りの方針にして他の外部埋め込みとも両立させる。
-      // 変更理由: TauriのWebViewではMonacoのAMDローダーがエディタCSSを適用しないため、
-      // コピー済みの本体CSSをHTMLから直接読み込み、拡張版の読み込み経路は変えない。
-      const monacoStyle =
-        platform === "tauri"
-          ? '<link rel="stylesheet" href="/lib/monaco/vs/editor/editor.main.css">'
-          : "";
       // CSSやテーマスクリプトの取得待ちにも、ブラウザの初期背景をOSの配色へ合わせる。
-      const html = `<!DOCTYPE html><html class="view view_browser" data-app-version="${version}"><head><meta charset="utf-8"><meta name="color-scheme" content="light dark"><meta name="referrer" content="strict-origin-when-cross-origin"><title>read.crx-2</title><script src="../theme-init.js"></script><script src="../browser.js?v=${version}" defer></script><link rel="stylesheet" href="/browser.css?v=${version}">${monacoStyle}</head><body><div id="root"></div></body></html>`;
+      const html = `<!DOCTYPE html><html class="view view_browser" data-app-version="${version}"><head><meta charset="utf-8"><meta name="color-scheme" content="light dark"><meta name="referrer" content="strict-origin-when-cross-origin"><title>read.crx-2</title><script src="../theme-init.js"></script><script type="module" src="../browser.js?v=${version}"></script><link rel="stylesheet" href="/browser.css?v=${version}"></head><body><div id="root"></div></body></html>`;
 
       const outputFile = path.join(outputDir, "view", "index.html");
       await fs.ensureDir(path.dirname(outputFile));
@@ -176,6 +170,8 @@ function staticCopyPlugin(
       // mainとOverlayを並列watchしても共有出力先を競合させないよう、
       // background・画像・Monacoなどの静的資産はmain entryだけが更新する。
       if (entry !== "browser") return;
+      // 旧AMD方式でコピーしたファイルが、ESM方式の成果物に残らないよう削除する。
+      await fs.remove(path.join(outputDir, "lib", "monaco", "vs"));
 
       // 変更理由: content_scripts は manifest で単一JSを参照するため、
       // TS実装をここで bundle して常に最新の cs_addlink.js を出力する。
@@ -219,41 +215,6 @@ function staticCopyPlugin(
           await fs.copy(src, dest, { overwrite: true });
         }),
       );
-
-      // vite.config.ts 内
-      const monacoSrc = "node_modules/monaco-editor/min/vs";
-      const monacoDest = `${outputDir}/lib/monaco/vs`;
-      // 独自DSLは言語サービスを使わないため、巨大な各言語ワーカーは配布しない。
-      // 前回ビルドでコピー済みのファイルも残らないよう、Monaco領域を作り直す。
-      await fs.emptyDir(monacoDest);
-      await fs.copy(monacoSrc, monacoDest, {
-        overwrite: true,
-        filter: (sourcePath) => {
-          const relativePath = path.relative(monacoSrc, sourcePath).split(path.sep).join("/");
-          if (relativePath.startsWith("assets/")) {
-            return /^assets\/editor\.worker-[a-zA-Z0-9_-]+\.js$/.test(relativePath);
-          }
-          if (relativePath.startsWith("language/")) {
-            return !/\/[^/]+\.worker\.js$/.test(relativePath);
-          }
-          return true;
-        },
-      });
-
-      // MonacoのハッシュはURL用Base64なので、英数字以外にハイフンと下線も含む。
-      const assetsDir = path.join(monacoDest, "assets");
-      if (await fs.pathExists(assetsDir)) {
-        const files = await fs.readdir(assetsDir);
-        for (const file of files) {
-          // エディター用WorkerだけをURL固定名へ変換し、DSLエディターから参照する。
-          const match = file.match(/^(editor\.worker)-[a-zA-Z0-9_-]+\.js$/);
-          if (match) {
-            await fs.copy(path.join(assetsDir, file), path.join(assetsDir, `${match[1]}.js`), {
-              overwrite: true,
-            });
-          }
-        }
-      }
     },
   };
 }
@@ -612,7 +573,7 @@ export default defineConfig(async ({ mode, command }) => {
     plugins: lazyPlugins(() => [
       react(),
       ...(coveragePlugin ? [coveragePlugin] : []),
-      browserHtmlPlugin(outputDir, entry, platform),
+      browserHtmlPlugin(outputDir, entry),
       overlayHtmlPlugin(outputDir, entry),
       archiveReplayHtmlPlugin(outputDir, entry),
       manifestPlugin(platform, outputDir),
@@ -638,6 +599,8 @@ export default defineConfig(async ({ mode, command }) => {
         "react/jsx-runtime": "preact/jsx-runtime",
         "react/jsx-dev-runtime": "preact/jsx-dev-runtime",
         react: "preact/compat",
+        // package exports で非公開のMonaco ESM内部モジュールを、Viteから選択 import する。
+        "monaco-editor/esm/vs": path.resolve(__dirname, "node_modules/monaco-editor/esm/vs"),
         src: path.resolve(__dirname, "./src"),
         packages: path.resolve(__dirname, "./packages"),
         // 変更理由: Tauri版のShift_JIS/EUC-JPフォームエンコードが使うiconv-liteは
@@ -657,9 +620,10 @@ export default defineConfig(async ({ mode, command }) => {
       emptyOutDir: false,
       minify: minifyOutput,
       sourcemap: analyzeBundle ? true : process.env.VITE_COVERAGE === "true" ? "inline" : false,
+      cssCodeSplit: entry === "browser",
       lib: {
         entry: path.resolve(__dirname, file),
-        formats: ["iife"],
+        formats: [entry === "browser" ? "es" : "iife"],
         name,
       },
       rollupOptions: {
@@ -667,6 +631,9 @@ export default defineConfig(async ({ mode, command }) => {
           entryFileNames: `${entry}.js`,
           assetFileNames: (assetInfo) => {
             if (assetInfo.name?.endsWith(".css")) {
+              if (assetInfo.name.includes("monacoDslRuntime")) {
+                return "assets/monaco-[hash][extname]";
+              }
               return `${entry}.css`;
             }
             return "[name].[ext]";
