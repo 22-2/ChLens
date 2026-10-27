@@ -13,6 +13,11 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
     dispatch: mocks.dispatch,
   }),
 }));
+// 画像一覧が読み込む画像取得の事前確認は拡張機能 API を必要とするため、枠の検証では差し替える。
+vi.mock("src/features/media/browser/image-download-preflight", () => ({
+  allowImageWithinCurrentLimit: vi.fn(),
+  requestMediaImageDownload: vi.fn(() => Promise.resolve()),
+}));
 
 describe("サイドパネル", () => {
   afterEach(() => {
