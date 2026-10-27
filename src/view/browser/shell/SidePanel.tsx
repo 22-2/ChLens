@@ -7,9 +7,11 @@ import { SidePanelExtract } from "src/features/thread/ui/SidePanelExtract";
 import { SidePanelProperties } from "src/features/thread/ui/SidePanelProperties";
 import { SidePanelWrite } from "src/features/write/ui/SidePanelWrite";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
+import { useResizeHandle } from "src/view/browser/hooks/use-resize-handle";
 import {
-  clampSidePanelWidth,
   normalizeSidePanel,
+  SIDE_PANEL_MAX_WIDTH,
+  SIDE_PANEL_MIN_WIDTH,
   SIDE_PANEL_VIEWS,
 } from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
@@ -92,50 +94,21 @@ export function SidePanel() {
     items.splice(target, 0, id);
     update({ views: items });
   };
+  const resize = useResizeHandle({
+    value: state.width,
+    min: SIDE_PANEL_MIN_WIDTH,
+    max: SIDE_PANEL_MAX_WIDTH,
+    axis: "x",
+    // 右端に置くため、左へ引くほど広がる。
+    direction: -1,
+    keyboardStep: 20,
+    onCommit: (width) => update({ width }),
+  });
   if (!state.isOpen) return null;
   const activeView = isViewId(state.activeView) ? views[state.activeView] : null;
   return (
-    <aside className="side-panel" style={{ width: state.width }} aria-label="サイドパネル">
-      <div
-        className="side-panel__resize"
-        role="separator"
-        aria-label="サイドパネルの幅"
-        aria-orientation="vertical"
-        tabIndex={0}
-        onKeyDown={(event) => {
-          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-            event.preventDefault();
-            update({
-              width: clampSidePanelWidth(state.width + (event.key === "ArrowLeft" ? 20 : -20)),
-            });
-          }
-        }}
-        onPointerDown={(event) => {
-          const start = event.clientX;
-          const width = state.width;
-          const target = event.currentTarget;
-          target.setPointerCapture(event.pointerId);
-          target.onpointermove = (moveEvent) => {
-            target.parentElement?.style.setProperty(
-              "width",
-              `${clampSidePanelWidth(width + start - moveEvent.clientX)}px`,
-            );
-          };
-          const cleanup = () => {
-            target.onpointermove = null;
-            target.onpointerup = null;
-            target.onpointercancel = null;
-          };
-          target.onpointerup = (endEvent) => {
-            cleanup();
-            update({ width: clampSidePanelWidth(width + start - endEvent.clientX) });
-          };
-          target.onpointercancel = () => {
-            cleanup();
-            target.parentElement?.style.setProperty("width", `${width}px`);
-          };
-        }}
-      />
+    <aside className="side-panel" style={{ width: resize.size }} aria-label="サイドパネル">
+      <div className="side-panel__resize" aria-label="サイドパネルの幅" {...resize.handleProps} />
       <div className="side-panel__tabs" role="tablist" aria-label="サイドパネルのビュー">
         {state.views.map((id, index) => {
           if (!isViewId(id)) return null;
