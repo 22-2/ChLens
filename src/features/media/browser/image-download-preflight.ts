@@ -1,6 +1,5 @@
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { createLogger } from "src/app/logger";
-import { platform } from "src/app/platform";
 import {
   BYTES_PER_MB,
   DEFAULT_IMAGE_AUTO_DOWNLOAD_LIMIT_MB,
@@ -13,6 +12,21 @@ import { useMediaImageStore } from "./use-media-image-store";
 const logger = createLogger("media");
 const IMAGE_SIZE_CHECK_TIMEOUT_MS = 10_000;
 const preflightRequests = new Map<string, { sourceUrl: string; promise: Promise<void> }>();
+let platformModule: Promise<typeof import("src/app/platform")> | null = null;
+
+/**
+ * platform は読み込んだ時点で拡張機能 API や Tauri の環境を参照する。画像を表示する部品
+ * （本文・サイドパネル）を import しただけで引き込まないよう、実際に確認する時だけ読み込む。
+ * 読み込みは1回にまとめる。複数の画像が同時に確認を始めても同じモジュールを待たせるため。
+ */
+function loadPlatform(): Promise<typeof import("src/app/platform")> {
+  // 失敗した読み込みを使い回すと以後の確認がすべて失敗するため、失敗時は次の確認で読み直す。
+  platformModule ??= import("src/app/platform").catch((error: unknown) => {
+    platformModule = null;
+    throw error;
+  });
+  return platformModule;
+}
 
 function getConfiguredMaxBytes(): number {
   try {
@@ -69,7 +83,8 @@ async function startImagePreflight(key: string, sourceUrl: string): Promise<void
   if (activeRequest?.sourceUrl === sourceUrl) return activeRequest.promise;
 
   const promise = Promise.resolve()
-    .then(() =>
+    .then(loadPlatform)
+    .then(({ platform }) =>
       platform.http.fetch(sourceUrl, {
         method: "HEAD",
         headers: { Accept: "image/*" },
