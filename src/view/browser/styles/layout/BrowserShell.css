@@ -18,13 +18,24 @@
 }
 
 /* 変更理由: Zenモードでは本文の閲覧領域を広げ、操作が必要な時だけパレットを戻す。 */
-.browser-shell[data-zen-mode="true"] > .title-bar,
+.browser-shell[data-zen-mode="true"] .title-bar,
 .browser-shell[data-zen-mode="true"] .pane-column__chrome,
 .browser-shell[data-zen-mode="true"] .status-bar,
 .browser-shell[data-zen-mode="true"] .bottom-panel,
 .browser-shell[data-zen-mode="true"] .thread-page__top-bar,
+.browser-shell[data-zen-mode="true"] .thread-page__minimap,
+.browser-shell[data-zen-mode="true"] .thread-page__minimap-tooltip,
+.browser-shell[data-zen-mode="true"] .thread-page__floating-action,
 .browser-shell[data-zen-mode="true"] .search-bar {
   display: none;
+}
+
+.browser-shell[data-zen-mode="true"] .thread-page--with-minimap .thread-page__notice,
+.browser-shell[data-zen-mode="true"] .thread-page--with-minimap .thread-page__responses,
+.browser-shell[data-zen-mode="true"]
+  .thread-page--with-minimap
+  .thread-page__auto-scroll-threshold {
+  padding-right: var(--sys-space-8);
 }
 
 .zen-mode__palette {
