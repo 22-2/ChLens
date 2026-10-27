@@ -81,7 +81,7 @@
   z-index: var(--sys-z-local);
 }
 .side-panel__resize:focus-visible,
-.side-panel__tabs button:focus-visible {
+.side-panel__tab:focus-visible {
   outline: 2px solid var(--sys-color-focus-ring);
   outline-offset: -2px;
 }
@@ -90,7 +90,9 @@
   overflow-x: auto;
   border-bottom: 1px solid var(--sys-color-border);
 }
-.side-panel__tabs button {
+/* 変更理由: メインのタブバー（.tab）と、ホバー色・選択表示・遷移・ドラッグ表示を揃える。 */
+.side-panel__tab {
+  position: relative;
   flex: none;
   display: flex;
   align-items: center;
@@ -100,11 +102,27 @@
   color: var(--sys-color-text-muted);
   background: transparent;
   border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
   cursor: pointer;
+  transition:
+    background var(--sys-duration-fast),
+    color var(--sys-duration-fast);
 }
-.side-panel__tabs button[aria-selected="true"] {
+.side-panel__tab[aria-selected="true"] {
   color: var(--sys-color-text);
-  box-shadow: inset 0 -2px var(--sys-color-accent);
+  background: var(--sys-color-surface);
+  border-bottom-color: var(--sys-color-tab-indicator);
+}
+.side-panel__tab[aria-selected="false"]:hover {
+  background: var(--sys-color-tab-strip-hover);
+}
+.side-panel__tab--dragging {
+  z-index: var(--sys-z-dragging);
+  opacity: 0.95;
+  box-shadow: var(--sys-shadow-dragging);
+  /* dnd-kitがtransformを管理するため、GPUレイヤーだけを予約する。 */
+  will-change: transform;
 }
 .side-panel__heading,
 .side-panel__empty {

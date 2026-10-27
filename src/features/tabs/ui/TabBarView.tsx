@@ -1,5 +1,4 @@
 import { DragDropProvider } from "@dnd-kit/react";
-import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 import { PanelLeftClose, PanelLeftOpen, Pin, Plus, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -11,6 +10,7 @@ import {
 } from "src/features/tabs/browser/tab-bar-layout";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
+import { readSortableMove, useSortableTab } from "src/view/browser/components/sortable-tab";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 
@@ -23,12 +23,6 @@ interface TabListScrollState {
 
 const TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD = 1.5;
 const TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS = 150;
-
-// Material Design の Fast-out, Slow-in カーブで Chrome 風の吸い付く感を再現する。
-const SORTABLE_TRANSITION = {
-  duration: 200,
-  easing: "cubic-bezier(0.4, 0, 0.2, 1)",
-};
 
 interface SortableTabProps {
   tab: Tab;
@@ -63,12 +57,11 @@ const SortableTab: React.FC<SortableTabProps> = ({
   onContextMenu,
   onArrowNavigate,
 }) => {
-  const { ref, isDragSource } = useSortable({
+  const { ref, isDragSource } = useSortableTab({
     id: tab.id,
     index,
     // ピン留めと通常の境界を越えないようグループを分ける。
     group: tab.pinned ? "pinned" : "normal",
-    transition: SORTABLE_TRANSITION,
   });
 
   const page = getCurrentPage(tab);
@@ -457,21 +450,10 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   const handleDragEnd = useCallback(
     // oxlint-disable-next-line @typescript-eslint/no-explicit-any
     (event: any) => {
-      // event.canceled はドラッグがキャンセル（Esc キーなど）された場合に true になる。
-      if (event.canceled) return;
-      const { operation } = event;
-      if (!isSortableOperation(operation)) return;
-      const { source } = operation;
-      if (!source) return;
-      // 変更理由: OptimisticSortingPlugin がドラッグ中に確定させたグループ内の最終位置を
-      // source.sortable.index として受け取り、それをそのまま並べ替えの真実にする。
-      // ドロップ先タブIDから逆算すると投影インデックスとズレるため使わない。
-      const toIndex = source.index;
-      const initialIndex = source.sortable?.initialIndex;
-      if (typeof toIndex !== "number") return;
       // 実際に位置が変わっていなければ、click 抑止も並べ替えも行わない。
-      if (typeof initialIndex === "number" && toIndex === initialIndex) return;
-      if (!onMoveTab(String(source.id), toIndex)) return;
+      const move = readSortableMove(event);
+      if (!move) return;
+      if (!onMoveTab(move.id, move.toIndex)) return;
       // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
       wasDraggingRef.current = true;
     },

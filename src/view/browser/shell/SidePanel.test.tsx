@@ -5,6 +5,18 @@ import { SidePanel } from "src/view/browser/shell/SidePanel";
 import { DEFAULT_SIDE_PANEL } from "src/view/browser/state/tabs/side-panel-state";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+// dnd-kit は読み込み時に ResizeObserver を参照するため、import より前に差し替える。
+vi.hoisted(() => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+});
+
 const mocks = vi.hoisted(() => ({
   dispatch: vi.fn(),
   activeView: "boards",
