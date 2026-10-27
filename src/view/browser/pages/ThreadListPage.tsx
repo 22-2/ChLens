@@ -60,7 +60,6 @@ import {
   getThreadListPageCountKey,
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
-import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
 import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
@@ -73,6 +72,10 @@ import {
 } from "src/view/browser/types";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
+import {
+  setFilterToolbarOpen,
+  setFilterToolbarPinned,
+} from "src/view/browser/utils/filter-toolbar-open-state";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
@@ -232,12 +235,16 @@ export const ThreadListPage: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   const previousBoardUrlRef = useRef(page.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
-  const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
-    tabId,
-    isActive,
-    searchQuery,
-    setSearchQuery,
-  });
+  // 変更理由: スレ一覧ではフィルタバーを常設するため、開閉の状態は持たない。
+  // 通知の上端位置を合わせ、タイトルバーの開閉ボタンを隠せるよう、開いている・常時表示として共有する。
+  useEffect(() => {
+    setFilterToolbarOpen(tabId, true);
+    setFilterToolbarPinned(tabId, true);
+    return () => {
+      setFilterToolbarOpen(tabId, false);
+      setFilterToolbarPinned(tabId, false);
+    };
+  }, [tabId]);
   const [contextMenuState, setContextMenuState] = useState<{
     x: number;
     y: number;
@@ -764,14 +771,12 @@ export const ThreadListPage: React.FC<Props> = ({
       onQueryChange={setSearchQuery}
       searchMode="custom"
       searchContent={
-        isFilterOpen ? (
-          <SearchBar
-            query={searchQuery}
-            onQueryChange={setSearchQuery}
-            onClose={closeFilterToolbar}
-            hitCount={visibleDisplayThreads.length}
-          />
-        ) : null
+        <SearchBar
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          hitCount={visibleDisplayThreads.length}
+          autoFocus={false}
+        />
       }
       onDoubleClick={handleDoubleClick}
     >

@@ -636,9 +636,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   );
 
   const isFilterToolbarPinned = useFilterToolbarPinned(viewTab.id);
-  // 変更理由: 常時表示のスレはフィルタバーを閉じられないため、開閉の導線を出さない。
-  const canToggleFilter =
-    isPageFilterable(viewPage.type) && !(viewPage.type === "thread" && isFilterToolbarPinned);
+  // 変更理由: 常時表示のスレ・スレ一覧はフィルタバーを閉じられないため、開閉の導線を出さない。
+  const canToggleFilter = isPageFilterable(viewPage.type) && !isFilterToolbarPinned;
 
   const toggleFilterFromMenu = useCallback(() => {
     toggleFilterForTab(viewSurface.window, viewTab.id);

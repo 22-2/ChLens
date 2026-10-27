@@ -664,9 +664,8 @@ describe("ThreadListPage", () => {
     );
   });
 
-  it("一覧上端の上ホイールはフィルタを開くだけで、一覧の更新はしない", async () => {
-    // 変更理由: 一覧上端のホイール操作は更新からフィルタ開閉へ戻したため、
-    // 実際の一覧とスクロール要素を組み合わせて、更新が走らず開閉だけが行われることを確かめる。
+  it("フィルタバーは常設され、閉じるボタンやホイールでは閉じない", async () => {
+    // 変更理由: スレ一覧ではフィルタを常に表示するため、開閉の操作が残っていないことを確かめる。
     vi.useRealTimers();
     const scrollContainerRef = createRef<HTMLDivElement>();
     render(
@@ -676,7 +675,7 @@ describe("ThreadListPage", () => {
           page={{
             type: "threadList",
             title: "テスト板",
-            boardUrl: "https://example.com/wheel-refresh/",
+            boardUrl: "https://example.com/pinned-filter/",
             boardTitle: "テスト板",
           }}
           refreshKey={0}
@@ -687,26 +686,14 @@ describe("ThreadListPage", () => {
     );
     const panel = scrollContainerRef.current!;
     await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
-    dispatchMock.mockClear();
 
-    fireEvent.wheel(panel, { deltaY: -48 });
     expect(screen.getByRole("textbox")).toBeVisible();
-    // ホイールで開いた直後の下ホイールは、フィルタを閉じる操作として扱う。
+    expect(screen.queryByText("✕")).toBeNull();
     fireEvent.wheel(panel, { deltaY: 48 });
-    expect(screen.queryByRole("textbox")).toBeNull();
-    expect(dispatchMock).not.toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
-
-    const toggleFilter = () =>
-      act(() => {
-        togglePageFilter(window, "tab-1");
-      });
-    // ボタンで開いたフィルタは、下ホイールでは閉じない。
-    toggleFilter();
+    act(() => {
+      togglePageFilter(window, "tab-1");
+    });
     expect(screen.getByRole("textbox")).toBeVisible();
-    fireEvent.wheel(panel, { deltaY: 48 });
-    expect(screen.getByRole("textbox")).toBeVisible();
-    toggleFilter();
-    expect(screen.queryByRole("textbox")).toBeNull();
   });
 
   it.each([false, true])(
