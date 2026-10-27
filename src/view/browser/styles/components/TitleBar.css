@@ -21,11 +21,6 @@
   user-select: none;
 }
 
-/* 変更理由: 垂直モードでは共通タイトルバーを表示せず、ペイン単位のタイトルバーを使う。 */
-.browser-shell[data-tab-orientation="vertical"] > .title-bar {
-  display: none;
-}
-
 /* 変更理由: タブバーの向きに関係なく履歴移動と更新をタイトルバー左端へまとめる。 */
 .title-bar__navigation,
 .title-bar__refresh {
