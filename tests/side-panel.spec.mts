@@ -5,6 +5,9 @@ test("サイドパネルの表示とビュー選択を再起動後も復元す�
   await page.getByRole("button", { name: "サイドパネルを開く" }).click();
   const panel = page.getByRole("complementary", { name: "サイドパネル" });
   await expect(panel).toBeVisible();
+  await expect(panel.getByRole("searchbox", { name: "板名を検索" })).toBeVisible();
+  await panel.getByRole("tab", { name: "お気に入り" }).click();
+  await expect(panel.getByRole("searchbox", { name: "お気に入りを検索" })).toBeVisible();
   const resize = panel.getByRole("separator", { name: "サイドパネルの幅" });
   const beforeWidth = (await panel.boundingBox())!.width;
   await resize.focus();

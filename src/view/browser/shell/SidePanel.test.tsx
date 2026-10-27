@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({ dispatch: vi.fn() }));
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
+  useTabStore: () => ({ viewTab: { id: "tab" } }),
   useSidePanelState: () => ({
     state: { ...DEFAULT_SIDE_PANEL, isOpen: true },
     dispatch: mocks.dispatch,
@@ -40,3 +41,11 @@ describe("サイドパネル", () => {
     );
   });
 });
+
+vi.mock("src/view/browser/shell/SidePanelBoards", () => ({
+  SidePanelBoards: () => <div>板一覧</div>,
+}));
+
+vi.mock("src/view/browser/shell/SidePanelFavorites", () => ({
+  SidePanelFavorites: () => <div>お気に入り</div>,
+}));

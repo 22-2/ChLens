@@ -104,3 +104,34 @@
 .side-panel__empty {
   color: var(--sys-color-text-muted);
 }
+
+.side-panel__content {
+  padding: var(--sys-space-3);
+}
+.side-panel__search {
+  width: 100%;
+  color: var(--sys-color-text);
+  background: var(--sys-color-input-bg);
+  border: 1px solid var(--sys-color-input-border);
+  padding: var(--sys-space-2);
+}
+.side-panel__content summary {
+  padding: var(--sys-space-2);
+  cursor: pointer;
+}
+.side-panel__category {
+  margin-left: var(--sys-space-4);
+}
+.side-panel__entry {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--sys-color-text);
+  text-align: left;
+  padding: var(--sys-space-2) var(--sys-space-6);
+  cursor: pointer;
+}
+.side-panel__entry:hover {
+  background: var(--sys-color-list-hover-bg);
+}

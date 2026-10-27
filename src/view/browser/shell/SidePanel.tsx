@@ -1,8 +1,10 @@
 import { BookOpen, Image, Info, ListTree, Pencil, Search } from "lucide-react";
 import { useRef } from "react";
+import { SidePanelBoards } from "src/view/browser/shell/SidePanelBoards";
+import { SidePanelFavorites } from "src/view/browser/shell/SidePanelFavorites";
 import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
-import { useSidePanelState } from "src/view/browser/state/tabs/use-tab-store";
+import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 
 const views = {
   boards: { label: "板一覧", Icon: ListTree },
@@ -16,6 +18,7 @@ type ViewId = keyof typeof views;
 
 export function SidePanel() {
   const { state: saved, dispatch } = useSidePanelState();
+  const { viewTab } = useTabStore();
   const state = normalizeSidePanel(saved);
   const dragged = useRef<string | null>(null);
   const update = (patch: Partial<typeof state>) =>
@@ -114,7 +117,13 @@ export function SidePanel() {
         })}
       </div>
       <div className="side-panel__heading">{views[state.activeView as ViewId]?.label}</div>
-      <p className="side-panel__empty">このビューは準備中です。</p>
+      {state.activeView === "boards" ? (
+        <SidePanelBoards key={viewTab.id} tabId={viewTab.id} />
+      ) : state.activeView === "favorites" ? (
+        <SidePanelFavorites />
+      ) : (
+        <p className="side-panel__empty">このビューは準備中です。</p>
+      )}
     </aside>
   );
 }

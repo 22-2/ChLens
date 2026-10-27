@@ -47,6 +47,8 @@ type LoadedTab = Partial<PersistedTab> & {
 function pruneViewStates(tab: PersistedTab): TabViewStates | undefined {
   if (!tab.viewStates) return undefined;
   const reachableKeys = new Set(tab.history.map((page) => getPageViewStateKey(page)));
+  // 板一覧はサイドパネルからも使うため、通常ページの履歴がなくても表示状態を保つ。
+  reachableKeys.add("boardList");
   const entries = Object.entries(tab.viewStates).filter(([key]) => reachableKeys.has(key));
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
