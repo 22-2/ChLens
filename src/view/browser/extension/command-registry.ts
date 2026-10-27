@@ -30,7 +30,7 @@ export class CommandRegistry<T extends IdentifiedCommand> {
     };
   };
 
-  add(command: T, ownerId: string): Disposable {
+  add(command: T, ownerId: string, beforeCommandId?: string): Disposable {
     const existing = this.entries.get(command.id);
     if (existing) {
       logger.error("コマンドの二重登録を拒否しました", {
@@ -41,7 +41,18 @@ export class CommandRegistry<T extends IdentifiedCommand> {
       return { dispose: () => undefined };
     }
 
-    this.entries.set(command.id, { command, ownerId });
+    const entry = { command, ownerId };
+    if (beforeCommandId && this.entries.has(beforeCommandId)) {
+      const reorderedEntries = [...this.entries.entries()];
+      const insertionIndex = reorderedEntries.findIndex(([id]) => id === beforeCommandId);
+      reorderedEntries.splice(insertionIndex, 0, [command.id, entry]);
+      this.entries.clear();
+      for (const [id, registeredEntry] of reorderedEntries) {
+        this.entries.set(id, registeredEntry);
+      }
+    } else {
+      this.entries.set(command.id, entry);
+    }
     this.updateSnapshot();
     let disposed = false;
     return {

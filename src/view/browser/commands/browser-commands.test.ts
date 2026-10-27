@@ -28,8 +28,6 @@ const browserCommandMocks = vi.hoisted(() => {
     encodeThreadAsToonMock: vi.fn(),
     estimateToonTokenCountMock: vi.fn<() => number>(),
     getThreadMock: vi.fn(),
-    getImgurDeletableImageUrlsMock: vi.fn(),
-    deleteImgurImagesMock: vi.fn(),
     openNextThreadSearchDialogMock: vi.fn<() => Promise<void>>(),
     parseSikiLogFileMock: vi.fn(),
     registerSikiLogThreadMock: vi.fn(),
@@ -53,8 +51,6 @@ const {
   encodeThreadAsToonMock,
   estimateToonTokenCountMock,
   getThreadMock,
-  getImgurDeletableImageUrlsMock,
-  deleteImgurImagesMock,
   openNextThreadSearchDialogMock,
   parseSikiLogFileMock,
   registerSikiLogThreadMock,
@@ -181,12 +177,6 @@ describe("browser commands", () => {
       ],
     });
     container.thread = { getThread: getThreadMock };
-    container.imgurImages = {
-      getDeletableImageUrls: getImgurDeletableImageUrlsMock,
-      deleteImages: deleteImgurImagesMock,
-    };
-    getImgurDeletableImageUrlsMock.mockResolvedValue(["https://i.imgur.com/abc123.png"]);
-    deleteImgurImagesMock.mockResolvedValue({ deletedCount: 1, skippedCount: 0, failures: [] });
     container.toast = {
       notify: vi.fn(),
       success: toastSuccessMock,
@@ -205,8 +195,6 @@ describe("browser commands", () => {
     encodeThreadAsToonMock.mockReset();
     estimateToonTokenCountMock.mockReset();
     getThreadMock.mockReset();
-    getImgurDeletableImageUrlsMock.mockReset();
-    deleteImgurImagesMock.mockReset();
     openNextThreadSearchDialogMock.mockReset();
     parseSikiLogFileMock.mockReset();
     registerSikiLogThreadMock.mockReset();
@@ -765,56 +753,6 @@ describe("browser commands", () => {
     expect(toastSuccessMock).toHaveBeenCalledWith(
       "スレ全体をTOON形式でコピーしました（推定 1,234 トークン）",
     );
-  });
-
-  it("投稿したImgur画像を一括削除する前に件数を確認する", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-    const { context } = createContext({ type: "boardList", title: "ホーム" });
-
-    await expect(executeBrowserCommand("page.delete-all-imgur-images", context)).resolves.toBe(
-      true,
-    );
-
-    expect(confirm).toHaveBeenCalledWith(
-      expect.stringContaining("Imgur画像 1 件を削除します。元に戻せません"),
-    );
-    expect(getImgurDeletableImageUrlsMock).toHaveBeenCalledOnce();
-    expect(deleteImgurImagesMock).toHaveBeenCalledWith(["https://i.imgur.com/abc123.png"]);
-    expect(toastSuccessMock).toHaveBeenCalledWith("Imgur画像を 1 件削除しました");
-    confirm.mockRestore();
-  });
-
-  it("このスレの一括削除対象は保存済みログから読み、スレ再取得を行わない", async () => {
-    const threadUrl = "https://egg.5ch.net/test/read.cgi/software/123/";
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-    const getCache = vi.fn((path: string) => {
-      expect(path).toBe("https://egg.5ch.io/software/dat/123.dat");
-      return {
-        get: vi.fn(async () => undefined),
-        data: null,
-        parsed: { res: [{ message: "https://i.imgur.com/abc123.png" }] },
-        lastUpdated: 1,
-        put: vi.fn(async () => undefined),
-      };
-    });
-    container.config = {
-      get: (key) => (key === "format_2chnet" ? "dat" : null),
-      set: vi.fn(),
-      ready: vi.fn(),
-      getAll: () => ({}),
-    };
-    container.cache = { getCache };
-    const { context } = createContext({ type: "thread", title: "Thread", threadUrl });
-
-    await expect(executeBrowserCommand("page.delete-thread-imgur-images", context)).resolves.toBe(
-      true,
-    );
-
-    expect(getCache).toHaveBeenCalledOnce();
-    expect(getThreadMock).not.toHaveBeenCalled();
-    expect(getImgurDeletableImageUrlsMock).toHaveBeenCalledWith(["https://i.imgur.com/abc123.png"]);
-    expect(deleteImgurImagesMock).toHaveBeenCalledWith(["https://i.imgur.com/abc123.png"]);
-    confirm.mockRestore();
   });
 
   it("2ペイン切り替えは現在の表示状態に応じたactionを送る", async () => {

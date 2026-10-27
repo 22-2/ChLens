@@ -5,6 +5,7 @@ import { boot } from "src/app";
 import { installDebugApi } from "src/app/debug/debug-api";
 import { installConsoleCapture, installRuntimeErrorCapture } from "src/app/debug/debug-log";
 import { installLogPersistence } from "src/app/debug/log-persistence";
+import { registerMediaCommands } from "src/features/media/browser/register-media-commands";
 import { setupBrowserViewServices } from "src/service-container/setup-browser-view";
 import { BrowserApp } from "src/view/browser/App";
 import {
@@ -29,6 +30,7 @@ void boot("/view/index.html", () => {
   setupBrowserViewServices();
   // 変更理由: コマンドパレットの表示・復元より先に登録を完了し、Reactの再描画で重複しないようにする。
   registerCoreCommands(createExtensionApi("core", browserCommandRegistry));
+  registerMediaCommands(createExtensionApi("media", browserCommandRegistry));
   const container = document.getElementById("root");
   if (!container) return;
   createRoot(container).render(<BrowserApp />);

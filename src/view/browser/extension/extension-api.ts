@@ -4,7 +4,10 @@ import { CommandRegistry, type Disposable } from "src/view/browser/extension/com
 export type ExtensionCommandRegistry = CommandRegistry<BrowserCommandDefinition>;
 
 export interface ExtensionApi {
-  addCommand: (command: BrowserCommandDefinition) => Disposable;
+  addCommand: (
+    command: BrowserCommandDefinition,
+    options?: { beforeCommandId?: string },
+  ) => Disposable;
   register: (cleanup: () => void) => Disposable;
   dispose: () => void;
 }
@@ -32,7 +35,8 @@ export function createExtensionApi(
   };
 
   return {
-    addCommand: (command) => own(commandRegistry.add(command, ownerId)),
+    addCommand: (command, options) =>
+      own(commandRegistry.add(command, ownerId, options?.beforeCommandId)),
     register: (cleanup) => {
       let cleaned = false;
       return own({

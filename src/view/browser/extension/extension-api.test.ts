@@ -56,6 +56,16 @@ describe("拡張 API", () => {
     expect(registry.getSnapshot()).toEqual([]);
   });
 
+  it("表示順指定で既存コマンドの直前へ挿入する", () => {
+    const registry = new CommandRegistry<TestCommand>();
+    registry.add({ id: "first", value: "1" }, "test");
+    registry.add({ id: "last", value: "3" }, "test");
+
+    registry.add({ id: "middle", value: "2" }, "test", "last");
+
+    expect(registry.getSnapshot().map(({ id }) => id)).toEqual(["first", "middle", "last"]);
+  });
+
   it("所有者の解除で登録と任意の後片付けをまとめて実行する", () => {
     const registry = new CommandRegistry<BrowserCommandDefinition>();
     const api = createExtensionApi("feature", registry);

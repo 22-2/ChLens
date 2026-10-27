@@ -213,9 +213,10 @@ api.addStatusBarItem({
   - 既存の全定義を `registerCoreCommands(api)` からそのまま登録する。ID は変えない。
   - `resolveBrowserCommands` / `executeBrowserCommand` / `getBrowserCommandLabel` の引数と戻り値は変えず、既存テストで動作を確認する。
   - 完了：重複登録は ID と登録元を記録して拒否し、拒否された項目の解除・所有者の一括解除・解除の繰り返し・購読・安定スナップショットをテストで確認した。テストで単体描画する画面も、アプリ起動時と同様に明示登録する。
-- [ ] **PR2. Imgur 画像の削除コマンドを機能側へ移す（P1）**
+- [x] **PR2. Imgur 画像の削除コマンドを機能側へ移す（P1）**
   - 移す先は `features/media`。`container.imgurImages` だけで完結し、ペインや画面の状態に触らないため、機能側での登録と所有者ごとの解除を最も単純な形で試せる。
-  - ここで決まった ID の形に付け直し、PR1 の API の使い勝手を見直す。
+  - 完了：ID を `media.delete-thread-imgur-images` / `media.delete-all-imgur-images` に変更し、機能側の `registerMediaCommands` から登録する。スレ内の画像 URL は引き続き保存済みログから読み取る。
+  - 表示順を維持するため、登録 API に既存コマンド ID の直前へ挿入する指定を追加した。PR1 の API を機能側で使い、単体解除も確認した。
 - [ ] **PR3. お気に入りのコマンドを機能側へ移す（P1）**
   - 既存の `CommandTarget` / `CommandRequest` の実行経路と、登録 API との関係を確かめる。
 - [ ] **PR4. 残りの機能固有コマンドを移す（P1）**
