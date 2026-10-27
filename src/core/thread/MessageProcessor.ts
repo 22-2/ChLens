@@ -1,6 +1,6 @@
 import { type MessageToken, parseMessage } from "@chlen/chlib";
 
-import { sanitizeMessageHtml } from "./sanitize-message-html";
+import { sanitizeMessageHtml, sanitizeNameHtml } from "./sanitize-message-html";
 
 interface DecodedMessage {
   nameHtml: string;
@@ -9,9 +9,6 @@ interface DecodedMessage {
   otherHtml: string;
   messageHtml: string;
 }
-
-const ALLOWED_NAME_TAG =
-  /^<\/?(?:b|small|font(?:\s+color="?[#a-zA-Z0-9]+"?)?|span(?:\s+style="color:\s*[#a-zA-Z0-9]+;?")?)\s*>$/i;
 
 interface DecodableRes {
   name: string;
@@ -61,16 +58,8 @@ export default class MessageProcessor {
   static decode(res: DecodableRes, protocol: string): DecodedMessage {
     const parts = {} as DecodedMessage;
 
-    let nameHtml = (res.name || "")
-      .replace(/<\/?a[^>]*>/gi, "")
-      // 名前欄の装飾は既存の b/small/font に加えて、色だけを指定する span を許可する。
-      // 任意属性を通すと style/javascript の注入経路になるため、許可リストを狭く保つ。
-      .replace(/<[^>]*>/g, (tag) => (ALLOWED_NAME_TAG.test(tag) ? tag : tag.replace("<", "&lt;")));
-
-    if (res.trip) {
-      nameHtml = nameHtml.replace(res.trip, `<span class="trip">${res.trip}</span>`);
-    }
-    parts.nameHtml = nameHtml;
+    // 不正な入れ子を正規表現で処理すると要素が残るため、本文と同じライブラリで解析する。
+    parts.nameHtml = sanitizeNameHtml(res.name || "", res.trip);
 
     parts.isNameAnchor =
       /^\s*(?:&gt;|\uff1e){0,2}([\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?(?:\s*,\s*[\d\uff10-\uff19]+(?:[-\u30fc][\d\uff10-\uff19]+)?)*)\s*$/.test(

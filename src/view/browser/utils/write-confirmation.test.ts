@@ -39,6 +39,7 @@ describe("Tauri版の書き込み確認ページ", () => {
         <input type="hidden" name="token" value="abc">
         <input type="checkbox" name="agree" value="yes" checked>
         <input type="checkbox" name="skip" value="no">
+        <input name="elements" value="衝突しない">
         <textarea name="MESSAGE">一行目\n二行目</textarea>
         <select name="mode"><option value="normal" selected>通常</option><option value="other">別</option></select>
         <button type="submit" name="submit" value="承諾">承諾</button>
@@ -55,10 +56,49 @@ describe("Tauri版の書き込み確認ページ", () => {
     expect(collectWriteConfirmationFields(form, button)).toEqual([
       { name: "token", value: "abc", type: "input" },
       { name: "agree", value: "yes", type: "input" },
+      { name: "elements", value: "衝突しない", type: "input" },
       { name: "MESSAGE", value: "一行目\n二行目", type: "textarea" },
       { name: "mode", value: "normal", type: "input" },
       { name: "submit", value: "承諾", type: "input" },
     ]);
+  });
+
+  it("不正な要素・外部リソース・CSSと送信先の上書きを除去する", () => {
+    const page = createWriteConfirmationPage(
+      `<style>@import url(https://example.com/tracker);</style>
+       <form method="post" action="/test/bbs.cgi">
+         <input name="token" value="abc" style="background:url(https://example.com/tracker)">
+         <input type="file" name="upload"><input type="image" src="https://example.com/tracker">
+         <button formaction="https://other.example.com/" onclick="alert(1)">承諾</button>
+         <svg><script>alert(1)</script></svg><iframe srcdoc="<script>alert(1)</script>"></iframe>
+       </form>`,
+      SOURCE_URL,
+      SOURCE_URL,
+      "UTF-8",
+    );
+    const parsed = new DOMParser().parseFromString(page.html, "text/html");
+    expect(page.forms).toEqual([{ id: "form-0", action: SOURCE_URL }]);
+    expect(
+      parsed.querySelector(
+        "style, script, svg, iframe, [style], [onclick], [formaction], [src], input[type=file], input[type=image]",
+      ),
+    ).toBeNull();
+    expect(parsed.querySelector('input[name="chlens-field-token"]')?.getAttribute("value")).toBe(
+      "abc",
+    );
+  });
+
+  it("危険な送信先を未指定として扱わず、フォームごと除去する", () => {
+    const page = createWriteConfirmationPage(
+      '<form method="post" action="javascript:alert(1)"><input name="token" value="abc"></form>',
+      SOURCE_URL,
+      SOURCE_URL,
+      "UTF-8",
+    );
+    expect(page.forms).toEqual([]);
+    expect(
+      new DOMParser().parseFromString(page.html, "text/html").querySelector("form"),
+    ).toBeNull();
   });
 
   it("sandboxでフォーム送信が止まっても確認ボタンのクリックを親へ渡す", () => {

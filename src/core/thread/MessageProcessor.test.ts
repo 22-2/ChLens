@@ -203,7 +203,7 @@ describe("レス本文の表示処理", () => {
       expect(result.nameHtml).toContain('<span style="color:green;">警備員[Lv.10]</span>');
     });
 
-    it("許可されていない名前属性をエスケープする", () => {
+    it("許可されていない名前属性を除去する", () => {
       const result = MessageProcessor.decode(
         {
           name: '<span onclick="alert(1)">危険</span>',
@@ -213,8 +213,25 @@ describe("レス本文の表示処理", () => {
         "https:",
       );
 
-      expect(result.nameHtml).toContain('&lt;span onclick="alert(1)">');
-      expect(result.nameHtml).not.toContain('<span onclick="alert(1)">');
+      expect(result.nameHtml).toBe("<span>危険</span>");
+    });
+
+    it("不正な入れ子やトリップから画像とイベント属性を挿入させない", () => {
+      for (const name of [
+        '<x <img src="https://example.com/tracker" onerror="alert(1)">',
+        '<span style="color:red;background:url(https://example.com/tracker)" onclick="alert(1)">名前</span>',
+        '<svg><a href="javascript:alert(1)">名前</a></svg>',
+      ]) {
+        const result = MessageProcessor.decode(
+          { name, mail: "", trip: "<img src=x onerror=alert(1)>" },
+          "https:",
+        );
+        const template = document.createElement("template");
+        template.innerHTML = result.nameHtml;
+        expect(
+          template.content.querySelector("img, svg, a, [onclick], [onerror], [style]"),
+        ).toBeNull();
+      }
     });
 
     it("名前欄のアンカー・トリップと返信先判定を処理する", () => {
