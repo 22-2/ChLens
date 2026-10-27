@@ -4,8 +4,8 @@ import type { IThread } from "src/service-container/interfaces";
 
 const logger = createLogger("thread-list");
 const STORE_NAME = "ThreadListSnapshots";
-// 変更理由: 板ごとの履歴は、復元に使いやすい直近10件に保つ。
-const SNAPSHOT_LIMIT = 10;
+// 変更理由: 板ごとの履歴は、復元に使いやすい直近5件に保つ。
+const SNAPSHOT_LIMIT = 5;
 
 export interface ThreadListSnapshot {
   url: string;
