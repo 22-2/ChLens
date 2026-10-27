@@ -58,7 +58,7 @@ interface TabPageContentProps {
   isActive: boolean;
   isOverlayTarget: boolean;
   threadListActive?: boolean;
-  onSearchSimilarThreads?: () => Promise<void>;
+  onSearchRelatedThreads?: () => Promise<void>;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
 
@@ -67,7 +67,7 @@ const TabPageContent = memo(function TabPageContent({
   isActive,
   isOverlayTarget,
   threadListActive,
-  onSearchSimilarThreads,
+  onSearchRelatedThreads,
   scrollContainerRef,
 }: TabPageContentProps) {
   const page = getCurrentPage(tab);
@@ -113,7 +113,7 @@ const TabPageContent = memo(function TabPageContent({
           isOverlayTarget={isOverlayTarget}
           isAutoRefreshEnabled={isAutoRefreshEnabledForPage(tab, page)}
           startAutoRefreshAtBottom={shouldStartThreadAutoRefreshAtBottom(tab)}
-          onSearchSimilarThreads={onSearchSimilarThreads}
+          onSearchRelatedThreads={onSearchRelatedThreads}
           scrollContainerRef={scrollContainerRef}
         />
       );
@@ -124,7 +124,7 @@ export interface TabPanelProps {
   tab: Tab;
   isActive: boolean;
   isOverlayTarget: boolean;
-  onSearchSimilarThreads?: () => Promise<void>;
+  onSearchRelatedThreads?: () => Promise<void>;
   viewSurface?: ViewSurface;
 }
 
@@ -138,7 +138,7 @@ export const TabPanel = memo(function TabPanel({
   tab,
   isActive,
   isOverlayTarget,
-  onSearchSimilarThreads,
+  onSearchRelatedThreads,
   viewSurface,
 }: TabPanelProps) {
   const page = getCurrentPage(tab);
@@ -181,7 +181,7 @@ export const TabPanel = memo(function TabPanel({
             isActive={isActive}
             isOverlayTarget={isOverlayTarget && isActive}
             threadListActive={page.type === "threadList" ? isActive : undefined}
-            onSearchSimilarThreads={onSearchSimilarThreads}
+            onSearchRelatedThreads={onSearchRelatedThreads}
             scrollContainerRef={scrollContainerRef}
           />
         </TabErrorBoundary>

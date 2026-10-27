@@ -25,14 +25,14 @@ export function registerNextThreadCommands(api: ExtensionApi): void {
   api.addCommand(
     {
       id: "next-thread.search-similar",
-      label: "類似スレを検索",
-      englishLabel: "Find Similar Threads",
-      description: "次スレ候補とタイトルが似ているスレを板一覧から検索します",
-      keywords: ["類似スレ", "似たスレ", "関連スレ", "similar", "thread", "search"],
+      label: "関連スレを検索",
+      englishLabel: "Find Related Threads",
+      description: "タイトルや話題が関連するスレと次スレ候補を板一覧から検索します",
+      keywords: ["関連スレ", "関連するスレ", "related", "thread", "search"],
       group: "page",
       icon: Search,
       when: ({ viewPage }) => viewPage.type === "thread",
-      run: ({ openSimilarThreadSearchDialog }) => openSimilarThreadSearchDialog?.(),
+      run: ({ openRelatedThreadSearchDialog }) => openRelatedThreadSearchDialog?.(),
     },
     { beforeCommandId: "page.toggle-filter" },
   );

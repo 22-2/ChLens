@@ -83,7 +83,7 @@ export function findNextThreadCandidates(
     .map((candidate) => toNextThreadMatch(currentThread, candidate));
 }
 
-export function findSimilarThreadCandidates(
+export function findRelatedThreadCandidates(
   threads: readonly IThread[],
   currentThread: Pick<IThread, "title" | "url">,
 ): ThreadSearchCandidate[] {

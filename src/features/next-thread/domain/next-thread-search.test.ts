@@ -4,7 +4,7 @@ import {
   findMainstreamThreadMatch,
   findNextThreadCandidates,
   findNextThreadMatch,
-  findSimilarThreadCandidates,
+  findRelatedThreadCandidates,
 } from "src/features/next-thread/domain/next-thread-search";
 import type { IThread } from "src/service-container/interfaces";
 import { describe, expect, it } from "vite-plus/test";
@@ -26,7 +26,7 @@ function createThread(
 }
 
 describe("next-thread-search", () => {
-  it("【朗報】などの定型タグだけが共通する別話題を類似候補に含めない", () => {
+  it("【朗報】などの定型タグだけが共通する別話題を関連候補に含めない", () => {
     const currentThread = {
       title: "【朗報】声優の鬼頭明里さん、絵が上手い",
       url: "https://example.com/test/read.cgi/live/1700000000/",
@@ -51,7 +51,7 @@ describe("next-thread-search", () => {
     });
 
     expect(
-      findSimilarThreadCandidates(
+      findRelatedThreadCandidates(
         [unrelatedSameBadge, unrelatedDifferentBadge, relatedDifferentBadge],
         currentThread,
       ).map(({ thread }) => thread.url),

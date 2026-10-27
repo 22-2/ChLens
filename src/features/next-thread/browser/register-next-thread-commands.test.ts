@@ -40,7 +40,7 @@ function createContext(page: Page): BrowserCommandContext {
     toggleWritePanel: vi.fn(),
     openResponseJumpDialog: vi.fn(),
     openNextThreadSearchDialog: vi.fn(async () => undefined),
-    openSimilarThreadSearchDialog: vi.fn(async () => undefined),
+    openRelatedThreadSearchDialog: vi.fn(async () => undefined),
     openArchiveReplayWindow: vi.fn(),
   };
 }
@@ -77,16 +77,16 @@ describe("次スレコマンド登録", () => {
     });
     const ids = resolveBrowserCommands(context).map(({ id }) => id);
     const nextIndex = ids.indexOf("next-thread.search");
-    const similarIndex = ids.indexOf("next-thread.search-similar");
+    const relatedIndex = ids.indexOf("next-thread.search-similar");
     const filterIndex = ids.indexOf("page.toggle-filter");
 
     expect(nextIndex).toBeGreaterThanOrEqual(0);
-    expect(similarIndex).toBe(nextIndex + 1);
-    expect(filterIndex).toBe(similarIndex + 1);
+    expect(relatedIndex).toBe(nextIndex + 1);
+    expect(filterIndex).toBe(relatedIndex + 1);
     await expect(executeBrowserCommand("next-thread.search", context)).resolves.toBe(true);
     await expect(executeBrowserCommand("next-thread.search-similar", context)).resolves.toBe(true);
     expect(context.openNextThreadSearchDialog).toHaveBeenCalledOnce();
-    expect(context.openSimilarThreadSearchDialog).toHaveBeenCalledOnce();
+    expect(context.openRelatedThreadSearchDialog).toHaveBeenCalledOnce();
   });
 
   it("ホームではスレッド向け検索を表示せず実行も拒否する", async () => {

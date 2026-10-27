@@ -101,7 +101,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const {
     state: nextThreadSearchState,
     searchNextThread,
-    searchSimilarThreads,
+    searchRelatedThreads,
     close: closeNextThreadSearch,
     selectCandidate,
   } = useNextThreadSearch({
@@ -128,14 +128,14 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const navigationBar = (
     <NavigationBar
       openNextThreadSearchDialog={searchNextThread}
-      openSimilarThreadSearchDialog={searchSimilarThreads}
+      openRelatedThreadSearchDialog={searchRelatedThreads}
       openArchiveReplayWindow={openArchiveReplayWindow}
     />
   );
   const paneBody = (
     <>
       <ActiveThreadBridgeState isActive={isActive} />
-      <ContentArea isOverlayTarget={isActive} onSearchSimilarThreads={searchSimilarThreads} />
+      <ContentArea isOverlayTarget={isActive} onSearchRelatedThreads={searchRelatedThreads} />
       <BottomPanel />
       {/* コマンドとナビゲーションを同じオムニバーへ集約し、
           操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}

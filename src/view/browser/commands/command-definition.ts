@@ -47,7 +47,7 @@ export interface BrowserCommandContext {
   toggleWritePanel: () => void;
   openResponseJumpDialog: () => void;
   openNextThreadSearchDialog: () => Promise<void>;
-  openSimilarThreadSearchDialog?: () => Promise<void>;
+  openRelatedThreadSearchDialog?: () => Promise<void>;
   openArchiveReplayWindow: () => void;
   // 履歴・再取得・タブライフサイクルは対象タブを明示する実行器へ委譲し、
   // メニューとパレットで挙動を揃える。

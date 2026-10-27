@@ -102,18 +102,18 @@ interface SuggestionMenuState extends MenuPosition {
 const OMNIBAR_MAX_SUGGESTIONS = 8;
 
 const NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
-const NOOP_OPEN_SIMILAR_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
+const NOOP_OPEN_RELATED_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
 const NOOP_OPEN_ARCHIVE_REPLAY_WINDOW = (): void => undefined;
 
 interface NavigationBarProps {
   openNextThreadSearchDialog?: () => Promise<void>;
-  openSimilarThreadSearchDialog?: () => Promise<void>;
+  openRelatedThreadSearchDialog?: () => Promise<void>;
   openArchiveReplayWindow?: () => void;
 }
 
 export const NavigationBar: React.FC<NavigationBarProps> = ({
   openNextThreadSearchDialog = NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG,
-  openSimilarThreadSearchDialog = NOOP_OPEN_SIMILAR_THREAD_SEARCH_DIALOG,
+  openRelatedThreadSearchDialog = NOOP_OPEN_RELATED_THREAD_SEARCH_DIALOG,
   openArchiveReplayWindow = NOOP_OPEN_ARCHIVE_REPLAY_WINDOW,
 }) => {
   const { state, viewTab, viewPage, dispatch, paneId } = useTabStore();
@@ -391,7 +391,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       toggleWritePanel: () => togglePanel(BOTTOM_PANEL_WRITE_TAB_ID),
       openResponseJumpDialog,
       openNextThreadSearchDialog,
-      openSimilarThreadSearchDialog,
+      openRelatedThreadSearchDialog,
       openArchiveReplayWindow,
       toast,
       viewSurface,
@@ -403,7 +403,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       isTwoPane,
       isZenMode,
       openNextThreadSearchDialog,
-      openSimilarThreadSearchDialog,
+      openRelatedThreadSearchDialog,
       openArchiveReplayWindow,
       openResponseJumpDialog,
       state.closedTabs,

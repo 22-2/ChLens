@@ -2,7 +2,7 @@ import { type Dispatch, useCallback, useEffect, useRef, useState } from "react";
 import { log } from "src/app/Log";
 import {
   findNextThreadCandidates,
-  findSimilarThreadCandidates,
+  findRelatedThreadCandidates,
   type ThreadSearchCandidate,
 } from "src/features/next-thread/domain/next-thread-search";
 import { container } from "src/service-container/index";
@@ -12,7 +12,7 @@ import type { Page } from "src/view/browser/types";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 export type NextThreadSearchStatus = "idle" | "searching" | "ready" | "error";
-export type ThreadSearchType = "next" | "similar";
+export type ThreadSearchType = "next" | "related";
 
 export interface NextThreadSearchState {
   status: NextThreadSearchStatus;
@@ -42,8 +42,8 @@ const IDLE_STATE: NextThreadSearchState = {
 function getErrorMessage(error: unknown, searchType: ThreadSearchType): string {
   return error instanceof Error
     ? error.message
-    : searchType === "similar"
-      ? "類似スレの検索に失敗しました"
+    : searchType === "related"
+      ? "関連スレの検索に失敗しました"
       : "次スレ候補の検索に失敗しました";
 }
 
@@ -55,7 +55,7 @@ export function useNextThreadSearch({
 }: UseNextThreadSearchOptions): {
   state: NextThreadSearchState;
   searchNextThread: () => Promise<void>;
-  searchSimilarThreads: () => Promise<void>;
+  searchRelatedThreads: () => Promise<void>;
   close: () => void;
   selectCandidate: (candidate: ThreadSearchCandidate) => void;
 } {
@@ -97,17 +97,17 @@ export function useNextThreadSearch({
           return;
         }
 
-        // 「類似」検索ではタイトル一致に加え、連番・本文リンクから見つかる次スレも含める。
-        // 次スレ検索は次スレ判定の結果だけに絞り、類似タイトルを広げすぎない。
+        // 関連スレ検索ではタイトルや話題の近さに加え、連番・本文リンクから見つかる次スレも含める。
+        // 次スレ検索は次スレ判定の結果だけに絞り、タイトル関連度だけで候補を広げすぎない。
         const nextCandidates = findNextThreadCandidates(result.threads, sourceThread, {
           mode: "aggressive",
         });
         let candidates: ThreadSearchCandidate[] = nextCandidates;
-        if (searchType === "similar") {
+        if (searchType === "related") {
           const nextCandidateUrls = new Set(nextCandidates.map(({ thread }) => thread.url));
           candidates = [
             ...nextCandidates,
-            ...findSimilarThreadCandidates(result.threads, sourceThread).filter(
+            ...findRelatedThreadCandidates(result.threads, sourceThread).filter(
               ({ thread }) => !nextCandidateUrls.has(thread.url),
             ),
           ];
@@ -129,8 +129,8 @@ export function useNextThreadSearch({
         // 手動検索はコマンド以外からも呼べるため、失敗理由をここで記録して追跡可能にする。
         log(
           "error",
-          searchType === "similar"
-            ? "手動類似スレ検索に失敗しました"
+          searchType === "related"
+            ? "手動関連スレ検索に失敗しました"
             : "手動次スレ検索に失敗しました",
           {
             error,
@@ -153,7 +153,7 @@ export function useNextThreadSearch({
   );
 
   const searchNextThread = useCallback(() => searchThreads("next"), [searchThreads]);
-  const searchSimilarThreads = useCallback(() => searchThreads("similar"), [searchThreads]);
+  const searchRelatedThreads = useCallback(() => searchThreads("related"), [searchThreads]);
 
   useEffect(() => {
     if (state.sourceThread == null) {
@@ -195,5 +195,5 @@ export function useNextThreadSearch({
     [close, dispatch, keepAutoRefresh, state.sourceThread, viewPage],
   );
 
-  return { state, searchNextThread, searchSimilarThreads, close, selectCandidate };
+  return { state, searchNextThread, searchRelatedThreads, close, selectCandidate };
 }

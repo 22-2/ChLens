@@ -106,7 +106,7 @@ interface ThreadPageProps {
   isOverlayTarget?: boolean;
   isAutoRefreshEnabled: boolean;
   startAutoRefreshAtBottom: boolean;
-  onSearchSimilarThreads?: () => Promise<void>;
+  onSearchRelatedThreads?: () => Promise<void>;
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
 
@@ -119,7 +119,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   isOverlayTarget = isActive,
   isAutoRefreshEnabled: tabAutoRefreshEnabled,
   startAutoRefreshAtBottom,
-  onSearchSimilarThreads,
+  onSearchRelatedThreads,
   scrollContainerRef,
 }) => {
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
@@ -982,13 +982,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             {(expired || missingFromSubject) && (
               <div className="thread-page__notice thread-page__notice--expired" role="status">
                 <span>このスレッドはdat落ちしています</span>
-                {onSearchSimilarThreads ? (
+                {onSearchRelatedThreads ? (
                   <button
                     type="button"
                     className="browser-button"
-                    onClick={() => void onSearchSimilarThreads()}
+                    onClick={() => void onSearchRelatedThreads()}
                   >
-                    類似スレを探す
+                    関連スレを探す
                   </button>
                 ) : null}
               </div>

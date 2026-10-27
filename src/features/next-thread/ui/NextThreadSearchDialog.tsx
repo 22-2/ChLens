@@ -55,7 +55,7 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
   const isSearching = state.status === "searching";
   const isReady = state.status === "ready";
   const isError = state.status === "error";
-  const isSimilarSearch = state.searchType === "similar";
+  const isRelatedSearch = state.searchType === "related";
 
   useEffect(() => {
     // テーマトークンは `.browser-shell[data-theme]` にスコープされるため、
@@ -94,8 +94,8 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
           <Dialog.Title className="browser-dialog-title">
             {isAutoMovePrompt
               ? "次スレ候補が見つかりました"
-              : isSimilarSearch
-                ? "類似スレを検索"
+              : isRelatedSearch
+                ? "関連スレを検索"
                 : "次スレ候補を検索"}
           </Dialog.Title>
           <Dialog.Description className="browser-dialog-description">
@@ -111,7 +111,9 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
             ) : (
               <>
                 「{state.sourceThread?.title ?? "現在のスレ"}」を基準に、
-                {isSimilarSearch ? "タイトルが似ているスレと次スレ候補" : "積極判定の次スレ候補"}
+                {isRelatedSearch
+                  ? "タイトルや話題が関連するスレと次スレ候補"
+                  : "積極判定の次スレ候補"}
                 を表示します
               </>
             )}
@@ -121,7 +123,7 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
             <div className="next-thread-search-dialog__status" role="status">
               <Spinner
                 size="sm"
-                aria-label={isSimilarSearch ? "類似スレを検索中" : "次スレ候補を検索中"}
+                aria-label={isRelatedSearch ? "関連スレを検索中" : "次スレ候補を検索中"}
               />
               <span>板のスレ一覧を検索中...</span>
             </div>
@@ -136,7 +138,7 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
           {isReady && state.candidates.length > 0 ? (
             <ol
               className="next-thread-search-dialog__candidate-list"
-              aria-label={isSimilarSearch ? "類似スレ・次スレ候補一覧" : "次スレ候補一覧"}
+              aria-label={isRelatedSearch ? "関連スレ・次スレ候補一覧" : "次スレ候補一覧"}
             >
               {state.candidates.map((candidate, index) => {
                 const evidenceLabels = getEvidenceLabels(candidate);
@@ -182,8 +184,8 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
           {isReady && state.candidates.length === 0 ? (
             <div className="next-thread-search-dialog__status">
               <span>
-                {isSimilarSearch
-                  ? "類似スレも次スレ候補も見つかりませんでした。"
+                {isRelatedSearch
+                  ? "関連スレも次スレ候補も見つかりませんでした。"
                   : "次スレ候補は見つかりませんでした。"}
               </span>
               {state.boardMessage ? <span>{state.boardMessage}</span> : null}
