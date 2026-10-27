@@ -15,6 +15,7 @@ import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 const logger = createLogger("view/browser");
 
@@ -186,12 +187,7 @@ export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) 
 
   const openBoard = React.useCallback(
     (board: RecentBoard, background = false) => {
-      const page = {
-        type: "threadList" as const,
-        title: board.boardTitle,
-        boardUrl: board.boardUrl,
-        boardTitle: board.boardTitle,
-      };
+      const page = createBoardPage(board.boardUrl, board.boardTitle);
       // ホームで選んだ板は同じタブで開き、中クリックだけは背景タブへ送る。
       if (!background) {
         dispatch(tabActions.navigate(page));

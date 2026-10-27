@@ -15,6 +15,7 @@ import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
 import { formatCompactDateTime } from "src/view/browser/utils/date-time";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 const UNKNOWN = "不明";
 
@@ -57,16 +58,7 @@ function ThreadProperties({ page, data }: { page: ThreadPage; data: ThreadSnapsh
       <button
         type="button"
         className="side-panel__link"
-        onClick={() =>
-          dispatch(
-            tabActions.navigate({
-              type: "threadList",
-              title: boardUrl,
-              boardUrl,
-              boardTitle: boardUrl,
-            }),
-          )
-        }
+        onClick={() => dispatch(tabActions.navigate(createBoardPage(boardUrl)))}
       >
         {boardUrl}
       </button>

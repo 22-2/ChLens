@@ -11,6 +11,7 @@ import {
 } from "src/view/browser/types";
 import { resolveBoardUrlForBrowser } from "src/view/browser/utils/link-routing";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 // タブストアの状態(ペイン・タブ・履歴スタック)を更新する純粋なヘルパー。
 // 閉じたタブの最大保持数
@@ -163,12 +164,8 @@ function buildCanonicalThreadStack(
       ? sourceThreadListPage
       : null;
 
-  const boardPage: Extract<Page, { type: "threadList" }> = boardPageFromSource ?? {
-    type: "threadList",
-    title: targetBoardUrl ?? threadPage.threadUrl,
-    boardUrl: targetBoardUrl ?? threadPage.threadUrl,
-    boardTitle: targetBoardUrl ?? threadPage.threadUrl,
-  };
+  const boardPage: Extract<Page, { type: "threadList" }> =
+    boardPageFromSource ?? createBoardPage(targetBoardUrl ?? threadPage.threadUrl);
 
   return [...buildCanonicalThreadListStack(boardPage), threadPage];
 }

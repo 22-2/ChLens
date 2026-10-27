@@ -10,6 +10,7 @@ import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
 import { Spinner } from "src/view/browser/ui/Spinner";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 const logger = createLogger("view/browser");
 
@@ -99,12 +100,7 @@ export const FavoriteBoardsSection: React.FC = () => {
 
   const openBoard = React.useCallback(
     (board: FavoriteBoard, background = false, forceNewTab = false) => {
-      const page = {
-        type: "threadList" as const,
-        title: board.title,
-        boardUrl: board.url,
-        boardTitle: board.title,
-      };
+      const page = createBoardPage(board.url, board.title);
       // 通常クリックは現在タブ、中クリックと明示的な新規タブ操作だけは別タブで開く。
       if (!background && !forceNewTab) {
         dispatch(tabActions.navigate(page));

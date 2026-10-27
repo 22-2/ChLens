@@ -13,6 +13,7 @@ import {
 } from "src/view/browser/types";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 // 新規タブ・ペインの生成と、設定に応じた初期ページの解決。
 type NewTabPageMode = "home" | "related_board" | "custom_board";
@@ -35,13 +36,7 @@ export function shouldFocusNewTabOnOpen(): boolean {
 }
 
 function createThreadListPageFromBoardUrl(boardUrl: string): Extract<Page, { type: "threadList" }> {
-  const normalized = normalizePageLocation(boardUrl);
-  return {
-    type: "threadList",
-    title: normalized,
-    boardUrl: normalized,
-    boardTitle: normalized,
-  };
+  return createBoardPage(normalizePageLocation(boardUrl));
 }
 
 function resolveRelatedBoardPage(

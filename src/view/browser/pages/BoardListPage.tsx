@@ -13,6 +13,7 @@ import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { canGoBack, canGoForward } from "src/view/browser/types";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 interface BoardListPageProps {
   tabId: string;
@@ -79,14 +80,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, r
 
   const handleBoardClick = useCallback(
     (boardUrl: string, boardTitle: string) => {
-      dispatch(
-        tabActions.navigate({
-          type: "threadList",
-          title: boardTitle,
-          boardUrl,
-          boardTitle,
-        }),
-      );
+      dispatch(tabActions.navigate(createBoardPage(boardUrl, boardTitle)));
     },
     [dispatch],
   );
@@ -95,15 +89,7 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, r
     (boardUrl: string, boardTitle: string) => {
       // ミドルクリックはバックグラウンドで開く（設定に関わらず常にバックグラウンドタブ）
       dispatch(
-        tabActions.openInNewTab(
-          {
-            type: "threadList",
-            title: boardTitle,
-            boardUrl,
-            boardTitle,
-          },
-          { background: true },
-        ),
+        tabActions.openInNewTab(createBoardPage(boardUrl, boardTitle), { background: true }),
       );
     },
     [dispatch],

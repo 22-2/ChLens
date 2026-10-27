@@ -4,6 +4,7 @@ import { buildCategoryId } from "src/features/board/domain/board-list-utils";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 /** 通常の板一覧と取得・削除・検索の規則を共有し、狭い領域ではツリーで表示する。 */
 export function SidePanelBoards({ tabId }: { tabId: string }) {
@@ -11,7 +12,7 @@ export function SidePanelBoards({ tabId }: { tabId: string }) {
   const logic = useBoardListLogic(0, tabId);
   const display = useBoardListDisplay({ ...logic, tabId });
   const openBoard = (url: string, title: string, background: boolean) => {
-    const page = { type: "threadList" as const, title, boardUrl: url, boardTitle: title };
+    const page = createBoardPage(url, title);
     dispatch(
       background ? tabActions.openInNewTab(page, { background: true }) : tabActions.navigate(page),
     );

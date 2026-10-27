@@ -54,6 +54,7 @@ import {
   resolveBoardUrlForBrowser,
 } from "src/view/browser/utils/link-routing";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
+import { createBoardPage } from "src/view/browser/utils/tab-pages";
 
 const logger = createLogger("thread-list");
 
@@ -181,12 +182,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
     [threadUrl, viewPage.title, viewTab.history, viewWindow],
   );
   const boardPage = useMemo(
-    () => ({
-      type: "threadList" as const,
-      title: descriptor.boardTitle,
-      boardUrl: descriptor.boardUrl,
-      boardTitle: descriptor.boardTitle,
-    }),
+    () => createBoardPage(descriptor.boardUrl, descriptor.boardTitle),
     [descriptor.boardTitle, descriptor.boardUrl],
   );
   const { state: persistedViewState, update: updateViewState } = useTabViewState(

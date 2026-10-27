@@ -83,6 +83,7 @@ import type { OmnibarSuggestion } from "src/view/browser/utils/omnibar";
 import { loadOmnibarSources } from "src/view/browser/utils/omnibar-sources";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import {
+  createBoardPage,
   createQuickAccessPage,
   createSettingsPage,
   type QuickAccessPage,
@@ -333,15 +334,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           label: "板を新しいタブで開く",
           onSelect: () =>
             dispatch(
-              tabActions.openInNewTabForce(
-                {
-                  type: "threadList",
-                  title: suggestion.boardTitle || boardUrl,
-                  boardUrl,
-                  boardTitle: suggestion.boardTitle || boardUrl,
-                },
-                { focus: true },
-              ),
+              tabActions.openInNewTabForce(createBoardPage(boardUrl, suggestion.boardTitle), {
+                focus: true,
+              }),
             ),
         },
         {
