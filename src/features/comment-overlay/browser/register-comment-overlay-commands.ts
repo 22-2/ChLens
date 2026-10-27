@@ -10,7 +10,7 @@ const logger = createLogger("comment-overlay");
 /** 共有コントローラーの操作を機能自身が登録し、開始時だけ実行元のスレを使う。 */
 export function registerCommentOverlayCommands(api: ExtensionApi): void {
   api.addCommand({
-    id: "page.toggle-comment-overlay",
+    id: "comment-overlay.toggle",
     label: "コメント実況を切り替え",
     englishLabel: "Toggle Comment Overlay",
     description: "実況中なら表示を切り替え、停止中なら表示中のスレッドの実況を開始します",

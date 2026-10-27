@@ -64,7 +64,7 @@ describe("コメント実況コマンド", () => {
 
   it("Tauri のときだけ表示し、所有者の解除で登録を消す", () => {
     const command = registry.getSnapshot()[0];
-    expect(command.id).toBe("page.toggle-comment-overlay");
+    expect(command.id).toBe("comment-overlay.toggle");
     expect(command.label).toBe("コメント実況を切り替え");
     expect(command.when?.(context({ type: "home", title: "ホーム" }))).toBe(true);
     mocks.isTauri.mockReturnValue(false);
