@@ -428,18 +428,18 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
           loading={bodySearchLoading}
           placeholder={searchMode === "body" ? "本文を検索..." : "タイトル・板を検索..."}
           prefix={
-            <button
-              type="button"
-              className="search-bar__mode-toggle"
-              onClick={() => setSearchMode((prev) => (prev === "title" ? "body" : "title"))}
-              title={
-                searchMode === "body"
-                  ? "本文検索中（クリックでタイトル検索へ）"
-                  : "タイトル検索中（クリックで本文検索へ）"
+            // 変更理由: ボタンの表示変化で切り替えるより、検索範囲を選択肢として示して現在値を把握しやすくする。
+            <select
+              className="search-bar__scope-select"
+              aria-label="検索範囲"
+              value={searchMode}
+              onChange={(event) =>
+                setSearchMode(event.target.value === "body" ? "body" : "title")
               }
             >
-              {searchMode === "body" ? "本文" : "タイトル"}
-            </button>
+              <option value="title">タイトル・板</option>
+              <option value="body">本文</option>
+            </select>
           }
         />
       ) : null}
