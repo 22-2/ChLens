@@ -149,6 +149,7 @@ describe("useThreadData Phase 0 contracts", () => {
       isNGBoard: (_title, _url, _resCount) => null,
       isNGThread: (_res, _title, _url) => null,
       hasImageRules: () => false,
+      hasImageHash: (_hash) => false,
       isSimilarImageNG: (_res, _title, _url, _imageHashes) => null,
       add: async (_ruleDsl) => undefined,
       invalidateCache: () => undefined,

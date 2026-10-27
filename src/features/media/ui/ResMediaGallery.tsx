@@ -28,6 +28,7 @@ import {
   type TwitterVerificationBadgeColor,
 } from "../application/twitter-post";
 import { requestMediaImageDownload } from "../browser/image-download-preflight";
+import { collectImageMenuItems } from "../browser/image-menu-contributions";
 import { isImageHashPending, useImageHashStore } from "../browser/use-image-hash-store";
 import {
   type MediaImageState,
@@ -651,6 +652,8 @@ export function ResMediaGallery({
   const openImageContextMenu = (url: string, event: React.MouseEvent<HTMLElement>) => {
     const imageIsLoaded = useMediaImageStore.getState().images.get(url)?.status === "loaded";
     if (!confirmExternal && !imageIsLoaded) return;
+    const image = event.currentTarget.querySelector<HTMLImageElement>("img[data-image-key]");
+    const targetWindow = event.currentTarget.ownerDocument.defaultView;
 
     openMenu(
       url,
@@ -664,6 +667,9 @@ export function ResMediaGallery({
               danger: true,
               onSelect: () => useMediaImageStore.getState().discardImage(url),
             },
+            ...(image && targetWindow
+              ? collectImageMenuItems({ imageKey: url, image, targetWindow })
+              : []),
           ]
         : [],
     );

@@ -126,6 +126,8 @@ export interface INGService {
   isNGThread(res: unknown, title: string, url: string): INGResult | null;
   /** 類似画像NGのルールがあるか。ないときは画像のハッシュを計算しない。 */
   hasImageRules(): boolean;
+  /** 同じハッシュが類似画像NGに登録済みか。 */
+  hasImageHash(hash: string): boolean;
   /** レスの画像のハッシュで類似画像NG（blur）を判定する。isNGThreadとは別に呼ぶ。 */
   isSimilarImageNG(
     res: unknown,

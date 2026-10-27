@@ -106,6 +106,26 @@ describe("類似画像NGのハッシュの保持", () => {
     });
   });
 
+  it("登録用には、ルールがなくてもその場で計算し、計算済みなら計算しない", async () => {
+    computeImageHashFromElement.mockResolvedValue("0123456789abcdef");
+    const store = useImageHashStore.getState();
+    await expect(store.getOrComputeHash(KEY, loadedImage())).resolves.toBe("0123456789abcdef");
+    await expect(store.getOrComputeHash(KEY, loadedImage())).resolves.toBe("0123456789abcdef");
+    expect(computeImageHashFromElement).toHaveBeenCalledTimes(1);
+    expect(useImageHashStore.getState().entries.get(KEY)).toEqual({
+      status: "ready",
+      hash: "0123456789abcdef",
+    });
+  });
+
+  it("登録用の計算に失敗したら、状態を変えずに呼び出し側へ伝える", async () => {
+    computeImageHashFromElement.mockRejectedValue(new Error("取得失敗"));
+    await expect(useImageHashStore.getState().getOrComputeHash(KEY, loadedImage())).rejects.toThrow(
+      "取得失敗",
+    );
+    expect(useImageHashStore.getState().entries.has(KEY)).toBe(false);
+  });
+
   it("上限を超えたら古いものから捨てる", async () => {
     computeImageHashFromElement.mockResolvedValue("0123456789abcdef");
     const store = useImageHashStore.getState();

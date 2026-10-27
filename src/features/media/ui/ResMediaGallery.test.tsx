@@ -23,6 +23,7 @@ vi.mock("../browser/image-download-preflight", () => ({
 
 import { imgurVideoResolver } from "../application/imgur-album";
 import { twitterPostResolver } from "../application/twitter-post";
+import { addImageMenuProvider } from "../browser/image-menu-contributions";
 import { useImageHashStore } from "../browser/use-image-hash-store";
 import { useMediaImageStore } from "../browser/use-media-image-store";
 import { ResMediaGallery } from "./ResMediaGallery";
@@ -111,6 +112,27 @@ describe("ResMediaGallery", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "削除されました" })[0]);
     await waitFor(() => expect(container.querySelectorAll("img")).toHaveLength(2));
     expect(useMediaImageStore.getState().images.get(imageUrl)?.status).toBe("requested");
+  });
+
+  it("ほかの機能が登録した項目を、読み込み済み画像の右クリックメニューに出す", async () => {
+    const onSelect = vi.fn();
+    const provider = vi.fn(() => [{ id: "extra", label: "追加の項目", onSelect }]);
+    const remove = addImageMenuProvider(provider);
+    try {
+      const imageUrl = "https://images.example.com/menu-photo.jpg";
+      render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />);
+      const image = screen.getByRole("img", { name: imageUrl });
+      fireEvent.load(image);
+      fireEvent.contextMenu(screen.getByRole("link", { name: imageUrl }));
+
+      fireEvent.click(await screen.findByRole("menuitem", { name: "追加の項目" }));
+      expect(onSelect).toHaveBeenCalled();
+      expect(provider).toHaveBeenCalledWith(
+        expect.objectContaining({ imageKey: imageUrl, image, targetWindow: window }),
+      );
+    } finally {
+      remove();
+    }
   });
 
   it("YouTube サムネイルをクリックするとレス内 iframe を開く", () => {

@@ -36,6 +36,7 @@ describe("類似画像NGでぼかすレス", () => {
       isNGBoard: vi.fn().mockReturnValue(null),
       isNGThread: vi.fn().mockReturnValue(null),
       hasImageRules,
+      hasImageHash: vi.fn().mockReturnValue(false),
       isSimilarImageNG,
       add: vi.fn(),
       invalidateCache: vi.fn(),

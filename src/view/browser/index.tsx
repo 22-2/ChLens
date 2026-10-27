@@ -12,6 +12,7 @@ import { registerCommentOverlayCommands } from "src/features/comment-overlay/bro
 import { registerFilterCommands } from "src/features/filter/browser/register-filter-commands";
 import { registerMediaCommands } from "src/features/media/browser/register-media-commands";
 import { registerNextThreadCommands } from "src/features/next-thread/browser/register-next-thread-commands";
+import { registerSimilarImageNg } from "src/features/ng/browser/register-similar-image-ng";
 import { setupBrowserViewServices } from "src/service-container/setup-browser-view";
 import { BrowserApp } from "src/view/browser/App";
 import {
@@ -57,6 +58,8 @@ void boot("/view/index.html", () => {
   // フィルターは media・next-thread の表示順の基準になるため先に登録する。
   registerFilterCommands(getApi("filter"));
   registerMediaCommands(getApi("media"));
+  // 画像の右クリックメニューに類似画像NGの登録を足す（メニューの持ち主は media、登録の処理は ng）。
+  registerSimilarImageNg(getApi("ng"));
   registerBookmarkCommands(getApi("bookmark"));
   registerAutoRefreshCommands(getApi("auto-refresh"));
   registerNextThreadCommands(getApi("next-thread"));

@@ -4,6 +4,7 @@ import {
   evaluateImageRules,
   evaluateResponseRules,
   formatRuleDsl,
+  getRuleConditions,
   type ResponseRuleContext,
   type Rule,
   type RuleMatchResult,
@@ -281,6 +282,19 @@ export function createNG(deps: NGDeps) {
     return get().some((rule) => rule.action === "blur" && rule.target === "image");
   }
 
+  /** 同じハッシュが類似画像NGに登録済みか。登録の二重化を防ぐ。 */
+  function hasImageHash(hash: string): boolean {
+    return get().some((rule) =>
+      getRuleConditions(rule).some(
+        (condition) =>
+          condition.target === "image" &&
+          condition.matchers.some(
+            (matcher) => matcher.kind === "image-hash" && matcher.value === hash,
+          ),
+      ),
+    );
+  }
+
   /**
    * レスの画像のハッシュで類似画像NGを判定する。
    * 隠す・強調の判定（isNGThread）とは別に呼ぶ。最初の一致だけを返す判定に混ぜると取り合いになるため。
@@ -331,6 +345,7 @@ export function createNG(deps: NGDeps) {
     isNGBoard,
     isNGThread,
     hasImageRules,
+    hasImageHash,
     isSimilarImageNG,
     execExpire,
   };

@@ -190,3 +190,18 @@ describe("類似画像NG", () => {
     expect(ng.isNGThread(res, "スレ", url)).toMatchObject({ action: "hide" });
   });
 });
+
+describe("類似画像NGの登録済みハッシュ", () => {
+  beforeEach(() => configStore.clear());
+
+  it("同じハッシュが登録済みかを返す", () => {
+    configStore.set(
+      "ngwords",
+      'blur:\n  when image similar:\n    "0000000000000000"\n    "0f0f0f0f0f0f0f0f"',
+    );
+    const ng = createNG(deps);
+    ng.invalidateCache();
+    expect(ng.hasImageHash("0f0f0f0f0f0f0f0f")).toBe(true);
+    expect(ng.hasImageHash("ffffffffffffffff")).toBe(false);
+  });
+});

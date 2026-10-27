@@ -26,6 +26,11 @@ interface ImageHashStoreState {
    * 表示できない画像は伏せる必要がないので、計算に失敗した画像と同じ扱いにする。
    */
   markImageUnavailable: (key: string) => void;
+  /**
+   * 計算済みならそのハッシュを、なければその場で計算して返す（類似画像NGへの登録用）。
+   * 登録はルールがまだない状態でも行うため、hashingEnabled に関係なく計算する。
+   */
+  getOrComputeHash: (key: string, image: HTMLImageElement) => Promise<string>;
 }
 
 function withEntry(
@@ -84,6 +89,15 @@ export const useImageHashStore = create<ImageHashStoreState>((set, get) => ({
     if (current === "ready" || current === "error") return;
     // 読み込みの失敗はExternalImage側で扱うため、ここではログを重ねて出さない。
     set((state) => ({ entries: withEntry(state.entries, key, { status: "error" }) }));
+  },
+
+  getOrComputeHash: async (key, image) => {
+    const current = get().entries.get(key);
+    if (current?.status === "ready") return current.hash;
+    // 失敗は呼び出し側（登録の操作）が利用者へ伝えるため、ここでは状態を変えずに投げ直す。
+    const hash = await computeImageHashFromElement(image);
+    set((state) => ({ entries: withEntry(state.entries, key, { status: "ready", hash }) }));
+    return hash;
   },
 }));
 
