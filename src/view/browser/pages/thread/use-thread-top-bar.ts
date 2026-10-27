@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { registerThreadFilterToggle } from "src/view/browser/extension/page-actions";
+import { registerFilterToggle } from "src/view/browser/extension/page-actions";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   setFilterToolbarOpen,
@@ -132,7 +132,7 @@ export function useThreadTopBar({
   useEffect(() => {
     // 非表示のタブは操作を受けず、画面終了時には古いハンドラーを解除する。
     if (!isActive) return;
-    return registerThreadFilterToggle(viewWindow, tabId, toggleFilterToolbar);
+    return registerFilterToggle(viewWindow, tabId, toggleFilterToolbar);
   }, [isActive, tabId, toggleFilterToolbar, viewWindow]);
 
   return {

@@ -133,7 +133,6 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
   }, [searchQuery, sortState, updateViewState]);
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
-    pageType: "bookmarkList",
     tabId,
     isActive,
     searchQuery,

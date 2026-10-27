@@ -1,11 +1,11 @@
 import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { toggleFilter } from "src/view/browser/extension/page-actions";
 import {
   navigateToWriteHistoryEntry,
   WriteHistoryListPage,
 } from "src/view/browser/pages/WriteHistoryListPage";
-import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import {
   consumePendingThreadResJump,
   peekPendingThreadResJump,
@@ -199,11 +199,7 @@ describe("WriteHistoryListPage", () => {
     expect(screen.queryByPlaceholderText("検索...")).not.toBeInTheDocument();
 
     act(() => {
-      window.dispatchEvent(
-        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.writeHistoryList, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
+      toggleFilter(window, "tab-1");
     });
 
     const input = screen.getByPlaceholderText("検索...");
@@ -215,11 +211,7 @@ describe("WriteHistoryListPage", () => {
     expect(screen.queryByPlaceholderText("検索...")).not.toBeInTheDocument();
 
     act(() => {
-      window.dispatchEvent(
-        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.writeHistoryList, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
+      toggleFilter(window, "tab-1");
     });
 
     expect(screen.getByPlaceholderText("検索...")).toHaveValue("");

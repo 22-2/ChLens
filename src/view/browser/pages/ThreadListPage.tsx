@@ -230,7 +230,6 @@ export const ThreadListPage: React.FC<Props> = ({
   const previousBoardUrlRef = useRef(page.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
-    pageType: "threadList",
     tabId,
     isActive,
     searchQuery,

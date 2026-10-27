@@ -55,7 +55,7 @@ import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log
 import { toggleZenMode } from "src/view/browser/commands/zen-mode-store";
 import { CommandRegistry } from "src/view/browser/extension/command-registry";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
-import { toggleThreadFilter } from "src/view/browser/extension/page-actions";
+import { toggleFilter as toggleFilterForTab } from "src/view/browser/extension/page-actions";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import type { Page, ThreadFilter } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -66,11 +66,7 @@ import {
   removeExtensionTabs,
 } from "src/view/browser/utils/extension-tabs";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
-import {
-  QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
-  type QuickAccessFilterPageType,
-  THREAD_FILTER_MODE_TOGGLE_EVENT,
-} from "src/view/browser/utils/filter-toolbar-events";
+import { THREAD_FILTER_MODE_TOGGLE_EVENT } from "src/view/browser/utils/filter-toolbar-events";
 import { isPageFilterable } from "src/view/browser/utils/filterable-pages";
 import {
   getBoardUrlFromThreadUrl,
@@ -268,21 +264,7 @@ async function openLocalDatFile(context: BrowserCommandContext): Promise<void> {
 
 function toggleFilter(context: BrowserCommandContext): void {
   const { window: viewWindow } = getCommandSurface(context);
-  const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
-  if (context.viewPage.type === "thread") {
-    toggleThreadFilter(viewWindow, context.viewTab.id);
-    return;
-  }
-
-  const pageType = context.viewPage.type as QuickAccessFilterPageType;
-  const eventName = QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[pageType];
-  if (!eventName) return;
-
-  viewWindow.dispatchEvent(
-    new viewWindowWithConstructors.CustomEvent(eventName, {
-      detail: { tabId: context.viewTab.id },
-    }),
-  );
+  toggleFilterForTab(viewWindow, context.viewTab.id);
 }
 
 function dispatchThreadFilterModeToggle(

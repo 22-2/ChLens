@@ -3,8 +3,8 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { container } from "src/service-container";
 import type { IBookmarkEntry } from "src/service-container/interfaces";
+import { toggleFilter } from "src/view/browser/extension/page-actions";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
-import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mockUseTabStore = vi.fn();
@@ -214,11 +214,7 @@ describe("BookmarkListPage", () => {
     expect(screen.queryByPlaceholderText("検索...")).not.toBeInTheDocument();
 
     act(() => {
-      window.dispatchEvent(
-        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
+      toggleFilter(window, "tab-1");
     });
 
     const input = screen.getByPlaceholderText("検索...");
@@ -228,11 +224,7 @@ describe("BookmarkListPage", () => {
     expect(screen.queryByPlaceholderText("検索...")).not.toBeInTheDocument();
 
     act(() => {
-      window.dispatchEvent(
-        new window.CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
+      toggleFilter(window, "tab-1");
     });
 
     expect(screen.getByPlaceholderText("検索...")).toHaveValue("");

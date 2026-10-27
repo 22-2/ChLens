@@ -19,9 +19,9 @@ import type {
 } from "src/service-container/interfaces";
 import { stubService } from "src/service-container/test-stubs";
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
+import { toggleFilter as togglePageFilter } from "src/view/browser/extension/page-actions";
 import { ThreadListPage } from "src/view/browser/pages/ThreadListPage";
 import { getAutoRefreshThreadPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
-import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const THREAD_LIST_SORT_STORAGE_KEY = "chlens_browser_thread_list_sort_by_site";
@@ -697,12 +697,9 @@ describe("ThreadListPage", () => {
     expect(dispatchMock).not.toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
 
     const toggleFilter = () =>
-      fireEvent(
-        window,
-        new CustomEvent(QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.threadList, {
-          detail: { tabId: "tab-1" },
-        }),
-      );
+      act(() => {
+        togglePageFilter(window, "tab-1");
+      });
     // ボタンで開いたフィルタは、下ホイールでは閉じない。
     toggleFilter();
     expect(screen.getByRole("textbox")).toBeVisible();

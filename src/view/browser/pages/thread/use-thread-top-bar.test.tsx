@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { toggleThreadFilter } from "src/view/browser/extension/page-actions";
+import { toggleFilter as toggleFilterForTab } from "src/view/browser/extension/page-actions";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import type { ThreadFilter } from "src/view/browser/types";
 import { afterEach, describe, expect, it } from "vite-plus/test";
@@ -77,7 +77,7 @@ describe("useThreadTopBar", () => {
     render(<TopBarHarness pinnedOpen />);
 
     act(() => {
-      toggleThreadFilter(window, "tab-1");
+      toggleFilterForTab(window, "tab-1");
     });
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
@@ -133,13 +133,13 @@ describe("useThreadTopBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "set filter" }));
 
     act(() => {
-      toggleThreadFilter(window, "tab-1");
+      toggleFilterForTab(window, "tab-1");
     });
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
 
     act(() => {
-      toggleThreadFilter(window, "tab-1");
+      toggleFilterForTab(window, "tab-1");
     });
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("none");
@@ -155,7 +155,7 @@ describe("useThreadTopBar", () => {
     );
 
     act(() => {
-      toggleThreadFilter(window, "tab-2");
+      toggleFilterForTab(window, "tab-2");
     });
 
     expect(screen.getAllByTestId("active-top-bar")[0]).toHaveTextContent("none");
@@ -164,13 +164,13 @@ describe("useThreadTopBar", () => {
 
   it("非表示と画面終了後はフィルター操作を受け取らない", () => {
     const { rerender, unmount } = render(<TopBarHarness />);
-    expect(toggleThreadFilter(window, "tab-1")).toBe(true);
+    expect(toggleFilterForTab(window, "tab-1")).toBe("executed");
     rerender(<TopBarHarness isActive={false} />);
-    expect(toggleThreadFilter(window, "tab-1")).toBe(false);
+    expect(toggleFilterForTab(window, "tab-1")).toBe("target-unavailable");
     rerender(<TopBarHarness />);
-    expect(toggleThreadFilter(window, "tab-1")).toBe(true);
+    expect(toggleFilterForTab(window, "tab-1")).toBe("executed");
     unmount();
-    expect(toggleThreadFilter(window, "tab-1")).toBe(false);
+    expect(toggleFilterForTab(window, "tab-1")).toBe("target-unavailable");
   });
 
   it("ホイール相当のクローズでは検索語による絞り込みを維持する", () => {

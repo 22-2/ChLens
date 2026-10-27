@@ -39,7 +39,7 @@ import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log-actions";
 import { useZenMode } from "src/view/browser/commands/zen-mode-store";
 import { Omnibar } from "src/view/browser/components/Omnibar";
-import { toggleThreadFilter } from "src/view/browser/extension/page-actions";
+import { toggleFilter as toggleFilterForTab } from "src/view/browser/extension/page-actions";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
   BOTTOM_PANEL_WRITE_TAB_ID,
@@ -60,10 +60,7 @@ import { canGoBack, canGoForward, getCurrentPage } from "src/view/browser/types"
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Dialog } from "src/view/browser/ui/Dialog";
-import {
-  QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
-  type QuickAccessFilterPageType,
-} from "src/view/browser/utils/filter-toolbar-events";
+import {} from "src/view/browser/utils/filter-toolbar-events";
 import {
   useFilterToolbarOpen,
   useFilterToolbarPinned,
@@ -613,30 +610,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     isPageFilterable(viewPage.type) && !(viewPage.type === "thread" && isFilterToolbarPinned);
 
   const toggleFilterFromMenu = useCallback(() => {
-    // フィルタUIはメニュー項目からのみ開くことで、
-    // メニューボタン押下そのものをトリガーにしない。
-    if (viewPage.type === "thread") {
-      toggleThreadFilter(viewSurface.window, viewTab.id);
-      return;
-    }
-
-    if (
-      viewPage.type === "boardList" ||
-      viewPage.type === "threadList" ||
-      viewPage.type === "bookmarkList" ||
-      viewPage.type === "historyList" ||
-      viewPage.type === "writeHistoryList" ||
-      viewPage.type === "logList"
-    ) {
-      const eventName =
-        QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE[viewPage.type as QuickAccessFilterPageType];
-      window.dispatchEvent(
-        new window.CustomEvent(eventName, {
-          detail: { tabId: viewTab.id },
-        }),
-      );
-    }
-  }, [viewTab.id, viewPage.type, viewSurface.window]);
+    toggleFilterForTab(viewSurface.window, viewTab.id);
+  }, [viewTab.id, viewSurface.window]);
 
   // oxlint-disable-next-line react/set-state-in-effect -- スレッド以外へ移動した際に古い更新メニュー位置を破棄する。
   useEffect(() => {

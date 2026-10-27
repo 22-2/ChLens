@@ -52,7 +52,6 @@ export const BoardListPage: React.FC<BoardListPageProps> = ({ tabId, isActive, r
   });
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
-    pageType: "boardList",
     tabId,
     isActive,
     searchQuery,

@@ -139,7 +139,6 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
   const [bodySearchLoading, setBodySearchLoading] = useState(false);
 
   const { isFilterOpen, closeFilterToolbar } = useQuickAccessFilterToolbar({
-    pageType: "logList",
     tabId,
     isActive,
     searchQuery,

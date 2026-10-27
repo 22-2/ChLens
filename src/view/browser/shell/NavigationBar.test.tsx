@@ -16,10 +16,9 @@ import {
   createExtensionOwner,
   type ExtensionOwner,
 } from "src/view/browser/extension/extension-api";
-import { registerThreadFilterToggle } from "src/view/browser/extension/page-actions";
+import { registerFilterToggle } from "src/view/browser/extension/page-actions";
 import { NavigationBar } from "src/view/browser/shell/NavigationBar";
 import type { Page } from "src/view/browser/types";
-import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
 import {
   setFilterToolbarOpen,
   setFilterToolbarPinned,
@@ -676,7 +675,7 @@ describe("NavigationBar", () => {
 
   it("URLバーの開閉ボタンの左にあるフィルタボタンで対象タブのフィルターを切り替える", () => {
     const toggle = vi.fn();
-    const dispose = registerThreadFilterToggle(window, viewTab.id, toggle);
+    const dispose = registerFilterToggle(window, viewTab.id, toggle);
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByRole("button", { name: "フィルターを開閉" }));
@@ -713,7 +712,7 @@ describe("NavigationBar", () => {
 
   it("メニュー項目の『フィルターを開く』で対象タブのフィルターを切り替える", () => {
     const toggle = vi.fn();
-    const dispose = registerThreadFilterToggle(window, viewTab.id, toggle);
+    const dispose = registerFilterToggle(window, viewTab.id, toggle);
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByTitle("メニュー"));
@@ -724,7 +723,8 @@ describe("NavigationBar", () => {
   });
 
   it("閲覧履歴ではメニュー項目の『フィルターを開く』で履歴用トグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const toggle = vi.fn();
+    const dispose = registerFilterToggle(window, "tab-1", toggle);
     viewTab.history = [
       {
         type: "historyList" as const,
@@ -738,17 +738,13 @@ describe("NavigationBar", () => {
     fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.historyList,
-        detail: { tabId: "tab-1" },
-      }),
-    );
-    dispatchEventSpy.mockRestore();
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
   });
 
   it("板一覧ではメニュー項目の『フィルターを開く』で板一覧用トグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const toggle = vi.fn();
+    const dispose = registerFilterToggle(window, "tab-1", toggle);
     viewTab.history = [
       {
         type: "boardList" as const,
@@ -762,17 +758,13 @@ describe("NavigationBar", () => {
     fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.boardList,
-        detail: { tabId: "tab-1" },
-      }),
-    );
-    dispatchEventSpy.mockRestore();
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
   });
 
   it("ブックマークリストではメニュー項目の『フィルターを開く』でブックマーク用トグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+    const toggle = vi.fn();
+    const dispose = registerFilterToggle(window, "tab-1", toggle);
     viewTab.history = [
       {
         type: "bookmarkList" as const,
@@ -786,13 +778,8 @@ describe("NavigationBar", () => {
     fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE.bookmarkList,
-        detail: { tabId: "tab-1" },
-      }),
-    );
-    dispatchEventSpy.mockRestore();
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
   });
 
   it("メニュー上部のお気に入りで現在スレッドのブックマークを切り替える", async () => {

@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useEffect } from "react";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
-import { registerThreadFilterToggle } from "src/view/browser/extension/page-actions";
+import { registerFilterToggle } from "src/view/browser/extension/page-actions";
 import {
   getThreadListPageCountKey,
   getThreadPageCountKey,
@@ -119,7 +119,7 @@ describe("PageCountStatusItem", () => {
     renderStatusBar("thread", 128);
 
     const toggle = vi.fn();
-    const dispose = registerThreadFilterToggle(window, "tab-1", toggle);
+    const dispose = registerFilterToggle(window, "tab-1", toggle);
     try {
       const countButton = await screen.findByRole("button", { name: "現在のレス数: 128レス" });
       fireEvent.click(countButton);

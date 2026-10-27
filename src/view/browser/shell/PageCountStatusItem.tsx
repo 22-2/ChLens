@@ -1,7 +1,7 @@
 import React from "react";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
-import { toggleThreadFilter } from "src/view/browser/extension/page-actions";
+import { toggleFilter as toggleFilterForTab } from "src/view/browser/extension/page-actions";
 import {
   getThreadListPageCountKey,
   getThreadPageCountKey,
@@ -52,7 +52,7 @@ export const PageCountStatusItem: React.FC = () => {
     }
 
     // ステータスバーからも表示中の窓とタブに登録された同じ操作を使う。
-    toggleThreadFilter(viewWindow, viewTab.id);
+    toggleFilterForTab(viewWindow, viewTab.id);
   };
 
   return (
