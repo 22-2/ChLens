@@ -5,12 +5,10 @@ import {
   getThreadMediaViewerScopeId,
   useMediaViewerStore,
 } from "src/features/media/browser/use-media-viewer-store";
-import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
 import { collectThreadImages } from "src/features/media/domain/thread-images";
 import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
-import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
@@ -26,7 +24,6 @@ function ThreadImageGrid({
   threadUrl: string;
   data: ThreadSnapshot;
 }) {
-  const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
   const imageStates = useMediaImageStore((store) => store.images);
   const openMedia = useMediaViewerStore((store) => store.openMediaFromUrl);
   const items = useMemo(
@@ -54,8 +51,8 @@ function ThreadImageGrid({
               alt={`>>${item.resNum} の画像`}
               className="side-panel__image-thumb"
               loading="lazy"
-              // 本文と同じ手動取得設定に従い、サイドパネルを開いただけで画像を取得しない。
-              manualLoad={manualImageLoading}
+              // ギャラリーは取得操作を明示したときだけ読み込み、取得済み画像だけを表示する。
+              manualLoad
             />
           );
           return (
