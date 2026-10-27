@@ -19,16 +19,25 @@ test.beforeAll(async () => {
     configFile: false,
     root,
     resolve: {
-      alias: {
+      // 変更理由: レスの画像表示が platform を読み込むようになり、実物は拡張機能 API を要求して
+      // 画面が開かなくなった。`src/app/platform` と `.../index` の両方を差し替えへ向ける。
+      alias: [
         ...(virtualListSource
-          ? {
-              "src/features/thread/browser/use-thread-virtual-list": virtualListSource,
-            }
-          : {}),
-        src: path.join(root, "src"),
-        packages: path.join(root, "packages"),
-        "@chlen/chlib": path.join(root, "packages/chlib/src/index.ts"),
-      },
+          ? [
+              {
+                find: "src/features/thread/browser/use-thread-virtual-list",
+                replacement: virtualListSource,
+              },
+            ]
+          : []),
+        {
+          find: /^src\/app\/platform(?:\/index)?$/,
+          replacement: path.join(root, "tests/browser/fixtures/ng-virtual-list-platform.ts"),
+        },
+        { find: /^src\//, replacement: `${path.join(root, "src")}/` },
+        { find: /^packages\//, replacement: `${path.join(root, "packages")}/` },
+        { find: "@chlen/chlib", replacement: path.join(root, "packages/chlib/src/index.ts") },
+      ],
     },
     server: {
       host: "127.0.0.1",

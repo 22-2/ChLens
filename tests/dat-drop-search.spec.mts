@@ -9,7 +9,7 @@ async function openUrl(page: Page, url: string) {
   await urlInput.press("Enter");
 }
 
-test("dat落ち通知の類似検索には次スレを含め、次スレ検索は候補だけに絞る", async ({
+test("dat落ち通知の類似検索には次スレを含め、候補から次スレへ移動できる", async ({
   page,
   extensionId,
   localBoard,
@@ -58,18 +58,16 @@ test("dat落ち通知の類似検索には次スレを含め、次スレ検索�
   ).toBeVisible();
   await similarDialog.getByRole("button", { name: "閉じる" }).click();
 
-  await activePanel.getByRole("button", { name: "次スレを探す" }).click();
-  const nextDialog = page.getByRole("dialog");
-  const nextResults = nextDialog.getByRole("list", { name: "次スレ候補一覧" });
-  const nextCandidate = nextResults.getByRole("button", { name: "ローカル実況 Part.2へ移動" });
-  await expect(nextCandidate).toBeVisible();
-  await expect(nextResults.getByRole("button", { name: "ローカル実況 Part.5へ移動" })).toHaveCount(
-    0,
-  );
-  await nextCandidate.click();
+  // 次スレ検索の操作は通知から外したため、類似検索の結果から次スレへ移動できることを確かめる。
+  await expect(activePanel.getByRole("button", { name: "次スレを探す" })).toHaveCount(0);
+  await activePanel.getByRole("button", { name: "類似スレを探す" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("list", { name: "類似スレ・次スレ候補一覧" })
+    .getByRole("button", { name: "ローカル実況 Part.2へ移動" })
+    .click();
   await expect(page.getByTestId("title-bar-title")).toHaveText("ローカル実況 Part.2");
   await expect(
     page.locator('.content-area__tab-panel[data-active="true"] [data-res-num="1"]'),
   ).toContainText("次スレのレス");
 });
-

@@ -138,8 +138,9 @@ describe("use-bottom-panel", () => {
   it.each(["返信", "書き込み", "書き込みを開く", "書き込みタブ"])(
     "%sからスレ一覧を切り替えても書き込みの高さで開く",
     (action) => {
+      const layout: Record<string, unknown> = {};
       render(
-        <BottomPanelProvider>
+        <BottomPanelProvider onLayoutChange={(patch) => Object.assign(layout, patch)}>
           <PanelProbe />
         </BottomPanelProvider>,
       );
@@ -150,7 +151,7 @@ describe("use-bottom-panel", () => {
       expect(screen.getByTestId("open")).toHaveTextContent("true");
       expect(screen.getByTestId("active")).toHaveTextContent(BOTTOM_PANEL_WRITE_TAB_ID);
       expect(screen.getByTestId("height")).toHaveTextContent(String(DEFAULT_BOTTOM_PANEL_HEIGHT));
-      expect(JSON.parse(storage.value ?? "{}")).toMatchObject({
+      expect(layout).toMatchObject({
         height: DEFAULT_BOTTOM_PANEL_HEIGHT,
         activeTabId: BOTTOM_PANEL_WRITE_TAB_ID,
         isOpen: true,

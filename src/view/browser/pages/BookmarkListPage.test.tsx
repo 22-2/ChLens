@@ -90,6 +90,7 @@ describe("BookmarkListPage", () => {
       get: vi.fn(),
       add: vi.fn(),
       remove: removeBookmarkMock,
+      clearReadState: vi.fn(),
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: () => [],

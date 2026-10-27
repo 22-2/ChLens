@@ -3,6 +3,7 @@ import {
   getBrowserSessionJson,
   setBrowserSessionJson,
 } from "src/view/browser/state/tabs/browser-session-storage";
+import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import type { TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
 import type { Page, Pane, PersistedTab, Tab, TabViewStates } from "src/view/browser/types";
 import {
@@ -24,6 +25,8 @@ interface PersistedTabStoreState {
   panes: PersistedPane[];
   activePaneId: string;
   closedTabs: PersistedTab[];
+  sidePanel?: TabStoreState["sidePanel"];
+  bottomPanels?: TabStoreState["bottomPanels"];
 }
 
 // 旧セッションに残っている可能性がある項目。読み込み時の移行だけに使う。
@@ -44,6 +47,8 @@ type LoadedTab = Partial<PersistedTab> & {
 function pruneViewStates(tab: PersistedTab): TabViewStates | undefined {
   if (!tab.viewStates) return undefined;
   const reachableKeys = new Set(tab.history.map((page) => getPageViewStateKey(page)));
+  // 板一覧はサイドパネルからも使うため、通常ページの履歴がなくても表示状態を保つ。
+  reachableKeys.add("boardList");
   const entries = Object.entries(tab.viewStates).filter(([key]) => reachableKeys.has(key));
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
@@ -73,6 +78,16 @@ function toPersistedTabStoreState(state: TabStoreState): PersistedTabStoreState 
     }),
     activePaneId: state.activePaneId,
     closedTabs: state.closedTabs.map(toPersistedTab),
+    ...(state.sidePanel ? { sidePanel: state.sidePanel } : {}),
+    ...(state.bottomPanels
+      ? {
+          bottomPanels: Object.fromEntries(
+            Object.entries(state.bottomPanels).filter(([id]) =>
+              state.panes.some((pane) => pane.id === id),
+            ),
+          ),
+        }
+      : {}),
   };
 }
 
@@ -87,6 +102,8 @@ export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
     panes: persisted.panes.map((pane) => ({ ...pane, tabs: pane.tabs.map(fromPersistedTab) })),
     activePaneId: persisted.activePaneId,
     closedTabs: persisted.closedTabs.map(fromPersistedTab),
+    ...(persisted.sidePanel ? { sidePanel: persisted.sidePanel } : {}),
+    ...(persisted.bottomPanels ? { bottomPanels: persisted.bottomPanels } : {}),
   };
 }
 
@@ -127,6 +144,8 @@ function normalizeLoadedTab(tab: LoadedTab): Tab {
 type LoadedTabStoreState = {
   panes?: (Omit<Pane, "tabs"> & { tabs: LoadedTab[] })[];
   activePaneId?: string;
+  sidePanel?: TabStoreState["sidePanel"];
+  bottomPanels?: TabStoreState["bottomPanels"];
   tabs?: LoadedTab[];
   activeTabId?: string;
   closedTabs?: LoadedTab[];
@@ -165,6 +184,18 @@ export function loadTabStoreSession(): TabStoreState | null {
         panes,
         activePaneId,
         closedTabs: (parsed.closedTabs ?? []).map((tab) => normalizeLoadedTab(tab)),
+        ...(parsed.sidePanel ? { sidePanel: normalizeSidePanel(parsed.sidePanel) } : {}),
+        ...(parsed.bottomPanels &&
+        typeof parsed.bottomPanels === "object" &&
+        !Array.isArray(parsed.bottomPanels)
+          ? {
+              bottomPanels: Object.fromEntries(
+                Object.entries(parsed.bottomPanels).filter(([id]) =>
+                  panes.some((pane) => pane.id === id),
+                ),
+              ),
+            }
+          : {}),
       };
     }
 

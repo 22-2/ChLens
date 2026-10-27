@@ -39,7 +39,10 @@
   overflow: hidden;
   color: var(--sys-color-overlay-comment-text);
   background: var(--sys-color-overlay-media-bg);
-  font: 16px/1.2 "MS PGothic", "Mona", monospace;
+  font:
+    16px/1.2 "MS PGothic",
+    "Mona",
+    monospace;
   white-space: pre;
   pointer-events: auto;
   cursor: context-menu;

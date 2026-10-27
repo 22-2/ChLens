@@ -1,5 +1,5 @@
 import type { ParsedBBSMenu } from "packages/chlib/src/index";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
   OPENED_BOARDS_CONFIG_KEY,
@@ -8,41 +8,16 @@ import {
 } from "src/core/board/opened-board-entries";
 import { container } from "src/service-container/index";
 import { normalizeBoardUrlForRemove } from "src/view/browser/pages/board-list/board-list-utils";
+import { useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
 
 // ─── 定数 ────────────────────────────────────────────────────────────────────
 
 const logger = createLogger("useBoardListLogic");
 const CONFIG_KEYS = {
-  OPEN_STATES: "board_list_open_states",
   REMOVED_BOARD_URLS: "board_list_removed_urls",
   REMOVED_MENU_NAMES: "board_list_removed_menus",
   REMOVED_CATEGORY_IDS: "board_list_removed_category_ids",
 } as const;
-
-function loadOpenStates(): Record<string, boolean> {
-  const raw = container.config.get(CONFIG_KEYS.OPEN_STATES);
-  if (!raw) return {};
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    // 過去の検索復元処理がnullを保存した場合も、F5で起動不能にせず既定状態へ戻す。
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      logger.warn("板一覧の開閉設定がオブジェクトではないため、既定状態で表示します", {
-        value: parsed,
-      });
-      return {};
-    }
-    const entries = Object.entries(parsed);
-    if (entries.some(([, value]) => typeof value !== "boolean")) {
-      logger.warn("板一覧の開閉設定に不正な値があるため、真偽値の項目だけを復元します");
-    }
-    return Object.fromEntries(
-      entries.filter((entry): entry is [string, boolean] => typeof entry[1] === "boolean"),
-    );
-  } catch (error) {
-    logger.warn("板一覧の開閉設定を読み込めないため、既定状態で表示します", error);
-    return {};
-  }
-}
 
 // ─── ユーティリティ ──────────────────────────────────────────────────────────
 
@@ -110,12 +85,25 @@ function usePersistedSet(
  * - 開かれたアコーディオンの状態管理
  * - 一度開いた板のトラッキング
  */
-export function useBoardListLogic(refreshKey = 0) {
+export function useBoardListLogic(refreshKey = 0, tabId = "") {
+  const { state: viewState, update: updateViewState } = useTabViewState(tabId, {
+    type: "boardList",
+    title: "板一覧",
+  });
   const [categories, setCategories] = useState<ParsedBBSMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // 検索中のセッション復元でも、検索フックが保存前の初期値を退避しないよう先に読み込む。
-  const [openStates, setOpenStates] = useState<Record<string, boolean>>(loadOpenStates);
+  const [openStates, setOpenStates] = useState<Record<string, boolean>>(() => {
+    const saved = viewState.boardListOpenStates;
+    if (!saved || typeof saved !== "object" || Array.isArray(saved)) return {};
+    return Object.fromEntries(
+      Object.entries(saved).filter(
+        (entry): entry is [string, boolean] => typeof entry[1] === "boolean",
+      ),
+    );
+  });
+  const openStatesRef = useRef(openStates);
   const [openedBoardEntries, setOpenedBoardEntries] = useState<OpenedBoardEntry[]>([]);
 
   const [removedBoardUrls, addRemovedBoardUrl] = usePersistedSet(
@@ -225,20 +213,13 @@ export function useBoardListLogic(refreshKey = 0) {
 
   const updateOpenStates = useCallback(
     (updater: (prev: Record<string, boolean>) => Record<string, boolean>) => {
-      setOpenStates((prev) => {
-        const next = updater(prev);
-        // 検索中は同じ開閉状態を返すことがあるため、変更があるときだけ保存する。
-        if (next !== prev) {
-          void Promise.resolve()
-            .then(() => container.config.set(CONFIG_KEYS.OPEN_STATES, JSON.stringify(next)))
-            .catch((error) => {
-              logger.error("板一覧の開閉設定を保存できませんでした", error);
-            });
-        }
-        return next;
-      });
+      const next = updater(openStatesRef.current);
+      if (next === openStatesRef.current) return;
+      openStatesRef.current = next;
+      setOpenStates(next);
+      updateViewState({ boardListOpenStates: next });
     },
-    [],
+    [updateViewState],
   );
 
   // ─── 公開 API ────────────────────────────────────────────────────────────

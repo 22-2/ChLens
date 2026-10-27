@@ -3,10 +3,10 @@ import "./story-canvas.css";
 
 import type { Preview } from "@storybook/react-vite";
 
-// 変更理由: Storybookの型検査はアプリ側のVite aliasを共有しないため、リポジトリルートから相対参照する。
-import { TooltipProvider } from "../src/view/browser/ui/Tooltip";
 import { container } from "../src/service-container";
 import type { IConfig, IMessage } from "../src/service-container/interfaces";
+// 変更理由: Storybookの型検査はアプリ側のVite aliasを共有しないため、リポジトリルートから相対参照する。
+import { TooltipProvider } from "../src/view/browser/ui/Tooltip";
 
 // 変更理由: Storybookはアプリのbootを通らないため、設定を読む部品がサービス未登録の
 // エラーを出さず、既定の表示で操作できるようにメモリ上の設定だけを用意する。

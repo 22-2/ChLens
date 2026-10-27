@@ -1,7 +1,22 @@
 import type { Dispatch, RefObject } from "react";
 import type { Page, Pane, Tab, TabViewState } from "src/view/browser/types";
 
+export interface SidePanelState {
+  isOpen: boolean;
+  width: number;
+  views: string[];
+  activeView: string;
+}
+
+export interface BottomPanelLayoutState {
+  isOpen?: boolean;
+  height?: number;
+  activeTabId?: string;
+}
+
 export interface TabStoreState {
+  bottomPanels?: Record<string, BottomPanelLayoutState>;
+  sidePanel?: SidePanelState;
   // 横並びのペイン群。配列順がそのまま画面上の左→右の並び。
   panes: Pane[];
   // フォーカス中のペイン。タブ追加/キーボード操作などの暗黙の対象になる。
@@ -12,6 +27,8 @@ export interface TabStoreState {
 
 // アクション種別を型定義・生成処理・reducerで共有し、文字列の表記ずれを防ぐ。
 export const TAB_ACTION_TYPES = {
+  UPDATE_SIDE_PANEL: "UPDATE_SIDE_PANEL",
+  UPDATE_BOTTOM_PANEL: "UPDATE_BOTTOM_PANEL",
   ADD_TAB: "ADD_TAB",
   OPEN_IN_NEW_TAB: "OPEN_IN_NEW_TAB",
   OPEN_IN_NEW_TAB_FORCE: "OPEN_IN_NEW_TAB_FORCE",
@@ -45,6 +62,12 @@ export const TAB_ACTION_TYPES = {
 } as const;
 
 export type TabAction =
+  | { type: typeof TAB_ACTION_TYPES.UPDATE_SIDE_PANEL; sidePanel: SidePanelState }
+  | {
+      type: typeof TAB_ACTION_TYPES.UPDATE_BOTTOM_PANEL;
+      targetPaneId: string;
+      patch: BottomPanelLayoutState;
+    }
   | { type: typeof TAB_ACTION_TYPES.ADD_TAB; preserveActivePane?: boolean }
   | { type: typeof TAB_ACTION_TYPES.OPEN_IN_NEW_TAB; page: Page; background?: boolean }
   | {

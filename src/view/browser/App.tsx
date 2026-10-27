@@ -34,12 +34,15 @@ import { BottomPanel } from "src/view/browser/shell/BottomPanel";
 import { ContentArea } from "src/view/browser/shell/ContentArea";
 import { NavigationBar } from "src/view/browser/shell/NavigationBar";
 import { PageCountStatusItem } from "src/view/browser/shell/PageCountStatusItem";
+import { SidePanel } from "src/view/browser/shell/SidePanel";
 import { TabWindowHost } from "src/view/browser/shell/TabWindowHost";
 import { TitleBar } from "src/view/browser/shell/TitleBar";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
+import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import {
   PaneProvider,
   TabProvider,
+  useBottomPanelLayout,
   useTabDispatch,
   useTabPanes,
   useTabStore,
@@ -92,7 +95,8 @@ const PaneColumn: React.FC<{ paneId: string; isActive: boolean }> = ({ paneId, i
 // PaneProvider 配下でしか使えない（ペインスコープの dispatch を取るため）。
 const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const dispatch = useTabDispatch();
-  const { viewPage, viewTab } = useTabStore();
+  const { viewPage, viewTab, paneId } = useTabStore();
+  const initialBottomPanel = useBottomPanelLayout(paneId);
   const tabBarOrientation = useTabBarOrientation();
   const {
     state: nextThreadSearchState,
@@ -131,11 +135,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const paneBody = (
     <>
       <ActiveThreadBridgeState isActive={isActive} />
-      <ContentArea
-        isOverlayTarget={isActive}
-        onSearchNextThread={searchNextThread}
-        onSearchSimilarThreads={searchSimilarThreads}
-      />
+      <ContentArea isOverlayTarget={isActive} onSearchSimilarThreads={searchSimilarThreads} />
       <BottomPanel />
       {/* コマンドとナビゲーションを同じオムニバーへ集約し、
           操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}
@@ -185,7 +185,16 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
       <StatusBarProvider>
         <PageCountStatusProvider>
           <NgStatusProvider>
-            <BottomPanelProvider>
+            <BottomPanelProvider
+              layout={initialBottomPanel}
+              onLayoutChange={(patch) =>
+                dispatch({
+                  type: TAB_ACTION_TYPES.UPDATE_BOTTOM_PANEL,
+                  targetPaneId: paneId,
+                  patch,
+                })
+              }
+            >
               <AutoScrollStateProvider>
                 {tabBarOrientation === "vertical" ? (
                   // 変更理由: 垂直モードではタブバーをペインの上端まで伸ばし、
@@ -195,7 +204,6 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
                   <div className="pane-column__vertical-body">
                     <TabBar orientation="vertical" />
                     <div className="pane-column__vertical-main">
-                      <TitleBar />
                       <div className="pane-column__chrome">{navigationBar}</div>
                       {paneBody}
                     </div>
@@ -282,10 +290,13 @@ export const BrowserApp: React.FC = () => {
                 {/*
                 水平モードではタイトルと必須のレイアウト操作はペインの外に置く。
                 これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
-                垂直モードではタイトルバーもペイン単位にするため、共通バーは表示しない。
+                垂直モードでも操作対象をアクティブペインに揃え、タイトルバーを共有する。
               */}
-                {shellTabBarOrientation === "vertical" ? null : <TitleBar />}
-                <PaneRow />
+                <TitleBar />
+                <div className="browser-shell__workspace">
+                  <PaneRow />
+                  <SidePanel />
+                </div>
                 <BookmarkRootSelectorDialog />
               </div>
             </TabWindowHost>

@@ -151,3 +151,36 @@ describe("セッション保存形式", () => {
     });
   });
 });
+
+describe("サイドパネルのセッション", () => {
+  it("タブと一緒に保存したビューの順序と選択を復元する", () => {
+    storage.json = JSON.stringify({
+      panes: [{ id: "pane", activeTabId: "tab", tabs: [createHomeTab("tab")] }],
+      activePaneId: "pane",
+      closedTabs: [],
+      sidePanel: { isOpen: true, width: 360, views: ["images", "boards"], activeView: "images" },
+    });
+    const restored = loadTabStoreSession();
+    expect(restored?.sidePanel?.isOpen).toBe(true);
+    expect(restored?.sidePanel?.width).toBe(360);
+    expect(restored?.sidePanel?.views.slice(0, 2)).toEqual(["images", "boards"]);
+    expect(restored?.sidePanel?.activeView).toBe("images");
+  });
+});
+
+describe("下部パネルのセッション", () => {
+  it("各ペインの表示状態を復元し、存在しないペインを除く", () => {
+    storage.json = JSON.stringify({
+      panes: [{ id: "pane", activeTabId: "tab", tabs: [createHomeTab("tab")] }],
+      activePaneId: "pane",
+      closedTabs: [],
+      bottomPanels: {
+        pane: { isOpen: true, height: 320, activeTabId: "write" },
+        removed: { isOpen: true },
+      },
+    });
+    expect(loadTabStoreSession()?.bottomPanels).toEqual({
+      pane: { isOpen: true, height: 320, activeTabId: "write" },
+    });
+  });
+});

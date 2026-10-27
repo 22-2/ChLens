@@ -69,7 +69,7 @@ describe("useThreadReadState Phase 0 contracts", () => {
       getByBoard: vi.fn(async () => []),
       getAll: vi.fn(async () => []),
       set: readStateSet,
-    } as IReadStateService;
+    } as unknown as IReadStateService;
     container.util = {
       isNewerReadState: () => false,
     } as unknown as IUtil;

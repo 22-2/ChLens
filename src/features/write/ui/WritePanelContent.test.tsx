@@ -34,6 +34,11 @@ const mocks = vi.hoisted(() => ({
   copyText: vi.fn().mockResolvedValue(undefined),
   readClipboardImage: vi.fn(),
   openWriteWindow: vi.fn(),
+  editorPlace: "bottom" as "bottom" | "side",
+  isEditorBusy: false,
+  moveEditor: vi.fn(() => true),
+  setEditorBusy: vi.fn(),
+  requestWriteWindowFocus: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   toastInfo: vi.fn(),
@@ -46,16 +51,17 @@ vi.mock("src/view/browser/utils/clipboard", () => ({
 
 vi.mock("src/app/platform", () => ({
   platform: {
+    http: { fetch: vi.fn(async () => ({ status: 200, headers: { "content-length": "100" } })) },
     window: {
       openPopup: vi.fn(() => null),
     },
   },
 }));
 
-function renderWritePanel(standalone = false) {
+function renderWritePanel(standalone = false, place?: "bottom" | "side") {
   return render(
     <StatusBarProvider>
-      <WritePanelContent standalone={standalone} />
+      <WritePanelContent standalone={standalone} place={place} />
       <StatusBar />
     </StatusBarProvider>,
   );
@@ -81,6 +87,7 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
     writePanelInsertRequest: mocks.writePanelInsertRequest,
     clearWritePanelInsertRequest: mocks.clearWritePanelInsertRequest,
     closePanel: mocks.closePanel,
+    requestWritePanelFocus: vi.fn(),
   }),
 }));
 
@@ -111,6 +118,11 @@ vi.mock("src/features/write/browser/use-write", () => ({
 vi.mock("src/features/write/browser/use-write-session", () => ({
   useWriteSessionControls: () => ({
     isWindowOpen: false,
+    editorPlace: mocks.editorPlace,
+    isEditorBusy: mocks.isEditorBusy,
+    moveEditor: mocks.moveEditor,
+    setEditorBusy: mocks.setEditorBusy,
+    requestWriteWindowFocus: mocks.requestWriteWindowFocus,
     writeWindowRoot: null,
     selectedThreadUrl: mocks.selectedThreadUrl,
     targets: mocks.targets,
@@ -142,6 +154,11 @@ describe("WritePanelContent", () => {
     mocks.message = "本文";
     mocks.selectedThreadUrl = null;
     mocks.targets = [];
+    mocks.editorPlace = "bottom";
+    mocks.isEditorBusy = false;
+    mocks.moveEditor.mockClear();
+    mocks.setEditorBusy.mockClear();
+    mocks.requestWriteWindowFocus.mockClear();
     mocks.writePanelInsertRequest = null;
     mocks.status = "idle";
     mocks.statusText = "";
@@ -203,32 +220,34 @@ describe("WritePanelContent", () => {
     expect(screen.queryByRole("group", { name: "投稿画像のプレビュー" })).not.toBeInTheDocument();
   });
 
-  it("本文の画像だけを既存ビューアで開き、重複を除いて前後移動できる", () => {
+  it("本文の画像だけを既存ビューアで開き、重複を除いて前後移動できる", async () => {
     const first = "https://example.com/first.jpg";
     const second = "https://example.com/second.png";
     mocks.message = `${first}\nhttps://example.com/page\n${second}\n${first}`;
     renderWritePanel();
 
     const previews = within(screen.getByRole("group", { name: "投稿画像のプレビュー" }));
-    expect(previews.getAllByRole("button")).toHaveLength(2);
-    expect(
-      previews.getByRole("button", { name: "画像2をプレビュー" }).querySelector("img"),
-    ).toHaveAttribute("src", second);
+    expect(previews.getAllByRole("button", { name: /画像\d+をプレビュー/ })).toHaveLength(2);
+    await waitFor(() =>
+      expect(
+        previews.getByRole("button", { name: "画像2をプレビュー" }).querySelector("img"),
+      ).toHaveAttribute("src", second),
+    );
     fireEvent.click(previews.getByRole("button", { name: "画像2をプレビュー" }));
     expect(useMediaViewerStore.getState().viewer?.currentIndex).toBe(1);
     expect(useMediaViewerStore.getState().viewer?.src).toBe(second);
     fireEvent.click(screen.getByTitle("閉じる"));
 
     fireEvent.click(screen.getByRole("button", { name: "画像1をプレビュー" }));
-    fireEvent.load(screen.getByAltText(first));
+    fireEvent.load(await screen.findByAltText(first));
     expect(screen.getByRole("img", { name: first })).toHaveAttribute("src", first);
     expect(useMediaViewerStore.getState().viewer?.images).toEqual([first, second]);
 
     fireEvent.click(screen.getByTitle("次の画像"));
-    fireEvent.load(screen.getByAltText(second));
+    fireEvent.load(await screen.findByAltText(second));
     expect(screen.getByRole("img", { name: second })).toHaveAttribute("src", second);
     fireEvent.click(screen.getByTitle("前の画像"));
-    fireEvent.load(screen.getByAltText(first));
+    fireEvent.load(await screen.findByAltText(first));
     expect(screen.getByRole("img", { name: first })).toBeInTheDocument();
     fireEvent.click(screen.getByTitle("閉じる"));
     expect(useMediaViewerStore.getState().viewer).toBeNull();
@@ -283,7 +302,7 @@ describe("WritePanelContent", () => {
     expect(useMediaViewerStore.getState().viewer).toBeNull();
   });
 
-  it("別窓の表示環境でプレビューを描画し、その窓のEscapeで閉じる", () => {
+  it("別窓の表示環境でプレビューを描画し、その窓のEscapeで閉じる", async () => {
     // 変更理由: 別Documentへの描画だけでなく、キーイベントの登録先も検証する。
     const frame = document.createElement("iframe");
     document.body.append(frame);
@@ -300,7 +319,7 @@ describe("WritePanelContent", () => {
     );
     const previewScreen = within(previewDocument.body);
     fireEvent.click(previewScreen.getByRole("button", { name: "画像1をプレビュー" }));
-    fireEvent.load(previewScreen.getByAltText(mocks.message));
+    fireEvent.load(await previewScreen.findByAltText(mocks.message));
     expect(previewScreen.getByRole("img")).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "Escape" });
@@ -339,6 +358,39 @@ describe("WritePanelContent", () => {
     unmount();
     renderWritePanel(true);
     expect(screen.getByLabelText("投稿先スレッド")).toBeInTheDocument();
+  });
+
+  it("サイドパネルの書き込み欄にも投稿先を選ぶ欄を出す", () => {
+    const targetThreadUrl = "https://example.com/test/read.cgi/software/1/";
+    mocks.selectedThreadUrl = targetThreadUrl;
+    mocks.targets = [{ threadUrl: targetThreadUrl, title: "スレッド", tabId: "tab-1" }];
+    mocks.editorPlace = "side";
+    renderWritePanel(false, "side");
+    expect(screen.getByLabelText("投稿先スレッド")).toBeInTheDocument();
+  });
+
+  it("編集欄がほかの場所にあれば、現在の場所と移動操作だけを出す", () => {
+    mocks.editorPlace = "side";
+    renderWritePanel();
+    expect(screen.getByText("書き込み欄はサイドパネルで開いています。")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "こちらに移動" }));
+    expect(mocks.moveEditor).toHaveBeenCalledWith("bottom");
+  });
+
+  it("送信中は編集欄をほかの場所へ移せない", () => {
+    mocks.editorPlace = "side";
+    mocks.isEditorBusy = true;
+    renderWritePanel();
+    expect(screen.getByRole("button", { name: "こちらに移動" })).toBeDisabled();
+  });
+
+  it("送信中であることをセッションへ知らせ、終わったら解除する", () => {
+    mocks.status = "submitting";
+    const { unmount } = renderWritePanel();
+    expect(mocks.setEditorBusy).toHaveBeenLastCalledWith(true);
+    unmount();
+    expect(mocks.setEditorBusy).toHaveBeenLastCalledWith(false);
   });
 
   it("Ctrl+EnterオプションOFF時はCtrl+Enterしても投稿しない", () => {

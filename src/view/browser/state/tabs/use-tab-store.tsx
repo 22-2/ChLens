@@ -585,3 +585,17 @@ export function usePaneId(): string {
   }
   return usePaneIdFromContext(ctx.state);
 }
+
+// シェル共通のビュー状態をタブと同じストアから読み書きする。
+export function useSidePanelState() {
+  const ctx = useContext(TabContext);
+  if (!ctx) throw new Error("useSidePanelState must be used within TabProvider");
+  return { state: ctx.state.sidePanel, dispatch: ctx.dispatch };
+}
+
+// 下部パネルのレイアウトは各ペインの保存状態を参照する。
+export function useBottomPanelLayout(paneId: string) {
+  const ctx = useContext(TabContext);
+  if (!ctx) throw new Error("useBottomPanelLayout must be used within TabProvider");
+  return ctx.state.bottomPanels?.[paneId];
+}

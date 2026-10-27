@@ -11,6 +11,8 @@ const tabState = {
   activePaneId: "pane-a",
 };
 let viewPage: Page = { type: "boardList", title: "ホーム" };
+// Context の更新回数を数えるテストがあるため、描画ごとに変わらない dispatch を返す。
+const sidePanelDispatch = vi.fn();
 
 vi.mock("src/app/Store2Storage", () => ({
   getStore2String: () => storage.value,
@@ -31,6 +33,7 @@ vi.mock("src/app/platform", () => ({
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabPanes: () => tabState,
   useTabStore: () => ({ viewPage }),
+  useSidePanelState: () => ({ state: undefined, dispatch: sidePanelDispatch }),
 }));
 
 import {
@@ -62,6 +65,23 @@ const Probe: React.FC = () => {
       <output data-testid="draft">{getDraft(secondUrl)}</output>
       <button onClick={() => selectThread(secondUrl)}>スレ2を選ぶ</button>
       <button onClick={() => setDraft(secondUrl, "下書き")}>下書きを入力</button>
+    </>
+  );
+};
+
+const PlaceProbe: React.FC = () => {
+  const { editorPlace, moveEditor, setEditorBusy, setDraft, getDraft, showSideEditor } =
+    useWriteSession();
+  const url = "https://example.com/test/read.cgi/software/1/";
+  return (
+    <>
+      <output data-testid="place">{editorPlace}</output>
+      <output data-testid="draft">{getDraft(url)}</output>
+      <button onClick={() => setDraft(url, "移動前の下書き")}>下書きを入力</button>
+      <button onClick={() => setEditorBusy(true)}>送信を始める</button>
+      <button onClick={() => setEditorBusy(false)}>送信を終える</button>
+      <button onClick={() => moveEditor("side")}>サイドへ移す</button>
+      <button onClick={showSideEditor}>サイドで開く</button>
     </>
   );
 };
@@ -142,6 +162,39 @@ describe("WriteSessionProvider", () => {
     const renderCountAfterSelection = controlsRenderCount;
     fireEvent.click(screen.getByRole("button", { name: "下書きを入力" }));
     expect(controlsRenderCount).toBe(renderCountAfterSelection);
+  });
+
+  it("編集欄を移しても下書きを保ち、送信中は移動を受け付けない", () => {
+    render(
+      <WriteSessionProvider>
+        <PlaceProbe />
+      </WriteSessionProvider>,
+    );
+    expect(screen.getByTestId("place")).toHaveTextContent("bottom");
+    fireEvent.click(screen.getByRole("button", { name: "下書きを入力" }));
+    fireEvent.click(screen.getByRole("button", { name: "送信を始める" }));
+    fireEvent.click(screen.getByRole("button", { name: "サイドへ移す" }));
+    expect(screen.getByTestId("place")).toHaveTextContent("bottom");
+
+    fireEvent.click(screen.getByRole("button", { name: "送信を終える" }));
+    fireEvent.click(screen.getByRole("button", { name: "サイドへ移す" }));
+    expect(screen.getByTestId("place")).toHaveTextContent("side");
+    expect(screen.getByTestId("draft")).toHaveTextContent("移動前の下書き");
+  });
+
+  it("サイドで開く操作はサイドパネルの書き込みビューを開く", () => {
+    sidePanelDispatch.mockClear();
+    render(
+      <WriteSessionProvider>
+        <PlaceProbe />
+      </WriteSessionProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "サイドで開く" }));
+    expect(sidePanelDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sidePanel: expect.objectContaining({ isOpen: true, activeView: "write" }),
+      }),
+    );
   });
 
   it("旧形式に保存された下書きも復元しない", async () => {

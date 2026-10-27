@@ -157,8 +157,7 @@ export async function runPaletteCommand(page: Page, input: string, option: RegEx
 }
 
 interface VirtualListDebugState {
-  corrections: number;
-  lastCorrectionDelta: number;
+  totalSize: number;
   measuredCount: number;
   estimatedCount: number;
   renderedKeys: Array<number | string>;

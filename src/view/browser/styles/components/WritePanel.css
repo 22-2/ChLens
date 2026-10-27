@@ -27,6 +27,8 @@
 
 .write-panel__detached-message {
   display: flex;
+  /* 狭いサイドパネルでも「こちらに移動」が押せるよう、操作を折り返す。 */
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--sys-space-3);

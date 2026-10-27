@@ -51,6 +51,8 @@ interface UseThreadVirtualListParams {
   scrollContainerRef: RefObject<HTMLElement | null>;
   stickToEnd: boolean;
   debugKey: string;
+  /** 表示中のタブか。非表示になる間に失われるスクロール位置を、表示へ戻ったときに復元する。 */
+  isActive?: boolean;
 }
 
 export interface UseThreadVirtualListResult {
@@ -77,6 +79,7 @@ export function useThreadVirtualList({
   scrollContainerRef,
   stickToEnd,
   debugKey,
+  isActive = true,
 }: UseThreadVirtualListParams): UseThreadVirtualListResult {
   const { window: viewWindow } = useViewSurface();
   const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
@@ -116,6 +119,11 @@ export function useThreadVirtualList({
     },
     [estimateInput, keys],
   );
+  // 変更理由: 非表示のタブは display:none になり、ブラウザがスクロール位置を0へ戻す。
+  // 仮想リストは見ていた位置を覚えたままなので、戻っても位置を復元しないと、
+  // 覚えている位置のレスだけが描画されて、先頭を見ている画面は空白になる。
+  const isActiveRef = useLatestRef(isActive);
+  const lastOffsetRef = useRef(0);
   const virtualizer = useVirtualizer<HTMLElement, HTMLElement>({
     count: keys.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -131,7 +139,9 @@ export function useThreadVirtualList({
       }
       return [...indexes].sort((a, b) => a - b);
     },
-    onChange: () => {
+    onChange: (instance) => {
+      // 非表示の間に起きるスクロール位置の初期化は、見ていた位置として記録しない。
+      if (isActiveRef.current) lastOffsetRef.current = instance.scrollOffset ?? 0;
       for (const listener of listenersRef.current) listener();
     },
   });
@@ -183,6 +193,14 @@ export function useThreadVirtualList({
       displaySignature.map((signature, index) => [keys[index]!, signature]),
     );
   }, [displaySignature, keys, virtualizer]);
+
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!isActive || !container || lastOffsetRef.current <= 0) return;
+    virtualizer.scrollToOffset(lastOffsetRef.current);
+    // 位置がすでに合っているとscrollイベントは出ず、仮想リストの内部の位置が古いまま残るため、読み直させる。
+    container.dispatchEvent(new Event("scroll"));
+  }, [isActive, scrollContainerRef, virtualizer]);
 
   useLayoutEffect(() => {
     if (!stickToEnd || !virtualizer.isAtEnd(1)) return;

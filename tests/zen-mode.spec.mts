@@ -32,4 +32,3 @@ test("Zenモードをコマンドから切り替え、パレットを再び開�
   await expect(page.locator(".title-bar")).toBeVisible();
   await expect(page.locator(".tab-bar")).toBeVisible();
 });
-

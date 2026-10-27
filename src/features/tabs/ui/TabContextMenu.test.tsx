@@ -76,6 +76,7 @@ describe("TabContextMenu", () => {
       get: vi.fn(),
       add: vi.fn(),
       remove: vi.fn(),
+      clearReadState: vi.fn(),
       updateResCount: vi.fn(),
       updateExpired: vi.fn(),
       getByBoard: vi.fn(),

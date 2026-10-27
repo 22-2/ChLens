@@ -31,7 +31,7 @@ const DEFAULT_SORT_STATE: BookmarkSortState = {
   direction: "asc",
 };
 
-interface BookmarkEntry {
+export interface BookmarkEntry {
   url: string;
   title: string;
   pageType: "thread" | "threadList";
@@ -109,7 +109,7 @@ function deriveBoardTitleFromBoardUrl(boardUrl: string): string {
   }
 }
 
-async function readBookmarks(): Promise<BookmarkEntry[]> {
+export async function readBookmarks(): Promise<BookmarkEntry[]> {
   // window.app ではなくサービスコンテナから読む（legacy-window-app-plan の Phase 2）。
   // 以前は getAll がない場合に getAllThreads・getAllBoards をつなげていたが、Bookmark は常に getAll を持つ。
   await container.bookmark.ready();

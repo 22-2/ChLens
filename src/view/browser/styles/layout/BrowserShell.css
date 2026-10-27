@@ -42,3 +42,231 @@
   width: min(800px, calc(100vw - var(--sys-space-10)));
   pointer-events: auto;
 }
+
+/* ペインと補助ビューは独立してスクロールし、狭い幅でも本文を残す。 */
+.browser-shell__workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+.side-panel {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 50%;
+  overflow: auto;
+  border-left: 1px solid var(--sys-color-border);
+  background: var(--sys-color-surface-muted);
+}
+.side-panel__resize {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--sys-space-3);
+  cursor: col-resize;
+  z-index: var(--sys-z-local);
+}
+.side-panel__resize:focus-visible,
+.side-panel__tabs button:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: -2px;
+}
+.side-panel__tabs {
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--sys-color-border);
+}
+.side-panel__tabs button {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sys-space-12);
+  height: var(--sys-space-12);
+  color: var(--sys-color-text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.side-panel__tabs button[aria-selected="true"] {
+  color: var(--sys-color-text);
+  box-shadow: inset 0 -2px var(--sys-color-accent);
+}
+.side-panel__heading,
+.side-panel__empty {
+  padding: var(--sys-space-4);
+}
+.side-panel__heading {
+  border-bottom: 1px solid var(--sys-color-border);
+  font-weight: 600;
+}
+.side-panel__empty {
+  color: var(--sys-color-text-muted);
+}
+
+.side-panel__content {
+  padding: var(--sys-space-3);
+}
+.side-panel__search {
+  width: 100%;
+  color: var(--sys-color-text);
+  background: var(--sys-color-input-bg);
+  border: 1px solid var(--sys-color-input-border);
+  padding: var(--sys-space-2);
+}
+.side-panel__content summary {
+  padding: var(--sys-space-2);
+  cursor: pointer;
+}
+.side-panel__category {
+  margin-left: var(--sys-space-4);
+}
+.side-panel__entry {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--sys-color-text);
+  text-align: left;
+  padding: var(--sys-space-2) var(--sys-space-6);
+  cursor: pointer;
+}
+.side-panel__entry:hover {
+  background: var(--sys-color-list-hover-bg);
+}
+
+.side-panel__response {
+  display: grid;
+  gap: var(--sys-space-2);
+  border-bottom: 1px solid var(--sys-color-border);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.side-panel__response strong {
+  color: var(--sys-color-accent-text);
+}
+.side-panel__response mark {
+  background: var(--sys-color-warning-surface);
+  color: var(--sys-color-warning-fg);
+}
+
+.side-panel__images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--sys-size-side-panel-image-tile), 1fr));
+  gap: var(--sys-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.side-panel__image {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border: 1px solid var(--sys-color-border);
+  border-radius: var(--sys-radius-lg);
+  background: var(--sys-color-thumbnail-surface);
+}
+.side-panel__image-open {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.side-panel__image-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.side-panel__image--blurred img {
+  filter: blur(var(--res-thumb-blur-radius));
+  transform: scale(1.06);
+}
+/* 一覧を画像だけに保ち、レス番号と本文はホバーかキーボード操作中だけ重ねる。 */
+.side-panel__image-caption {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  gap: var(--sys-space-2);
+  padding: var(--sys-space-1) var(--sys-space-2);
+  border: 0;
+  background: var(--sys-color-media-badge-bg);
+  color: var(--sys-color-accent-fg);
+  font-size: var(--sys-font-size-xs);
+  text-align: left;
+  cursor: pointer;
+  opacity: 0;
+}
+.side-panel__image-caption span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.side-panel__image:hover .side-panel__image-caption,
+.side-panel__image:focus-within .side-panel__image-caption {
+  opacity: 1;
+}
+/* ホバーできないタッチ環境では、レスへ移動する操作を常に見せる。 */
+@media (hover: none) {
+  .side-panel__image-caption {
+    opacity: 1;
+  }
+}
+.side-panel__image-open:focus-visible,
+.side-panel__image-caption:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: -2px;
+}
+
+/* 下部パネル向けの横並びを、幅の狭いサイドパネルでは縦に積む。 */
+.side-panel__write {
+  padding: 0;
+}
+.side-panel__write .write-panel__body-row {
+  flex-direction: column;
+}
+.side-panel__write .write-panel__textarea {
+  min-height: var(--sys-size-side-panel-write-editor);
+}
+
+.side-panel__properties {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: var(--sys-space-3);
+  margin: 0 0 var(--sys-space-4);
+}
+/* 項目名の列幅を行どうしで揃えるため、各行は一覧の列を共有する。 */
+.side-panel__property {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  padding: var(--sys-space-2) 0;
+  border-bottom: 1px solid var(--sys-color-border);
+}
+.side-panel__property dt {
+  color: var(--sys-color-text-muted);
+}
+.side-panel__property dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.side-panel__link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--sys-color-link);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.side-panel__link:hover {
+  text-decoration: underline;
+}
+.side-panel__link:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: 2px;
+}

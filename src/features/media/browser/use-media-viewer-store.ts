@@ -13,6 +13,11 @@ function clampViewerScale(scale: number): number {
   return Math.min(MAX_VIEWER_SCALE, Math.max(MIN_VIEWER_SCALE, scale));
 }
 
+/** スレッド本文とサイドパネルが同じビューアーを開けるよう、表示中のタブとスレで所有者を決める。 */
+export function getThreadMediaViewerScopeId(tabId: string, threadUrl: string): string {
+  return `${tabId}\u0000${threadUrl}`;
+}
+
 interface MediaViewerStoreState {
   viewer: ViewerState | null;
   viewerScopeId: string | null;

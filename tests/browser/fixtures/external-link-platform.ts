@@ -8,4 +8,13 @@ export const platform = {
     openUrlInTab: async (url: string, active = true) => recordOpen(url, active),
     openWindow: async ({ url }: { url: string }) => recordOpen(url, true, true),
   },
+  // 画像の自動取得はサイズを HEAD で確認してから読み込むため、上限内の小さな画像として応答する。
+  http: {
+    fetch: async (url: string) => ({
+      status: 200,
+      headers: { "content-length": "512" },
+      body: "",
+      url,
+    }),
+  },
 };

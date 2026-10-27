@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import type { BottomPanelLayoutState } from "src/view/browser/state/tabs/tab-store-types";
 
 export interface PanelTab {
   id: string;
@@ -104,20 +105,36 @@ interface BottomPanelProviderProps {
    * スレ一覧の自動更新設定は利用者の設定なので、従来どおり共有する。
    */
   isolated?: boolean;
+  layout?: BottomPanelLayoutState;
+  onLayoutChange?: (patch: BottomPanelLayoutState) => void;
 }
 
 export const BottomPanelProvider: React.FC<BottomPanelProviderProps> = ({
   children,
   isolated = false,
+  layout,
+  onLayoutChange,
 }) => {
   const saved = loadSaved();
   const persistState = useCallback(
     (patch: SavedState) => {
-      if (!isolated) {
-        persist(patch);
-        return;
+      const {
+        isOpen,
+        height,
+        activeTabId,
+        threadListAutoRefreshEnabled,
+        threadListAutoRefreshIntervalSec,
+      } = patch;
+      if (
+        !isolated &&
+        (isOpen !== undefined || height !== undefined || activeTabId !== undefined)
+      ) {
+        onLayoutChange?.({
+          ...(isOpen !== undefined && { isOpen }),
+          ...(height !== undefined && { height }),
+          ...(activeTabId !== undefined && { activeTabId }),
+        });
       }
-      const { threadListAutoRefreshEnabled, threadListAutoRefreshIntervalSec } = patch;
       const sharedPatch: SavedState = {};
       if (threadListAutoRefreshEnabled !== undefined) {
         sharedPatch.threadListAutoRefreshEnabled = threadListAutoRefreshEnabled;
@@ -129,21 +146,21 @@ export const BottomPanelProvider: React.FC<BottomPanelProviderProps> = ({
         persist(sharedPatch);
       }
     },
-    [isolated],
+    [isolated, onLayoutChange],
   );
   const { window: viewWindow } = useViewSurface();
   const nextWritePanelInsertIdRef = useRef(0);
   const nextWritePanelFocusIdRef = useRef(0);
-  const [isOpen, setIsOpen] = useState(!isolated && (saved.isOpen ?? false));
+  const [isOpen, setIsOpen] = useState(!isolated && (layout?.isOpen ?? false));
   const [height, setHeightState] = useState(() =>
     Math.max(
       MIN_HEIGHT,
-      Math.min(MAX_HEIGHT, (isolated ? undefined : saved.height) ?? DEFAULT_BOTTOM_PANEL_HEIGHT),
+      Math.min(MAX_HEIGHT, (isolated ? undefined : layout?.height) ?? DEFAULT_BOTTOM_PANEL_HEIGHT),
     ),
   );
   const [activePanelTabId, setActivePanelTabIdState] = useState(() =>
-    !isolated && BOTTOM_PANEL_TABS.some((tab) => tab.id === saved.activeTabId)
-      ? (saved.activeTabId ?? DEFAULT_ACTIVE_PANEL_TAB_ID)
+    !isolated && BOTTOM_PANEL_TABS.some((tab) => tab.id === layout?.activeTabId)
+      ? (layout?.activeTabId ?? DEFAULT_ACTIVE_PANEL_TAB_ID)
       : DEFAULT_ACTIVE_PANEL_TAB_ID,
   );
   const [threadListAutoRefreshEnabled, setThreadListAutoRefreshEnabledState] = useState(

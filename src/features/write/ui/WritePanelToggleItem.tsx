@@ -18,8 +18,14 @@ export const WritePanelToggleItem: React.FC = () => {
     viewPage.type === "thread"
       ? getArchiveReplayThreadCapabilities(replayPosition, viewTab.id, viewPage.threadUrl)
       : null;
-  const { isWindowOpen, openWriteWindow, selectThread, requestWriteWindowFocus } =
-    useWriteSessionControls();
+  const {
+    isWindowOpen,
+    editorPlace,
+    openWriteWindow,
+    selectThread,
+    requestWriteWindowFocus,
+    showSideEditor,
+  } = useWriteSessionControls();
 
   // 書き込みUIは通常スレッド専用とし、過去実況の読み取り専用ThreadViewでも出さない。
   if (viewPage.type !== "thread" || threadCapabilities?.canWrite !== true) {
@@ -44,6 +50,11 @@ export const WritePanelToggleItem: React.FC = () => {
             if (openWriteWindow()) {
               requestWriteWindowFocus();
             }
+            return;
+          }
+          if (editorPlace === "side") {
+            // 編集欄をサイドパネルへ移している間は、下部パネルではなくサイドの編集欄を出す。
+            showSideEditor();
             return;
           }
           // 変更理由: 書き込みは入力欄と本文を両方見渡せる既定サイズで開き、

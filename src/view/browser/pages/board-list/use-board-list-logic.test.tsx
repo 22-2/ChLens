@@ -8,7 +8,7 @@ const { config, setConfig, updateViewState, warn, persistedViewState } = vi.hois
   setConfig: vi.fn(),
   updateViewState: vi.fn(),
   warn: vi.fn(),
-  persistedViewState: { searchQuery: "" },
+  persistedViewState: { searchQuery: "", boardListOpenStates: undefined as unknown },
 }));
 vi.mock("src/app/logger", () => ({ createLogger: () => ({ warn, error: vi.fn() }) }));
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
@@ -41,6 +41,10 @@ describe("板一覧の保存設定とフィルタの復元", () => {
   beforeEach(() => {
     config.clear();
     persistedViewState.searchQuery = "";
+    persistedViewState.boardListOpenStates = undefined;
+    updateViewState
+      .mockReset()
+      .mockImplementation((patch: object) => Object.assign(persistedViewState, patch));
     warn.mockClear();
     setConfig.mockReset().mockImplementation((key: string, value: string) => {
       config.set(key, value);
@@ -54,58 +58,32 @@ describe("板一覧の保存設定とフィルタの復元", () => {
     return { ...logic, ...display };
   }
 
-  it.each(["null", "[]", "true", '"開く"', "破損JSON"])(
-    "保存済みの不正な開閉設定からでも板一覧を開いて検索できる: %s",
-    async (raw) => {
-      config.set("board_list_open_states", raw);
-      const { result } = renderHook(useBoardList);
-      await waitFor(() => expect(result.current.displayMenus).toHaveLength(1));
-      expect(result.current.openStates).toEqual({});
-      expect(warn).toHaveBeenCalled();
-      act(() => result.current.setSearchQuery("サンプル"));
-      await waitFor(() => expect(result.current.openedMenuValues).toEqual(["メニュー"]));
-      act(() => result.current.setSearchQuery(""));
-      await waitFor(() => expect(result.current.openStates).toEqual({}));
-      expect(JSON.parse(config.get("board_list_open_states")!)).toEqual({});
-    },
-  );
+  it.each([null, [], true, "破損"])("不正な保存値でも空の開閉状態で表示する", async (saved) => {
+    persistedViewState.boardListOpenStates = saved;
+    const { result } = renderHook(useBoardList);
+    await waitFor(() => expect(result.current.displayMenus).toHaveLength(1));
+    expect(result.current.openStates).toEqual({});
+  });
 
-  it("フィルタを繰り返しても元の開閉設定を保存し、再起動後も一覧を表示する", async () => {
-    const saved = { メニュー: true, "メニュー:カテゴリ": false };
-    config.set("board_list_open_states", JSON.stringify(saved));
+  it("開閉状態をタブの表示状態に保存し、再表示で復元する", async () => {
     const first = renderHook(useBoardList);
     await waitFor(() => expect(first.result.current.displayMenus).toHaveLength(1));
-    for (const query of ["サンプル", "カテゴリ", "一致しない検索"]) {
-      act(() => first.result.current.setSearchQuery(query));
-      act(() => first.result.current.setSearchQuery(""));
-      await waitFor(() => expect(first.result.current.openStates).toEqual(saved));
-      expect(JSON.parse(config.get("board_list_open_states")!)).toEqual(saved);
-    }
+    act(() => first.result.current.updateOpenStates(() => ({ メニュー: true })));
+    expect(persistedViewState.boardListOpenStates).toEqual({ メニュー: true });
+    expect(config.has("board_list_open_states")).toBe(false);
     first.unmount();
     const restarted = renderHook(useBoardList);
     await waitFor(() => expect(restarted.result.current.openedMenuValues).toEqual(["メニュー"]));
-    expect(restarted.result.current.openStates).toEqual(saved);
   });
 
-  it("開閉設定の真偽値だけを復元し、不正な項目をログへ出す", async () => {
-    config.set(
-      "board_list_open_states",
-      JSON.stringify({ メニュー: true, "メニュー:カテゴリ": false, 不正: "false" }),
-    );
+  it("検索を解除すると元の開閉状態に戻す", async () => {
+    persistedViewState.boardListOpenStates = { メニュー: true, "メニュー:カテゴリ": false };
     const { result } = renderHook(useBoardList);
     await waitFor(() => expect(result.current.displayMenus).toHaveLength(1));
-    expect(result.current.openStates).toEqual({ メニュー: true, "メニュー:カテゴリ": false });
-    expect(warn).toHaveBeenCalled();
-  });
-
-  it("検索中のセッションから起動しても、フィルタ解除で保存済みの開閉状態へ戻る", async () => {
-    const saved = { メニュー: true, "メニュー:カテゴリ": false };
-    config.set("board_list_open_states", JSON.stringify(saved));
-    persistedViewState.searchQuery = "サンプル";
-    const { result } = renderHook(useBoardList);
-    await waitFor(() => expect(result.current.openedMenuValues).toEqual(["メニュー"]));
+    act(() => result.current.setSearchQuery("サンプル"));
     act(() => result.current.setSearchQuery(""));
-    await waitFor(() => expect(result.current.openStates).toEqual(saved));
-    expect(JSON.parse(config.get("board_list_open_states")!)).toEqual(saved);
+    await waitFor(() =>
+      expect(result.current.openStates).toEqual({ メニュー: true, "メニュー:カテゴリ": false }),
+    );
   });
 });
