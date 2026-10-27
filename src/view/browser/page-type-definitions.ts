@@ -1,20 +1,12 @@
-import {
-  Bookmark,
-  File,
-  History,
-  House,
-  LayoutList,
-  ListTree,
-  type LucideProps,
-  MessageSquareText,
-  PenLine,
-  ScrollText,
-  Settings,
-} from "lucide-react";
+import type { LucideProps } from "lucide-react";
+import { FileQuestion } from "lucide-react";
 import type { ComponentType } from "react";
+import { createLogger } from "src/app/logger";
 import type { Page, PageType } from "src/view/browser/types";
-import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
+
+const logger = createLogger("view/browser/page-type-definitions");
+const loggedMissingPageTypes = new Set<PageType>();
 
 export type PageOfType<Type extends PageType> = Extract<Page, { type: Type }>;
 
@@ -34,108 +26,66 @@ export interface PageTypeDefinition<P extends Page = Page> {
   buildHierarchy?: (page: P) => Page[];
 }
 
-type PageTypeDefinitions = { [Type in PageType]: PageTypeDefinition<PageOfType<Type>> };
-
-function createHomePage(): Page {
-  return { type: "home", title: "ホーム" };
-}
-
-/**
- * ページ種別ごとの共通メタデータ。
- * 変更理由: アイコンや更新・絞り込み可否、同一ページの扱いが複数の判定へ散らばると、
- * 新しい種別を追加したときに画面ごとの差が出るため、同じ定義から参照する。
- * 種別ごとに型を絞った関数で書き、URL の取り出し方と種別の組み合わせを型で保証する。
- * 垂直タブバーではタイトルが隠れるためアイコンを必須にし、旧セッションの newTab も描画する。
- * 板ツリーを削除しても板を探す目印を保つため、ListTree は板一覧へ引き継ぐ。
- */
-export const PAGE_TYPE_DEFINITIONS: PageTypeDefinitions = {
-  home: {
-    icon: House,
-    refreshable: false,
-    filterable: false,
-    autoRefreshable: false,
-    buildHierarchy: () => [createHomePage()],
-  },
-  newTab: {
-    icon: File,
-    refreshable: false,
-    filterable: false,
-    autoRefreshable: false,
-    buildHierarchy: () => [createHomePage()],
-  },
-  boardList: {
-    icon: ListTree,
-    refreshable: true,
-    filterable: true,
-    autoRefreshable: false,
-    displayLabel: "板一覧",
-  },
-  threadList: {
-    icon: LayoutList,
-    refreshable: true,
-    filterable: true,
-    autoRefreshable: true,
-    getLocation: (page) => page.boardUrl,
-  },
-  thread: {
-    icon: MessageSquareText,
-    refreshable: true,
-    filterable: true,
-    autoRefreshable: true,
-    getLocation: (page) => page.threadUrl,
-    // 板一覧はホームから明示的に開く入口に限定し、祖先として自動生成しない。
-    // スレッドには板を祖先に含め、新規タブで開いたスレから同じ板へ戻れるようにする。
-    buildHierarchy: (page) => {
-      // 変更理由: 板URLの形式ごとの差をUIのページ階層へ持ち込まないため、導出は共通処理へ委譲する。
-      const boardUrl = getBoardUrlFromThreadUrl(page.threadUrl);
-      return [
-        createHomePage(),
-        { type: "threadList", title: boardUrl, boardUrl, boardTitle: boardUrl },
-        page,
-      ];
-    },
-  },
-  settings: {
-    icon: Settings,
-    refreshable: false,
-    filterable: false,
-    autoRefreshable: false,
-    displayLabel: "設定",
-  },
-  bookmarkList: {
-    icon: Bookmark,
-    refreshable: false,
-    filterable: true,
-    autoRefreshable: false,
-    displayLabel: "ブックマーク",
-  },
-  historyList: {
-    icon: History,
-    refreshable: true,
-    filterable: true,
-    autoRefreshable: false,
-    displayLabel: "閲覧履歴",
-  },
-  writeHistoryList: {
-    icon: PenLine,
-    refreshable: true,
-    filterable: true,
-    autoRefreshable: false,
-    displayLabel: "書き込み履歴",
-  },
-  logList: {
-    icon: ScrollText,
-    refreshable: true,
-    filterable: true,
-    autoRefreshable: false,
-    displayLabel: "ログ検索",
-  },
+export type PageTypeDefinitions = {
+  [Type in PageType]: PageTypeDefinition<PageOfType<Type>>;
 };
 
-function getPageTypeDefinition<P extends Page>(page: P): PageTypeDefinition<P> {
-  // 変更理由: 対応表の型が種別とページの組み合わせを保証しているが、添字アクセスでは
-  // TypeScript が種別ごとの関数の引数を結び付けられないため、ここだけで型を戻す。
-  return PAGE_TYPE_DEFINITIONS[page.type] as unknown as PageTypeDefinition<P>;
+export interface PageTypeDefinitionRegistration {
+  dispose: () => void;
+}
+
+const pageTypeDefinitions = new Map<PageType, PageTypeDefinition<never>>();
+const unavailablePageTypeDefinition: PageTypeDefinition<never> = {
+  icon: FileQuestion,
+  refreshable: false,
+  filterable: false,
+  autoRefreshable: false,
+  displayLabel: "利用できないページ",
+};
+
+/** 機能が所有するページ種別の共通メタデータを登録する。 */
+export function registerPageTypeDefinition<Type extends PageType>(
+  type: Type,
+  definition: PageTypeDefinition<PageOfType<Type>>,
+): PageTypeDefinitionRegistration {
+  const existing = pageTypeDefinitions.get(type);
+  if (existing) {
+    logger.error("ページ種別の二重登録を拒否しました", { type });
+    return { dispose: () => undefined };
+  }
+
+  pageTypeDefinitions.set(type, definition);
+  loggedMissingPageTypes.delete(type);
+  let disposed = false;
+  return {
+    dispose: () => {
+      if (disposed) return;
+      disposed = true;
+      if (pageTypeDefinitions.get(type) === definition) pageTypeDefinitions.delete(type);
+    },
+  };
+}
+
+function requirePageTypeDefinition<Type extends PageType>(type: Type): PageTypeDefinition<never> {
+  const definition = pageTypeDefinitions.get(type);
+  if (definition) return definition;
+  if (!loggedMissingPageTypes.has(type)) {
+    loggedMissingPageTypes.add(type);
+    logger.warn("ページ種別の定義がないため、利用不可のページとして扱います", { type });
+  }
+  return unavailablePageTypeDefinition;
+}
+
+export function getPageTypeDefinitionByType<Type extends PageType>(
+  type: Type,
+): PageTypeDefinition<PageOfType<Type>> {
+  // 登録時に種別と定義の型を対応させているが、Mapはその対応を保持しないためここで戻す。
+  return requirePageTypeDefinition(type) as PageTypeDefinition<PageOfType<Type>>;
+}
+
+function getPageTypeDefinition(page: Page): PageTypeDefinition {
+  // URL由来の判定はページ種別に登録された同じ定義を使う。
+  return getPageTypeDefinitionByType(page.type);
 }
 
 function getPageLocation(page: Page): string | null {
@@ -164,7 +114,7 @@ export function buildHierarchy(page: Page): Page[] {
   const definition = getPageTypeDefinition(page);
   if (definition.buildHierarchy) return definition.buildHierarchy(page);
   // URLや別タブから直接開いた場合も、同じタブのホームへ戻れる履歴を持たせる。
-  return [createHomePage(), page];
+  return [{ type: "home", title: "ホーム" }, page];
 }
 
 export function getPageRenderKey(tabId: string, historyIndex: number, page: Page): string {

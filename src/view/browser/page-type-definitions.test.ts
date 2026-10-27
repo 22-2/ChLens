@@ -3,8 +3,8 @@ import {
   getDisplayUrl,
   getPageIdentity,
   getPageRenderKey,
+  getPageTypeDefinitionByType,
   getPageViewStateKey,
-  PAGE_TYPE_DEFINITIONS,
 } from "src/view/browser/page-type-definitions";
 import { getAutoRefreshPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
 import type { Page, PageType } from "src/view/browser/types";
@@ -37,8 +37,8 @@ const SAMPLE_PAGES = {
 
 function describePage(page: Page) {
   return {
-    refreshable: PAGE_TYPE_DEFINITIONS[page.type].refreshable,
-    filterable: PAGE_TYPE_DEFINITIONS[page.type].filterable,
+    refreshable: getPageTypeDefinitionByType(page.type).refreshable,
+    filterable: getPageTypeDefinitionByType(page.type).filterable,
     autoRefreshKey: getAutoRefreshPageKey(page),
     identity: getPageIdentity(page),
     viewStateKey: getPageViewStateKey(page),

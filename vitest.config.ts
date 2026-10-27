@@ -12,6 +12,7 @@ export default defineConfig({
     },
   },
   test: {
+    setupFiles: ["./src/view/browser/shell/register-built-in-page-types.ts"],
     // 既定は jsdom のまま。ただしCIの実行時間の約7割がjsdom環境の準備に使われていたため、
     // DOMを使わない純粋なロジックのテストはファイル先頭の `// @vitest-environment node` で node 環境に切り替える。
     // 新しいテストは迷ったら jsdom のままでよく、DOMに触れないと分かっているものだけ node にする。

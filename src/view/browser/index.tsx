@@ -1,3 +1,4 @@
+import "src/view/browser/shell/register-built-in-page-types";
 import "src/view/browser/styles/index.css";
 
 import { createRoot } from "react-dom/client";

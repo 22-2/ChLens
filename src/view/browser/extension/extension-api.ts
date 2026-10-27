@@ -1,5 +1,11 @@
 import type { BrowserCommandDefinition } from "src/view/browser/commands/command-definition";
 import { CommandRegistry, type Disposable } from "src/view/browser/extension/command-registry";
+import {
+  type PageOfType,
+  type PageTypeDefinition,
+  registerPageTypeDefinition,
+} from "src/view/browser/page-type-definitions";
+import type { PageType } from "src/view/browser/types";
 
 export type ExtensionCommandRegistry = CommandRegistry<BrowserCommandDefinition>;
 
@@ -8,6 +14,10 @@ export interface ExtensionApi {
   addCommand: (
     command: BrowserCommandDefinition,
     options?: { beforeCommandId?: string },
+  ) => Disposable;
+  registerPageType: <Type extends PageType>(
+    type: Type,
+    definition: PageTypeDefinition<PageOfType<Type>>,
   ) => Disposable;
   register: (cleanup: () => void) => Disposable;
 }
@@ -48,6 +58,7 @@ export function createExtensionOwner(
     api: {
       addCommand: (command, options) =>
         own(commandRegistry.add(command, ownerId, options?.beforeCommandId)),
+      registerPageType: (type, definition) => own(registerPageTypeDefinition(type, definition)),
       register: (cleanup) => {
         let cleaned = false;
         return own({

@@ -1,4 +1,5 @@
 import type { ReactNode, RefObject } from "react";
+import { createLogger } from "src/app/logger";
 import type { PageOfType } from "src/view/browser/page-type-definitions";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
@@ -24,6 +25,8 @@ export interface PageRenderContext {
 type PageRenderer<P extends Page> = (page: P, context: PageRenderContext) => ReactNode;
 
 type PageRenderers = { [Type in PageType]: PageRenderer<PageOfType<Type>> };
+const logger = createLogger("view/browser/page-renderers");
+const loggedMissingPageTypes = new Set<string>();
 
 function shouldStartThreadAutoRefreshAtBottom(tab: Tab, page: PageOfType<"thread">): boolean {
   if (!isAutoRefreshEnabledForPage(tab, page) || tab.currentIndex === 0) {
@@ -102,6 +105,14 @@ const PAGE_RENDERERS: PageRenderers = {
 export function renderPage(page: Page, context: PageRenderContext): ReactNode {
   // 変更理由: 対応表の型が種別とページの組み合わせを保証しているが、添字アクセスでは
   // TypeScript が種別ごとの関数の引数を結び付けられないため、ここだけで型を広げて呼ぶ。
-  const render = PAGE_RENDERERS[page.type] as PageRenderer<Page>;
+  const render = PAGE_RENDERERS[page.type] as PageRenderer<Page> | undefined;
+  if (!render) {
+    if (!loggedMissingPageTypes.has(page.type)) {
+      loggedMissingPageTypes.add(page.type);
+      logger.warn("描画先が登録されていないページを表示します", { type: page.type });
+    }
+    // 変更理由: 未登録の種別が保存セッションに残っていても、タブ全体の描画を止めない。
+    return <div role="status">このページは現在利用できません。</div>;
+  }
   return render(page, context);
 }
