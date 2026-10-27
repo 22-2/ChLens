@@ -26,6 +26,8 @@ vi.mock("src/service-container/index", () => ({
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
+  scrollContainerRef.current = null;
   mocks.configValue = "hard-ng";
   mocks.configUpdatedCallback = undefined;
 });
@@ -35,7 +37,7 @@ const responses: IRes[] = [
   { num: 2, message: "非表示のレス", ng: { type: "Body" } },
   { num: 3, message: "通常のレス" },
 ].map((res) => ({ name: "名無し", mail: "", date: "2026/10/25 12:00:00", ...res }));
-const scrollContainerRef = { current: null };
+const scrollContainerRef: { current: HTMLElement | null } = { current: null };
 
 function setup(initialResponses = responses) {
   return renderHook(
@@ -54,6 +56,25 @@ function setup(initialResponses = responses) {
 }
 
 describe("TanStack Virtualを使ったレス一覧", () => {
+  it("固定ヘッダーの高さをジャンプ先の上余白に反映する", () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    const panel = document.createElement("div");
+    const header = document.createElement("div");
+    header.className = "thread-page__sticky-header";
+    vi.spyOn(header, "getBoundingClientRect").mockReturnValue({ height: 72 } as DOMRect);
+    panel.appendChild(header);
+    scrollContainerRef.current = panel;
+
+    const { result } = setup();
+    expect(result.current.list.virtualizer.options.scrollPaddingStart).toBe(72);
+  });
   it("NG解除後も非表示レスが実測できるよう、推定高さを確保する", () => {
     const { result } = setup();
     const virtualizer = result.current.list.virtualizer;

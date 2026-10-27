@@ -89,6 +89,7 @@ export function useThreadVirtualList({
   const ngDisplayMode = useNgDisplayMode();
   const [containerWidth, setContainerWidth] = useState(0);
   const [listTop, setListTop] = useState(0);
+  const [stickyHeaderHeight, setStickyHeaderHeight] = useState(0);
   const listenersRef = useRef(new Set<() => void>());
   const [pinnedKeys, setPinnedKeys] = useState<ReadonlySet<number>>(() => new Set());
   const metrics = useMemo<ResHeightMetrics>(
@@ -138,6 +139,8 @@ export function useThreadVirtualList({
     estimateSize,
     overscan: 8,
     scrollMargin: listTop,
+    // 先頭揃えのレスが固定ヘッダーの下に隠れないよう、実際の高さを使う。
+    scrollPaddingStart: stickyHeaderHeight,
     rangeExtractor: (range) => {
       const indexes = new Set(defaultRangeExtractor(range));
       for (const num of pinnedKeys) {
@@ -158,6 +161,8 @@ export function useThreadVirtualList({
     if (!container) return;
     const update = () => {
       if (container.clientWidth > 0) setContainerWidth(container.clientWidth);
+      const header = container.querySelector<HTMLElement>(".thread-page__sticky-header");
+      setStickyHeaderHeight(header?.getBoundingClientRect().height ?? 0);
       const list = container.querySelector<HTMLElement>(".thread-page__responses");
       if (list) {
         const next =
