@@ -1,5 +1,9 @@
 import { test } from "./fixtures.mjs";
-import { seedPageTypesSession, verifyRestoredPages } from "./page-types-restoration.mjs";
+import {
+  seedPageTypesSession,
+  verifyExistingPageSelection,
+  verifyRestoredPages,
+} from "./page-types-restoration.mjs";
 import { verifyBuiltInPages } from "./page-types-scenarios.mjs";
 
 test("ページ種別ごとに表示と操作が切り替わる", async ({ page, extensionId }) => {
@@ -17,4 +21,5 @@ test("各ページのタブと旧新規タブを再読み込み後も復元す�
   await verifyRestoredPages(page);
   await page.reload();
   await verifyRestoredPages(page);
+  await verifyExistingPageSelection(page);
 });

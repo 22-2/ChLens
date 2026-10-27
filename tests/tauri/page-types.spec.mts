@@ -1,4 +1,8 @@
-import { seedPageTypesSession, verifyRestoredPages } from "../page-types-restoration.mjs";
+import {
+  seedPageTypesSession,
+  verifyExistingPageSelection,
+  verifyRestoredPages,
+} from "../page-types-restoration.mjs";
 import { verifyBuiltInPages } from "../page-types-scenarios.mjs";
 import { test } from "./fixtures.mjs";
 
@@ -11,4 +15,5 @@ test("各ページのタブと旧新規タブを再起動後も復元する", as
   await verifyRestoredPages(tauri.page);
   await tauri.restart();
   await verifyRestoredPages(tauri.page);
+  await verifyExistingPageSelection(tauri.page);
 });

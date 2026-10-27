@@ -95,3 +95,24 @@ export async function verifyRestoredPages(page: Page): Promise<void> {
     )
     .toEqual({ activeTabId: "page-settings", legacyType: "home" });
 }
+
+/** 復元済みの板・スレを通常の新規タブ導線で開くと、同じペインの既存タブへ移る。 */
+export async function verifyExistingPageSelection(page: Page): Promise<void> {
+  await page.locator('[data-tab-id="page-thread"]').click();
+  await page.getByTitle("メニュー", { exact: true }).click();
+  await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
+  await page.getByPlaceholder("コマンドを検索...").fill(">このスレッドの板を新しいタブで開く");
+  await page.getByRole("option", { name: /このスレッドの板を新しいタブで開く/u }).click();
+  await expect(page.locator('[data-tab-id="page-threadList"]')).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.locator(".tab[data-tab-id]")).toHaveCount(RESTORED_PAGES.length);
+  const panel = page.locator('.content-area__tab-panel[data-active="true"]');
+  await panel.getByText("ローカルテストスレッド", { exact: true }).click({ button: "middle" });
+  await expect(page.locator('[data-tab-id="page-thread"]')).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(page.locator(".tab[data-tab-id]")).toHaveCount(RESTORED_PAGES.length);
+}
