@@ -344,6 +344,54 @@
   width: 100%;
 }
 
+/* 変更理由: ペインごとのタブ一覧の区画。水平モードでは枠を作らず、従来どおり
+   タブ一覧をバー直下の要素として並べる。 */
+.tab-bar__pane-section {
+  display: contents;
+}
+
+/* 変更理由: 共通の垂直タブバーでは、ペインの数だけ区画を縦に等分し、区画ごとにスクロールする。 */
+.tab-bar--vertical .tab-bar__pane-section {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 変更理由: 共通の水平タブバーでは、ペインの数だけ区画を横に等分し、区画ごとにスクロールする。 */
+.tab-bar:not(.tab-bar--vertical) .tab-bar__pane-section--labeled {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+}
+
+.tab-bar:not(.tab-bar--vertical) .tab-bar__pane-section + .tab-bar__pane-section {
+  margin-left: var(--sys-space-2);
+  padding-left: var(--sys-space-2);
+  border-left: 1px solid var(--sys-color-border);
+}
+
+.tab-bar--vertical .tab-bar__pane-section + .tab-bar__pane-section {
+  margin-top: var(--sys-space-2);
+  padding-top: var(--sys-space-2);
+  border-top: 1px solid var(--sys-color-border);
+}
+
+.tab-bar__pane-label {
+  flex-shrink: 0;
+  padding: var(--sys-space-1) var(--sys-space-2);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+  line-height: 1.2;
+}
+
+.tab-bar__pane-section--focused > .tab-bar__pane-label {
+  color: var(--sys-color-accent);
+}
+
 .tab-bar__vertical-header {
   display: flex;
   flex-shrink: 0;

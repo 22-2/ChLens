@@ -198,6 +198,14 @@ export interface TabBarViewProps {
   onBarContextMenu: (x: number, y: number) => void;
   /** メニューなど、タブバーの内側に重ねる要素。 */
   overlay?: React.ReactNode;
+  /** 複数ペインの共通タブバーで、このタブ一覧がどのペインのものかを示す見出し。 */
+  sectionLabel?: string;
+  /** 見出しの横へ添える、ペインがフォーカス中かどうか。 */
+  isPaneFocused?: boolean;
+  /** 共通タブバーの本体に付ける他ペインのタブ一覧。 */
+  extraSections?: React.ReactNode;
+  /** 共通タブバーの2つ目以降のペイン。外枠・開閉ボタン・幅変更を持たず、タブ一覧だけを描く。 */
+  embedded?: boolean;
 }
 
 /**
@@ -223,6 +231,10 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   onTabContextMenu,
   onBarContextMenu,
   overlay,
+  sectionLabel,
+  isPaneFocused = false,
+  extraSections,
+  embedded = false,
 }) => {
   const barRef = useRef<HTMLDivElement | null>(null);
   const tabListRef = useRef<HTMLDivElement | null>(null);
@@ -547,42 +559,16 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
 
   const displayWidth = dragWidth ?? width;
 
-  return (
+  // 変更理由: 共通タブバーでは、ペインごとにタブ一覧を区切って並べるため、
+  // 一覧を1つの区画として扱う。単独のときは見出しを出さず、従来の見た目のままにする。
+  const paneSection = (
     <div
-      ref={barRef}
-      className={`tab-bar${isVertical ? " tab-bar--vertical" : ""}${
-        isVertical && collapsed ? " tab-bar--collapsed" : ""
-      }${isVertical && dragWidth != null ? " tab-bar--resizing" : ""}`}
-      // 変更理由: 簡易表示では幅をCSSの固定値に任せ、展開表示とドラッグ中だけ操作幅を使う。
-      // ドラッグ中のタブがバー幅以上に広がらないよう、実幅をCSS変数でも共有する。
-      style={
-        isVertical && (!collapsed || dragWidth != null)
-          ? ({
-              width: displayWidth,
-              "--tab-bar-width": `${displayWidth}px`,
-            } as React.CSSProperties)
-          : undefined
-      }
-      onContextMenu={handleBarContextMenu}
+      className={`tab-bar__pane-section${sectionLabel ? " tab-bar__pane-section--labeled" : ""}${
+        isPaneFocused ? " tab-bar__pane-section--focused" : ""
+      }`}
+      onContextMenu={embedded ? handleBarContextMenu : undefined}
     >
-      {/* 変更理由: 更新ボタンはタイトルバーへ集約し、タブバー上部はタブ操作に使う。 */}
-      {isVertical ? (
-        <>
-          <div className="tab-bar__vertical-header">
-            <button
-              type="button"
-              className="tab-bar__collapse"
-              onClick={() => onSetCollapsed(!collapsed)}
-              title={collapsed ? "展開表示に戻す" : "簡易表示にする"}
-              aria-label={collapsed ? "展開表示に戻す" : "簡易表示にする"}
-              aria-expanded={!collapsed}
-            >
-              {/* 変更理由: タイトルバーのボタンと大きさを揃える。 */}
-              {collapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
-            </button>
-          </div>
-        </>
-      ) : null}
+      {sectionLabel ? <div className="tab-bar__pane-label">{sectionLabel}</div> : null}
       <DragDropProvider onDragEnd={handleDragEnd}>
         <div
           className={`tab-list-container${
@@ -622,6 +608,58 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
           </div>
         </div>
       </DragDropProvider>
+      {/* 変更理由: 共通の水平タブバーでは、溢れたときの追加ボタンもペインごとの区画の内側へ固定する。 */}
+      {!isVertical && sectionLabel && isTabListScrollable ? addTabButton : null}
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <>
+        {paneSection}
+        {overlay}
+      </>
+    );
+  }
+
+  return (
+    <div
+      ref={barRef}
+      className={`tab-bar${isVertical ? " tab-bar--vertical" : ""}${
+        isVertical && collapsed ? " tab-bar--collapsed" : ""
+      }${isVertical && dragWidth != null ? " tab-bar--resizing" : ""}`}
+      // 変更理由: 簡易表示では幅をCSSの固定値に任せ、展開表示とドラッグ中だけ操作幅を使う。
+      // ドラッグ中のタブがバー幅以上に広がらないよう、実幅をCSS変数でも共有する。
+      style={
+        isVertical && (!collapsed || dragWidth != null)
+          ? ({
+              width: displayWidth,
+              "--tab-bar-width": `${displayWidth}px`,
+            } as React.CSSProperties)
+          : undefined
+      }
+      onContextMenu={handleBarContextMenu}
+    >
+      {/* 変更理由: 更新ボタンはタイトルバーへ集約し、タブバー上部はタブ操作に使う。 */}
+      {isVertical ? (
+        <>
+          <div className="tab-bar__vertical-header">
+            <button
+              type="button"
+              className="tab-bar__collapse"
+              onClick={() => onSetCollapsed(!collapsed)}
+              title={collapsed ? "展開表示に戻す" : "簡易表示にする"}
+              aria-label={collapsed ? "展開表示に戻す" : "簡易表示にする"}
+              aria-expanded={!collapsed}
+            >
+              {/* 変更理由: タイトルバーのボタンと大きさを揃える。 */}
+              {collapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+            </button>
+          </div>
+        </>
+      ) : null}
+      {paneSection}
+      {extraSections}
       {/* タブが横幅を超えるときだけ、追加ボタンをスクロール領域の外へ固定する。 */}
       {isVertical ? (
         // 変更理由: 縮小時もハンドルを出し、右へ引く操作で展開へ移れるようにする。
@@ -635,7 +673,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
           onPointerUp={handleResizePointerUp}
           onPointerCancel={handleResizePointerCancel}
         />
-      ) : isTabListScrollable ? (
+      ) : isTabListScrollable && !sectionLabel ? (
         addTabButton
       ) : null}
 

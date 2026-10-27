@@ -14,6 +14,7 @@ import { NextThreadSearchDialog } from "src/features/next-thread/ui/NextThreadSe
 import { NgStatusProvider } from "src/features/ng/browser/use-ng-status";
 import { NgStatusItem } from "src/features/ng/ui/NgStatusItem";
 import { useTabBarOrientation } from "src/features/tabs/browser/use-tab-bar-orientation";
+import { SharedTabBar } from "src/features/tabs/ui/SharedTabBar";
 import { TabBar } from "src/features/tabs/ui/TabBar";
 import { WindowNavigationBridge } from "src/features/tabs/ui/WindowNavigationBridge";
 import { IkioiStatusItem } from "src/features/thread/ui/IkioiStatusItem";
@@ -98,8 +99,9 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const initialBottomPanel = useBottomPanelLayout(paneId);
   const tabBarOrientation = useTabBarOrientation();
   const { panes } = useTabPanes();
-  // 変更理由: 1ペインの垂直モードではタブバーを画面左端のシェル側へ出し、タイトルバーの上端まで伸ばす。
-  const hasSharedTabColumn = tabBarOrientation === "vertical" && panes.length === 1;
+  // 変更理由: タブバーは全ペイン共通にする。垂直は画面左端、水平は2ペイン以上のときだけ
+  // タイトルバーの下へ出す。1ペインの水平は従来どおりペインの操作欄と同じ行に置く。
+  const hasSharedTabBar = tabBarOrientation === "vertical" || panes.length > 1;
   const {
     state: nextThreadSearchState,
     searchNextThread,
@@ -198,21 +200,12 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
               }
             >
               <AutoScrollStateProvider>
-                {hasSharedTabColumn ? (
-                  // 変更理由: タブバーはシェル側（画面左端）にあるため、ペインは操作欄と本体だけを持つ。
+                {hasSharedTabBar ? (
+                  // 変更理由: タブバーはシェル側の共通バーにあるため、ペインは操作欄と本体だけを持つ。
                   <>
                     <div className="pane-column__chrome">{navigationBar}</div>
                     {paneBody}
                   </>
-                ) : tabBarOrientation === "vertical" ? (
-                  // 変更理由: 2ペイン以上の垂直モードでは、各ペインがタブバーを持つ。
-                  <div className="pane-column__vertical-body">
-                    <TabBar orientation="vertical" />
-                    <div className="pane-column__vertical-main">
-                      <div className="pane-column__chrome">{navigationBar}</div>
-                      {paneBody}
-                    </div>
-                  </div>
                 ) : (
                   <>
                     <div className="pane-column__chrome">
@@ -247,11 +240,14 @@ const PaneRow: React.FC = () => {
 // タイトルバーとワークスペースの枠。1ペインの垂直モードでは、左端のタブバーを
 // タイトルバーの上端まで伸ばし、タイトルバー以下を右へ押しのける。
 const ShellFrame: React.FC = () => {
-  const { panes } = useTabPanes();
   const orientation = useTabBarOrientation();
+  const { panes } = useTabPanes();
   const main = (
     <>
       <TitleBar />
+      {orientation === "horizontal" && panes.length > 1 ? (
+        <SharedTabBar orientation="horizontal" />
+      ) : null}
       <div className="browser-shell__workspace">
         <PaneRow />
         <SidePanel />
@@ -259,15 +255,13 @@ const ShellFrame: React.FC = () => {
     </>
   );
 
-  if (orientation !== "vertical" || panes.length !== 1) {
+  if (orientation !== "vertical") {
     return main;
   }
 
   return (
     <div className="browser-shell__vertical-frame">
-      <PaneProvider paneId={panes[0].id}>
-        <TabBar orientation="vertical" />
-      </PaneProvider>
+      <SharedTabBar orientation="vertical" />
       <div className="browser-shell__vertical-main">{main}</div>
     </div>
   );
