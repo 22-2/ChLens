@@ -59,6 +59,14 @@ collapse:
   when body contains "宣伝"`,
   },
   {
+    title: "似た画像をぼかす",
+    description:
+      "blurはレスの画像をぼかします。imageは画像、similarは「似ている」です。値は画像の特徴を表す16桁の文字で、画像の右クリックメニュー「類似画像NGに登録」で作れます。similarityは何%以上似ていたらぼかすかで、上げるほど厳しく判定します（既定は85%）。例の値は架空なので、登録した値に置き換えてください。",
+    code: `blur:
+  similarity 85%
+  when image similar "0123456789abcdef"`,
+  },
+  {
     title: "複数の条件を満たすスレを強調する",
     description:
       "タイトルに「実況」を含み、レス数が10以上のスレを青色で強調します。条件を複数書くと、すべて満たす場合に適用します。colorは色、labelはスレ一覧に表示する名前です。",
@@ -97,7 +105,8 @@ const targetPattern = RULE_TARGET_CATALOG.flatMap((entry) => [entry.name, ...(en
   .map(escapeRegExp)
   .join("|");
 const operatorPattern = RULE_DSL_LANGUAGE_DEFINITION.operators.map(escapeRegExp).join("|");
-const matcherPattern = "contains|regex";
+// 比較の種類（contains・regex・similar）は共有の定義から作り、追加したときに色付けが漏れないようにする。
+const matcherPattern = RULE_DSL_LANGUAGE_DEFINITION.matchers.map(escapeRegExp).join("|");
 const optionPattern = RULE_OPTION_CATALOG.flatMap((entry) => [entry.name, ...(entry.aliases ?? [])])
   .map(escapeRegExp)
   .join("|");
@@ -107,7 +116,7 @@ const NG_DSL_TOKEN_REGEX = new RegExp(
   "g",
 );
 
-function tokenizeNgDslLine(line: string): NgDslToken[] {
+export function tokenizeNgDslLine(line: string): NgDslToken[] {
   const tokens: NgDslToken[] = [];
   let cursor = 0;
 

@@ -217,13 +217,10 @@ export function getRuleTargetDefinition(target: RuleTarget): RuleTargetDefinitio
   return RULE_TARGET_DEFINITIONS[target];
 }
 
-/**
- * 現在UIまで実装済みの組み合わせ。warnは将来拡張用の予約語として保持する。
- * blurは画像のハッシュ計算と表示が揃うまで（類似画像NGの段階3〜5）含めない。
- */
+/** 現在UIまで実装済みの組み合わせ。warnは将来拡張用の予約語として保持する。 */
 export function isRuleCombinationSupported(action: RuleAction, target: RuleTarget): boolean {
-  // imageはblurでのみ使える（構文検証で拒否する）。
-  if (target === "image") return false;
+  // 類似画像NGは、blurとimageの組み合わせだけを使う（ほかは構文検証で拒否する）。
+  if (action === "blur" || target === "image") return action === "blur" && target === "image";
   return (
     action === "hide" || action === "collapse" || (action === "highlight" && target === "title")
   );

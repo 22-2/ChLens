@@ -5,6 +5,7 @@ import {
   RULE_TARGET_CATALOG,
 } from "./catalog";
 import { quoteRuleDslValue } from "./dsl";
+import { DEFAULT_IMAGE_SIMILARITY } from "./image-hash";
 
 export const NG_DSL_LANGUAGE_ID = "chlens-ngdsl";
 
@@ -73,11 +74,16 @@ export const RULE_DSL_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate
       isRuleCombinationSupported(action.name, target.name),
     ).map((target): RuleDslCompletionCandidate => {
       const numeric = target.field.endsWith("Count");
+      // 類似画像NGの値は画像の右クリックメニューで作る。スニペットの値は形を示すための架空のハッシュ。
+      const condition =
+        target.comparison === "similar"
+          ? `similarity \${1:${DEFAULT_IMAGE_SIMILARITY}}%\n  when ${target.name} similar "\${2:0123456789abcdef}"`
+          : `when ${target.name} ${numeric ? ">= ${1:10}" : 'contains "${1:キーワード}"'}`;
       return {
         category: "header",
         label: `${action.name} (${target.name})`,
         detail: `${action.description} 対象: ${target.description}`,
-        insertText: `${action.name}:\n  when ${target.name} ${numeric ? ">= ${1:10}" : 'contains "${1:キーワード}"'}`,
+        insertText: `${action.name}:\n  ${condition}`,
         isSnippet: true,
       };
     }),
@@ -108,7 +114,9 @@ export const RULE_DSL_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate
         ? "color ${1:blue}"
         : option.name === "disabled"
           ? "disabled ${1:true}"
-          : `${option.name} "\${1:値}"`,
+          : option.name === "similarity"
+            ? `similarity \${1:${DEFAULT_IMAGE_SIMILARITY}}%`
+            : `${option.name} "\${1:値}"`,
     isSnippet: true,
   })),
   ...NG_HIGHLIGHT_COLOR_PRESET_ITEMS.map((preset): RuleDslCompletionCandidate => ({
