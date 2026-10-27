@@ -20,6 +20,7 @@
 /* 変更理由: Zenモードでは本文の閲覧領域を広げ、操作が必要な時だけパレットを戻す。 */
 .browser-shell[data-zen-mode="true"] .title-bar,
 .browser-shell[data-zen-mode="true"] .pane-column__chrome,
+.browser-shell[data-zen-mode="true"] .tab-bar--vertical,
 .browser-shell[data-zen-mode="true"] .status-bar,
 .browser-shell[data-zen-mode="true"] .bottom-panel,
 .browser-shell[data-zen-mode="true"] .thread-page__top-bar,
