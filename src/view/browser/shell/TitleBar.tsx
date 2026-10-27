@@ -6,9 +6,16 @@ import {
   RotateCw,
   Search,
 } from "lucide-react";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { createLogger } from "src/app/logger";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { TabContextMenu } from "src/features/tabs/ui/TabContextMenu";
+import {
+  getThreadListSnapshots,
+  selectThreadListSnapshot,
+  type ThreadListSnapshot,
+  useSelectedThreadListSnapshot,
+} from "src/features/thread-list/ui/thread-list-snapshots";
 import { commandPalette } from "src/view/browser/commands/command-palette-store";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { useTitleBarButtonSettings } from "src/view/browser/hooks/use-title-bar-navigation-setting";
@@ -16,6 +23,8 @@ import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { canGoBack, canGoForward } from "src/view/browser/types";
+import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
+import { formatRelativeTime } from "src/view/browser/utils/date-time";
 import {
   getManualRefreshScopeKey,
   runManualRefresh,
@@ -27,6 +36,8 @@ interface TitleBarMenuPosition {
   x: number;
   y: number;
 }
+
+const logger = createLogger("view/browser");
 
 export interface TitleBarProps {
   /** タイトルバー左端の戻る・進む・更新を表示するかどうか。 */
@@ -55,6 +66,27 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   const manualRefreshScopeKey = getManualRefreshScopeKey(viewTab.id, viewPage);
   const refreshCoolingDown = useManualRefreshCooldown(manualRefreshScopeKey);
   const [menuPosition, setMenuPosition] = useState<TitleBarMenuPosition | null>(null);
+  const [refreshMenuPosition, setRefreshMenuPosition] = useState<TitleBarMenuPosition | null>(null);
+  const [threadListSnapshots, setThreadListSnapshots] = useState<ThreadListSnapshot[]>([]);
+  const boardUrl = viewPage.type === "threadList" ? viewPage.boardUrl : null;
+  const selectedSnapshot = useSelectedThreadListSnapshot(viewTab.id);
+  // 変更理由: 板一覧は更新クールダウン中も右クリックで履歴を開けるようにする。
+  const refreshDisabled = !canRefresh || (refreshCoolingDown && !boardUrl);
+
+  useEffect(() => {
+    if (!refreshMenuPosition || !boardUrl) return;
+    let cancelled = false;
+    void getThreadListSnapshots(boardUrl)
+      .then((entries) => {
+        if (!cancelled) setThreadListSnapshots(entries);
+      })
+      .catch((error: unknown) => {
+        logger.error("スレ一覧の履歴を読み込めませんでした:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [boardUrl, refreshMenuPosition]);
 
   const handleTitleContextMenu = useCallback((e: React.MouseEvent) => {
     // 変更理由: タイトルバーのタイトル右クリックでは、タブを右クリックした時と同じ
@@ -66,9 +98,52 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
   const closeMenu = useCallback(() => setMenuPosition(null), []);
 
+  const handleRefreshContextMenu = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      const target = event.target as Element | null;
+      if (!target?.closest(".title-bar__refresh")) return;
+
+      // 変更理由: 更新ボタンの既定コンテキストメニューを抑止し、履歴メニューへ置き換える。
+      event.preventDefault();
+      event.stopPropagation();
+      if (!boardUrl) return;
+      // 変更理由: スナップショット復元の入口を、通常の更新と同じタイトルバー上に揃える。
+      setMenuPosition(null);
+      setThreadListSnapshots([]);
+      setRefreshMenuPosition({ x: event.clientX, y: event.clientY });
+    },
+    [boardUrl],
+  );
+
+  const snapshotMenuItems: ContextMenuItem[] = boardUrl
+    ? [
+        {
+          id: "snapshot-heading",
+          label: "一覧の履歴",
+          disabled: true,
+        },
+        {
+          id: "snapshot-latest",
+          label: `${selectedSnapshot ? "" : "✓ "}最新の一覧`,
+          onSelect: () => selectThreadListSnapshot(viewTab.id, null),
+        },
+        ...threadListSnapshots.map((snapshot) => ({
+          id: snapshot.url,
+          label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${formatRelativeTime(
+            snapshot.last_updated,
+          )}（${snapshot.threads.length}件）`,
+          onSelect: () => selectThreadListSnapshot(viewTab.id, snapshot),
+        })),
+      ]
+    : [];
+
   return (
     <header className="title-bar" data-testid="title-bar">
-      <div className="title-bar__leading" data-testid="title-bar-leading">
+      <div
+        className="title-bar__leading"
+        data-testid="title-bar-leading"
+        onContextMenuCapture={handleRefreshContextMenu}
+      >
         {/* 変更理由: 戻る・進む・更新はタブバーの向きに関係なくタイトルバーに集約する。 */}
         {showNavigationButtons && (
           <>
@@ -100,7 +175,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               <button
                 type="button"
                 className="title-bar__refresh"
-                disabled={!canRefresh || refreshCoolingDown}
+                disabled={refreshDisabled}
                 onClick={() =>
                   runManualRefresh(manualRefreshScopeKey, () =>
                     runTabCommand(TAB_COMMAND_IDS.RELOAD),
@@ -180,6 +255,14 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             専用ボタンは置かない。長いタイトルで右端が圧迫される問題も避ける。 */}
       </div>
       {menuPosition && <TabContextMenu tab={viewTab} position={menuPosition} onClose={closeMenu} />}
+      {refreshMenuPosition && boardUrl && (
+        <ContextMenu
+          x={refreshMenuPosition.x}
+          y={refreshMenuPosition.y}
+          items={snapshotMenuItems}
+          onClose={() => setRefreshMenuPosition(null)}
+        />
+      )}
     </header>
   );
 };
