@@ -6,6 +6,7 @@ import {
   calculateIkioi,
   collectResTimestamps,
 } from "src/features/thread/domain/thread-momentum";
+import { countUnreadResponses } from "src/features/thread/domain/unread-count";
 import { MomentumLineChart } from "src/features/thread/ui/MomentumLineChart";
 import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
@@ -70,6 +71,7 @@ function ThreadProperties({ page, data }: { page: ThreadPage; data: ThreadSnapsh
         {boardUrl}
       </button>
     );
+  const unreadCount = countUnreadResponses(data.responses.length, readState);
   const status = data.expired ? "dat落ち" : data.error ? `取得失敗（${data.error}）` : "取得済み";
   const rows: [string, ReactNode][] = [
     ["スレ名", page.title],
@@ -79,16 +81,7 @@ function ThreadProperties({ page, data }: { page: ThreadPage; data: ThreadSnapsh
     ["経過時間", stats.firstAt == null ? UNKNOWN : formatElapsed(stats.now - stats.firstAt)],
     ["最終レス", formatTimestamp(stats.lastAt)],
     ["レス数", data.responses.length.toLocaleString()],
-    [
-      "未読数",
-      // スレ一覧の未読数と同じく、既読位置がなければ数えず、受信済みの多い方を基準にする。
-      readState == null
-        ? UNKNOWN
-        : Math.max(
-            Math.max(data.responses.length, readState.received) - readState.read,
-            0,
-          ).toLocaleString(),
-    ],
+    ["未読数", unreadCount == null ? UNKNOWN : unreadCount.toLocaleString()],
     ["画像数", stats.imageCount.toLocaleString()],
     ["状態", status],
     ["勢い", stats.ikioi == null ? UNKNOWN : stats.ikioi.toLocaleString()],
