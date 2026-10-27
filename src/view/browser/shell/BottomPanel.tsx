@@ -1,14 +1,17 @@
 import { X } from "lucide-react";
-import React, { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useAutoScrollState } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import { ThreadListPanel } from "src/features/thread-list/ui/ThreadListPanel";
 import { WritePanelContent } from "src/features/write/ui/WritePanelContent";
 import {
+  BOTTOM_PANEL_MAX_HEIGHT,
+  BOTTOM_PANEL_MIN_HEIGHT,
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
   BOTTOM_PANEL_WRITE_TAB_ID,
   useBottomPanel,
 } from "src/view/browser/hooks/use-bottom-panel";
+import { useResizeHandle } from "src/view/browser/hooks/use-resize-handle";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { isHTMLElementInWindow } from "src/view/browser/utils/dom";
@@ -27,7 +30,7 @@ interface BottomPanelProps {
 export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = false }) => {
   const { viewTab, viewPage } = useTabStore();
   const { isDetachedTab } = useDetachedTabController();
-  // 変更理由: 下部パネルを別窓へ移しても、リサイズ操作と開閉直後の追従を
+  // 変更理由: 下部パネルを別窓へ移しても、開閉直後の追従を
   // 元のWindowへ登録しないよう、表示先のイベント境界を揃える。
   const { window: viewWindow, document: viewDocument } = useViewSurface();
   const { canAutoScroll } = useAutoScrollState();
@@ -35,8 +38,6 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = fa
     useBottomPanel();
 
   const rootRef = useRef<HTMLDivElement>(null);
-  const dragStartY = useRef<number | null>(null);
-  const dragStartHeight = useRef<number>(height);
   const wasOpenRef = useRef(false);
   const canAutoScrollWhenClosedRef = useRef(canAutoScroll);
 
@@ -96,40 +97,26 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = fa
     };
   }, [activePanelTabId, canAutoScroll, isOpen, viewDocument, viewPage.type, viewWindow]);
 
-  const handleResizeMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      dragStartY.current = e.clientY;
-      dragStartHeight.current = height;
-
-      const onMouseMove = (ev: MouseEvent) => {
-        if (dragStartY.current === null) return;
-        // ハンドルを上に動かすほど高さが増える
-        const delta = dragStartY.current - ev.clientY;
-        setHeight(dragStartHeight.current + delta);
-      };
-
-      const onMouseUp = () => {
-        dragStartY.current = null;
-        viewWindow.removeEventListener("mousemove", onMouseMove);
-        viewWindow.removeEventListener("mouseup", onMouseUp);
-      };
-
-      viewWindow.addEventListener("mousemove", onMouseMove);
-      viewWindow.addEventListener("mouseup", onMouseUp);
-    },
-    [height, setHeight, viewWindow],
-  );
+  const resize = useResizeHandle({
+    value: height,
+    min: BOTTOM_PANEL_MIN_HEIGHT,
+    max: BOTTOM_PANEL_MAX_HEIGHT,
+    axis: "y",
+    // 画面の下端に置くため、上へ引くほど高くなる。
+    direction: -1,
+    keyboardStep: 20,
+    onCommit: setHeight,
+  });
 
   if (!isOpen || viewPage.type !== "thread") return null;
 
   return (
-    <div ref={rootRef} className="bottom-panel" style={{ height }}>
-      {/* ドラッグリサイズハンドル */}
+    <div ref={rootRef} className="bottom-panel" style={{ height: resize.size }}>
       <div
         className="bottom-panel__resize-handle"
-        onMouseDown={handleResizeMouseDown}
+        aria-label="下部パネルの高さ"
         title="ドラッグしてサイズを変更"
+        {...resize.handleProps}
       />
 
       {/* タブストリップ */}

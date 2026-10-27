@@ -29,9 +29,9 @@ export interface WritePanelInsertRequest {
 
 const STORAGE_KEY = "chlens_bottom_panel_v1";
 export const DEFAULT_BOTTOM_PANEL_HEIGHT = 200;
-const MIN_HEIGHT = 80;
+export const BOTTOM_PANEL_MIN_HEIGHT = 80;
 // 画面高の半分で一覧を開けるよう、従来の上限を一般的な表示領域より余裕のある値にする。
-const MAX_HEIGHT = 1000;
+export const BOTTOM_PANEL_MAX_HEIGHT = 1000;
 // 既存の保存状態にタブ情報がない場合は、従来の書き込みパネルを既定にして
 // アップデート後も起動時の表示を変えない。
 const DEFAULT_ACTIVE_PANEL_TAB_ID = BOTTOM_PANEL_WRITE_TAB_ID;
@@ -154,8 +154,11 @@ export const BottomPanelProvider: React.FC<BottomPanelProviderProps> = ({
   const [isOpen, setIsOpen] = useState(!isolated && (layout?.isOpen ?? false));
   const [height, setHeightState] = useState(() =>
     Math.max(
-      MIN_HEIGHT,
-      Math.min(MAX_HEIGHT, (isolated ? undefined : layout?.height) ?? DEFAULT_BOTTOM_PANEL_HEIGHT),
+      BOTTOM_PANEL_MIN_HEIGHT,
+      Math.min(
+        BOTTOM_PANEL_MAX_HEIGHT,
+        (isolated ? undefined : layout?.height) ?? DEFAULT_BOTTOM_PANEL_HEIGHT,
+      ),
     ),
   );
   const [activePanelTabId, setActivePanelTabIdState] = useState(() =>
@@ -189,7 +192,7 @@ export const BottomPanelProvider: React.FC<BottomPanelProviderProps> = ({
 
   const setHeight = useCallback(
     (h: number) => {
-      const clamped = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, h));
+      const clamped = Math.max(BOTTOM_PANEL_MIN_HEIGHT, Math.min(BOTTOM_PANEL_MAX_HEIGHT, h));
       setHeightState(clamped);
       persistState({ height: clamped });
     },
