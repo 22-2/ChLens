@@ -6,9 +6,15 @@ import { SidePanelProperties } from "src/view/browser/shell/SidePanelProperties"
 import { publishThreadSnapshot, useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-const mocks = vi.hoisted(() => ({ dispatch: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  dispatch: vi.fn(),
+  readState: null as { url: string; last: number; read: number; received: number } | null,
+}));
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabStore: () => ({ dispatch: mocks.dispatch }),
+}));
+vi.mock("src/view/browser/shell/use-side-panel-read-state", () => ({
+  useSidePanelReadState: () => mocks.readState,
 }));
 vi.mock("src/features/thread/ui/MomentumLineChart", () => ({ MomentumLineChart: () => null }));
 
@@ -47,7 +53,27 @@ describe("スレプロパティ", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    mocks.readState = null;
     useThreadSnapshots.setState({ entries: new Map() });
+  });
+
+  it("既読位置から未読数を、本文と同じ判定で画像数を数える", () => {
+    mocks.readState = { url: page.threadUrl, last: 1, read: 1, received: 2 };
+    publish({
+      responses: [
+        ...responses,
+        { num: 4, name: "", mail: "", date: "", message: "https://images.example.com/a.jpg" },
+      ],
+    });
+    render(<SidePanelProperties tabId="tab" page={page} />);
+    expect(valueOf("未読数")).toBe("3");
+    expect(valueOf("画像数")).toBe("1");
+  });
+
+  it("既読位置がなければ未読数は不明とする", () => {
+    publish();
+    render(<SidePanelProperties tabId="tab" page={page} />);
+    expect(valueOf("未読数")).toBe("不明");
   });
 
   it("NGで隠れたレスも含めてスレ全体の情報を表示する", () => {

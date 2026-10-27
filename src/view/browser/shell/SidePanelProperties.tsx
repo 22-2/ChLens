@@ -5,6 +5,8 @@ import {
   collectResTimestamps,
 } from "src/features/thread/domain/thread-momentum";
 import { MomentumLineChart } from "src/features/thread/ui/MomentumLineChart";
+import { collectThreadImages } from "src/view/browser/shell/side-panel-images";
+import { useSidePanelReadState } from "src/view/browser/shell/use-side-panel-read-state";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
@@ -41,8 +43,11 @@ export function SidePanelProperties({ tabId, page }: { tabId: string; page: Thre
       now,
       ikioi: calculateIkioi(data.responses, now),
       graph: buildMomentumGraphData(data.responses, now),
+      // 画像数は画像一覧と同じ判定で、NG に関係なくスレ全体を数える。
+      imageCount: collectThreadImages(data.responses, data.messageProtocol).length,
     };
   }, [data]);
+  const readState = useSidePanelReadState(page.threadUrl);
 
   if (!data || !stats) return <p className="side-panel__empty">スレッドの情報を取得できません。</p>;
   if (data.loading) return <p className="side-panel__empty">スレッドを読み込み中…</p>;
@@ -81,6 +86,17 @@ export function SidePanelProperties({ tabId, page }: { tabId: string; page: Thre
     ["経過時間", stats.firstAt == null ? UNKNOWN : formatElapsed(stats.now - stats.firstAt)],
     ["最終レス", formatTimestamp(stats.lastAt)],
     ["レス数", data.responses.length.toLocaleString()],
+    [
+      "未読数",
+      // スレ一覧の未読数と同じく、既読位置がなければ数えず、受信済みの多い方を基準にする。
+      readState == null
+        ? UNKNOWN
+        : Math.max(
+            Math.max(data.responses.length, readState.received) - readState.read,
+            0,
+          ).toLocaleString(),
+    ],
+    ["画像数", stats.imageCount.toLocaleString()],
     ["状態", status],
     ["勢い", stats.ikioi == null ? UNKNOWN : stats.ikioi.toLocaleString()],
     ["最終更新", formatCompactDateTime(stats.now)],
