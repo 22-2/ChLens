@@ -228,6 +228,7 @@ api.addStatusBarItem({
 - [ ] **PR4. 残りの機能固有コマンドを移す（P1）**
   - 自動更新、次スレなど。段階0では既存の `BrowserCommandContext` を使ってよい。
   - コメント実況のように `CustomEvent` で画面へ届けているコマンドは、PR4 では移さない（PR7 で扱う）。
+  - 進捗：自動更新の切り替えを `features/auto-refresh`、次スレ検索と自動次スレ設定を `features/next-thread` へ移した。機能IDへ変更し、既存コンテキストの操作と表示順を維持した。
 - [ ] **PR5. ページ種別の知識を定義へ集める（P2）**
   - 全種別の定義を1か所に作り、`TabView`・`PageTypeIcon`・同一ページの判定・再取得と絞り込みの可否が定義を引く形にする。`Page` 型と保存形式は変えない。
 - [ ] **PR6. ページ種別の定義を機能側へ移し、`api.workspace` の最小限の操作を用意する（P2）**
@@ -264,7 +265,7 @@ PR1〜3 の実装と見直しで分かったことと、以降の PR で気を�
 
 #### モジュールの使い分け
 
-- `commands/command-definition.ts`：コマンドの型、グループ定義、定義から使う共通処理（`getCommandPageTarget`・`getCommandToast`・`getCommandSurface`）。機能の登録関数と登録 API はここだけを参照する。
+- `commands/command-definition.ts`：コマンドの型、グループ定義、定義から使う共通処理（`getCommandPageTarget`・`getCommandToast`・`getCommandSurface`・`isCommandConfigSwitchOn`・`toggleCommandConfigSwitch`）。機能の登録関数と登録 API はここだけを参照する。
 - `commands/browser-commands.ts`：core のコマンド一覧、`browserCommandRegistry`、`registerCoreCommands`、解決・実行処理。参照するのは組み立て側（`index.tsx`）、コマンドパレット周り、テストに限る。機能から import すると、1000行を超える一覧と、その依存がまとめて入る。
 - `extension/`：登録 API とレジストリ。コマンドの具体的な定義や画面の状態を持ち込まない。
 

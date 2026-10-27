@@ -7,6 +7,7 @@ import type { TabCommandId } from "src/view/browser/commands/tab-command-runtime
 import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ScopedTabAction } from "src/view/browser/state/tabs/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
+import { persistConfigValue, readConfigValue } from "src/view/browser/utils/config-setting";
 
 // 変更理由: コマンド定義の型と、定義から使う共通処理を全コマンドの一覧から分ける。
 // 機能側の登録関数や登録 API が一覧のモジュールに依存せずに済み、型の循環 import もなくなる。
@@ -113,4 +114,13 @@ export function getCommandPageTarget(page: Page): CommandTarget | null {
     default:
       return null;
   }
+}
+
+export function isCommandConfigSwitchOn(key: string): boolean {
+  return readConfigValue(key) === "on";
+}
+
+/** 機能間で設定トグルの読み書きを揃え、保存失敗を共通の設定境界で記録する。 */
+export function toggleCommandConfigSwitch(key: string): void {
+  persistConfigValue(key, isCommandConfigSwitchOn(key) ? "off" : "on", "コマンドパレット");
 }

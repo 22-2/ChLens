@@ -18,9 +18,7 @@ import {
   PlayCircle,
   RotateCcw,
   RotateCw,
-  Search,
   Settings,
-  Timer,
   Trash2,
   X,
 } from "lucide-react";
@@ -34,7 +32,9 @@ import {
   getCommandPageTarget,
   getCommandSurface,
   getCommandToast,
+  isCommandConfigSwitchOn,
   type ResolvedBrowserCommand,
+  toggleCommandConfigSwitch,
 } from "src/view/browser/commands/command-definition";
 import {
   COMMAND_REQUEST_IDS,
@@ -56,15 +56,10 @@ import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log
 import { toggleZenMode } from "src/view/browser/commands/zen-mode-store";
 import { CommandRegistry } from "src/view/browser/extension/command-registry";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
-import {
-  getAutoRefreshPageKey,
-  isAutoRefreshEnabledForPage,
-} from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import type { Page, ThreadFilter } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { COMMENT_OVERLAY_FLOW_TOGGLE_EVENT } from "src/view/browser/utils/comment-overlay-flow-events";
-import { persistConfigValue, readConfigValue } from "src/view/browser/utils/config-setting";
 import {
   canQueryExtensionTabs,
   getOpenCompatibleThreadPages,
@@ -319,14 +314,6 @@ function dispatchCommentOverlayFlowToggle(context: BrowserCommandContext): void 
 
 // 変更理由: 設定の真偽値はフック側と同じ "on" / "off" の書式で保存し、
 // 画面と読み替え結果が食い違わないようにする。
-function isConfigSwitchOn(key: string): boolean {
-  return readConfigValue(key) === "on";
-}
-
-function toggleConfigSwitch(key: string): void {
-  persistConfigValue(key, isConfigSwitchOn(key) ? "off" : "on", "コマンドパレット");
-}
-
 async function copyWithNotice(
   context: BrowserCommandContext,
   text: string,
@@ -684,28 +671,6 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
     run: ({ openResponseJumpDialog }) => openResponseJumpDialog(),
   },
   {
-    id: "page.search-next-thread",
-    label: "次スレ候補を検索",
-    englishLabel: "Find Next Thread Candidates",
-    description: "積極判定で現在のスレに続く候補を一覧表示します",
-    keywords: ["次スレ", "候補", "thread", "next", "search"],
-    group: "page",
-    icon: Search,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: ({ openNextThreadSearchDialog }) => openNextThreadSearchDialog(),
-  },
-  {
-    id: "page.search-similar-threads",
-    label: "類似スレを検索",
-    englishLabel: "Find Similar Threads",
-    description: "次スレ候補とタイトルが似ているスレを板一覧から検索します",
-    keywords: ["類似スレ", "似たスレ", "関連スレ", "similar", "thread", "search"],
-    group: "page",
-    icon: Search,
-    when: ({ viewPage }) => viewPage.type === "thread",
-    run: ({ openSimilarThreadSearchDialog }) => openSimilarThreadSearchDialog?.(),
-  },
-  {
     id: "page.toggle-filter",
     label: "フィルターを切り替え",
     englishLabel: "Toggle Filter",
@@ -977,37 +942,6 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
   },
   ...THREAD_FILTER_MODE_COMMANDS,
   {
-    id: "page.toggle-auto-refresh",
-    label: ({ viewPage, viewTab }) =>
-      isAutoRefreshEnabledForPage(viewTab, viewPage) ? "自動更新を停止" : "自動更新を開始",
-    englishLabel: ({ viewPage, viewTab }) =>
-      isAutoRefreshEnabledForPage(viewTab, viewPage) ? "Stop Auto Refresh" : "Start Auto Refresh",
-    description: "表示中のスレッドや板の自動更新を切り替えます",
-    keywords: ["自動更新", "auto refresh", "更新", "実況"],
-    group: "page",
-    icon: Timer,
-    when: ({ viewPage }) => getAutoRefreshPageKey(viewPage) != null,
-    run: ({ dispatch, viewPage, viewTab }) => {
-      const pageKey = getAutoRefreshPageKey(viewPage);
-      if (pageKey == null) return;
-      dispatch(
-        tabActions.setAutoRefreshEnabled(!isAutoRefreshEnabledForPage(viewTab, viewPage), pageKey),
-      );
-    },
-  },
-  {
-    id: "page.toggle-auto-next-thread",
-    label: () =>
-      isConfigSwitchOn("auto_next_thread") ? "自動次スレを無効にする" : "自動次スレを有効にする",
-    englishLabel: () =>
-      isConfigSwitchOn("auto_next_thread") ? "Disable Auto Next Thread" : "Enable Auto Next Thread",
-    description: "スレッドが上限に近づいたときに次スレを自動で探す設定を切り替えます",
-    keywords: ["次スレ", "自動次スレ", "next thread", "自動"],
-    group: "page",
-    icon: Search,
-    run: () => toggleConfigSwitch("auto_next_thread"),
-  },
-  {
     id: "layout.toggle-zen-mode",
     label: ({ isZenMode }) => (isZenMode ? "Zenモードを終了" : "Zenモードを開始"),
     englishLabel: ({ isZenMode }) => (isZenMode ? "Exit Zen Mode" : "Enter Zen Mode"),
@@ -1020,14 +954,16 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
   {
     id: "layout.toggle-image-blur",
     label: () =>
-      isConfigSwitchOn("image_blur") ? "画像のぼかしを無効にする" : "画像のぼかしを有効にする",
+      isCommandConfigSwitchOn("image_blur")
+        ? "画像のぼかしを無効にする"
+        : "画像のぼかしを有効にする",
     englishLabel: () =>
-      isConfigSwitchOn("image_blur") ? "Disable Image Blur" : "Enable Image Blur",
+      isCommandConfigSwitchOn("image_blur") ? "Disable Image Blur" : "Enable Image Blur",
     description: "NGワードを含む画像などのぼかし表示を切り替えます",
     keywords: ["ぼかし", "画像", "blur", "モザイク"],
     group: "layout",
     icon: Filter,
-    run: () => toggleConfigSwitch("image_blur"),
+    run: () => toggleCommandConfigSwitch("image_blur"),
   },
   {
     id: "page.toggle-comment-overlay",

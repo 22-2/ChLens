@@ -5,8 +5,10 @@ import { boot } from "src/app";
 import { installDebugApi } from "src/app/debug/debug-api";
 import { installConsoleCapture, installRuntimeErrorCapture } from "src/app/debug/debug-log";
 import { installLogPersistence } from "src/app/debug/log-persistence";
+import { registerAutoRefreshCommands } from "src/features/auto-refresh/browser/register-auto-refresh-commands";
 import { registerBookmarkCommands } from "src/features/bookmark/browser/register-bookmark-commands";
 import { registerMediaCommands } from "src/features/media/browser/register-media-commands";
+import { registerNextThreadCommands } from "src/features/next-thread/browser/register-next-thread-commands";
 import { setupBrowserViewServices } from "src/service-container/setup-browser-view";
 import { BrowserApp } from "src/view/browser/App";
 import {
@@ -35,6 +37,8 @@ void boot("/view/index.html", () => {
   registerCoreCommands(createExtensionOwner("core", browserCommandRegistry).api);
   registerMediaCommands(createExtensionOwner("media", browserCommandRegistry).api);
   registerBookmarkCommands(createExtensionOwner("bookmark", browserCommandRegistry).api);
+  registerAutoRefreshCommands(createExtensionOwner("auto-refresh", browserCommandRegistry).api);
+  registerNextThreadCommands(createExtensionOwner("next-thread", browserCommandRegistry).api);
   const container = document.getElementById("root");
   if (!container) return;
   createRoot(container).render(<BrowserApp />);

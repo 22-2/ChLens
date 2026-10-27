@@ -15,8 +15,6 @@ import {
   createExtensionOwner,
   type ExtensionOwner,
 } from "src/view/browser/extension/extension-api";
-import { getAutoRefreshPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
-import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import type { ScopedTabAction } from "src/view/browser/state/tabs/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { setItestServerMapForTesting } from "src/view/browser/utils/itest-server-map";
@@ -31,7 +29,6 @@ const browserCommandMocks = vi.hoisted(() => {
     encodeThreadAsToonMock: vi.fn(),
     estimateToonTokenCountMock: vi.fn<() => number>(),
     getThreadMock: vi.fn(),
-    openNextThreadSearchDialogMock: vi.fn<() => Promise<void>>(),
     parseSikiLogFileMock: vi.fn(),
     registerSikiLogThreadMock: vi.fn(),
     requestThreadResJumpMock: vi.fn(),
@@ -54,7 +51,6 @@ const {
   encodeThreadAsToonMock,
   estimateToonTokenCountMock,
   getThreadMock,
-  openNextThreadSearchDialogMock,
   parseSikiLogFileMock,
   registerSikiLogThreadMock,
   requestThreadResJumpMock,
@@ -133,7 +129,7 @@ function createContext(
       dispatch,
       toggleWritePanel: vi.fn(),
       openResponseJumpDialog: vi.fn(),
-      openNextThreadSearchDialog: openNextThreadSearchDialogMock,
+      openNextThreadSearchDialog: async () => undefined,
       openArchiveReplayWindow: vi.fn(),
     },
     dispatch,
@@ -198,7 +194,6 @@ describe("browser commands", () => {
     encodeThreadAsToonMock.mockReset();
     estimateToonTokenCountMock.mockReset();
     getThreadMock.mockReset();
-    openNextThreadSearchDialogMock.mockReset();
     parseSikiLogFileMock.mockReset();
     registerSikiLogThreadMock.mockReset();
     requestThreadResJumpMock.mockReset();
@@ -223,7 +218,6 @@ describe("browser commands", () => {
     expect(ids).not.toContain("copy.dat-url");
     expect(ids).not.toContain("copy.thread-toon");
     expect(ids).not.toContain("page.jump-to-response");
-    expect(ids).not.toContain("page.search-next-thread");
     expect(ids).not.toContain("navigation.open-archive-replay");
     expect(ids).toContain("navigation.open-siki-log");
   });
@@ -381,25 +375,6 @@ describe("browser commands", () => {
         threadUrl: "https://example.com/test/read.cgi/software/1788743729/",
       },
     });
-  });
-
-  it("スレッドでは次スレ候補検索コマンドを実行できる", async () => {
-    const { context } = createContext({
-      type: "thread",
-      title: "Thread",
-      threadUrl: "https://egg.5ch.net/test/read.cgi/software/123/",
-    });
-
-    expect(resolveBrowserCommands(context)).toContainEqual(
-      expect.objectContaining({
-        id: "page.search-next-thread",
-        label: "次スレ候補を検索",
-        enabled: true,
-      }),
-    );
-
-    await expect(executeBrowserCommand("page.search-next-thread", context)).resolves.toBe(true);
-    expect(openNextThreadSearchDialogMock).toHaveBeenCalledOnce();
   });
 
   it("板一覧では板名を再取得して対象板の履歴タイトルを更新する", async () => {
@@ -818,7 +793,7 @@ describe("browser commands", () => {
       dispatch,
       toggleWritePanel: vi.fn(),
       openResponseJumpDialog: vi.fn(),
-      openNextThreadSearchDialog: openNextThreadSearchDialogMock,
+      openNextThreadSearchDialog: async () => undefined,
       openArchiveReplayWindow: vi.fn(),
     };
 
@@ -957,27 +932,6 @@ describe("browser commands", () => {
     expect(command).toBeUndefined();
     await expect(executeBrowserCommand("page.toggle-write-panel", context)).resolves.toBe(false);
     expect(toggleWritePanel).not.toHaveBeenCalled();
-  });
-
-  it("自動更新の切り替えは表示中ページの有効状態を反転したactionを送る", async () => {
-    const page: Page = {
-      type: "threadList",
-      title: "板",
-      boardUrl: "https://example.com/board/",
-      boardTitle: "板",
-    };
-    const { context, dispatch } = createContext(page);
-
-    // 停止中の板では「開始」として、有効化のactionを送る。
-    const label = resolveBrowserCommands(context).find(
-      (command) => command.id === "page.toggle-auto-refresh",
-    )?.englishLabel;
-    expect(label).toBe("Start Auto Refresh");
-
-    await expect(executeBrowserCommand("page.toggle-auto-refresh", context)).resolves.toBe(true);
-    expect(dispatch).toHaveBeenCalledWith(
-      tabActions.setAutoRefreshEnabled(true, getAutoRefreshPageKey(page) ?? undefined),
-    );
   });
 
   it("画像のぼかし切り替えは保存値を反転して保存する", async () => {
