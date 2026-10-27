@@ -672,6 +672,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                         alt=""
                         loading="lazy"
                         manualLoad={false}
+                        insideControl
                       />
                     )}
                   </button>

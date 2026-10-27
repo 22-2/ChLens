@@ -277,6 +277,7 @@ function VideoThumbImage({
       alt={`${embed.providerLabel} のサムネイル`}
       loading="lazy"
       manualLoad={false}
+      insideControl
       onError={() => {
         if (posterUrl !== embed.fallbackThumbnailUrl) {
           setPosterUrl(embed.fallbackThumbnailUrl);
@@ -500,6 +501,7 @@ function TwitterPostCard({
                       data-image-key={media.url}
                       alt={media.altText ?? "投稿画像"}
                       loading="lazy"
+                      insideControl
                     />
                   ) : (
                     <ExternalImage
@@ -508,6 +510,7 @@ function TwitterPostCard({
                       alt={media.altText ?? "投稿画像"}
                       loading="lazy"
                       manualLoad={false}
+                      insideControl
                     />
                   )}
                 </ConfirmableLink>
@@ -860,6 +863,7 @@ export function ResMediaGallery({
                     data-image-key={item.rawUrl}
                     alt={item.rawUrl}
                     loading="lazy"
+                    insideControl
                   />
                 ) : (
                   <ExternalImage
@@ -868,6 +872,7 @@ export function ResMediaGallery({
                     alt={item.rawUrl}
                     loading="lazy"
                     manualLoad={false}
+                    insideControl
                   />
                 )}
               </ConfirmableLink>
