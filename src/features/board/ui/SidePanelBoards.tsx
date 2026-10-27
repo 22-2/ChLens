@@ -1,6 +1,7 @@
 import { useBoardListDisplay } from "src/features/board/browser/use-board-list-display";
 import { useBoardListLogic } from "src/features/board/browser/use-board-list-logic";
 import { buildCategoryId } from "src/features/board/domain/board-list-utils";
+import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 
@@ -28,16 +29,16 @@ export function SidePanelBoards({ tabId }: { tabId: string }) {
         onChange={(e) => display.setSearchQuery(e.currentTarget.value)}
       />
       {logic.loading ? (
-        <p>板一覧を読み込み中…</p>
+        <SidePanelMessage>板一覧を読み込み中…</SidePanelMessage>
       ) : logic.error ? (
         <div>
-          <p>{logic.error}</p>
+          <SidePanelMessage>{logic.error}</SidePanelMessage>
           <button type="button" onClick={() => void logic.fetchMenu(true)}>
             再試行
           </button>
         </div>
       ) : display.displayMenus.length === 0 ? (
-        <p>板が見つかりません。</p>
+        <SidePanelMessage>板が見つかりません。</SidePanelMessage>
       ) : (
         display.displayMenus.map((menu) => (
           <details

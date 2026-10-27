@@ -6,6 +6,7 @@ import {
   type BookmarkContextMenuState,
 } from "src/features/bookmark/ui/BookmarkContextMenu";
 import { container } from "src/service-container/index";
+import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
@@ -66,16 +67,16 @@ export function SidePanelFavorites() {
         onChange={(event) => setQuery(event.currentTarget.value)}
       />
       {loading ? (
-        <p>お気に入りを読み込み中…</p>
+        <SidePanelMessage>お気に入りを読み込み中…</SidePanelMessage>
       ) : error ? (
         <div>
-          <p>{error}</p>
+          <SidePanelMessage>{error}</SidePanelMessage>
           <button type="button" onClick={() => void load()}>
             再試行
           </button>
         </div>
       ) : filtered.length === 0 ? (
-        <p>お気に入りがありません。</p>
+        <SidePanelMessage>お気に入りがありません。</SidePanelMessage>
       ) : (
         filtered.map((entry) => (
           <button
