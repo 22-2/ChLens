@@ -7,11 +7,14 @@ import {
 import type { DslLine, DslValue } from "./dsl-ast";
 import { parse as parseGrammar } from "./dsl-grammar.js";
 import {
+  IMAGE_RULE_ACTIONS,
+  IMAGE_RULE_TARGETS,
   RESPONSE_RULE_ACTIONS,
   RESPONSE_RULE_TARGETS,
   THREAD_LIST_RULE_ACTIONS,
   THREAD_LIST_RULE_TARGETS,
 } from "./engine";
+import { MAX_IMAGE_SIMILARITY, MIN_IMAGE_SIMILARITY, normalizeImageHash } from "./image-hash";
 import { getRuleConditions, type Rule, type RuleCondition, type RuleMatcher } from "./model";
 
 export interface RuleDslDiagnostic {
@@ -29,7 +32,7 @@ interface ConditionDraft {
   target: RuleCondition["target"];
   negate?: boolean;
   comparison?: ">" | ">=";
-  kind: "contains" | "regex";
+  kind: "contains" | "regex" | "image-hash";
   matchers: RuleMatcher[];
   node: ContentLine;
 }
@@ -40,6 +43,7 @@ interface RuleDraft {
   sites: string[];
   color?: string;
   label?: string;
+  similarity?: number;
   conditions: ConditionDraft[];
   node: ContentLine;
   indent?: number;
@@ -82,6 +86,18 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
     const text = value?.kind === "quoted" ? value.value : null;
     if (text == null) {
       error(node, "条件の文字列は引用符で囲んでください。");
+      return;
+    }
+    if (condition.kind === "image-hash") {
+      const hash = value?.kind === "quoted" && !value.rest ? normalizeImageHash(text) : null;
+      if (!hash) {
+        error(
+          node,
+          "imageの値は16進16桁の引用文字列にしてください。画像の右クリックメニューから登録できます。",
+        );
+        return;
+      }
+      condition.matchers.push({ kind: "image-hash", value: hash });
       return;
     }
     if (condition.kind === "contains") {
@@ -128,20 +144,34 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
     const evaluable = [
       { actions: THREAD_LIST_RULE_ACTIONS, targets: THREAD_LIST_RULE_TARGETS },
       { actions: RESPONSE_RULE_ACTIONS, targets: RESPONSE_RULE_TARGETS },
+      { actions: IMAGE_RULE_ACTIONS, targets: IMAGE_RULE_TARGETS },
     ].some(
       (scope) => scope.actions.has(action) && targets.every((target) => scope.targets.has(target)),
     );
-    if (targets.length > 0 && !evaluable)
+    const imageCount = targets.filter((target) => target === "image").length;
+    // 画像の判定はハッシュの比較で、1つのルールで1つの画像条件だけを扱う。
+    // 本文などの条件だけのblurは、既存の語句によるぼかし（image_blur_word）と役割が重なるため受け付けない。
+    if (imageCount > 0 && action !== "blur") error(current.node, "imageはblurでのみ使えます。");
+    else if (action === "blur" && targets.length > 0 && imageCount !== 1)
+      error(current.node, "blurにはwhen image similarを1つだけ指定してください。");
+    else if (targets.length > 0 && !evaluable)
       error(current.node, "動作とすべての条件を同じ画面で判定できません。");
     const titleIndex = current.conditions.findIndex((condition) => condition.target === "title");
+    const imageIndex = current.conditions.findIndex((condition) => condition.target === "image");
     if (action === "highlight" && titleIndex < 0)
       error(current.node, "highlightにはtitle条件が必要です。");
-    if ((current.color != null || current.label != null) && action !== "highlight")
-      error(current.node, "colorとlabelはhighlightでのみ指定できます。");
+    if (current.color != null && action !== "highlight")
+      error(current.node, "colorはhighlightでのみ指定できます。");
+    // blurはDSL上でルールを見分ける手段がlabelしかないため（保存時にコメントは残らない）、labelを許す。
+    if (current.label != null && action !== "highlight" && action !== "blur")
+      error(current.node, "labelはhighlightとblurでのみ指定できます。");
+    if (current.similarity != null && action !== "blur")
+      error(current.node, "similarityはblurでのみ指定できます。");
     if (!current.invalid && current.conditions.length > 0) {
-      // highlightの結果種別はtitleから決める。数値条件を先に書いても表示の意味を変えない。
+      // highlightの結果種別はtitleから、blurはimageから決める。ほかの条件を先に書いても意味を変えない。
       const conditions = [...current.conditions];
-      const primary = conditions.splice(action === "highlight" ? titleIndex : 0, 1)[0];
+      const primaryIndex = action === "highlight" ? titleIndex : action === "blur" ? imageIndex : 0;
+      const primary = conditions.splice(primaryIndex, 1)[0];
       const toCondition = (condition: ConditionDraft): RuleCondition => ({
         target: condition.target,
         matchers: condition.matchers,
@@ -162,6 +192,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
               },
             }
           : {}),
+        ...(current.similarity != null ? { similarity: current.similarity } : {}),
       });
     }
     current = null;
@@ -232,18 +263,33 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
         definition.comparison === "greater-than" ||
         definition.comparison === "greater-than-or-equal";
       const comparison = node.operator === ">" || node.operator === ">=";
-      if (numeric !== comparison) {
+      const expected =
+        definition.comparison === "similar" ? "similar" : numeric ? "numeric" : "text";
+      const actual = node.operator === "similar" ? "similar" : comparison ? "numeric" : "text";
+      if (expected !== actual) {
         error(
           node,
-          numeric
+          expected === "numeric"
             ? `${target}には数値比較を指定してください。`
-            : `${target}にはcontainsまたはregexを指定してください。`,
+            : expected === "similar"
+              ? `${target}にはsimilarを指定してください。`
+              : `${target}にはcontainsまたはregexを指定してください。`,
         );
+        continue;
+      }
+      // 「似ていない画像だけ」を対象にすると、ほぼすべての画像に当たるため受け付けない。
+      if (target === "image" && node.keyword === "unless") {
+        error(node, "imageにはunlessを使えません。whenで指定してください。");
         continue;
       }
       const condition: ConditionDraft = {
         target,
-        kind: node.operator === "regex" ? "regex" : "contains",
+        kind:
+          node.operator === "regex"
+            ? "regex"
+            : node.operator === "similar"
+              ? "image-hash"
+              : "contains",
         matchers: [],
         node,
         ...(node.keyword === "unless" ? { negate: true } : {}),
@@ -266,7 +312,7 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       continue;
     }
     const key = node.keyword;
-    if (!["sites", "color", "label", "disabled"].includes(key)) {
+    if (!["sites", "color", "label", "disabled", "similarity"].includes(key)) {
       error(node, `未対応の設定です: ${key}`);
       continue;
     }
@@ -298,6 +344,17 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
       if (!/^(?:[A-Za-z]+|#[\da-f]{3}|#[\da-f]{6}|#[\da-f]{8})$/iu.test(color))
         error(node, "colorには色名または16進カラーコードを指定してください。");
       else current.color = color;
+    } else if (key === "similarity") {
+      // 利用者にはハミング距離ではなく一致率で書いてもらう。%は省略でき、保存時は%付きにそろえる。
+      const text = node.value?.kind === "bare" ? node.value.text : "";
+      const percent = /^(\d+)%?$/u.exec(text)?.[1];
+      const similarity = percent == null ? Number.NaN : Number(percent);
+      if (!(similarity >= MIN_IMAGE_SIMILARITY && similarity <= MAX_IMAGE_SIMILARITY))
+        error(
+          node,
+          `similarityには${MIN_IMAGE_SIMILARITY}〜${MAX_IMAGE_SIMILARITY}の整数を指定してください（例: similarity 85%）。`,
+        );
+      else current.similarity = similarity;
     } else {
       const label = quoted(node.value);
       if (label == null) error(node, "labelの文字列は引用符で囲んでください。");
@@ -314,10 +371,11 @@ function formatCondition(condition: RuleCondition): string[] {
   if (getRuleTargetDefinition(condition.target).field.endsWith("Count")) {
     const matcher = condition.matchers[0];
     return [
-      `${prefix} ${condition.comparison ?? ">="} ${matcher.kind === "contains" ? matcher.value : matcher.source}`,
+      `${prefix} ${condition.comparison ?? ">="} ${matcher.kind === "regex" ? matcher.source : matcher.value}`,
     ];
   }
-  const kind = condition.matchers[0].kind;
+  const matcherKind = condition.matchers[0].kind;
+  const kind = matcherKind === "image-hash" ? "similar" : matcherKind;
   const values = condition.matchers.map((matcher) =>
     matcher.kind === "regex"
       ? `${quoteRuleDslValue(matcher.source)}${matcher.flags ? ` flags=${matcher.flags}` : ""}`
@@ -336,6 +394,7 @@ export function formatRuleDsl(rules: readonly Rule[]): string {
       if (rule.presentation?.color) lines.push(`  color ${rule.presentation.color}`);
       if (rule.presentation?.label != null)
         lines.push(`  label ${quoteRuleDslValue(rule.presentation.label)}`);
+      if (rule.similarity != null) lines.push(`  similarity ${rule.similarity}%`);
       const sites = rule.scope?.sites;
       if (sites?.length === 1) lines.push(`  sites ${quoteRuleDslValue(sites[0])}`);
       else if (sites?.length)

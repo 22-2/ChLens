@@ -1,4 +1,4 @@
-export const RULE_ACTIONS = ["hide", "collapse", "highlight", "warn"] as const;
+export const RULE_ACTIONS = ["hide", "collapse", "highlight", "warn", "blur"] as const;
 export type RuleAction = (typeof RULE_ACTIONS)[number];
 
 export const RULE_TARGETS = [
@@ -13,12 +13,15 @@ export const RULE_TARGETS = [
   "res-count",
   "reply-count",
   "anchor-count",
+  "image",
 ] as const;
 export type RuleTarget = (typeof RULE_TARGETS)[number];
 
 export type RuleMatcher =
   | { readonly kind: "contains"; readonly value: string }
-  | { readonly kind: "regex"; readonly source: string; readonly flags?: string };
+  | { readonly kind: "regex"; readonly source: string; readonly flags?: string }
+  /** 類似画像NGのハッシュ。正規化済みの16進16桁。 */
+  | { readonly kind: "image-hash"; readonly value: string };
 
 export interface RuleScope {
   readonly sites?: readonly string[];
@@ -48,6 +51,8 @@ export interface Rule {
   readonly conditions?: readonly RuleCondition[];
   readonly scope?: RuleScope;
   readonly presentation?: RulePresentation;
+  /** image条件で、何%以上一致すれば似ているとみなすか。省略時は既定値（85%）。 */
+  readonly similarity?: number;
   readonly enabled: boolean;
   readonly expiresAt?: number;
   readonly name?: string;

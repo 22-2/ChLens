@@ -17,12 +17,14 @@ export type RuleTargetField =
   | "url"
   | "resCount"
   | "replyCount"
-  | "anchorCount";
+  | "anchorCount"
+  | "image";
 export type RuleTargetComparison =
   | "contains"
   | "url-contains"
   | "greater-than"
-  | "greater-than-or-equal";
+  | "greater-than-or-equal"
+  | "similar";
 
 export interface RuleTargetDefinition extends RuleCatalogEntry<RuleTarget> {
   readonly field: RuleTargetField;
@@ -53,6 +55,10 @@ export const RULE_ACTION_CATALOG: readonly RuleCatalogEntry<RuleAction>[] = [
     description: "一致した対象を強調します。",
   },
   { name: "warn", description: "一致した対象に警告を表示します。" },
+  {
+    name: "blur",
+    description: "一致したレスの画像をぼかします。when image similarと組み合わせて使います。",
+  },
 ];
 
 /** DSL名と判定対象の対応を一箇所に集約する。 */
@@ -157,6 +163,15 @@ export const RULE_TARGET_DEFINITIONS: Readonly<Record<RuleTarget, RuleTargetDefi
     allowedOnBoard: false,
     allowedOnThread: true,
   },
+  image: {
+    name: "image",
+    description: "レスの画像（似ている画像を判定）",
+    field: "image",
+    comparison: "similar",
+    resultTypes: ["SimilarImage", "SimilarImage"],
+    allowedOnBoard: false,
+    allowedOnThread: true,
+  },
 };
 
 export const RULE_TARGET_CATALOG: readonly RuleTargetDefinition[] =
@@ -167,6 +182,7 @@ export const RULE_OPTION_CATALOG: readonly RuleCatalogEntry<string>[] = [
   { name: "color", description: "強調表示の背景色" },
   { name: "label", description: "表示するラベル" },
   { name: "disabled", description: "ルールを一時的に無効化" },
+  { name: "similarity", description: "画像が何%以上似ていれば対象にするか（50〜100、既定85）" },
 ];
 
 function normalizeFromCatalog<T extends string>(
@@ -201,8 +217,13 @@ export function getRuleTargetDefinition(target: RuleTarget): RuleTargetDefinitio
   return RULE_TARGET_DEFINITIONS[target];
 }
 
-/** 現在UIまで実装済みの組み合わせ。warnは将来拡張用の予約語として保持する。 */
+/**
+ * 現在UIまで実装済みの組み合わせ。warnは将来拡張用の予約語として保持する。
+ * blurは画像のハッシュ計算と表示が揃うまで（類似画像NGの段階3〜5）含めない。
+ */
 export function isRuleCombinationSupported(action: RuleAction, target: RuleTarget): boolean {
+  // imageはblurでのみ使える（構文検証で拒否する）。
+  if (target === "image") return false;
   return (
     action === "hide" || action === "collapse" || (action === "highlight" && target === "title")
   );

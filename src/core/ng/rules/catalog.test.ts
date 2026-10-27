@@ -41,6 +41,7 @@ describe("rule target catalog", () => {
       "res-count",
       "reply-count",
       "anchor-count",
+      "image",
     ]);
   });
 });

@@ -23,6 +23,7 @@ export * from "./rules/catalog";
 export * from "./rules/dsl";
 export * from "./rules/editor";
 export * from "./rules/engine";
+export * from "./rules/image-hash";
 export * from "./rules/model";
 export * from "./rules/normalize";
 export * from "./rules/repository";

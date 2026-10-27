@@ -52,7 +52,7 @@ export const RULE_DSL_LANGUAGE_DEFINITION = {
   targets: RULE_TARGET_CATALOG,
   options: RULE_OPTION_CATALOG,
   operators: ["when", "unless"] as const,
-  matchers: ["contains", "regex"] as const,
+  matchers: ["contains", "regex", "similar"] as const,
   colors: NG_HIGHLIGHT_COLOR_PRESET_ITEMS,
 } as const;
 
@@ -85,7 +85,10 @@ export const RULE_DSL_COMPLETION_CANDIDATES: readonly RuleDslCompletionCandidate
   ...(["when", "unless"] as const).flatMap((keyword) =>
     RULE_TARGET_CATALOG.flatMap((target) => {
       const numeric = target.field.endsWith("Count");
-      return (numeric ? [">="] : ["contains", "regex"]).map(
+      const similar = target.comparison === "similar";
+      // imageはwhen ... similarだけを受け付ける（unlessと文字列比較は構文検証で拒否する）。
+      if (similar && keyword === "unless") return [];
+      return (numeric ? [">="] : similar ? ["similar"] : ["contains", "regex"]).map(
         (operator): RuleDslCompletionCandidate => ({
           category: "condition",
           label: `${keyword} ${target.name} ${operator}`,
