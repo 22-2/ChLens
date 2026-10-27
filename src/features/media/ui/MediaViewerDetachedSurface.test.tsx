@@ -11,6 +11,8 @@ vi.mock("src/app/platform", () => ({
   },
 }));
 
+import { useMediaImageStore } from "src/features/media/browser/use-media-image-store";
+
 import { useMediaViewerStore } from "../browser/use-media-viewer-store";
 import { MediaViewerContainer } from "./MediaViewerContainer";
 
@@ -38,6 +40,15 @@ describe("別窓ビューアの表示サーフェス", () => {
   let initialRoot: HTMLElement;
 
   beforeEach(() => {
+    // ビューアの操作を検証するため、サイズ確認済みの画像として用意する。
+    useMediaImageStore.setState({ images: new Map() });
+    for (const url of [
+      "https://example.com/image.jpg",
+      "https://example.com/first.jpg",
+      "https://example.com/second.png",
+    ]) {
+      useMediaImageStore.getState().requestImage(url, url);
+    }
     useMediaViewerStore.setState({
       viewer: null,
       viewerScopeId: null,

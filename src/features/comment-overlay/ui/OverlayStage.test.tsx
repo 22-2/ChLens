@@ -568,3 +568,11 @@ describe("OverlayStage", () => {
     expect(screen.getByText("再利用したレス")).toBeVisible();
   });
 });
+
+// 画像取得の依存から拡張 API を初期化しないよう、画面テストでは通信境界を差し替える。
+vi.mock("src/app/platform", () => ({ platform: { http: { fetch: vi.fn() } } }));
+
+// このテストはレーンの配置と切替を対象とし、画像取得の事前確認は別のテストで検証する。
+vi.mock("src/features/media/ui/ExternalImage", () => ({
+  ExternalImage: (props: import("react").ComponentProps<"img">) => <img {...props} />,
+}));

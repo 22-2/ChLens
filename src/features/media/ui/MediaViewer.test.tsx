@@ -126,3 +126,6 @@ describe("MediaViewer", () => {
     document.removeEventListener("mousedown", onDocumentMouseDown);
   });
 });
+
+// 画像取得の依存から拡張 API を初期化しないよう、画面テストでは通信境界を差し替える。
+vi.mock("src/app/platform", () => ({ platform: { http: { fetch: vi.fn() } } }));

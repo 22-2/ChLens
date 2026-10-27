@@ -167,3 +167,11 @@ describe("OverlayImageLane", () => {
     expect(image.style.getPropertyValue("--comment-overlay-image-exit-translate")).toBe("-460px");
   });
 });
+
+// 画像取得の依存から拡張 API を初期化しないよう、画面テストでは通信境界を差し替える。
+vi.mock("src/app/platform", () => ({ platform: { http: { fetch: vi.fn() } } }));
+
+// このテストはレーンの配置と切替を対象とし、画像取得の事前確認は別のテストで検証する。
+vi.mock("src/features/media/ui/ExternalImage", () => ({
+  ExternalImage: (props: import("react").ComponentProps<"img">) => <img {...props} />,
+}));

@@ -510,3 +510,6 @@ describe("OverlayApp", () => {
     expect(screen.queryByText("候補スレの実況")).not.toBeInTheDocument();
   });
 });
+
+// 画像取得の依存から拡張 API を初期化しないよう、画面テストでは通信境界を差し替える。
+vi.mock("src/app/platform", () => ({ platform: { http: { fetch: vi.fn() } } }));

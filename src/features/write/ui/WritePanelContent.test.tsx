@@ -46,6 +46,7 @@ vi.mock("src/view/browser/utils/clipboard", () => ({
 
 vi.mock("src/app/platform", () => ({
   platform: {
+    http: { fetch: vi.fn(async () => ({ status: 200, headers: { "content-length": "100" } })) },
     window: {
       openPopup: vi.fn(() => null),
     },
@@ -203,32 +204,34 @@ describe("WritePanelContent", () => {
     expect(screen.queryByRole("group", { name: "投稿画像のプレビュー" })).not.toBeInTheDocument();
   });
 
-  it("本文の画像だけを既存ビューアで開き、重複を除いて前後移動できる", () => {
+  it("本文の画像だけを既存ビューアで開き、重複を除いて前後移動できる", async () => {
     const first = "https://example.com/first.jpg";
     const second = "https://example.com/second.png";
     mocks.message = `${first}\nhttps://example.com/page\n${second}\n${first}`;
     renderWritePanel();
 
     const previews = within(screen.getByRole("group", { name: "投稿画像のプレビュー" }));
-    expect(previews.getAllByRole("button")).toHaveLength(2);
-    expect(
-      previews.getByRole("button", { name: "画像2をプレビュー" }).querySelector("img"),
-    ).toHaveAttribute("src", second);
+    expect(previews.getAllByRole("button", { name: /画像\d+をプレビュー/ })).toHaveLength(2);
+    await waitFor(() =>
+      expect(
+        previews.getByRole("button", { name: "画像2をプレビュー" }).querySelector("img"),
+      ).toHaveAttribute("src", second),
+    );
     fireEvent.click(previews.getByRole("button", { name: "画像2をプレビュー" }));
     expect(useMediaViewerStore.getState().viewer?.currentIndex).toBe(1);
     expect(useMediaViewerStore.getState().viewer?.src).toBe(second);
     fireEvent.click(screen.getByTitle("閉じる"));
 
     fireEvent.click(screen.getByRole("button", { name: "画像1をプレビュー" }));
-    fireEvent.load(screen.getByAltText(first));
+    fireEvent.load(await screen.findByAltText(first));
     expect(screen.getByRole("img", { name: first })).toHaveAttribute("src", first);
     expect(useMediaViewerStore.getState().viewer?.images).toEqual([first, second]);
 
     fireEvent.click(screen.getByTitle("次の画像"));
-    fireEvent.load(screen.getByAltText(second));
+    fireEvent.load(await screen.findByAltText(second));
     expect(screen.getByRole("img", { name: second })).toHaveAttribute("src", second);
     fireEvent.click(screen.getByTitle("前の画像"));
-    fireEvent.load(screen.getByAltText(first));
+    fireEvent.load(await screen.findByAltText(first));
     expect(screen.getByRole("img", { name: first })).toBeInTheDocument();
     fireEvent.click(screen.getByTitle("閉じる"));
     expect(useMediaViewerStore.getState().viewer).toBeNull();
@@ -283,7 +286,7 @@ describe("WritePanelContent", () => {
     expect(useMediaViewerStore.getState().viewer).toBeNull();
   });
 
-  it("別窓の表示環境でプレビューを描画し、その窓のEscapeで閉じる", () => {
+  it("別窓の表示環境でプレビューを描画し、その窓のEscapeで閉じる", async () => {
     // 変更理由: 別Documentへの描画だけでなく、キーイベントの登録先も検証する。
     const frame = document.createElement("iframe");
     document.body.append(frame);
@@ -300,7 +303,7 @@ describe("WritePanelContent", () => {
     );
     const previewScreen = within(previewDocument.body);
     fireEvent.click(previewScreen.getByRole("button", { name: "画像1をプレビュー" }));
-    fireEvent.load(previewScreen.getByAltText(mocks.message));
+    fireEvent.load(await previewScreen.findByAltText(mocks.message));
     expect(previewScreen.getByRole("img")).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "Escape" });
