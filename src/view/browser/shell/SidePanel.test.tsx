@@ -5,11 +5,15 @@ import { SidePanel } from "src/view/browser/shell/SidePanel";
 import { DEFAULT_SIDE_PANEL } from "src/view/browser/state/tabs/side-panel-state";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-const mocks = vi.hoisted(() => ({ dispatch: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  dispatch: vi.fn(),
+  activeView: "boards",
+  page: { type: "home", title: "ホーム" },
+}));
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
-  useTabStore: () => ({ viewTab: { id: "tab" } }),
+  useTabStore: () => ({ viewTab: { id: "tab" }, viewPage: mocks.page }),
   useSidePanelState: () => ({
-    state: { ...DEFAULT_SIDE_PANEL, isOpen: true },
+    state: { ...DEFAULT_SIDE_PANEL, isOpen: true, activeView: mocks.activeView },
     dispatch: mocks.dispatch,
   }),
 }));
@@ -20,6 +24,7 @@ describe("サイドパネル", () => {
   afterEach(() => {
     cleanup();
     mocks.dispatch.mockClear();
+    mocks.activeView = "boards";
   });
   it("ビューを選択して状態を更新する", () => {
     render(<SidePanel />);
@@ -27,6 +32,17 @@ describe("サイドパネル", () => {
     expect(mocks.dispatch).toHaveBeenCalledWith(
       expect.objectContaining({ sidePanel: expect.objectContaining({ activeView: "images" }) }),
     );
+  });
+  it("スレ以外では、スレを使うビューの代わりに案内を出す", () => {
+    mocks.activeView = "properties";
+    render(<SidePanel />);
+    expect(screen.getByText("スレプロパティ")).toBeInTheDocument();
+    expect(screen.getByText("スレッドを開くと表示されます。")).toBeInTheDocument();
+  });
+  it("スレに依存しないビューはスレ以外でも表示する", () => {
+    render(<SidePanel />);
+    expect(screen.getAllByText("板一覧").length).toBeGreaterThan(0);
+    expect(screen.queryByText("スレッドを開くと表示されます。")).not.toBeInTheDocument();
   });
   it("キーボードでビューを並べ替える", () => {
     render(<SidePanel />);
