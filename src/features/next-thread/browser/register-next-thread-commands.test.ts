@@ -77,14 +77,14 @@ describe("次スレコマンド登録", () => {
     });
     const ids = resolveBrowserCommands(context).map(({ id }) => id);
     const nextIndex = ids.indexOf("next-thread.search");
-    const relatedIndex = ids.indexOf("next-thread.search-similar");
+    const relatedIndex = ids.indexOf("next-thread.search-related");
     const filterIndex = ids.indexOf("page.toggle-filter");
 
     expect(nextIndex).toBeGreaterThanOrEqual(0);
     expect(relatedIndex).toBe(nextIndex + 1);
     expect(filterIndex).toBe(relatedIndex + 1);
     await expect(executeBrowserCommand("next-thread.search", context)).resolves.toBe(true);
-    await expect(executeBrowserCommand("next-thread.search-similar", context)).resolves.toBe(true);
+    await expect(executeBrowserCommand("next-thread.search-related", context)).resolves.toBe(true);
     expect(context.openNextThreadSearchDialog).toHaveBeenCalledOnce();
     expect(context.openRelatedThreadSearchDialog).toHaveBeenCalledOnce();
   });

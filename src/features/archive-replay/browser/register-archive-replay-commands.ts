@@ -14,7 +14,9 @@ export function registerArchiveReplayCommands(api: ExtensionApi): void {
       group: "navigation",
       icon: PlayCircle,
       when: () => isTauriRuntime(),
-      // 変更理由: 過去ログ検索とは別に、複数スレッドを時刻順でつなぐ入口をTauri版に限定する。
+      // 変更理由: 過去ログ検索とは別に、複数スレッドを時刻順で再生する入口を
+      // Tauri版のコマンドパレットへ限定して公開し、ブラウザ版で未対応の再生窓を
+      // 誤って開かないようにする。
       run: ({ openArchiveReplayWindow }) => {
         if (!isTauriRuntime()) return;
         openArchiveReplayWindow();

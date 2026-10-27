@@ -24,7 +24,7 @@ export function registerNextThreadCommands(api: ExtensionApi): void {
   );
   api.addCommand(
     {
-      id: "next-thread.search-similar",
+      id: "next-thread.search-related",
       label: "関連スレを検索",
       englishLabel: "Find Related Threads",
       description: "タイトルや話題が関連するスレと次スレ候補を板一覧から検索します",

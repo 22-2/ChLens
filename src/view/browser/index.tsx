@@ -34,6 +34,8 @@ void boot("/view/index.html", () => {
   setupBrowserViewServices();
   // 変更理由: コマンドパレットの表示・復元より先に登録を完了し、Reactの再描画で重複しないようにする。
   // 機能のコマンドは core のコマンドを基準に表示順を決めるため、core を最初に登録する。
+  // 同じ基準の直前へ入る機能どうしは、登録した順に並ぶ（例：auto-refresh と next-thread は
+  // どちらも Zen モードの直前に入り、自動更新 → 自動次スレの順を保つため auto-refresh を先にする）。
   // 所有者はアプリの終了まで生きるため、解除は呼ばない。
   registerCoreCommands(createExtensionOwner("core", browserCommandRegistry).api);
   registerMediaCommands(createExtensionOwner("media", browserCommandRegistry).api);

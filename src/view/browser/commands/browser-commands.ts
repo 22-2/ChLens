@@ -311,8 +311,6 @@ function dispatchCommentOverlayFlowToggle(context: BrowserCommandContext): void 
   );
 }
 
-// 変更理由: 設定の真偽値はフック側と同じ "on" / "off" の書式で保存し、
-// 画面と読み替え結果が食い違わないようにする。
 async function copyWithNotice(
   context: BrowserCommandContext,
   text: string,
