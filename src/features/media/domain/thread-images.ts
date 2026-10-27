@@ -45,3 +45,16 @@ export function collectThreadImages(
   }
   return items;
 }
+
+/**
+ * 1つのレスの本文から、添付のサムネイルとして表示する画像のURLを返す。
+ * ResMediaGalleryが画像の鍵（data-image-key）に使うURLと同じになる。
+ * collectThreadImagesと違い、ほかのレスに同じURLがあっても除かない（レスごとの判定に使うため）。
+ * Imgurアルバムの中の画像は、取得してから決まるため含まない。
+ */
+export function collectResImageUrls(res: IRes, protocol: string): string[] {
+  const urls = getResUrls(res, protocol).filter(
+    (rawUrl) => !isDirectVideoUrl(rawUrl) && toViewerImageUrl(rawUrl) != null,
+  );
+  return [...new Set(urls)];
+}

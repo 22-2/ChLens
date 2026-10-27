@@ -4,6 +4,7 @@ import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
 
+import { collectImageMenuItems } from "../browser/image-menu-contributions";
 import { useMediaImageStore } from "../browser/use-media-image-store";
 import type { MediaViewerProps } from "../browser/use-media-viewer-controller";
 import { ExternalImage } from "./ExternalImage";
@@ -83,6 +84,13 @@ export function MediaViewer({
                     onSelect: () => useMediaImageStore.getState().discardImage(viewer.label),
                   },
                 ]
+              : []),
+            ...(imageIsLoaded && !isLoading && viewerImageRef.current
+              ? collectImageMenuItems({
+                  imageKey: viewer.label,
+                  image: viewerImageRef.current,
+                  targetWindow: surface.window,
+                })
               : []),
           ]);
         }}

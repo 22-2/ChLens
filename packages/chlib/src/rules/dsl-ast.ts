@@ -46,7 +46,7 @@ export type DslLine =
             readonly type: "ng-condition";
             readonly keyword: "when" | "unless";
             readonly target: string;
-            readonly operator: "contains" | "regex" | ">" | ">=";
+            readonly operator: "contains" | "regex" | "similar" | ">" | ">=";
             readonly value: DslValue | null;
           }
         | {

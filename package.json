@@ -78,6 +78,7 @@
     "@types/webextension-polyfill": "^0.12.6",
     "@url-sanitize/core": "2.0.2",
     "@url-sanitize/merged": "2.0.2",
+    "blockhash-core": "0.1.0",
     "buffer": "^6.0.3",
     "consola": "^3.4.2",
     "dompurify": "^3.4.17",

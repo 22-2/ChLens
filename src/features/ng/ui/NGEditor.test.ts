@@ -1,4 +1,4 @@
-import { evaluateResponseRules, validateRuleDsl } from "@chlen/chlib";
+import { evaluateImageRules, evaluateResponseRules, validateRuleDsl } from "@chlen/chlib";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("src/view/browser/ui/DslEditor", () => ({
@@ -6,7 +6,7 @@ vi.mock("src/view/browser/ui/DslEditor", () => ({
   DslHelpSnippet: () => null,
 }));
 
-import { NG_DSL_EXAMPLES } from "./NGEditor";
+import { NG_DSL_EXAMPLES, tokenizeNgDslLine } from "./NGEditor";
 
 describe("初心者向けNG記法例", () => {
   const context = {
@@ -32,5 +32,30 @@ describe("初心者向けNG記法例", () => {
     const rules = validateRuleDsl(NG_DSL_EXAMPLES[3].code).rules;
     expect(evaluateResponseRules(rules, { ...context, body: "保存用の本文" })).toBeNull();
     expect(evaluateResponseRules(rules, context)?.rule.action).toBe("hide");
+  });
+  it("似た画像の例は、例の値に似た画像だけをぼかす", () => {
+    const example = NG_DSL_EXAMPLES.find(({ title }) => title === "似た画像をぼかす");
+    const rules = validateRuleDsl(example!.code).rules;
+    expect(evaluateImageRules(rules, context, ["0123456789abcdef"])?.rule.action).toBe("blur");
+    expect(evaluateImageRules(rules, context, ["fedcba9876543210"])).toBeNull();
+  });
+});
+
+describe("記述例の色付け", () => {
+  it("similarは比較の種類、similarityは設定として色を付ける", () => {
+    expect(tokenizeNgDslLine('  when image similar "0123456789abcdef"')).toEqual([
+      { type: "plain", text: "  " },
+      { type: "rule", text: "when" },
+      { type: "plain", text: " " },
+      { type: "rule", text: "image" },
+      { type: "plain", text: " " },
+      { type: "rule", text: "similar" },
+      { type: "plain", text: " " },
+      { type: "string", text: '"0123456789abcdef"' },
+    ]);
+    expect(tokenizeNgDslLine("  similarity 85%")).toEqual([
+      { type: "param", text: "  similarity" },
+      { type: "plain", text: " 85%" },
+    ]);
   });
 });

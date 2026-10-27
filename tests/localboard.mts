@@ -34,25 +34,29 @@ export async function startLocalBoard() {
   const hiddenSubjectThreadIds = new Set<string>();
   const imageContentLengthOverrides = new Map<string, number | null>();
   const imageHeadStatusOverrides = new Map<string, number>();
+  const imageBodies = new Map<string, { body: Uint8Array; contentType: string }>();
   const server = createServer((request, response) => {
     const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
     requests.push(pathname);
     requestMethods.push(request.method ?? "GET");
     if (/^\/img\/\d+\.png$/u.test(pathname)) {
       // 実画像は小さい固定PNGを使い、HEADのサイズだけ境界値へ調整して事前警告を検証する。
+      // 類似画像NGのように画像の中身が要る検証では、setImageBodyで差し替える。
+      const customImage = imageBodies.get(pathname);
+      const imageBody = customImage?.body ?? TINY_PNG;
       const headStatus = imageHeadStatusOverrides.get(pathname) ?? 200;
       const headers: Record<string, string> = {
-        "Content-Type": "image/png",
+        "Content-Type": customImage?.contentType ?? "image/png",
         "Cache-Control": "no-store",
       };
       const contentLength = imageContentLengthOverrides.has(pathname)
         ? imageContentLengthOverrides.get(pathname)
-        : TINY_PNG.byteLength;
+        : imageBody.byteLength;
       if (request.method === "HEAD" && contentLength != null) {
         headers["Content-Length"] = String(contentLength);
       }
       response.writeHead(request.method === "HEAD" ? headStatus : 200, headers);
-      response.end(request.method === "HEAD" ? undefined : TINY_PNG);
+      response.end(request.method === "HEAD" ? undefined : imageBody);
       return;
     }
     const resources: Record<string, string> = {
@@ -114,6 +118,9 @@ export async function startLocalBoard() {
     },
     setImageContentLength(imageNumber: number, contentLength: number | null) {
       imageContentLengthOverrides.set(`/img/${imageNumber}.png`, contentLength);
+    },
+    setImageBody(imageNumber: number, body: Uint8Array, contentType: string) {
+      imageBodies.set(`/img/${imageNumber}.png`, { body, contentType });
     },
     setImageHeadStatus(imageNumber: number, status: number | null) {
       const pathname = `/img/${imageNumber}.png`;

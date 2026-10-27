@@ -118,7 +118,25 @@ describe("NGのwhen/unlessブロックDSL", () => {
     ['hide:\n  sites:\n  when body contains "x"', "1つ以上"],
     ['hide:\n  sites ""\n  when body contains "x"', "空でない"],
     ['hide:\n  disabled yes\n  when body contains "x"', "trueまたはfalse"],
-    ['hide:\n  label "x"\n  when body contains "x"', "highlightでのみ"],
+    ['hide:\n  label "x"\n  when body contains "x"', "highlightとblurでのみ"],
+    ['blur:\n  color red\n  when image similar "0123456789abcdef"', "highlightでのみ"],
+    ['hide:\n  when image similar "0123456789abcdef"', "blurでのみ使えます"],
+    ['blur:\n  when body contains "x"', "1つだけ"],
+    [
+      'blur:\n  when image similar "0123456789abcdef"\n  when image similar "fedcba9876543210"',
+      "1つだけ",
+    ],
+    ['blur:\n  unless image similar "0123456789abcdef"', "unlessを使えません"],
+    ['blur:\n  when image contains "x"', "similarを指定"],
+    ['hide:\n  when body similar "x"', "containsまたはregex"],
+    ['blur:\n  when image similar "xyz"', "16進16桁"],
+    ['blur:\n  when image similar "0123456789abcdef0"', "16進16桁"],
+    ['blur:\n  when image similar "0123456789abcdef" flags=i', "16進16桁"],
+    ["blur:\n  when image similar 0123456789abcdef", "引用符"],
+    ['blur:\n  similarity 49%\n  when image similar "0123456789abcdef"', "50〜100"],
+    ['blur:\n  similarity 101\n  when image similar "0123456789abcdef"', "50〜100"],
+    ['blur:\n  similarity 85.5%\n  when image similar "0123456789abcdef"', "50〜100"],
+    ['hide:\n  similarity 85%\n  when body contains "x"', "blurでのみ指定"],
     ['highlight:\n  when url contains "x"', "title条件"],
     ['hide:\n  sites "example.com"\n  sites "example.org"\n  when body contains "x"', "重複"],
     ['hide:\n  when body contains "x"\n    "y"', "一覧の見出し"],
@@ -133,6 +151,70 @@ describe("NGのwhen/unlessブロックDSL", () => {
       true,
     );
     expect(result.diagnostics.every(({ line, column }) => line > 0 && column > 0)).toBe(true);
+  });
+
+  it("類似画像NGのblurを解析し、%付きで書き戻す", () => {
+    const source = [
+      "blur:",
+      '  label "類似画像"',
+      "  similarity 90",
+      '  sites "example.com"',
+      '  unless id contains "許可ID"',
+      "  when image similar:",
+      '    "0123456789ABCDEF"',
+      '    "fedcba9876543210"',
+    ].join("\n");
+    const result = validateRuleDsl(source);
+    expect(result.diagnostics).toEqual([]);
+    // imageを主条件にし、ほかの条件はANDの追加条件にする。ハッシュは小文字にそろえる。
+    expect(result.rules).toEqual([
+      {
+        action: "blur",
+        enabled: true,
+        target: "image",
+        matchers: [
+          { kind: "image-hash", value: "0123456789abcdef" },
+          { kind: "image-hash", value: "fedcba9876543210" },
+        ],
+        conditions: [
+          { target: "id", matchers: [{ kind: "contains", value: "許可ID" }], negate: true },
+        ],
+        scope: { sites: ["example.com"] },
+        presentation: { label: "類似画像" },
+        similarity: 90,
+      },
+    ]);
+    const formatted = formatRuleDsl(result.rules);
+    expect(formatted).toBe(
+      [
+        "blur:",
+        '  label "類似画像"',
+        "  similarity 90%",
+        '  sites "example.com"',
+        "  when image similar:",
+        '    "0123456789abcdef"',
+        '    "fedcba9876543210"',
+        '  unless id contains "許可ID"',
+      ].join("\n"),
+    );
+    expect(parseRuleDsl(formatted).rules).toEqual(result.rules);
+  });
+
+  it("similarityを省略したblurは、書き戻しでも省略したままにする", () => {
+    const source = 'blur:\n  when image similar "0123456789abcdef"';
+    const result = validateRuleDsl(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules[0]).not.toHaveProperty("similarity");
+    expect(formatRuleDsl(result.rules)).toBe(source);
+  });
+
+  it("similarityは境界の50%と100%を受け付ける", () => {
+    for (const similarity of ["50%", "100"]) {
+      const result = validateRuleDsl(
+        `blur:\n  similarity ${similarity}\n  when image similar "0123456789abcdef"`,
+      );
+      expect(result.diagnostics, similarity).toEqual([]);
+    }
   });
 
   it("不正なルールを除き後続を解析するが、全体は保存不可にする", () => {

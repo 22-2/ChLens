@@ -1,343 +1,374 @@
-# 類似画像NG（モザイク）実装計画
+# 類似画像NG 実装計画
 
-## 概要
+## 進捗
 
-レスの画像サムネイルに対して知覚ハッシュ（dHash）を計算し、NG登録された画像と類似する場合に既存のぼかし（モザイク）エフェクトを適用する機能。
-レス自体を非表示にするのではなく、既存の `image_blur` と同様にサムネイルのぼかしのみを行う。
-NGエディタ（Monaco DSL）から編集可能。
+いまの段階: **すべての段階が完了**。段階の中身と完了条件は §7。段階を終えたら、この表を更新する。
 
-## 使用ライブラリ
+| 段階  | 内容                        | 状態  | 記録            |
+| --- | ------------------------- | --- | ------------- |
+| 0   | 試作・計測（Chrome・Tauri）       | 完了  | §11           |
+| 1   | chlib: DSL・検証・書き戻し・判定     | 完了  | 下記「段階1で決めたこと」 |
+| 2   | media: ハッシュ計算・保持・判定待ちのぼかし | 完了  | 下記「段階2で決めたこと」 |
+| 3   | ng と組み立て: ルールの購読・合流       | 完了  | 下記「段階3で決めたこと」 |
+| 4   | 登録UI                      | 完了  | 下記「段階4で決めたこと」 |
+| 5   | 設定画面の記述例・補完・E2E           | 完了  | 下記「段階5で決めたこと」 |
+| 6   | 登録画像の縮小画像とホバー表示           | 完了  | 下記「段階6で決めたこと」 |
 
-- `browser-image-hash` — ブラウザ向け知覚ハッシュ（dHash/aHash/pHash/wHash）
-  - `DifferenceHashBuilder` で64bit dHash を計算
-  - `Hash.getHammingDistance()` で類似度判定
-  - fetch→Canvas→hash までよしなにやってくれる
-  - 拡張機能の host permission 下では CORS 制約を気にせず使える
+### 段階1で決めたこと
 
-## アーキテクチャ
+- `label` を `blur` でも使えるようにした（§3）。`color` は `highlight` だけのまま。
+- `isRuleCombinationSupported` は `image` を常に対象外にした。`blur` の補完スニペットは、表示まで揃う段階5で追加する（スニペットの値のままではハッシュの検証を通らないため）。条件の補完は `when image similar` だけを出す。
+- `blockhash-core` の追加は、実際に使う段階2へ回した。
+- `matchRules` の条件判定を `matchTextCondition` に切り出し、`evaluateImageRules` と共有した。既存の判定結果は変えていない（既存テストがすべて通る）。
+- `INGResult.action`（`src/core/ports/ng.ts`）に `blur` を足した。隠す・強調の判定結果には現れない。
+- `generate:dsl` の npm スクリプトは、Windows では `--return-types` の引用符が崩れて失敗する。`pnpm exec peggy` に同じ引数を直接渡して生成した。
 
-```
-ThreadPage.tsx
-  │
-  ├── textBlurredResNums  = buildBlurredResSet(...)          ← 既存（テキストマッチ）
-  ├── similarImageBlurred = useSimilarImageNg(responses, rootRef) ← 新規（async, IntersectionObserver）
-  │
-  ├── blurredResNums = textBlurred ∪ similarImageBlurred     ← マージ
-  │
-  └── ResItem isImageBlurred={blurredResNums.has(res.num)}   ← 既存のまま
-```
+### 段階2で決めたこと
 
-### パフォーマンス戦略
+- ハッシュは `ResMediaGallery` の画像の `data-image-key`（元のURL）ごとに持つ。読み取りには表示中の `<img>` を使う。
+- `src/app/platform` は読み込み時に拡張機能APIへ触れるため、`image-hash-reader` は取り直しのときだけ動的に読み込む（ギャラリーを描くテストや画面に持ち込まない）。
+- 類似画像NGのルールが後から追加されると、読み込み済みの画像には `onLoad` が来ない。そのため `hashingEnabled` が有効になった時点で、ギャラリー内の `img[data-image-key]` に計算をまとめて依頼する。
+- 判定待ちの画像は既存のぼかし（`res__thumb--blurred`）に `res__thumb--hash-pending` を足し、表示を「ぼかし中」ではなく「判定中」にする。
+- 表示できなかった画像（`ExternalImage` が代わりの取得も諦めて `onError` を呼んだもの）は、判定待ちを終える。そうしないと「判定中」のまま残る。
+- 手動取得のプレースホルダー（まだ画像を表示していないボタン）は判定待ちにしない。
+- ハッシュは2000件を上限にし、古いものから捨てる。
+- 段階3の注意: 判定待ちの解除（ハッシュが出る）と、NGによるぼかし（`blurredResNums`）は同じ描画で反映されないと一瞬見える。ng側の判定は、同じストアの `entries` から描画中に同期的に導く（effect で遅らせない）。
 
-- `IntersectionObserver` でビューポート進入時にのみハッシュ計算
-- `rootMargin: "200px"` で少し手前から先読み
-- 計算済みのレスはキャッシュして再計算しない
-- 処理中のレスは二重実行を防止
+### 段階3で決めたこと
 
----
+- `INGService` に `hasImageRules()` と `isSimilarImageNG(res, title, url, imageHashes)` を足した。レスから判定用の文脈を作る処理は `NG.ts` の `toResponseRuleContext` にまとめ、`isNGThread` と共有する。
+- `features/ng/browser/use-similar-image-ng` がルールの有無を `ng_changed` で読み直し、`hashingEnabled` を `useLayoutEffect` で切り替える（描画前に切り替え、キャッシュ済みの画像が判定待ちのぼかしなしで一瞬出ないようにする）。ぼかすレスはストアの `entries` から `useMemo` で同期的に求める。
+- レスの画像の鍵は、`media/domain/thread-images` に足した `collectResImageUrls` で求める（ギャラリーの `data-image-key` と同じ判定）。
+- `ThreadPage` で、語句によるぼかしと類似画像NGの結果を合わせて `blurredResNums` にする。ポップアップと画像一覧（スナップショット）も同じ集合を使う。類似画像NGは `image_blur` 設定に従わず、NGの一時解除に従う。
+- 公開モジュールに `media/browser/use-image-hash-store` と `ng/browser/use-similar-image-ng` を足した。依存は `ng → media` の一方向。
+- 制限: Imgurアルバムの中の画像は、取得してから決まるため判定しない（判定待ちのぼかしは、ハッシュが出たら外れる）。返信数（`reply-count`）の条件は、レスに返信数が付いていないため成立しない。
+- 実際の画面での確認は、ハッシュを登録する手段ができる段階4で行う。
 
-## 変更ファイル一覧
+### 段階4で決めたこと
 
-### 新規作成（3ファイル）
+- 画像の右クリックメニュー（サムネイルとビューア）へ項目を足す入口として、`media/browser/image-menu-contributions` の `addImageMenuProvider` を作った。メニューを開くたびに呼ばれる関数を登録する形（拡張ポイント計画 §3.1 と同じ）。`media` は `ng` を import しない。
+- `ng/browser/register-similar-image-ng` の `registerSimilarImageNg(api)` が「類似画像NGに登録」を足す。組み立て層（`src/view/browser/index.tsx`）が、ほかの機能のコマンドと同じく登録関数を呼ぶ。
+- 登録はルールがない状態でも行うため、ハッシュはストアの `getOrComputeHash` で `hashingEnabled` に関係なく求める。
+- 二重登録はハッシュで判定する（`INGService.hasImageHash`）。画像URLでの判定は、URLを保存する段階6で足す。
+- 64bitのうち1が8個以下か56個以上なら「ほぼ単色」とみなし、`targetWindow.confirm` で確認する（リポジトリのほかの確認と同じ方法）。
+- ハッシュの計算や保存に失敗したら、ログを出してトーストで伝える。
+- Chrome の E2E（`tests/similar-image-ng.spec.mts`）を足した。サムネイルとビューアの両方から登録し、元の画像と縮小・再圧縮した画像がぼかされ、無関係な画像はぼかされないこと、二重登録しないことを確かめる。ローカル板に `setImageBody` を足し、画像の中身を差し替えられるようにした。
+- Tauri の実画面での確認は段階5で行う。
 
-| #   | ファイル                                         | 役割                                                                  |
-| --- | ------------------------------------------------ | --------------------------------------------------------------------- |
-| 1   | `src/view/browser/utils/similar-image-ng.ts`     | 純粋関数：画像URL抽出、dHash計算、NGルール照合                        |
-| 2   | `src/view/browser/hooks/use-similar-image-ng.ts` | React hook：IntersectionObserver + 非同期ハッシュ計算 + 結果state管理 |
-| 3   | `docs/plans/similar-image-ng-plan.md`            | 本計画書（このファイル）                                              |
+### 段階5で決めたこと
 
-### 修正（5ファイル）
+- 設定画面の記述例に「似た画像をぼかす」を足した（「非表示にせず折りたたむ」の後。既存テストが番号で参照する例より後ろ）。例の値で `evaluateImageRules` が一致・不一致になることもテストする。
+- 記述例の色付けは、比較の種類を共有の定義（`RULE_DSL_LANGUAGE_DEFINITION.matchers`）から作るようにし、`similar` に色が付くようにした。
+- `isRuleCombinationSupported` は `blur` と `image` の組み合わせだけを受け付けるようにし、補完に `blur (image)` の見出し（`similarity` と架空のハッシュ入り）と、`similarity` の設定のスニペットを足した。
+- Monaco には NG DSL のホバーがまだない（補完だけ）。段階6のホバー表示は、ホバーの仕組みから作る必要がある。
+- E2E の手順は `tests/similar-image-ng-scenarios.mts` にまとめ、Chrome（`tests/similar-image-ng.spec.mts`）と Tauri（`tests/tauri/similar-image-ng.spec.mts`）から呼ぶ。Tauri でも、登録・ぼかし・二重登録の防止・ビューアからの登録が通った（Rust 側の取得を経由する経路）。
+- Chrome の E2E で、本体は通るのにブラウザを閉じる処理が30秒を超える失敗が、ビルド直後の1回だけ続けて出た。直後に20回（並列14回・直列6回）流してすべて通り、手順を区切って試しても再現しなかったため、ビルド直後の負荷による環境要因と判断した。
 
-| #   | ファイル                                | 変更内容                                                                                         |
-| --- | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| 4   | `src/core/NGTypes.ts`                   | `SIMILAR_IMAGE: "SimilarImage"` を追加                                                           |
-| 5   | `src/core/ngDsl.ts`                     | `NG_DSL_RULE_SPECS` に `SimilarImage` 定義を追加                                                 |
-| 6   | `src/core/NGMatcher.ts`                 | `BOARD_ALLOWED_TYPES` / `THREAD_DENIED_TYPES` に `SimilarImage` を追加（テキストマッチから除外） |
-| 7   | `src/core/NG.ts`                        | （必要な場合）`SimilarImage` ルール抽出用ユーティリティ                                          |
-| 8   | `src/view/browser/pages/ThreadPage.tsx` | `useSimilarImageNg` hook を呼び出し、`blurredResNums` をマージ                                   |
+### 段階6で決めたこと
 
----
+- 登録した画像の記録（長辺96pxのJPEGの縮小画像、元のURL、登録時刻）は、`ng/browser/similar-image-records` が platform のオブジェクトストア `SimilarImageNg` にハッシュをキーにして保存する（ストアのキーの項目名は `url` なので、そこにハッシュを入れる）。DSLには入れない。
+- 縮小画像は `media/browser/image-hash-reader` の `createImageThumbnailFromElement` で作る。ハッシュと同じく、表示した画像から読めなければ取り直す（Tauriでは取り直しになる）。
+- 登録の前に、同じ元のURLの記録があり、そのハッシュのルールが残っていれば「登録済み」と伝える（段階4の残り）。ルールを消していれば登録し直せる。
+- 記録の保存はルールの登録の後に行い、失敗してもログだけ出す（判定には影響しないため）。登録のたびに、ルールから消えたハッシュの記録を捨てる。
+- NG DSL の Monaco にホバーの仕組みがなかったため、`registerHoverProvider` を足した。`when image similar` の値（一覧の値を含む）にカーソルを合わせると、縮小画像・元のURL・登録時刻を出す。記録がないハッシュには、その旨を出す。
+- 先頭付近の行で上に開いたホバーは、縮小画像が編集欄の上端で切れた。共有の `DslEditor` で `hover: { above: false }` にして、行の下に開くようにした。`fixedOverflowWidgets` で編集欄の外へ出す方法は、NGと置換の編集欄を切り替えたときに置換の入力ができなくなった（既存の E2E が失敗した）ため使わない。
+- Monaco の言語設定の `decreaseIndentPattern` を、動作の一覧から作るようにした（`blur` が漏れていた）。
+- 段階5で記述例を8件にしたのに、既存の E2E（`tests/ng-dsl.spec.mts`）が7件を前提にしていたので直した。段階5で全体の E2E を流していなかったため気付かなかった。
+- Chrome の E2E を全体で流し、64件が通った。失敗した3件のうち、自動更新とNGの仮想リストは単独では通った（並列実行の負荷によるもの）。Zenモードは `develop`（類似画像NGの変更前）でも同じく失敗するため、既存の不安定さと判断した。
 
-## 各ファイルの詳細
+## 1. 目的と範囲
 
-### 1. `src/view/browser/utils/similar-image-ng.ts`
+NGに登録した画像と見た目が似ている画像を、サムネイルのぼかしで隠す。
+レスそのものは消さず、既存のぼかし（`res__thumb--blurred`）を同じ見た目で使う。
 
-```ts
-import { DifferenceHashBuilder, Hash } from "browser-image-hash";
-import { container } from "src/service-container/index";
-import { TYPE, type InternalNGElement } from "src/core/NGTypes";
-import { extractUrlsFromMessage, hasImage } from "src/view/browser/utils/utils";
-import type { IRes } from "src/service-container/interfaces";
+- 判定には知覚ハッシュの blockhash（`blockhash-core`、64bit）を使う。どれだけ似ていれば対象にするかは、利用者には「何%似ているか」で示す。
+- ルールは既存のNG DSL（`hide:` / `when ... contains ...` 形式）に、新しい動作と対象を足して書く。
+- 登録は画像の右クリックメニューから行う。ハッシュを手で書かせない。
+- 設定画面（NGエディタ）の記述例に、類似画像NGの例を足す。
 
-interface SimilarImageRule {
-  hash: Hash;
-  threshold: number;
-}
+### 範囲外
 
-/** NGルールから SimilarImage タイプのものだけを抽出 */
-export function getSimilarImageNgRules(): SimilarImageRule[] {
-  const ng = container.ng.get?.() ?? new Set<InternalNGElement>();
-  const rules: SimilarImageRule[] = [];
-  for (const n of ng) {
-    if (n.type !== TYPE.SIMILAR_IMAGE || !n.word) continue;
-    try {
-      rules.push({
-        hash: new Hash(n.word),
-        threshold: Number(n.params?.threshold ?? 10),
-      });
-    } catch {
-      /* 不正なハッシュ値はスキップ */
-    }
-  }
-  return rules;
-}
+- スレ一覧（板）での判定。サムネイルを表示しないため対象にしない。
+- 画像を理由にレスを非表示・折りたたみにすること。最初は `blur` だけを扱う。
+- 本文の語句でぼかす既存の `image_blur_word` の置き換え。そのまま残す。
+- 文字が中心の画像（スクリーンショットなど）。配置が同じで文面だけ違う画像を見分けられないため（§11）。
+- ハッシュの永続キャッシュ（IndexedDB）。必要になったら別に行う（§9）。
 
-/** レスから画像URLの配列を抽出 */
-export function extractImageUrlsFromRes(res: IRes): string[] {
-  const allUrls = extractUrlsFromMessage(res.message);
-  return allUrls.filter((url) => hasImage(url));
-}
+## 2. 前提として確認した現状
 
-/** 画像URLの配列をNGルールと照合。1つでもマッチすれば true */
-export async function checkSimilarImages(
-  imageUrls: string[],
-  rules: SimilarImageRule[],
-): Promise<boolean> {
-  const builder = new DifferenceHashBuilder();
-  for (const url of imageUrls) {
-    try {
-      const dHash = await builder.build(new URL(url));
-      for (const rule of rules) {
-        if (rule.hash.getHammingDistance(dHash) <= rule.threshold) {
-          return true;
-        }
-      }
-    } catch {
-      // fetch失敗（404, CORSエラー等）は無視して次へ
-      continue;
-    }
-  }
-  return false;
-}
-```
+| 項目           | 現状                                                                                                                                                                                                                      | 計画への影響                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| NGルールの定義 | `packages/chlib/src/rules/`（`model.ts`・`catalog.ts`・`dsl.peggy`・`dsl.ts`・`engine.ts`・`validator.ts`・`editor.ts`）が正。`src/core/ng/rules/` はその薄い facade                                                       | 構文・型・判定は chlib に足す                                                   |
+| DSLの形        | 動作を見出しにし、`when <対象> <演算子> <値>` と設定行（`sites`・`label` など）を並べる                                                                                                                                    | `blur:`、`when image similar`、設定行 `similarity` を足す                       |
+| 判定エンジン   | `matchRules` は同期処理で、最初に一致した1件だけを返す。レスに使える動作は `RESPONSE_RULE_ACTIONS`（`hide`・`collapse`）                                                                                                  | `blur` を既存の判定に混ぜると `hide` と取り合いになる。画像の判定は別関数にする |
+| ぼかしの単位   | `ThreadPage` の `blurredResNums`（レス番号の Set）を `ResItem` → `ResMediaGallery` の `isBlurred` に渡す。ポップアップと画像一覧（`useThreadSnapshotPublisher`）も同じ Set を使う                                          | 結果をこの Set に合流させれば、全部の表示面でそろう                             |
+| スレの描画     | `features/thread/browser/use-thread-virtual-list.ts`（`@tanstack/react-virtual`）で、見えている範囲だけを描画する                                                                                                          | DOM を一度だけ監視する方式は使えない。サムネが読み込まれた時点で判定する        |
+| 画像の読み込み | `features/media/ui/ExternalImage.tsx` は通常の `<img>`。Tauri版では失敗したときだけ `fetchTauriBinary` で取り直した blob URL へ切り替える。状態は `browser/use-media-image-store.ts`（zustand）で表示面をまたいで共有する | 表示した画像からハッシュを取る。取り直しは代わりの手段として使う                |
+| NG変更の通知   | `NG.ts` の `commitRules` が保存後に `ng_changed` を送る。`INGService` にはルールを読む API がない                                                                                                                         | 画像ルールを読む API と変更の購読を足す                                         |
+| 機能間の依存   | `media` と `ng` は互いに import していない。公開モジュールは `vite.config.ts` の `FEATURE_PUBLIC_MODULES`                                                                                                                 | `ng → media` の一方向だけにする（§4）                                           |
+| 設定画面の例   | `features/ng/ui/NGEditor.tsx` の `NG_DSL_EXAMPLES`（題名・説明・コード）。色付けは同じファイルの正規表現で、演算子は `matcherPattern = "contains\|regex"` と直接書いている                                                 | 例を1つ足し、`similar` を色付けの対象に加える（§6）                             |
 
-### 2. `src/view/browser/hooks/use-similar-image-ng.ts`
+## 3. DSL
 
-```ts
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { RefObject } from "react";
-import type { IRes } from "src/service-container/interfaces";
-import {
-  checkSimilarImages,
-  extractImageUrlsFromRes,
-  getSimilarImageNgRules,
-} from "src/view/browser/utils/similar-image-ng";
-
-/**
- * 類似画像NGによるぼかし対象のレス番号セットを返す。
- * IntersectionObserver でビューポート進入時にのみハッシュ計算を行う。
- */
-export function useSimilarImageNg(
-  responses: IRes[],
-  rootRef: RefObject<HTMLDivElement | null>,
-): Set<number> {
-  const [blurredResNums, setBlurredResNums] = useState<Set<number>>(new Set());
-  const computedRef = useRef<Set<number>>(new Set());
-  const processingRef = useRef<Set<number>>(new Set());
-  const blurAccumRef = useRef<Set<number>>(new Set());
-
-  // レス番号 → 画像URL配列 の索引
-  const imageUrlMap = useMemo(() => {
-    const map = new Map<number, string[]>();
-    for (const res of responses) {
-      const urls = extractImageUrlsFromRes(res);
-      if (urls.length > 0) map.set(res.num, urls);
-    }
-    return map;
-  }, [responses]);
-
-  // IntersectionObserver でビューポート進入を検知
-  useEffect(() => {
-    const rules = getSimilarImageNgRules();
-    if (rules.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const target = entry.target as HTMLElement;
-          const resEl = target.closest("[data-res-num]") as HTMLElement | null;
-          if (!resEl) continue;
-
-          const resNum = Number(resEl.dataset.resNum);
-          if (computedRef.current.has(resNum) || processingRef.current.has(resNum)) {
-            continue;
-          }
-
-          const urls = imageUrlMap.get(resNum);
-          if (!urls || urls.length === 0) {
-            computedRef.current.add(resNum);
-            continue;
-          }
-
-          processingRef.current.add(resNum);
-          checkSimilarImages(urls, rules).then((matched) => {
-            processingRef.current.delete(resNum);
-            computedRef.current.add(resNum);
-            if (matched) {
-              blurAccumRef.current.add(resNum);
-              setBlurredResNums(new Set(blurAccumRef.current));
-            }
-          });
-        }
-      },
-      { rootMargin: "200px" },
-    );
-
-    const thumbs = rootRef.current?.querySelectorAll(".res__thumbs");
-    thumbs?.forEach((el) => observer.observe(el));
-
-    return () => observer.disconnect();
-  }, [imageUrlMap, rootRef]);
-
-  return blurredResNums;
-}
+```text
+blur:
+  label "類似画像"
+  similarity 85%
+  when image similar:
+    "c3e1f0d8a4b29617"
+    "0f1e2d3c4b5a6978"
+  unless id contains "許可ID"
 ```
 
-### 3. 本計画書（このファイル）
+- 動作 `blur`: 一致したレスのサムネイルをぼかす。最初は「`when image similar` をちょうど1つ含むルール」だけで使える。本文などの条件だけの `blur` は検証エラーにする。
+- 対象 `image`: 演算子 `similar` だけを受け付ける。`unless image` と正規表現は使えない。
+- 値: 16進16桁（64bit）。大文字・小文字を区別せず、小文字にそろえて保存する。
+- `sites`・`disabled`・有効期限は、既存のルールと同じように扱う。`label` は `highlight` のほかに `blur` でも使える（保存時にコメントは残らないため、ルールを見分ける手段が `label` しかない）。`color` は従来どおり `highlight` だけ。
+- 本文などの条件（`when` / `unless`）を一緒に書くと AND になる。画像以外の条件はレス単位で同期的に判定し、画像の比較はその条件を満たしたレスだけで行う。
 
----
+### 似ている度合い `similarity`
 
-### 4. `src/core/NGTypes.ts` 変更
+ハミング距離（違うビットの数）は利用者には分かりにくいので、DSL では「64ビットのうち何%が一致したら対象にするか」で書く。
 
-`TYPE` オブジェクトに以下を追加：
+- 書き方: `similarity 85%`。50〜100 の整数で、`%` は省略できる。保存するときは `%` 付きにそろえる。
+- 既定: 85%。省略したときもこの値を使う。登録UIで作るルールには、調整する場所が分かるように明記する（§5）。
+- 判定: 一致ビット数が `ceil(64 × similarity / 100)` 以上なら似ているとする。85% なら55ビット以上（違うのは9ビットまで）、100% ならハッシュが完全に一致する場合だけ。
+- 50% 未満を受け付けないのは、無関係な画像どうしでも半分ほどのビットは偶然一致し、ほぼすべての画像に当てはまるため。
+- 値はルールに1つで、そのルール内のすべてのハッシュに使う。モデルでは `Rule` に `similarity?: number`（%）を持たせ、距離への変換は判定のときに chlib で行う。
 
-```ts
-SIMILAR_IMAGE: "SimilarImage",
+### ハッシュの仕様（保存値なので固定する）
+
+ハッシュは利用者の設定に保存されるので、計算方法を変えると既存のルールが効かなくなる。そこで手順を固定し、テストで具体的な値を確かめる。
+
+1. 画像を 128×128 の canvas に描く（縦横比は保たない）。blockhash は画像を縦横8等分したブロックで比べるので、縦横比を変えても同じブロック分けになる。小さく描くのは、計算量を画像の大きさに左右されないようにするため。
+2. `blockhash-core` の `bmvbhashEven(imageData, 8)` で、64bit の16進16桁を得る。128 は8で割り切れるので、正確な `bmvbhash` ではなく速い `bmvbhashEven` で同じ結果になる。
+3. 完全に透明なピクセルは、ライブラリの仕様で白として扱われる。アニメーション画像は、canvas に描いたときのフレーム（通常は最初のフレーム）を使う。
+
+- `blockhash-core` は `0.1.0` に固定する（`package.json` で `^` を付けない）。2019年から更新はないが、依存はなく、アルゴリズムが変わらないことのほうが大事。
+- 128×128 に縮める処理はブラウザごとに少し違う。ブロックの平均を取る方式なので影響は小さいはずだが、フェーズ0で確かめる。
+- 将来ほかの方式（pHash など）を足すときは、`similar` の意味を変えずに別の演算子を足す。
+
+## 4. 構成
+
+```text
+packages/chlib/src/rules/           … 構文・型・検証・比較（純粋関数、DOMなし）
+  model.ts      RuleAction に blur、RuleTarget に image、RuleMatcher に image-hash、Rule に similarity
+  dsl.peggy     NgConditionLine の演算子に similar（生成: generate:dsl）
+  dsl.ts        similar と similarity 設定行の解析、formatRuleDsl での書き戻し
+  validator.ts  blur・image の組み合わせ制約、16進16桁と similarity の範囲の検査
+  catalog.ts    blur・image・similarity の説明（補完・ホバーに出る）
+  engine.ts     evaluateImageRules（下記）、条件判定を matchRules と共通化
+  image-hash.ts 16進の正規化、hammingDistance64、similarity(%) → 許容距離の変換
+
+src/features/media/                 … 画像からハッシュを作り、URL ごとに持つ（ng を知らない）
+  domain/image-blockhash.ts         ImageData → ハッシュ（blockhash-core を薄く包む）
+  browser/image-hash-reader.ts      <img> / Blob → 128×128 の ImageData（canvas）。読めなければ取り直す
+  browser/use-image-hash-store.ts   key(rawUrl) → { status, hash } と hashingEnabled
+  ui/ResMediaGallery.tsx            読み込み完了でハッシュ計算を依頼し、判定待ちの間はぼかす
+
+src/features/ng/                    … ルールとハッシュを照らし合わせる（media の公開モジュールを使う）
+  browser/use-similar-image-ng.ts   画像ルールの購読、hashingEnabled の切り替え、ぼかすレスの Set
+  ui/NGEditor.tsx                   記述例と色付け（§6）
+
+src/view/browser/pages/ThreadPage.tsx … 既存の blurredResNums と合流させる
 ```
 
-挿入位置：`TYPE` オブジェクト内の適切な位置（`REG_EXP_URL` の後など）
+- `blockhash-core` を使うのは `media/domain/image-blockhash.ts` だけにする。ハッシュの比較（ハミング距離）は chlib の自前の数行で済むので、chlib は依存を増やさない。
+- `blockhash-core` は CommonJS で配布され、型定義が付いている。Vite のビルドとテストでそのまま読み込めるかは、フェーズ1で確かめる。
 
----
+### 判定の流れ
 
-### 5. `src/core/ngDsl.ts` 変更
+```text
+ResMediaGallery（画像を表示）
+  └ onLoad → imageHashStore.request(rawUrl, imgElement)
+        └ image-hash-reader → image-blockhash → store に { status: "ready", hash }
 
-`NG_DSL_RULE_SPECS` 配列に以下を追加：
+useSimilarImageNg(responses)                         … ng
+  ├ 画像ルール = container.ng.getImageRules()（ng_changed で読み直す）
+  ├ hashingEnabled = 画像ルールがある && NG一時解除中でない → store に設定
+  └ レスごとに evaluateImageRules(rules, レスの文脈, そのレスの画像のハッシュ)
+        → 一致したレス番号の Set
 
-```ts
+ThreadPage
+  └ blurredResNums = 本文語句によるぼかし ∪ 類似画像NG
+```
+
+- `evaluateImageRules(rules, context, hashes)` は chlib の純粋関数。`blur` かつ `image` を含むルールだけを見て、画像以外の条件は `matchRules` と同じ処理で判定する。`hide` などの判定（`evaluateResponseRules`）には手を入れないので、既存のNGの結果は変わらない。
+- ハッシュは URL ごとに持ち、判定結果は持たない。ルールや `similarity` が変わっても比較し直すだけで済み、画像の再取得や再計算は起きない。
+- 依存は `ng → media` の一方向にする。`media` の `browser/use-image-hash-store` を `FEATURE_PUBLIC_MODULES` に足す。`ResMediaGallery` は「ハッシュが必要かどうか」を store の `hashingEnabled` で知るので、NGのルールを知らなくてよい。
+
+### 判定前の表示（一瞬見えてしまう問題）
+
+判定は非同期なので、何もしないとNG画像が一瞬見えてしまう。次のようにして防ぐ。
+
+- `hashingEnabled` が真のとき、`ResMediaGallery` はハッシュが `ready` になっていない画像にぼかしを掛けておく（`res__thumb--blurred` を使い、判定待ちを示す修飾子を足す）。
+- 判定でNGでなければ、ぼかしを外す。ハッシュの計算に失敗した画像もぼかしを外す。NG判定のために、普通の画像まで見えなくするのは避ける。失敗はログに出す。
+- 画像ルールが1件もなければ `hashingEnabled` は偽で、表示もコストも今と変わらない。
+
+### ピクセルの読み取り
+
+1. 表示した `<img>` を 128×128 の canvas に描いて `getImageData` で読む（再取得しない）。
+2. 別オリジンの画像で canvas が汚染されて `SecurityError` になったら、画像のバイト列を取り直し、`createImageBitmap(blob)` で読む。
+   - 拡張機能: `host_permissions`（`http://*/`・`https://*/`）があるので、`fetch` でよい。HTTPキャッシュに当たることを期待する。
+   - Tauri: `src/app/platform/` のHTTP（`fetchTauriBinary`）を通す。`ExternalImage` が blob URL へ切り替え済みなら、それを使う。
+3. どちらも失敗したら `status: "error"` にして、ログに URL と原因を出す。
+
+フェーズ0の結果（§11）により、環境ごとに読み取り方を固定する。Chrome 拡張機能は1だけを使い、Tauri は最初から2（`shared_http_request`）を使う。Firefox は対象外。
+
+### Web Worker は最初は使わない
+
+- `<img>` 要素は Worker に渡せないので、1の描画と読み取りはメインスレッドに残る。Worker へ移せるのは `bmvbhashEven` の計算だけで、128×128（16,384ピクセル）の合計と中央値なので軽い。受け渡しのほうが高くつく可能性がある。
+- 2のデコード（`createImageBitmap(blob)`）は、もともとブラウザが別スレッドで行う。
+- 重くなるとすれば、多くの画像が同時に読み込まれたときの描画と読み取り。まず `requestIdleCallback` で順番に処理して分散させる（§9「コスト」）。
+- フェーズ0で1枚あたりの時間を測り、それでも重ければ Worker に移す。そのときは、メインスレッドで `createImageBitmap(img)` だけを行い、ImageBitmap を転送して、Worker 側の `OffscreenCanvas` で読み取りと計算を行う。呼び出しには `comlink` を使い（`Comlink.transfer` で転送する）、要求IDの管理などを自前で書かない。Worker は Monaco と同じく Vite の `?worker` で読み込む。
+
+## 5. 登録UI
+
+- サムネイルの右クリックメニュー（`ResMediaGallery` の `openImageContextMenu`）と、メディアビューア（`MediaViewer.tsx`）の右クリックメニューに「類似画像NGに登録」を足す。画像が読み込み済みのときだけ表示する。
+- 選ぶと、ハッシュを store から取り出し（なければその場で計算し）、次の DSL を `container.ng.add` で末尾に足す。`similarity` は既定値でも省略せずに書き、どこを変えれば厳しさを調整できるかを見て分かるようにする。
+
+  ```text
+  blur:
+    label "類似画像"
+    similarity 85%
+    when image similar "c3e1f0d8a4b29617"
+  ```
+
+- 登録したことと、取り消し方（NGエディタで消す）を通知で伝える。同じ画像URLか同じハッシュがすでにあれば、追加せずにそう伝える。
+- 登録のときに、96px程度の縮小画像（data URL）・元の画像URL・登録日時を、ハッシュをキーにして別に保存する（§10）。16進の値だけでは何の画像を登録したのか分からないため。保存先は `src/app/platform/` のストレージで、DSL には入れない（DSL は文字で読み書きするもので、画像を埋め込むと読めなくなるため）。NGエディタでハッシュにカーソルを合わせると、この縮小画像を表示する（Monaco のホバー）。
+- ほぼ単色の画像（ハッシュのビットがほとんど0か1）は、無関係な画像にも当たりやすい。登録の前に確認を出す。
+- メニューは `media` にあり、登録は `ng` の処理になる。依存の向きを守るため、`media` はメニュー項目を外から受け取る口（`extraImageMenuItems` などの props か、登録関数）だけを持ち、組み立て層が `ng` の登録処理を渡す。
+
+## 6. 設定画面の記述例
+
+`features/ng/ui/NGEditor.tsx` の `NG_DSL_EXAMPLES` に、次の例を足す。置く場所は「非表示にせず折りたたむ」の後にする（非表示・折りたたみに続く「隠し方の違い」としてまとめるため）。
+
+````ts
 {
-  keyword: "SimilarImage",
-  aliases: [],
-  description: "似た画像のサムネイルをモザイク処理します（知覚ハッシュdHash）",
-  parameters: [
-    VALUE_PARAMETER,
-    SITES_PARAMETER,
-    {
-      name: "threshold",
-      detail: "許容ハミング距離",
-      documentation:
-        "小さいほど厳密に判定します。64bit dHash の場合、デフォルトの10が一般的な閾値です。",
-    },
-    DISABLED_PARAMETER,
-  ],
-  valueDescription: "16進数 dHash ハッシュ値（64文字）",
-}
-```
+  title: "似た画像をぼかす",
+  description:
+    "blurはレスの画像をぼかします。imageは画像、similarは「似ている」です。値は画像の特徴を表す16桁の文字で、画像の右クリックメニュー「類似画像NGに登録」で作れます。similarityは何%以上似ていたらぼかすかで、上げるほど厳しく判定します（既定は85%）。例の値は架空なので、登録した値に置き換えてください。",
+  code: `blur:
+  similarity 85%
+  when image similar "0123456789abcdef"`,
+},
+````
 
-これだけで Monaco エディタの補完・シグネチャヘルプ・シンタックスハイライトが自動で有効になる（`ngDslMonaco.ts` は `NG_DSL_RULE_SPECS` から動的に生成するため）。
+- 色付け: `matcherPattern`（`"contains|regex"`）に `similar` を足す。`blur`・`image`・`similarity` はカタログから正規表現を作っているので、§4 でカタログに足せば色が付く。`85%` は値として色を付けない。
+- 記述例は検証を通る必要がある。`NGEditor.test.ts` の「そのまま保存できる」が全例を `validateRuleDsl` で確かめているので、例を足せば自動で対象になる。同じテストファイルは `NG_DSL_EXAMPLES[1]`・`[3]` を番号で参照しているため、それより後ろ（5番目以降）に足して番号をずらさない。
+- 例の値 `"0123456789abcdef"` が `evaluateImageRules` で一致・不一致になることも、同じテストファイルで確かめる（ほかの例と同じく、記述例が説明どおりに動くことを保証するため）。
 
-DSL 使用例：
+## 7. 段階と完了条件
 
-```
-SimilarImage(hash="0111011001110000011110010101101100110011000100110101101000111000", threshold=10)
-SimilarImage(hash="a1b2c3d4e5f6a7b8", sites="5ch.net/livejupiter")
-```
+| 段階 | 内容                                                                                                                                         | 完了条件                                                                                                                 |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 0    | 完了（§11）。試作: 各環境で別オリジンの `<img>` から `getImageData` できるか、128×128 への縮小の違いでハッシュがどれだけずれるか、1枚あたりの処理時間を確かめる | 確かめた結果をこの計画の §3・§4 に書き込み、取り直しを常に使うか、Worker が必要か、既定の85%が妥当かを決める             |
+| 1    | chlib: `blur`・`image`・`similar`・`similarity` の構文、検証、書き戻し、`evaluateImageRules`、`hammingDistance64`。 | DSL の往復・検証エラー・%から距離への変換・判定のユニットテストが通る。既存の NG テストが変わらず通る                    |
+| 2    | media: `blockhash-core` の追加、`image-blockhash`（具体的な値で確かめるテスト）、`image-hash-reader`、`use-image-hash-store`、判定待ちのぼかし                        | 同じ画像を縮小・再圧縮しても既定の85%以上で一致し、別の画像は一致しない、というテストが通る                             |
+| 3    | ng と組み立て: `INGService.getImageRules`、`use-similar-image-ng`、`ThreadPage` での合流                                                     | ルールを足す・消す・一時解除すると、表示中のサムネイルにすぐ反映される                                                   |
+| 4    | 登録UI（§5）                                                                                                                                 | 右クリックから登録すると、同じ画像と再圧縮した画像がぼかされる                                                           |
+| 5    | 設定画面の記述例（§6）、Monaco の補完・ホバー（`editor.ts` / `ngDslMonaco.ts`）、E2E                                                        | 記述例が検証を通り色付けされる。下の「動作確認」が Chrome と Tauri で通る                                               |
+| 6    | 登録した画像の縮小画像を保存し、NGエディタのホバーで表示する（§5）                                                                          | 登録したハッシュにカーソルを合わせると縮小画像と元のURLが出る。縮小画像がないハッシュ（手で書いたもの）でもエラーにならない |
 
----
+各段階は単独でコミットできる大きさにする。段階1〜2は表示に影響しない。
 
-### 6. `src/core/NGMatcher.ts` 変更
+## 8. テストと動作確認
 
-`SimilarImage` はテキストマッチではなく画像ハッシュマッチのため、sync マッチングからは除外する：
+- ユニット（chlib）: DSL の解析と書き戻し（`similarity 85` が `85%` で保存される）、`blur` の組み合わせ制約、16進の検査、`similarity` の範囲（49 と 101 はエラー）、%から距離への変換（85%→9、100%→0、50%→32）、`sites`・`unless` との AND、`hide` の判定に影響しないこと。
+- ユニット（media）: 固定のピクセル配列から期待どおりのハッシュになること、透過、1×1 や極端に横長の画像、読み取りに失敗したときに `error` になりログが出ること。
+- フック: ルールの変更（`ng_changed`）で比較し直し、ハッシュは計算し直さないこと。仮想スクロールで後から描画されたレスも判定されること。
+- 設定画面: すべての記述例が検証を通ること。`similar` が演算子として色付けされること。
+- E2E（Playwright）: テスト用の画像を `example.com` のダミーURLとして用意し、登録 → 再読み込み → ぼかされることを確かめる。実在のスレや画像の URL は使わない。
 
-```ts
-// BOARD_ALLOWED_TYPES に SimilarImage は含めない（板一覧では画像ハッシュ比較は不要）
-// THREAD_DENIED_TYPES に SimilarImage を追加（スレッド内でのテキストマッチから除外）
+動作確認の手順:
 
-const BOARD_ALLOWED_TYPES: ReadonlySet<string> = new Set([
-  // ... 既存
-  // SimilarImage は含めない（板一覧では非対応）
-]);
+1. 画像の右クリックから「類似画像NGに登録」を選ぶ。NGエディタに `similarity 85%` 付きのルールが追加されている。
+2. 同じ画像や縮小・再圧縮した画像を貼ったレスで、サムネイルがぼかされる。判定の前に一瞬でも見えないこと。
+3. 似ていない画像はぼかされない。
+4. `similarity` を100%にすると、再圧縮した画像はぼかされなくなる（完全に同じ画像だけになる）。
+5. NGの一時解除でぼかしが外れ、戻すと再びぼかされる。
+6. NGエディタでルールを消すと、表示中のサムネイルのぼかしがすぐに外れる。
+7. ポップアップと画像一覧でも、同じレスがぼかされる。
+8. 画像ルールが1件もないときは、画像の読み込みと表示が今と変わらない。
+9. NGエディタの記述例に「似た画像をぼかす」があり、色付けされている。
 
-const THREAD_DENIED_TYPES: ReadonlySet<string> = new Set([
-  TYPE.HIGHLIGHT_TITLE,
-  TYPE.REG_EXP_HIGHLIGHT_TITLE,
-  TYPE.SIMILAR_IMAGE, // 追加：スレッド内でもテキストマッチからは除外
-]);
-```
+## 9. 未決事項・リスク
 
----
+- **ぼかしの単位**: 既存の仕組みに合わせて、レスの画像すべてをぼかす。1枚だけNGの画像があるレスで、ほかの画像まで隠れる。画像ごとにぼかすには `ResItem` やポップアップへ画像単位の情報を渡す必要があり、最初の範囲からは外す。
+- **既定の85%**: フェーズ0で確定した（§11）。ただし単色やグラデーションの画像は、似ていなくても一致率が高くなりやすい（blockhash はブロックの中央値で0と1を決めるため）。登録時の確認（§5）で補う。
+- **文字が中心の画像**: 配置が同じで文面だけ違うスクリーンショットは、知覚ハッシュでは見分けられない（§11）。対象外とし、説明にもそう書く。
+- **`image_blur` 設定との関係**: 類似画像NGはNGの一部として扱い、`image_blur`（本文の語句によるぼかし）の有効・無効には従わない。NGの一時解除とルールの `disabled` には従う。ぼかしの強さは同じ値（`IMAGE_BLUR_RADIUS_PX`）を使う。
+- **コスト**: 画像1枚につき 128×128 の描画と読み取りが1回。取り直しが必要な環境では通信も増える。重ければ、`requestIdleCallback` で順番に処理するようにする。それでも足りなければ Worker と `comlink` に移す（§4「Web Worker は最初は使わない」）。
+- **キャッシュ**: ハッシュはセッション内のメモリだけに持つ（URL をキーにし、上限を設けて古いものから捨てる）。再起動のたびに計算し直すのが重ければ、IndexedDB への保存を別に検討する。
+- **元画像とサムネイルの違い**: 登録はビューアの元画像から、判定はサムネイルから行うことがある。blockhash は縮小の影響を受けにくいが、切り抜きの違いには弱い。画像ホストごとのサムネイルの違いは、フェーズ0で確かめる。
+- **ほかのツールとの互換**: 128×128 に縮めてから計算するので、元の大きさのまま計算するほかの blockhash 実装とは、値が少しずれることがある。ほかのツールで作ったハッシュをそのまま使うことは保証しない。
 
-### 7. `src/core/NG.ts` 変更
+## 10. 参考: 5ch-browser-template の画像NG
 
-必要に応じて `SimilarImage` ルールを取得するユーティリティを追加：
+`V:\repos\forks\5ch-browser-template`（MIT）の画像NGを読み、取り入れるものと取り入れないものを分けた。コードは写さず、考え方だけを参考にする。
 
-```ts
-export function getSimilarImageRules(): InternalNGElement[] {
-  return Array.from(get()).filter((n) => n.type === TYPE.SIMILAR_IMAGE);
-}
-```
+向こうの作り（`apps/desktop/src-tauri/src/lib.rs` の `compute_dhash` / `build_ng_image_entry`、`apps/desktop/src/App.tsx` の `isImageHashBlocked` と画像NGの走査）:
 
-ただし、`similar-image-ng.ts` から直接 `container.ng.get()` を呼べるため、必須ではない。
-拡張機能コンテキストでのみ使うので `container.ng` 経由でアクセスする。
+- Tauri 専用。Rust の `image_hasher`（既定の Gradient 方式、8×8 = 64bit）で、元画像を取り直してハッシュを作り、base64 で保存する。
+- 登録は画像の右クリックから行い、ハッシュ・96px の縮小画像（data URL）・元のURL・登録日時・有効/無効・個別の閾値を JSON に保存する。
+- 判定は TS 側のハミング距離で行う。閾値は距離（0〜32、既定10）で、管理画面のスライダーで画像ごとに変えられる。
+- ぼかしではなく、画像1枚ごとに隠す（ラッパーに `ng-image-hidden` を付ける）。
 
----
+| 項目                        | 扱い     | 理由                                                                                           |
+| ------------------------- | ------ | -------------------------------------------------------------------------------------------- |
+| 縮小画像・元URL・登録日時を一緒に保存      | 取り入れる  | 何を登録したか見て分かるようにするため（§5・段階6）。DSL とは分けて保存する                                                    |
+| 同じURL・同じハッシュの二重登録を防ぐ      | 取り入れる  | 同じ画像を何度も登録しないようにするため（§5）                                                                     |
+| 画像ごとの閾値                   | 形を変えて  | 登録1回で1ルールを作るので、ルールごとの `similarity` がそのまま画像ごとの値になる。値は距離ではなく%で書く（§3）                           |
+| ハッシュ値をURLごとに持ち、判定は毎回比較    | 同じ考え方  | 計画の §4 と同じ。ルールを変えてもハッシュを作り直さずに済む                                                             |
+| Rust の `image_hasher` で計算 | 取り入れない | 拡張機能では動かない。Tauri だけ Rust で計算すると、同じ画像でも環境によってハッシュが変わり、設定を共有できなくなる。全環境で `blockhash-core` にそろえる |
+| 元画像を毎回取り直してハッシュを作る        | 取り入れない | 通信が増える。表示した画像から読み、読めないときだけ取り直す（§4）                                                           |
+| ハッシュが出てから隠す               | 取り入れない | 判定が終わるまで画像が見えてしまう。判定待ちの間はぼかしておく（§4）                                                          |
+| 描画のたびに DOM を走査する          | 取り入れない | 仮想スクロールと相性が悪く、毎回のコストもかかる。サムネの読み込み完了をきっかけにする（§4）                                              |
+| 失敗したURLを `error` のまま残す    | 取り入れない | 一時的な通信エラーでも、その画像は二度と判定されなくなる。失敗はログに出し、画像を読み込み直したときにもう一度試す                                    |
+| 画像1枚ごとに隠す                 | 保留     | 分かりやすいが、ポップアップや画像一覧へ画像単位の情報を渡す必要がある。最初はレス単位でぼかす（§9「ぼかしの単位」）                                  |
 
-### 8. `src/view/browser/pages/ThreadPage.tsx` 変更
+## 11. フェーズ0の結果（Chrome・Tauri、2026-10-28）
 
-```tsx
-// 追加 import
-import { useSimilarImageNg } from "src/view/browser/hooks/use-similar-image-ng";
+Chrome は、Playwright の Chromium 156 で `host_permissions` だけを持つ最小の拡張機能を作って計測した。Tauri は、開発版（`pnpm dev:tauri:debug`、WebView2 155）の画面に CDP で接続し、画面の状態を変えずに一時的な画像と canvas だけを作って計測した。どちらも、画像は CORS ヘッダーを付けない別ポートのサーバーから配った。計測用のコードはリポジトリに入れていない。Firefox は対象外とする。
 
-// L250-253 付近を変更
-const textBlurredResNums = useMemo(() => {
-  if (!imageBlurConfig.enabled) return new Set<number>();
-  return buildBlurredResSet(responses, indexes.repIndex, imageBlurConfig.harmfulWordPattern);
-}, [imageBlurConfig, indexes.repIndex, responses]);
+### ピクセルの読み取り
 
-const similarImageBlurredResNums = useSimilarImageNg(responses, rootRef);
+| 読み取り方                                  | Chrome 拡張機能のページ | 通常のWebページ（別オリジン）    | Tauri（`http://127.0.0.1:1430`）   |
+| ------------------------------------------- | ----------------------- | -------------------------------- | ---------------------------------- |
+| 通常の `<img>`                              | 読める                  | `SecurityError`（canvas が汚染） | `SecurityError`（canvas が汚染）   |
+| `<img crossOrigin="anonymous">`             | 読める                  | 画像の読み込みが失敗             | 未計測                             |
+| `fetch` → `createImageBitmap`               | 読める                  | `fetch` が失敗                   | 未計測                             |
+| `shared_http_request` → `createImageBitmap` | —                       | —                                | 読める（27枚すべて）               |
 
-const blurredResNums = useMemo(
-  () => new Set([...textBlurredResNums, ...similarImageBlurredResNums]),
-  [textBlurredResNums, similarImageBlurredResNums],
-);
-```
+- Chrome 拡張機能では、表示した `<img>` からそのまま読める。取り直しはいらない（§4 の1だけで足りる）。
+- Tauri では `<img>` から読めないので、最初から `shared_http_request`（`fetchTauriBinary`）で取り直す（§4 の2）。リリース版のページ（`tauri.localhost`）も画像とは別オリジンなので、同じ扱いになる。`<img>` を試して例外を待つ手順は省く。
 
----
+### 処理時間
 
-## NG登録UI（将来タスク）
+- Chrome: 1600×1200 の JPEG で、128×128 への描画と読み取りが平均 0.16ms、`bmvbhashEven` が平均 0.13ms（50回の平均）。
+- Tauri: 取り直し（Rust 側の取得、base64 での受け渡し、デコード）を含めて、1枚あたり中央値 25ms（ローカルのサーバーから、27枚）。実際の通信では回線の分が加わる。
+- どちらでも、ハッシュの計算そのものは軽い。Worker は使わない（§4「Web Worker は最初は使わない」のとおり）。Tauri の取り直しは非同期の通信なので、画面は止まらない。
 
-画像を右クリック →「類似画像NGに登録」で dHash を計算し DSL に追記するUI。
-これは別タスクとして実装する。
+### 一致率の分布（64bit）
 
-```ts
-// 右クリックメニュー拡張（イメージ）
-async function registerSimilarImageNg(imageUrl: string) {
-  const builder = new DifferenceHashBuilder();
-  const dHash = await builder.build(new URL(imageUrl));
-  const dslLine = `SimilarImage(hash="${dHash.toString()}")`;
-  await container.ng.add(dslLine);
-}
-```
+正例は、原画像1枚（595×663 の JPEG）と、それを少しずつ変えた20枚。負例は、無関係な画像6枚（JPEG・PNG、600〜1450px 程度）。判定は「そのまま」「取り直し」「50%に縮小して品質0.6で再圧縮」「25%に縮小して品質0.4で再圧縮」の4通りで行い、登録はどの正例からでも行った場合を数えた。
 
-## 動作確認
+| 組み合わせ                                         | 最小  | 中央値 | 最大  |
+| -------------------------------------------------- | ----- | ------ | ----- |
+| 原画像を登録し、変種を判定（4通りの読み方・加工） | 93.8% | 96.9%  | 100%  |
+| 正例のどれかを登録し、ほかの正例を判定             | 87.5% | 96.9%  | 100%  |
+| 正例のどれかを登録し、負例を判定                   | 46.9% | 62.5%  | 75.0% |
+| 負例どうし                                         | 43.8% | 53.1%  | 62.5% |
 
-1. NGエディタで `SimilarImage(hash="...", threshold=10)` を追加
-2. スレッドを開き、該当画像がビューポートに入ると自動でぼかしが適用される
-3. 既存の `image_blur` 設定（ぼかし有効/無効、ぼかし強度）が反映される
-4. NG一時解除トグルでぼかしが解除される
+| similarity | 正例が当たる割合 | 負例が当たる割合 |
+| ---------- | ---------------- | ---------------- |
+| 75%        | 100%             | 0.4%             |
+| 80%        | 100%             | 0%               |
+| 85%        | 100%             | 0%               |
+| 90%        | 99.9%            | 0%               |
+| 95%        | 77.3%            | 0%               |
 
-## 制限事項
-
-- 板一覧（スレッド一覧）では類似画像判定は行わない（負荷が高いため）
-- 画像ホストがダウンしている場合、その画像の判定はスキップされる
-- サムネイルではなく元画像URLに対してハッシュを計算する（精度のため）
+- 既定の85%を確定する。正例の最小（87.5%）と負例の最大（75%）の間にあり、どちらとも10ポイントほど離れている。
+- 同じ画像でも、`<img>` から読んだ場合と取り直した場合で最大2ビット（3.1%）ずれた。デコードと縮小の経路の違いによるもので、85%の範囲に十分収まる。
+- 環境をまたぐと、ずれは大きくなる。Chrome で `<img>` から読んだハッシュと、Tauri で取り直したハッシュは、27枚中22枚で2〜6ビット（最大9.4%）違った。それでも「Chrome で登録して Tauri で判定する」組み合わせは、正例が最小87.5%・中央値96.9%、負例が最大75%で、85%なら正例はすべて当たり、負例には当たらなかった。NG設定を環境間で共有しても、既定値のままで使える。
+- 最初に試した文字中心のスクリーンショットでは、配置が同じで文面だけ違う画像どうしも一致率が94%前後になり、見分けられなかった（256bit にしても、64×64 の画素で確かめ直しても同じ）。文字が中心の画像は類似画像NGの対象にしない（§1「範囲外」）。

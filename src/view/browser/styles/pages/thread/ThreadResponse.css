@@ -504,6 +504,11 @@
   font: var(--sys-font-size-xs) var(--sys-font-family-sans);
 }
 
+/* 類似画像NGの判定が終わるまで伏せている画像。NGと決まったわけではないので表示を分ける。 */
+.res__thumb--hash-pending::after {
+  content: "判定中";
+}
+
 .res__thumb--blurred img,
 .res__thumb--blurred .res__thumb-video-fallback,
 .res__thumb--blurred .res__thumb-video-preview {

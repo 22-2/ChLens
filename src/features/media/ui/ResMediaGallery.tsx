@@ -29,7 +29,9 @@ import {
   type TwitterVerificationBadgeColor,
 } from "../application/twitter-post";
 import { requestMediaImageDownload } from "../browser/image-download-preflight";
+import { collectImageMenuItems } from "../browser/image-menu-contributions";
 import { saveMediaImage } from "../browser/image-save";
+import { isImageHashPending, useImageHashStore } from "../browser/use-image-hash-store";
 import {
   type MediaImageState,
   type MediaImageStatus,
@@ -654,6 +656,8 @@ export function ResMediaGallery({
   const openImageContextMenu = (url: string, event: React.MouseEvent<HTMLElement>) => {
     const imageIsLoaded = useMediaImageStore.getState().images.get(url)?.status === "loaded";
     if (!confirmExternal && !imageIsLoaded) return;
+    const image = event.currentTarget.querySelector<HTMLImageElement>("img[data-image-key]");
+    const targetWindow = event.currentTarget.ownerDocument.defaultView;
 
     openMenu(
       url,
@@ -667,15 +671,18 @@ export function ResMediaGallery({
               danger: true,
               onSelect: () => useMediaImageStore.getState().discardImage(url),
             },
+            ...(image && targetWindow
+              ? collectImageMenuItems({ imageKey: url, image, targetWindow })
+              : []),
           ]
         : [],
     );
   };
-  const thumbStyle: ThumbStyle | undefined = isBlurred
-    ? {
-        "--res-thumb-blur-radius": `${imageBlurRadius}px`,
-      }
-    : undefined;
+  const blurStyle: ThumbStyle = { "--res-thumb-blur-radius": `${imageBlurRadius}px` };
+  const thumbStyle: ThumbStyle | undefined = isBlurred ? blurStyle : undefined;
+  const hashingEnabled = useImageHashStore((state) => state.hashingEnabled);
+  const imageHashEntries = useImageHashStore((state) => state.entries);
+  const thumbsRef = useRef<HTMLDivElement | null>(null);
 
   const mediaItems = useMemo(
     () =>
@@ -733,6 +740,16 @@ export function ResMediaGallery({
       ) ?? null,
     [expandedVideoUrl, mediaItems],
   );
+  useEffect(() => {
+    // 類似画像NGのルールが後から追加されると、読み込み済みの画像にはonLoadが来ない。
+    // そのため有効になった時点で、表示中の画像のハッシュ計算をまとめて依頼する。
+    if (!hashingEnabled) return;
+    const images = thumbsRef.current?.querySelectorAll<HTMLImageElement>("img[data-image-key]");
+    for (const image of images ?? []) {
+      const key = image.dataset.imageKey;
+      if (key) useImageHashStore.getState().requestHash(key, image);
+    }
+  }, [hashingEnabled, mediaItems]);
   const expandedVideoIframeSrc = useMemo(() => {
     if (expandedMediaItem?.type !== "embed" || expandedMediaItem.embed.provider !== "youtube") {
       return null;
@@ -846,7 +863,7 @@ export function ResMediaGallery({
           {isSavingImages ? "保存中…" : "レスの画像をすべて保存"}
         </button>
       )}
-      <div className="res__thumbs">
+      <div className="res__thumbs" ref={thumbsRef}>
         {mediaItems.map((item) => {
           if (item.type === "image") {
             const imageState = imageStates.get(item.rawUrl);
@@ -876,12 +893,24 @@ export function ResMediaGallery({
               );
             }
 
+            // 類似画像NGの判定は非同期なので、終わるまでぼかしておき、NG画像が一瞬見えるのを防ぐ。
+            const isHashPending = isImageHashPending(
+              hashingEnabled,
+              imageHashEntries.get(item.rawUrl),
+            );
+            const requestImageHash = (event: React.SyntheticEvent<HTMLImageElement>) => {
+              useImageHashStore.getState().requestHash(item.rawUrl, event.currentTarget);
+            };
+            // ExternalImageは代わりの取得も諦めたときだけonErrorを呼ぶので、判定待ちを終わらせてよい。
+            const markImageUnavailable = () => {
+              useImageHashStore.getState().markImageUnavailable(item.rawUrl);
+            };
             return (
               <ConfirmableLink
                 key={`image:${item.rawUrl}`}
                 href={item.rawUrl}
-                className={`res__thumb res__thumb--image${isBlurred ? " res__thumb--blurred" : ""}`}
-                style={thumbStyle}
+                className={`res__thumb res__thumb--image${isBlurred || isHashPending ? " res__thumb--blurred" : ""}${isHashPending ? " res__thumb--hash-pending" : ""}`}
+                style={isBlurred || isHashPending ? blurStyle : undefined}
                 onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
                 onClick={(event) => {
                   event.preventDefault();
@@ -911,6 +940,8 @@ export function ResMediaGallery({
                     alt={item.rawUrl}
                     loading="lazy"
                     insideControl
+                    onLoad={requestImageHash}
+                    onError={markImageUnavailable}
                   />
                 ) : (
                   <ExternalImage
@@ -920,6 +951,8 @@ export function ResMediaGallery({
                     loading="lazy"
                     manualLoad={false}
                     insideControl
+                    onLoad={requestImageHash}
+                    onError={markImageUnavailable}
                   />
                 )}
               </ConfirmableLink>

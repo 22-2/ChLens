@@ -312,6 +312,10 @@ export function setupContainer(): void {
   const ngServiceAdapter: INGService = {
     isNGBoard: (title, url, resCount) => ng.isNGBoard(title, url, resCount),
     isNGThread: (res, title, url) => ng.isNGThread(res, title, url),
+    hasImageRules: () => ng.hasImageRules(),
+    hasImageHash: (hash) => ng.hasImageHash(hash),
+    isSimilarImageNG: (res, title, url, imageHashes) =>
+      ng.isSimilarImageNG(res, title, url, imageHashes),
     add: (ruleDsl) => ng.add(ruleDsl),
     invalidateCache: () => ng.invalidateCache(),
     execExpire: () => ng.execExpire(),

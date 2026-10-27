@@ -64,7 +64,8 @@ hide:
     .toBe(rule);
   await expect(panel.getByText("NGルールを保存できません", { exact: true })).toHaveCount(0);
   await panel.getByRole("button", { name: "NG記法例", exact: true }).click();
-  await expect(panel.locator(".dsl-editor__snippet")).toHaveCount(7);
+  // 記述例は NG_DSL_EXAMPLES の数（類似画像NGの例を足して8件）。
+  await expect(panel.locator(".dsl-editor__snippet")).toHaveCount(8);
   await expect(
     panel.getByRole("heading", { name: "複数のIDをまとめて指定する", exact: true }),
   ).toBeVisible();

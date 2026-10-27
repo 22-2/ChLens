@@ -25,7 +25,7 @@ NgHeaderLine
   = action:$[A-Za-z-]+ ":" Ws* LineEnd { return { type: "ng-header", action }; }
 
 NgConditionLine
-  = keyword:("when" / "unless") Ws+ target:$NonWs+ Ws+ operator:$("contains" / "regex" / ">=" / ">")
+  = keyword:("when" / "unless") Ws+ target:$NonWs+ Ws+ operator:$("contains" / "regex" / "similar" / ">=" / ">")
     tail:(":" Ws* LineEnd { return null; } / Ws+ value:NgValueContent Ws* LineEnd { return value; }) {
       return { type: "ng-condition", keyword, target, operator, value: tail };
     }

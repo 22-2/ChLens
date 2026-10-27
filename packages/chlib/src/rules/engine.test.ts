@@ -1,7 +1,12 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { evaluateBoardRules, evaluateResponseRules, matchRules } from "./engine";
+import {
+  evaluateBoardRules,
+  evaluateImageRules,
+  evaluateResponseRules,
+  matchRules,
+} from "./engine";
 import type { Rule } from "./model";
 
 const HIDE = new Set<Rule["action"]>(["hide"]);
@@ -405,5 +410,77 @@ describe("when/unlessの評価", () => {
     expect(
       evaluateBoardRules([rule], { ...context, title: "注目・除外", resCount: 11 }),
     ).toBeNull();
+  });
+});
+
+describe("類似画像NG（evaluateImageRules）", () => {
+  const context = {
+    all: "本文",
+    title: "スレ",
+    body: "本文",
+    name: "名無し",
+    mail: "",
+    id: "abc",
+    url: "https://example.com/test/read.cgi/board/1/",
+  };
+  const registered = "0000000000000000";
+  const near = "00000000000001ff"; // 9ビット違い（85%ちょうど）
+  const far = "00000000000003ff"; // 10ビット違い
+  const blurRule: Rule = {
+    action: "blur",
+    target: "image",
+    enabled: true,
+    matchers: [{ kind: "image-hash", value: registered }],
+    presentation: { label: "類似画像" },
+  };
+
+  it("どれか1枚が登録したハッシュに似ていれば一致する", () => {
+    expect(evaluateImageRules([blurRule], context, [far, near])).toMatchObject({
+      rule: blurRule,
+      matcher: { kind: "image-hash", value: registered },
+      type: "SimilarImage",
+      params: { label: "類似画像" },
+    });
+    expect(evaluateImageRules([blurRule], context, [far])).toBeNull();
+    expect(evaluateImageRules([blurRule], context, [])).toBeNull();
+  });
+
+  it("ルールのsimilarityで判定の厳しさを変える", () => {
+    expect(evaluateImageRules([{ ...blurRule, similarity: 100 }], context, [near])).toBeNull();
+    expect(
+      evaluateImageRules([{ ...blurRule, similarity: 80 }], context, [far])?.rule.similarity,
+    ).toBe(80);
+  });
+
+  it("画像以外の条件はANDで判定し、unlessは除外として働く", () => {
+    const rule: Rule = {
+      ...blurRule,
+      conditions: [{ target: "id", negate: true, matchers: [{ kind: "contains", value: "許可" }] }],
+    };
+    expect(evaluateImageRules([rule], context, [near])?.rule).toBe(rule);
+    expect(evaluateImageRules([rule], { ...context, id: "許可ID" }, [near])).toBeNull();
+  });
+
+  it("無効・期限切れ・適用先外のルールは判定しない", () => {
+    expect(evaluateImageRules([{ ...blurRule, enabled: false }], context, [near])).toBeNull();
+    expect(evaluateImageRules([{ ...blurRule, expiresAt: 1 }], context, [near])).toBeNull();
+    expect(
+      evaluateImageRules([{ ...blurRule, scope: { sites: ["example.org"] } }], context, [near]),
+    ).toBeNull();
+  });
+
+  it("構文検証を経ないunless imageは一致へ反転させない", () => {
+    expect(evaluateImageRules([{ ...blurRule, negate: true }], context, [far])).toBeNull();
+  });
+
+  it("blurはhide・collapseの判定に混ざらず、画像の判定はhideを返さない", () => {
+    const hide: Rule = {
+      action: "hide",
+      target: "body",
+      enabled: true,
+      matchers: [{ kind: "contains", value: "本文" }],
+    };
+    expect(evaluateResponseRules([blurRule, hide], context)?.rule).toBe(hide);
+    expect(evaluateImageRules([hide, blurRule], context, [near])?.rule).toBe(blurRule);
   });
 });
