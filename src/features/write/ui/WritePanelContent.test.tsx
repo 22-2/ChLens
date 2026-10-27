@@ -34,6 +34,11 @@ const mocks = vi.hoisted(() => ({
   copyText: vi.fn().mockResolvedValue(undefined),
   readClipboardImage: vi.fn(),
   openWriteWindow: vi.fn(),
+  editorPlace: "bottom" as "bottom" | "side",
+  isEditorBusy: false,
+  moveEditor: vi.fn(() => true),
+  setEditorBusy: vi.fn(),
+  requestWriteWindowFocus: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   toastInfo: vi.fn(),
@@ -53,10 +58,10 @@ vi.mock("src/app/platform", () => ({
   },
 }));
 
-function renderWritePanel(standalone = false) {
+function renderWritePanel(standalone = false, place?: "bottom" | "side") {
   return render(
     <StatusBarProvider>
-      <WritePanelContent standalone={standalone} />
+      <WritePanelContent standalone={standalone} place={place} />
       <StatusBar />
     </StatusBarProvider>,
   );
@@ -82,6 +87,7 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
     writePanelInsertRequest: mocks.writePanelInsertRequest,
     clearWritePanelInsertRequest: mocks.clearWritePanelInsertRequest,
     closePanel: mocks.closePanel,
+    requestWritePanelFocus: vi.fn(),
   }),
 }));
 
@@ -112,6 +118,11 @@ vi.mock("src/features/write/browser/use-write", () => ({
 vi.mock("src/features/write/browser/use-write-session", () => ({
   useWriteSessionControls: () => ({
     isWindowOpen: false,
+    editorPlace: mocks.editorPlace,
+    isEditorBusy: mocks.isEditorBusy,
+    moveEditor: mocks.moveEditor,
+    setEditorBusy: mocks.setEditorBusy,
+    requestWriteWindowFocus: mocks.requestWriteWindowFocus,
     writeWindowRoot: null,
     selectedThreadUrl: mocks.selectedThreadUrl,
     targets: mocks.targets,
@@ -143,6 +154,11 @@ describe("WritePanelContent", () => {
     mocks.message = "本文";
     mocks.selectedThreadUrl = null;
     mocks.targets = [];
+    mocks.editorPlace = "bottom";
+    mocks.isEditorBusy = false;
+    mocks.moveEditor.mockClear();
+    mocks.setEditorBusy.mockClear();
+    mocks.requestWriteWindowFocus.mockClear();
     mocks.writePanelInsertRequest = null;
     mocks.status = "idle";
     mocks.statusText = "";
@@ -342,6 +358,39 @@ describe("WritePanelContent", () => {
     unmount();
     renderWritePanel(true);
     expect(screen.getByLabelText("投稿先スレッド")).toBeInTheDocument();
+  });
+
+  it("サイドパネルの書き込み欄にも投稿先を選ぶ欄を出す", () => {
+    const targetThreadUrl = "https://example.com/test/read.cgi/software/1/";
+    mocks.selectedThreadUrl = targetThreadUrl;
+    mocks.targets = [{ threadUrl: targetThreadUrl, title: "スレッド", tabId: "tab-1" }];
+    mocks.editorPlace = "side";
+    renderWritePanel(false, "side");
+    expect(screen.getByLabelText("投稿先スレッド")).toBeInTheDocument();
+  });
+
+  it("編集欄がほかの場所にあれば、現在の場所と移動操作だけを出す", () => {
+    mocks.editorPlace = "side";
+    renderWritePanel();
+    expect(screen.getByText("書き込み欄はサイドパネルで開いています。")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "こちらに移動" }));
+    expect(mocks.moveEditor).toHaveBeenCalledWith("bottom");
+  });
+
+  it("送信中は編集欄をほかの場所へ移せない", () => {
+    mocks.editorPlace = "side";
+    mocks.isEditorBusy = true;
+    renderWritePanel();
+    expect(screen.getByRole("button", { name: "こちらに移動" })).toBeDisabled();
+  });
+
+  it("送信中であることをセッションへ知らせ、終わったら解除する", () => {
+    mocks.status = "submitting";
+    const { unmount } = renderWritePanel();
+    expect(mocks.setEditorBusy).toHaveBeenLastCalledWith(true);
+    unmount();
+    expect(mocks.setEditorBusy).toHaveBeenLastCalledWith(false);
   });
 
   it("Ctrl+EnterオプションOFF時はCtrl+Enterしても投稿しない", () => {

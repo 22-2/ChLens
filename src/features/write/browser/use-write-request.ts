@@ -15,13 +15,30 @@ export type WriteRequest = (text: string, threadUrl?: string) => void;
  */
 export function useWriteRequest(): WriteRequest {
   const bottomPanel = useOptionalBottomPanel();
-  const { isWindowOpen, selectedThreadUrl, selectThread, appendDraft, openWriteWindow } =
-    useWriteSessionControls();
+  const {
+    isWindowOpen,
+    editorPlace,
+    selectedThreadUrl,
+    selectThread,
+    appendDraft,
+    openWriteWindow,
+    showSideEditor,
+  } = useWriteSessionControls();
   const toast = useToast();
   const { window: viewWindow } = useViewSurface();
 
   return useCallback<WriteRequest>(
     (text, threadUrl) => {
+      if (!isWindowOpen && editorPlace === "side") {
+        // 編集欄をサイドパネルへ移している間は、下部パネルに2つ目の入力欄を開かない。
+        const targetThreadUrl = threadUrl ?? selectedThreadUrl;
+        if (targetThreadUrl) {
+          selectThread(targetThreadUrl);
+          appendDraft(targetThreadUrl, text);
+        }
+        showSideEditor();
+        return;
+      }
       if (isWindowOpen || !bottomPanel) {
         if (isWindowOpen) {
           // 共有書き込み窓を表示中は、同じ入力欄を下部パネルにも残さない。
@@ -47,10 +64,12 @@ export function useWriteRequest(): WriteRequest {
     [
       appendDraft,
       bottomPanel,
+      editorPlace,
       isWindowOpen,
       openWriteWindow,
       selectThread,
       selectedThreadUrl,
+      showSideEditor,
       toast,
       viewWindow,
     ],

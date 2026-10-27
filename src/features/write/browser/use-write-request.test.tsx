@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   selectThread: vi.fn(),
   openWriteWindow: vi.fn(),
   isWindowOpen: false,
+  editorPlace: "bottom" as "bottom" | "side",
+  showSideEditor: vi.fn(),
   selectedThreadUrl: null as string | null,
   viewWindow: null as Window | null,
 }));
@@ -33,6 +35,8 @@ vi.mock("src/view/browser/hooks/use-view-surface", () => ({
 vi.mock("src/features/write/browser/use-write-session", () => ({
   useWriteSessionControls: () => ({
     isWindowOpen: mocks.isWindowOpen,
+    editorPlace: mocks.editorPlace,
+    showSideEditor: mocks.showSideEditor,
     selectedThreadUrl: mocks.selectedThreadUrl,
     appendDraft: mocks.appendDraft,
     selectThread: mocks.selectThread,
@@ -61,6 +65,8 @@ describe("useWriteRequest", () => {
     };
     mocks.viewWindow = window;
     mocks.isWindowOpen = false;
+    mocks.editorPlace = "bottom";
+    mocks.showSideEditor.mockReset();
     mocks.selectedThreadUrl = null;
     mocks.openWritePanelWithText.mockReset();
     mocks.closePanel.mockReset();
@@ -99,6 +105,18 @@ describe("useWriteRequest", () => {
     expect(mocks.appendDraft).toHaveBeenCalledWith(THREAD_URL, ">>10\n");
     expect(mocks.openWriteWindow).toHaveBeenCalledOnce();
     expect(mocks.openWritePanelWithText).not.toHaveBeenCalled();
+  });
+
+  it("編集欄がサイドパネルにある時は、下部パネルを開かずサイドへ下書きを渡す", () => {
+    mocks.editorPlace = "side";
+
+    render(<Probe />);
+    fireEvent.click(screen.getByRole("button", { name: "返信" }));
+
+    expect(mocks.appendDraft).toHaveBeenCalledWith(THREAD_URL, ">>10\n");
+    expect(mocks.showSideEditor).toHaveBeenCalledOnce();
+    expect(mocks.openWritePanelWithText).not.toHaveBeenCalled();
+    expect(mocks.openWriteWindow).not.toHaveBeenCalled();
   });
 
   it("共有書き込み窓が開いている時は下部パネルを閉じる", () => {

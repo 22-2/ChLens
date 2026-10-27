@@ -242,6 +242,8 @@
   --sys-size-write-preview-thumbnail: var(--ref-space-16);
   /* 狭いサイドパネルでも3列ほど並び、画像の内容を見分けられる大きさにする。 */
   --sys-size-side-panel-image-tile: calc(var(--ref-space-16) * 2);
+  /* 縦長のサイドパネルでは本文欄の高さを確保し、数行の返信を見渡せるようにする。 */
+  --sys-size-side-panel-write-editor: calc(var(--ref-space-16) * 4);
   --sys-space-1: var(--ref-space-1);
   --sys-space-2: var(--ref-space-2);
   --sys-space-3: var(--ref-space-3);

@@ -14,7 +14,13 @@ import {
   type AuxiliaryWindowOptions,
   useAuxiliaryWindow,
 } from "src/features/auxiliary-window/browser/use-auxiliary-window";
-import { useTabPanes, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import { showSidePanelView } from "src/view/browser/state/tabs/side-panel-state";
+import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
+import {
+  useSidePanelState,
+  useTabPanes,
+  useTabStore,
+} from "src/view/browser/state/tabs/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 
@@ -38,8 +44,14 @@ interface WriteSessionState {
   drafts: Record<string, string>;
 }
 
+/** 別窓を除いた、メイン窓で書き込み欄を表示する場所。 */
+export type WriteEditorPlace = "bottom" | "side";
+
 interface WriteSessionControlsContextValue {
   selectedThreadUrl: string | null;
+  editorPlace: WriteEditorPlace;
+  /** 送信中・画像投稿中は表示場所を移すと送信状態を失うため、移動を受け付けない。 */
+  isEditorBusy: boolean;
   targets: WriteTarget[];
   isWindowOpen: boolean;
   writeWindowRoot: HTMLElement | null;
@@ -50,6 +62,10 @@ interface WriteSessionControlsContextValue {
   appendDraft: (threadUrl: string, text: string) => void;
   openWriteWindow: (sourceWindow?: Window) => boolean;
   closeWriteWindow: () => void;
+  moveEditor: (place: WriteEditorPlace) => boolean;
+  setEditorBusy: (busy: boolean) => void;
+  /** サイドパネルの書き込みビューを開き、本文欄へフォーカスを移す。 */
+  showSideEditor: () => void;
 }
 
 interface WriteDraftContextValue {
@@ -131,6 +147,8 @@ function collectWriteTargets(
 
 const defaultControlsContextValue: WriteSessionControlsContextValue = {
   selectedThreadUrl: null,
+  editorPlace: "bottom",
+  isEditorBusy: false,
   targets: [],
   isWindowOpen: false,
   writeWindowRoot: null,
@@ -141,6 +159,9 @@ const defaultControlsContextValue: WriteSessionControlsContextValue = {
   appendDraft: () => {},
   openWriteWindow: () => false,
   closeWriteWindow: () => {},
+  moveEditor: () => false,
+  setEditorBusy: () => {},
+  showSideEditor: () => {},
 };
 
 const defaultDraftContextValue: WriteDraftContextValue = {
@@ -166,10 +187,20 @@ const WriteDraftContext = createContext<WriteDraftContextValue>(defaultDraftCont
 export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { panes, activePaneId } = useTabPanes();
   const { viewPage } = useTabStore();
+  const { state: sidePanel, dispatch } = useSidePanelState();
+  // 変更理由: パネルの幅変更などで操作用Contextを更新しないよう、開く時点の状態だけを参照する。
+  const sidePanelRef = useRef(sidePanel);
+  useEffect(() => {
+    sidePanelRef.current = sidePanel;
+  }, [sidePanel]);
   const [session, setSession] = useState<WriteSessionState>(loadSession);
   const nextWriteWindowFocusIdRef = useRef(0);
   const [writeWindowFocusRequestId, setWriteWindowFocusRequestId] = useState<number | null>(null);
   const writeWindow = useAuxiliaryWindow(WRITE_WINDOW_OPTIONS);
+  // 変更理由: 書き込み欄を下部とサイドに同時に置くと、同じ投稿先へ二重に送信できてしまう。
+  // 編集欄は常に1か所だけとし、ほかの場所には現在の場所と「こちらに移動」だけを出す。
+  const [editorPlace, setEditorPlace] = useState<WriteEditorPlace>("bottom");
+  const [isEditorBusy, setEditorBusy] = useState(false);
 
   const targets = useMemo(() => collectWriteTargets(panes, activePaneId), [activePaneId, panes]);
 
@@ -267,9 +298,32 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
     });
   }, []);
 
+  const closeWriteWindow = writeWindow.close;
+  const moveEditor = useCallback(
+    (place: WriteEditorPlace) => {
+      if (isEditorBusy) return false;
+      // 別窓から戻す場合も、下書きと投稿先はセッションに残るため表示場所だけを切り替える。
+      if (writeWindow.isOpen) closeWriteWindow();
+      setEditorPlace(place);
+      return true;
+    },
+    [closeWriteWindow, isEditorBusy, writeWindow.isOpen],
+  );
+
+  const showSideEditor = useCallback(() => {
+    dispatch({
+      type: TAB_ACTION_TYPES.UPDATE_SIDE_PANEL,
+      sidePanel: showSidePanelView(sidePanelRef.current, "write"),
+    });
+    // サイドの編集欄は別窓と同じくセッションのフォーカス要求で本文欄へ移る。
+    requestWriteWindowFocus();
+  }, [dispatch, requestWriteWindowFocus]);
+
   const controlsContextValue = useMemo<WriteSessionControlsContextValue>(
     () => ({
       selectedThreadUrl: session.selectedThreadUrl,
+      editorPlace,
+      isEditorBusy,
       targets,
       isWindowOpen: writeWindow.isOpen,
       writeWindowRoot: writeWindow.root,
@@ -279,12 +333,19 @@ export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ childr
       consumeWriteWindowFocusRequest,
       appendDraft,
       openWriteWindow: writeWindow.open,
-      closeWriteWindow: writeWindow.close,
+      closeWriteWindow,
+      moveEditor,
+      setEditorBusy,
+      showSideEditor,
     }),
     [
       appendDraft,
+      closeWriteWindow,
+      editorPlace,
+      isEditorBusy,
+      moveEditor,
+      showSideEditor,
       consumeWriteWindowFocusRequest,
-      writeWindow.close,
       writeWindow.open,
       selectThread,
       session.selectedThreadUrl,

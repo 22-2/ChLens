@@ -84,6 +84,39 @@ test("画像一覧は手動取得の設定に従い、取得した画像をビ�
   await expect(page.locator(".media-viewer__label")).toHaveText(imageUrl);
 });
 
+test("書き込み欄を下部とサイドの間で移しても下書きを保つ", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const thread = localBoard.addLargeThread(10);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, 10);
+
+  await page.getByRole("button", { name: "書き込みパネルを開閉" }).click();
+  const bottomEditor = page.locator(".bottom-panel .write-panel__textarea");
+  await expect(bottomEditor).toBeVisible();
+  await bottomEditor.fill("移動前の下書き");
+
+  await page.getByRole("button", { name: "サイドパネルを開く" }).click();
+  const panel = page.getByRole("complementary", { name: "サイドパネル" });
+  await panel.getByRole("tab", { name: "書き込み" }).click();
+  await expect(panel.getByText("書き込み欄は下部パネルで開いています。")).toBeVisible();
+  await panel.getByRole("button", { name: "こちらに移動" }).click();
+
+  // 編集欄は1か所だけにし、移った先で同じ下書きを続けて編集できる。
+  const sideEditor = panel.locator(".write-panel__textarea");
+  await expect(sideEditor).toHaveValue("移動前の下書き");
+  await expect(bottomEditor).toHaveCount(0);
+  await expect(page.locator(".bottom-panel")).toContainText(
+    "書き込み欄はサイドパネルで開いています。",
+  );
+
+  await page.locator(".bottom-panel").getByRole("button", { name: "こちらに移動" }).click();
+  await expect(bottomEditor).toHaveValue("移動前の下書き");
+  await expect(panel.getByText("書き込み欄は下部パネルで開いています。")).toBeVisible();
+});
+
 test("スレプロパティに表示中のスレの情報を出す", async ({ page, extensionId, localBoard }) => {
   const thread = localBoard.addLargeThread(150);
   await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);

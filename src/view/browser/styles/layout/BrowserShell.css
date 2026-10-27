@@ -221,6 +221,17 @@
   outline-offset: -2px;
 }
 
+/* 下部パネル向けの横並びを、幅の狭いサイドパネルでは縦に積む。 */
+.side-panel__write {
+  padding: 0;
+}
+.side-panel__write .write-panel__body-row {
+  flex-direction: column;
+}
+.side-panel__write .write-panel__textarea {
+  min-height: var(--sys-size-side-panel-write-editor);
+}
+
 .side-panel__properties {
   display: grid;
   grid-template-columns: max-content 1fr;

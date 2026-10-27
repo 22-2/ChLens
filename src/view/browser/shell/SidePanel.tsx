@@ -5,6 +5,7 @@ import { SidePanelExtract } from "src/view/browser/shell/SidePanelExtract";
 import { SidePanelFavorites } from "src/view/browser/shell/SidePanelFavorites";
 import { SidePanelImages } from "src/view/browser/shell/SidePanelImages";
 import { SidePanelProperties } from "src/view/browser/shell/SidePanelProperties";
+import { SidePanelWrite } from "src/view/browser/shell/SidePanelWrite";
 import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
@@ -146,9 +147,9 @@ export function SidePanel() {
         ) : (
           <p className="side-panel__empty">スレッドを開くと表示されます。</p>
         )
-      ) : (
-        <p className="side-panel__empty">このビューは準備中です。</p>
-      )}
+      ) : state.activeView === "write" ? (
+        <SidePanelWrite />
+      ) : null}
     </aside>
   );
 }
