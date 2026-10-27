@@ -6,6 +6,7 @@ import {
   getPageRenderKey,
   getPageTypeDefinitionByType,
   getPageViewStateKey,
+  isPageTypeRegistered,
 } from "src/view/browser/page-type-definitions";
 import { getAutoRefreshPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
 import type { Page, PageType } from "src/view/browser/types";
@@ -52,6 +53,12 @@ function describePage(page: Page) {
 }
 
 describe("ページ種別の定義", () => {
+  it("起動時の登録で全ページ種別の定義を利用できる", () => {
+    for (const page of Object.values(SAMPLE_PAGES)) {
+      expect(isPageTypeRegistered(page.type)).toBe(true);
+    }
+  });
+
   it("全種別の判定結果が移行前と変わらない", () => {
     const table = Object.fromEntries(
       Object.values(SAMPLE_PAGES).map((page) => [page.type, describePage(page)]),
