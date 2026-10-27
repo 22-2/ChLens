@@ -58,7 +58,8 @@ export function createExtensionOwner(
     api: {
       addCommand: (command, options) =>
         own(commandRegistry.add(command, ownerId, options?.beforeCommandId)),
-      registerPageType: (type, definition) => own(registerPageTypeDefinition(type, definition)),
+      registerPageType: (type, definition) =>
+        own(registerPageTypeDefinition(type, definition, ownerId)),
       register: (cleanup) => {
         let cleaned = false;
         return own({

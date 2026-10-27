@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from "react";
 import { createLogger } from "src/app/logger";
-import type { PageOfType } from "src/view/browser/page-type-definitions";
+import { isPageTypeRegistered, type PageOfType } from "src/view/browser/page-type-definitions";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
@@ -106,7 +106,7 @@ export function renderPage(page: Page, context: PageRenderContext): ReactNode {
   // 変更理由: 対応表の型が種別とページの組み合わせを保証しているが、添字アクセスでは
   // TypeScript が種別ごとの関数の引数を結び付けられないため、ここだけで型を広げて呼ぶ。
   const render = PAGE_RENDERERS[page.type] as PageRenderer<Page> | undefined;
-  if (!render) {
+  if (!render || !isPageTypeRegistered(page.type)) {
     if (!loggedMissingPageTypes.has(page.type)) {
       loggedMissingPageTypes.add(page.type);
       logger.warn("描画先が登録されていないページを表示します", { type: page.type });

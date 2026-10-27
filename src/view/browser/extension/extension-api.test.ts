@@ -1,7 +1,12 @@
 import { Settings } from "lucide-react";
 import type { BrowserCommandDefinition } from "src/view/browser/commands/command-definition";
+import { CORE_PAGE_TYPE_DEFINITIONS } from "src/view/browser/core-page-type-definitions";
 import { CommandRegistry } from "src/view/browser/extension/command-registry";
 import { createExtensionOwner } from "src/view/browser/extension/extension-api";
+import {
+  getPageTypeDefinitionByType,
+  isPageTypeRegistered,
+} from "src/view/browser/page-type-definitions";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 interface TestCommand {
@@ -100,5 +105,18 @@ describe("拡張 API", () => {
     owner.dispose();
 
     expect(cleanup).toHaveBeenCalledTimes(1);
+  });
+  it("ページ種別の二重登録は拒否され、拒否側の解除は先の定義を消さない", () => {
+    const registry = new CommandRegistry<BrowserCommandDefinition>();
+    const original = createExtensionOwner("first", registry);
+    const duplicate = createExtensionOwner("second", registry);
+    original.api.registerPageType("settings", CORE_PAGE_TYPE_DEFINITIONS.settings);
+    duplicate.api.registerPageType("settings", CORE_PAGE_TYPE_DEFINITIONS.settings);
+    duplicate.dispose();
+    expect(isPageTypeRegistered("settings")).toBe(true);
+    expect(getPageTypeDefinitionByType("settings")).toBe(CORE_PAGE_TYPE_DEFINITIONS.settings);
+    original.dispose();
+    original.dispose();
+    expect(isPageTypeRegistered("settings")).toBe(false);
   });
 });

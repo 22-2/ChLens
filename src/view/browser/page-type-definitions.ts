@@ -34,7 +34,10 @@ export interface PageTypeDefinitionRegistration {
   dispose: () => void;
 }
 
-const pageTypeDefinitions = new Map<PageType, PageTypeDefinition<never>>();
+const pageTypeDefinitions = new Map<
+  PageType,
+  { definition: PageTypeDefinition<never>; ownerId: string }
+>();
 const unavailablePageTypeDefinition: PageTypeDefinition<never> = {
   icon: FileQuestion,
   refreshable: false,
@@ -47,28 +50,39 @@ const unavailablePageTypeDefinition: PageTypeDefinition<never> = {
 export function registerPageTypeDefinition<Type extends PageType>(
   type: Type,
   definition: PageTypeDefinition<PageOfType<Type>>,
+  ownerId: string,
 ): PageTypeDefinitionRegistration {
   const existing = pageTypeDefinitions.get(type);
   if (existing) {
-    logger.error("ページ種別の二重登録を拒否しました", { type });
+    logger.error("ページ種別の二重登録を拒否しました", {
+      type,
+      ownerId,
+      existingOwnerId: existing.ownerId,
+    });
     return { dispose: () => undefined };
   }
 
-  pageTypeDefinitions.set(type, definition);
+  const entry = { definition, ownerId };
+  pageTypeDefinitions.set(type, entry);
   loggedMissingPageTypes.delete(type);
   let disposed = false;
   return {
     dispose: () => {
       if (disposed) return;
       disposed = true;
-      if (pageTypeDefinitions.get(type) === definition) pageTypeDefinitions.delete(type);
+      if (pageTypeDefinitions.get(type) === entry) pageTypeDefinitions.delete(type);
     },
   };
 }
 
+/** 描画と保存では、未登録のページを存在しないものとして捨てない。 */
+export function isPageTypeRegistered(type: PageType): boolean {
+  return pageTypeDefinitions.has(type);
+}
+
 function requirePageTypeDefinition<Type extends PageType>(type: Type): PageTypeDefinition<never> {
   const definition = pageTypeDefinitions.get(type);
-  if (definition) return definition;
+  if (definition) return definition.definition;
   if (!loggedMissingPageTypes.has(type)) {
     loggedMissingPageTypes.add(type);
     logger.warn("ページ種別の定義がないため、利用不可のページとして扱います", { type });

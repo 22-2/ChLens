@@ -1,5 +1,5 @@
 import { createLogger } from "src/app/logger";
-import { getPageViewStateKey } from "src/view/browser/page-type-definitions";
+import { getPageViewStateKey, isPageTypeRegistered } from "src/view/browser/page-type-definitions";
 import {
   getBrowserSessionJson,
   setBrowserSessionJson,
@@ -43,6 +43,8 @@ type LoadedTab = Partial<PersistedTab> & {
  */
 function pruneViewStates(tab: PersistedTab): TabViewStates | undefined {
   if (!tab.viewStates) return undefined;
+  // 未登録ページのキーは定義なしでは再構築できないため、後の再登録まで状態を保持する。
+  if (tab.history.some((page) => !isPageTypeRegistered(page.type))) return tab.viewStates;
   const reachableKeys = new Set(tab.history.map((page) => getPageViewStateKey(page)));
   // 板一覧はサイドパネルからも使うため、通常ページの履歴がなくても表示状態を保つ。
   reachableKeys.add("boardList");
