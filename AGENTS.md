@@ -45,7 +45,7 @@
 - **共有ライブラリ:** `packages/chlib/` はワークスペース内の共有パッケージで、5ch 互換 URL、掲示板・スレッド・bbsmenu のパーサー、取得処理などを提供します。
 - **スタイル管理:** CSS のエントリポイントは `src/view/browser/styles/index.css` です。foundation、UI、layout、components、pages のスタイルをこのファイルから import し、`src/view/browser/index.tsx` で読み込みます。
 - **起動処理:** `src/app.ts` は画面の起動（`boot`）と `platform` だけを公開します。旧互換の `window.app` はなくなったため（`docs/plans/legacy-window-app-plan.md` の Phase 4）、新しいコードは ES module と `src/service-container/` を使います。
-- **ビルド構成:** `vite.config.ts` が `src/view/browser/index.tsx` を起点に、`PLATFORM` に応じた Chrome、Firefox、Tauri 向けの出力を構成します。開発・ビルド・テスト・静的解析には Vite+ の `vp` コマンドを使用します。
+- **ビルド構成:** `vite.config.ts` が `src/view/browser/index.tsx` を起点に、`PLATFORM` に応じた Chrome、Firefox、Tauri 向けの出力を構成します。開発・ビルド・テスト・静的解析には Vite+ の `pnpm exec vp` コマンドを使用します。
 
 ### Coding Conventions
 
@@ -88,26 +88,26 @@
 
 # Using Vite+, the Unified Toolchain for the Web
 
-This project is using Vite+, a unified toolchain built on top of Vite, Rolldown, Vitest, tsdown, Oxlint, Oxfmt, and Vite Task. Vite+ wraps runtime management, package management, and frontend tooling in a single global CLI called `vp`. Vite+ is distinct from Vite, and it invokes Vite through `vp dev` and `vp build`. Run `vp help` to print a list of commands and `vp <command> --help` for information about a specific command.
+This project is using Vite+, a unified toolchain built on top of Vite, Rolldown, Vitest, tsdown, Oxlint, Oxfmt, and Vite Task. Vite+ wraps runtime management, package management, and frontend tooling in a CLI called `vp`. Run the project's CLI through `pnpm exec vp`. Vite+ is distinct from Vite, and it invokes Vite through `pnpm exec vp dev` and `pnpm exec vp build`. Run `pnpm exec vp help` to print a list of commands and `pnpm exec vp <command> --help` for information about a specific command.
 
 Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.dev/guide/.
 
 ## Built-in Commands vs Scripts
 
-`vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name.
+`pnpm exec vp <name>` runs a built-in command. `pnpm exec vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `pnpm exec vp dev` and `pnpm exec vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `pnpm exec vp run <name>` when the project defines a script or task with that name.
 
 ## Tool Versions
 
-Run `vp toolchain` to show versions and relationships in the active Vite+
+Run `pnpm exec vp toolchain` to show versions and relationships in the active Vite+
 release. Add a tool name to select part of the graph. For example, run
-`vp toolchain vite`. Use `--global` to ignore the local `vite-plus` package. Use
-`vp why <package>` to show the package-manager dependency graph.
+`pnpm exec vp toolchain vite`. Use `--global` to ignore the local `vite-plus` package. Use
+`pnpm exec vp why <package>` to show the package-manager dependency graph.
 
 ## Review Checklist
 
-- [ ] Run `vp install` after pulling remote changes and before getting started.
-- [ ] Run `vp check` and `vp test` to format, lint, type check and test changes.
-- [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `vp run <script>`.
-- [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
+- [ ] Run `pnpm exec vp install` after pulling remote changes and before getting started. If dependencies are not installed yet, run `pnpm install` first so the local `vp` is available.
+- [ ] Run `pnpm exec vp check` and `pnpm exec vp test` to format, lint, type check and test changes.
+- [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `pnpm exec vp run <script>`.
+- [ ] If setup, runtime, or package-manager behavior looks wrong, run `pnpm exec vp env doctor` and include its output when asking for help.
 
 <!--VITE PLUS END-->
