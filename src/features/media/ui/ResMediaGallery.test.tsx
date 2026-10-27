@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const manualImageLoadingMock = vi.hoisted(() => ({ value: false }));
@@ -23,6 +23,7 @@ vi.mock("../browser/image-download-preflight", () => ({
 
 import { imgurVideoResolver } from "../application/imgur-album";
 import { twitterPostResolver } from "../application/twitter-post";
+import { useImageHashStore } from "../browser/use-image-hash-store";
 import { useMediaImageStore } from "../browser/use-media-image-store";
 import { ResMediaGallery } from "./ResMediaGallery";
 
@@ -38,6 +39,7 @@ afterEach(() => {
   cleanup();
   manualImageLoadingMock.value = false;
   useMediaImageStore.setState({ images: new Map() });
+  useImageHashStore.setState({ hashingEnabled: false, entries: new Map() });
 });
 
 describe("ResMediaGallery", () => {
@@ -340,5 +342,76 @@ describe("ResMediaGallery", () => {
 
     expect(thumb).toHaveClass("res__thumb--blurred");
     expect(thumb.getAttribute("style")).toContain("--res-thumb-blur-radius: 8px");
+  });
+
+  describe("類似画像NGの判定待ち", () => {
+    const imageUrl = "https://example.com/image.jpg";
+    const getThumb = () => screen.getByRole("link", { name: imageUrl });
+
+    it("ルールがないときは伏せない", () => {
+      render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />);
+      expect(getThumb()).not.toHaveClass("res__thumb--blurred");
+      expect(getThumb()).not.toHaveClass("res__thumb--hash-pending");
+    });
+
+    it("ハッシュが出るまでは判定中としてぼかす", () => {
+      useImageHashStore.setState({ hashingEnabled: true });
+      render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} imageBlurRadius={6} />);
+      expect(getThumb()).toHaveClass("res__thumb--blurred", "res__thumb--hash-pending");
+      expect(getThumb().getAttribute("style")).toContain("--res-thumb-blur-radius: 6px");
+    });
+
+    it("ハッシュが出たら、または計算に失敗したら伏せるのをやめる", () => {
+      useImageHashStore.setState({
+        hashingEnabled: true,
+        entries: new Map([[imageUrl, { status: "ready", hash: "0123456789abcdef" }]]),
+      });
+      render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />);
+      expect(getThumb()).not.toHaveClass("res__thumb--blurred");
+
+      cleanup();
+      useImageHashStore.setState({ entries: new Map([[imageUrl, { status: "error" }]]) });
+      render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />);
+      expect(getThumb()).not.toHaveClass("res__thumb--blurred");
+    });
+
+    it("NGでぼかすレスは、ハッシュが出たあともぼかしたままにする", () => {
+      useImageHashStore.setState({
+        hashingEnabled: true,
+        entries: new Map([[imageUrl, { status: "ready", hash: "0123456789abcdef" }]]),
+      });
+      render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} isBlurred />);
+      expect(getThumb()).toHaveClass("res__thumb--blurred");
+      expect(getThumb()).not.toHaveClass("res__thumb--hash-pending");
+    });
+
+    it("画像の読み込み完了でハッシュ計算を依頼する", () => {
+      const requestHash = vi.fn();
+      useImageHashStore.setState({ hashingEnabled: true, requestHash });
+      render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />);
+      const image = screen.getByRole("img", { name: imageUrl });
+      fireEvent.load(image);
+      expect(requestHash).toHaveBeenCalledWith(imageUrl, image);
+    });
+
+    it("画像を表示できなかったら判定待ちを終える", () => {
+      const markImageUnavailable = vi.fn();
+      useImageHashStore.setState({ hashingEnabled: true, markImageUnavailable });
+      render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />);
+      fireEvent.error(screen.getByRole("img", { name: imageUrl }));
+      expect(markImageUnavailable).toHaveBeenCalledWith(imageUrl);
+    });
+
+    it("ルールが後から有効になったら、表示中の画像の計算を依頼する", () => {
+      const requestHash = vi.fn();
+      useImageHashStore.setState({ requestHash });
+      render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />);
+      expect(requestHash).not.toHaveBeenCalled();
+      act(() => useImageHashStore.setState({ hashingEnabled: true }));
+      expect(requestHash).toHaveBeenCalledWith(
+        imageUrl,
+        screen.getByRole("img", { name: imageUrl }),
+      );
+    });
   });
 });
