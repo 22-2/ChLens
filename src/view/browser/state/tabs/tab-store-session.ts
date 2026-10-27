@@ -26,6 +26,7 @@ interface PersistedTabStoreState {
   activePaneId: string;
   closedTabs: PersistedTab[];
   sidePanel?: TabStoreState["sidePanel"];
+  bottomPanels?: TabStoreState["bottomPanels"];
 }
 
 // 旧セッションに残っている可能性がある項目。読み込み時の移行だけに使う。
@@ -76,6 +77,15 @@ function toPersistedTabStoreState(state: TabStoreState): PersistedTabStoreState 
     activePaneId: state.activePaneId,
     closedTabs: state.closedTabs.map(toPersistedTab),
     ...(state.sidePanel ? { sidePanel: state.sidePanel } : {}),
+    ...(state.bottomPanels
+      ? {
+          bottomPanels: Object.fromEntries(
+            Object.entries(state.bottomPanels).filter(([id]) =>
+              state.panes.some((pane) => pane.id === id),
+            ),
+          ),
+        }
+      : {}),
   };
 }
 
@@ -91,6 +101,7 @@ export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
     activePaneId: persisted.activePaneId,
     closedTabs: persisted.closedTabs.map(fromPersistedTab),
     ...(persisted.sidePanel ? { sidePanel: persisted.sidePanel } : {}),
+    ...(persisted.bottomPanels ? { bottomPanels: persisted.bottomPanels } : {}),
   };
 }
 
@@ -132,6 +143,7 @@ type LoadedTabStoreState = {
   panes?: (Omit<Pane, "tabs"> & { tabs: LoadedTab[] })[];
   activePaneId?: string;
   sidePanel?: TabStoreState["sidePanel"];
+  bottomPanels?: TabStoreState["bottomPanels"];
   tabs?: LoadedTab[];
   activeTabId?: string;
   closedTabs?: LoadedTab[];
@@ -171,6 +183,17 @@ export function loadTabStoreSession(): TabStoreState | null {
         activePaneId,
         closedTabs: (parsed.closedTabs ?? []).map((tab) => normalizeLoadedTab(tab)),
         ...(parsed.sidePanel ? { sidePanel: normalizeSidePanel(parsed.sidePanel) } : {}),
+        ...(parsed.bottomPanels &&
+        typeof parsed.bottomPanels === "object" &&
+        !Array.isArray(parsed.bottomPanels)
+          ? {
+              bottomPanels: Object.fromEntries(
+                Object.entries(parsed.bottomPanels).filter(([id]) =>
+                  panes.some((pane) => pane.id === id),
+                ),
+              ),
+            }
+          : {}),
       };
     }
 

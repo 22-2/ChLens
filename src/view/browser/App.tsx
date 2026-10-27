@@ -38,9 +38,11 @@ import { SidePanel } from "src/view/browser/shell/SidePanel";
 import { TabWindowHost } from "src/view/browser/shell/TabWindowHost";
 import { TitleBar } from "src/view/browser/shell/TitleBar";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
+import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import {
   PaneProvider,
   TabProvider,
+  useBottomPanelLayout,
   useTabDispatch,
   useTabPanes,
   useTabStore,
@@ -93,7 +95,8 @@ const PaneColumn: React.FC<{ paneId: string; isActive: boolean }> = ({ paneId, i
 // PaneProvider 配下でしか使えない（ペインスコープの dispatch を取るため）。
 const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const dispatch = useTabDispatch();
-  const { viewPage, viewTab } = useTabStore();
+  const { viewPage, viewTab, paneId } = useTabStore();
+  const initialBottomPanel = useBottomPanelLayout(paneId);
   const tabBarOrientation = useTabBarOrientation();
   const {
     state: nextThreadSearchState,
@@ -182,7 +185,16 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
       <StatusBarProvider>
         <PageCountStatusProvider>
           <NgStatusProvider>
-            <BottomPanelProvider>
+            <BottomPanelProvider
+              layout={initialBottomPanel}
+              onLayoutChange={(patch) =>
+                dispatch({
+                  type: TAB_ACTION_TYPES.UPDATE_BOTTOM_PANEL,
+                  targetPaneId: paneId,
+                  patch,
+                })
+              }
+            >
               <AutoScrollStateProvider>
                 {tabBarOrientation === "vertical" ? (
                   // 変更理由: 垂直モードではタブバーをペインの上端まで伸ばし、

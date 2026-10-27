@@ -167,3 +167,20 @@ describe("サイドパネルのセッション", () => {
     expect(restored?.sidePanel?.activeView).toBe("images");
   });
 });
+
+describe("下部パネルのセッション", () => {
+  it("各ペインの表示状態を復元し、存在しないペインを除く", () => {
+    storage.json = JSON.stringify({
+      panes: [{ id: "pane", activeTabId: "tab", tabs: [createHomeTab("tab")] }],
+      activePaneId: "pane",
+      closedTabs: [],
+      bottomPanels: {
+        pane: { isOpen: true, height: 320, activeTabId: "write" },
+        removed: { isOpen: true },
+      },
+    });
+    expect(loadTabStoreSession()?.bottomPanels).toEqual({
+      pane: { isOpen: true, height: 320, activeTabId: "write" },
+    });
+  });
+});
