@@ -491,3 +491,25 @@
 .tab-bar--resizing .tab-bar__resize-handle::after {
   background: var(--sys-color-accent);
 }
+
+/* 変更理由: 共通タブバーでは各ペインが表示中のタブを持つ。同じ画面に並ぶ組が分かるよう、
+   「左」「右」の印を付け、フォーカスのないペインの表示中タブは控えめに見せる。 */
+.tab__pane-badge {
+  flex-shrink: 0;
+  margin-left: var(--sys-space-2);
+  padding: 0 var(--sys-space-2);
+  border: 1px solid var(--sys-color-tab-indicator);
+  border-radius: var(--sys-radius-md);
+  color: var(--sys-color-tab-indicator);
+  font-size: var(--sys-font-size-sm);
+  line-height: 1.4;
+}
+
+.tab--pane-unfocused {
+  opacity: 0.75;
+}
+
+.tab--pane-unfocused .tab__pane-badge {
+  border-color: var(--sys-color-border);
+  color: var(--sys-color-text-muted);
+}

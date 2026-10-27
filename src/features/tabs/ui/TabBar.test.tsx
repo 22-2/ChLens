@@ -218,6 +218,24 @@ describe("TabBar wheel switching", () => {
     expect(screen.queryByRole("tooltip")).toBeNull();
   });
 
+  it("共通タブバーでは表示中のタブにペインの印を付け、フォーカスのないペインは控えめにする", () => {
+    const { container, rerender } = render(<TabBar sectionLabel="左" isPaneFocused />);
+    const active = container.querySelector('[data-tab-id="tab-1"]') as HTMLDivElement;
+    const inactive = container.querySelector('[data-tab-id="tab-2"]') as HTMLDivElement;
+
+    expect(active.querySelector(".tab__pane-badge")).toHaveTextContent("左");
+    expect(active).not.toHaveClass("tab--pane-unfocused");
+    expect(inactive.querySelector(".tab__pane-badge")).toBeNull();
+
+    rerender(<TabBar sectionLabel="左" isPaneFocused={false} />);
+    expect(active).toHaveClass("tab--pane-unfocused");
+  });
+
+  it("単独のタブバーでは印を付けない", () => {
+    const { container } = render(<TabBar />);
+    expect(container.querySelector(".tab__pane-badge")).toBeNull();
+  });
+
   it("deltaY が極小/0 のホイールではタブを切り替えない", () => {
     const { container } = render(<TabBar />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;

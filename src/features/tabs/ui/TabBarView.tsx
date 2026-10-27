@@ -33,6 +33,10 @@ interface SortableTabProps {
   canClose: boolean;
   isVertical: boolean;
   compact: boolean;
+  /** 共通タブバーで、各ペインが今表示しているタブに付ける「左」「右」などの印。 */
+  paneBadge?: string;
+  /** 表示中だがフォーカスのないペインのタブかどうか。 */
+  isPaneUnfocused?: boolean;
   wasDraggingRef: React.MutableRefObject<boolean>;
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
@@ -51,6 +55,8 @@ const SortableTab: React.FC<SortableTabProps> = ({
   canClose,
   isVertical,
   compact,
+  paneBadge,
+  isPaneUnfocused = false,
   wasDraggingRef,
   onSelect,
   onClose,
@@ -113,6 +119,8 @@ const SortableTab: React.FC<SortableTabProps> = ({
       <div
         ref={ref}
         className={`tab${isActive ? " tab--active" : ""}${
+          isPaneUnfocused ? " tab--pane-unfocused" : ""
+        }${
           tab.pinned ? " tab--pinned" : ""
         }${isHighlighted ? " tab--highlighted" : ""}${isDragSource ? " tab--dragging" : ""}`}
         data-tab-id={tab.id}
@@ -142,6 +150,13 @@ const SortableTab: React.FC<SortableTabProps> = ({
         ) : (
           <span className="tab__title">{page.title}</span>
         )}
+        {/* 変更理由: 共通タブバーでは2つのペインが同時に表示中のタブを持つため、
+            どのタブが同じ画面に並んでいるか（左右の組）をタブ上の印で示す。 */}
+        {paneBadge ? (
+          <span className="tab__pane-badge" title={`${paneBadge}ペインに表示中`}>
+            {paneBadge}
+          </span>
+        ) : null}
         {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、
             実行中/待機中を区別できるインジケーターを常時表示する。 */}
         {autoRefreshIndicatorState != null && !tab.pinned && (
@@ -594,6 +609,8 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
                 canClose={canCloseTab}
                 isVertical={isVertical}
                 compact={isVertical && collapsed}
+                paneBadge={isActive && sectionLabel ? sectionLabel : undefined}
+                isPaneUnfocused={isActive && Boolean(sectionLabel) && !isPaneFocused}
                 wasDraggingRef={wasDraggingRef}
                 onSelect={onSelectTab}
                 onClose={onCloseTab}
