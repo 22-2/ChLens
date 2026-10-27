@@ -5,6 +5,10 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   resolve: {
     alias: {
+      // 本番と同じ内部ESMの解決先を使い、カバレッジ対象の遅延読込モジュールも解析する。
+      "monaco-editor/esm/vs": fileURLToPath(
+        new URL("./node_modules/monaco-editor/esm/vs", import.meta.url),
+      ),
       // アプリ本体と同じ src/* エイリアスで解決しないと、UIコンポーネントの実装をそのままテストできない。
       src: fileURLToPath(new URL("./src", import.meta.url)),
       packages: fileURLToPath(new URL("./packages", import.meta.url)),
