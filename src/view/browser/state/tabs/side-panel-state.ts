@@ -8,11 +8,11 @@ export const SIDE_PANEL_VIEWS = [
   "properties",
   "write",
 ] as const;
-const SIDE_PANEL_MIN_WIDTH = 200;
-const SIDE_PANEL_MAX_WIDTH = 600;
+export const SIDE_PANEL_MIN_WIDTH = 200;
+export const SIDE_PANEL_MAX_WIDTH = 600;
 
 /** 本文の幅を確保しつつ、ビューが崩れない幅に収める。保存値の復元とリサイズで同じ範囲を使う。 */
-export function clampSidePanelWidth(width: number): number {
+function clampSidePanelWidth(width: number): number {
   return Math.max(SIDE_PANEL_MIN_WIDTH, Math.min(SIDE_PANEL_MAX_WIDTH, width));
 }
 

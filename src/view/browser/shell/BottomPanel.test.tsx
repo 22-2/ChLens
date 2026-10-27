@@ -1,11 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { BottomPanel } from "src/view/browser/shell/BottomPanel";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const mocks = vi.hoisted(() => ({
   closePanel: vi.fn(),
+  setHeight: vi.fn(),
   canAutoScroll: false,
   isAutoScrolling: false,
   detached: false,
@@ -29,6 +30,8 @@ vi.mock("src/features/tabs/browser/use-detached-tab-controller", () => ({
 }));
 
 vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
+  BOTTOM_PANEL_MIN_HEIGHT: 80,
+  BOTTOM_PANEL_MAX_HEIGHT: 1000,
   BOTTOM_PANEL_THREAD_LIST_TAB_ID: "thread-list",
   BOTTOM_PANEL_WRITE_TAB_ID: "write",
   useBottomPanel: () => ({
@@ -42,7 +45,7 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
     openPanel: vi.fn(),
     closePanel: mocks.closePanel,
     togglePanel: vi.fn(),
-    setHeight: vi.fn(),
+    setHeight: mocks.setHeight,
     setActivePanelTab: vi.fn(),
   }),
 }));
@@ -62,6 +65,7 @@ vi.mock("src/features/write/ui/WritePanelContent", () => ({
 describe("BottomPanel", () => {
   beforeEach(() => {
     mocks.closePanel.mockReset();
+    mocks.setHeight.mockReset();
     mocks.canAutoScroll = false;
     mocks.isAutoScrolling = false;
     mocks.detached = false;
@@ -81,6 +85,16 @@ describe("BottomPanel", () => {
 
     expect(screen.getByText("write panel")).toBeInTheDocument();
     expect(mocks.closePanel).not.toHaveBeenCalled();
+  });
+
+  it("区切り線を上へ動かすと高くなり、キーボードでも変えられる", () => {
+    render(<BottomPanel />);
+    const handle = screen.getByRole("separator", { name: "下部パネルの高さ" });
+    fireEvent.pointerDown(handle, { clientY: 500, pointerId: 1 });
+    fireEvent.pointerUp(handle, { clientY: 450, pointerId: 1 });
+    expect(mocks.setHeight).toHaveBeenLastCalledWith(250);
+    fireEvent.keyDown(handle, { key: "ArrowUp" });
+    expect(mocks.setHeight).toHaveBeenLastCalledWith(220);
   });
 
   it("スレッド以外へ移動したらパネルを閉じて非表示にする", async () => {

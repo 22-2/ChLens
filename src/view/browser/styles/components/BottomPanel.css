@@ -23,6 +23,11 @@
   background: var(--sys-color-border);
 }
 
+.bottom-panel__resize-handle:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: -2px;
+}
+
 .bottom-panel__header {
   display: flex;
   align-items: stretch;
