@@ -620,7 +620,9 @@ export default defineConfig(async ({ mode, command }) => {
       emptyOutDir: false,
       minify: minifyOutput,
       sourcemap: analyzeBundle ? true : process.env.VITE_COVERAGE === "true" ? "inline" : false,
-      cssCodeSplit: entry === "browser",
+      // ライブラリ形式では遅延チャンクのCSSが自動挿入されないため、
+      // Monacoの編集面もHTMLが読み込むCSSにまとめる。
+      cssCodeSplit: false,
       lib: {
         entry: path.resolve(__dirname, file),
         formats: [entry === "browser" ? "es" : "iife"],
@@ -631,9 +633,6 @@ export default defineConfig(async ({ mode, command }) => {
           entryFileNames: `${entry}.js`,
           assetFileNames: (assetInfo) => {
             if (assetInfo.name?.endsWith(".css")) {
-              if (assetInfo.name.includes("monacoDslRuntime")) {
-                return "assets/monaco-[hash][extname]";
-              }
               return `${entry}.css`;
             }
             return "[name].[ext]";
