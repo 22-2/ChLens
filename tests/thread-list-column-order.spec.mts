@@ -49,4 +49,3 @@ test("スレ一覧の列順をドラッグで変え、再読み込み後も保�
   );
   expect(panelLabels).toEqual(labelsAfterReload);
 });
-

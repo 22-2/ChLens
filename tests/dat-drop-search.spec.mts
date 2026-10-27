@@ -72,4 +72,3 @@ test("dat落ち通知の類似検索には次スレを含め、次スレ検索�
     page.locator('.content-area__tab-panel[data-active="true"] [data-res-num="1"]'),
   ).toContainText("次スレのレス");
 });
-
