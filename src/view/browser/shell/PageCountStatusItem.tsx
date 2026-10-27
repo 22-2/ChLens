@@ -1,6 +1,7 @@
 import React from "react";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
+import { toggleThreadFilter } from "src/view/browser/extension/page-actions";
 import {
   getThreadListPageCountKey,
   getThreadPageCountKey,
@@ -8,10 +9,6 @@ import {
 } from "src/view/browser/hooks/use-page-count-status";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import {
-  THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
-  type ThreadFilterToolbarToggleDetail,
-} from "src/view/browser/utils/filter-toolbar-events";
 
 function formatCount(count: number | null | undefined): string {
   return count == null ? "..." : count.toLocaleString();
@@ -20,7 +17,7 @@ function formatCount(count: number | null | undefined): string {
 export const PageCountStatusItem: React.FC = () => {
   const { viewTab, viewPage } = useTabStore();
   const { getPageCount } = usePageCountStatus();
-  const { window: viewWindow, document: viewDocument } = useViewSurface();
+  const { window: viewWindow } = useViewSurface();
 
   const pageInfo =
     viewPage.type === "thread"
@@ -54,16 +51,8 @@ export const PageCountStatusItem: React.FC = () => {
       return;
     }
 
-    // 変更理由: 開閉ボタンごとにイベントを分けず、常時表示設定の無効化も同じハンドラーへ集約する。
-    // ステータスバーはThreadPageの外にあるため、イベントで対象タブを明示する。
-    // CustomEventのコンストラクタを本窓から借りず、表示先Documentのイベントとして生成する。
-    const event = viewDocument.createEvent(
-      "CustomEvent",
-    ) as CustomEvent<ThreadFilterToolbarToggleDetail>;
-    event.initCustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT, false, false, {
-      tabId: viewTab.id,
-    });
-    viewWindow.dispatchEvent(event);
+    // ステータスバーからも表示中の窓とタブに登録された同じ操作を使う。
+    toggleThreadFilter(viewWindow, viewTab.id);
   };
 
   return (

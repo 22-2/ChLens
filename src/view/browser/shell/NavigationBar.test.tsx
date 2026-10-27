@@ -16,6 +16,7 @@ import {
   createExtensionOwner,
   type ExtensionOwner,
 } from "src/view/browser/extension/extension-api";
+import { registerThreadFilterToggle } from "src/view/browser/extension/page-actions";
 import { NavigationBar } from "src/view/browser/shell/NavigationBar";
 import type { Page } from "src/view/browser/types";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
@@ -673,16 +674,15 @@ describe("NavigationBar", () => {
     expect(screen.queryByRole("button", { name: "設定を開く" })).not.toBeInTheDocument();
   });
 
-  it("URLバーの開閉ボタンの左にあるフィルタボタンでフィルタトグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+  it("URLバーの開閉ボタンの左にあるフィルタボタンで対象タブのフィルターを切り替える", () => {
+    const toggle = vi.fn();
+    const dispose = registerThreadFilterToggle(window, viewTab.id, toggle);
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByRole("button", { name: "フィルターを開閉" }));
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "thread-filter-toolbar-toggle" }),
-    );
-    dispatchEventSpy.mockRestore();
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
   });
 
   it("フィルタバーが開いている間はフィルタボタンを押下状態にして色を変える", () => {
@@ -711,17 +711,16 @@ describe("NavigationBar", () => {
     expect(screen.getByRole("button", { name: "フィルターを開閉" })).toBeInTheDocument();
   });
 
-  it("メニュー項目の『フィルターを開く』でフィルタトグルイベントを送る", () => {
-    const dispatchEventSpy = vi.spyOn(window, "dispatchEvent");
+  it("メニュー項目の『フィルターを開く』で対象タブのフィルターを切り替える", () => {
+    const toggle = vi.fn();
+    const dispose = registerThreadFilterToggle(window, viewTab.id, toggle);
     render(<NavigationBar />);
 
     fireEvent.click(screen.getByTitle("メニュー"));
     fireEvent.click(screen.getByRole("button", { name: "フィルター" }));
 
-    expect(dispatchEventSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "thread-filter-toolbar-toggle" }),
-    );
-    dispatchEventSpy.mockRestore();
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
   });
 
   it("閲覧履歴ではメニュー項目の『フィルターを開く』で履歴用トグルイベントを送る", () => {

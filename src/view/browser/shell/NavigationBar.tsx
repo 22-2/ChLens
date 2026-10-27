@@ -39,6 +39,7 @@ import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log-actions";
 import { useZenMode } from "src/view/browser/commands/zen-mode-store";
 import { Omnibar } from "src/view/browser/components/Omnibar";
+import { toggleThreadFilter } from "src/view/browser/extension/page-actions";
 import {
   BOTTOM_PANEL_THREAD_LIST_TAB_ID,
   BOTTOM_PANEL_WRITE_TAB_ID,
@@ -62,7 +63,6 @@ import { Dialog } from "src/view/browser/ui/Dialog";
 import {
   QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE,
   type QuickAccessFilterPageType,
-  THREAD_FILTER_TOOLBAR_TOGGLE_EVENT,
 } from "src/view/browser/utils/filter-toolbar-events";
 import {
   useFilterToolbarOpen,
@@ -616,7 +616,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     // フィルタUIはメニュー項目からのみ開くことで、
     // メニューボタン押下そのものをトリガーにしない。
     if (viewPage.type === "thread") {
-      window.dispatchEvent(new window.CustomEvent(THREAD_FILTER_TOOLBAR_TOGGLE_EVENT));
+      toggleThreadFilter(viewSurface.window, viewTab.id);
       return;
     }
 
@@ -636,7 +636,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         }),
       );
     }
-  }, [viewTab.id, viewPage.type]);
+  }, [viewTab.id, viewPage.type, viewSurface.window]);
 
   // oxlint-disable-next-line react/set-state-in-effect -- スレッド以外へ移動した際に古い更新メニュー位置を破棄する。
   useEffect(() => {

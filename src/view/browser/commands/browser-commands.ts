@@ -55,6 +55,7 @@ import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log
 import { toggleZenMode } from "src/view/browser/commands/zen-mode-store";
 import { CommandRegistry } from "src/view/browser/extension/command-registry";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
+import { toggleThreadFilter } from "src/view/browser/extension/page-actions";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import type { Page, ThreadFilter } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
@@ -269,9 +270,7 @@ function toggleFilter(context: BrowserCommandContext): void {
   const { window: viewWindow } = getCommandSurface(context);
   const viewWindowWithConstructors = viewWindow as Window & typeof globalThis;
   if (context.viewPage.type === "thread") {
-    viewWindow.dispatchEvent(
-      new viewWindowWithConstructors.CustomEvent("thread-filter-toolbar-toggle"),
-    );
+    toggleThreadFilter(viewWindow, context.viewTab.id);
     return;
   }
 
