@@ -1,11 +1,82 @@
+import DOMPurify from "dompurify";
 import { createLogger } from "src/app/logger";
 import type { WriteFormField } from "src/app/platform/types";
 
 const logger = createLogger("view/browser");
 
 const CONFIRMATION_FORM_ATTRIBUTE = "data-chlens-write-form";
-const CONFIRMATION_ACTION_ATTRIBUTE = "data-chlens-write-action";
-const DANGEROUS_CSS_PATTERN = /(?:@import|url\s*\(|expression\s*\(|behavior\s*:|-moz-binding\s*:)/i;
+const CONFIRMATION_FIELD_PREFIX = "chlens-field-";
+const CONFIRMATION_ACTION_PREFIX = "https://example.invalid/";
+
+// フォーム以外の外部読み込みや CSS は不要なため、確認と送信に必要な要素だけを残す。
+const CONFIRMATION_TAGS = [
+  "html",
+  "head",
+  "body",
+  "title",
+  "form",
+  "input",
+  "button",
+  "textarea",
+  "select",
+  "option",
+  "optgroup",
+  "label",
+  "fieldset",
+  "legend",
+  "p",
+  "div",
+  "span",
+  "br",
+  "hr",
+  "b",
+  "strong",
+  "i",
+  "em",
+  "small",
+  "font",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "ul",
+  "ol",
+  "li",
+  "table",
+  "thead",
+  "tbody",
+  "tfoot",
+  "tr",
+  "th",
+  "td",
+  "pre",
+  "blockquote",
+];
+const CONFIRMATION_ATTRIBUTES = [
+  "action",
+  "method",
+  "name",
+  "value",
+  "type",
+  "checked",
+  "selected",
+  "disabled",
+  "readonly",
+  "multiple",
+  "required",
+  "placeholder",
+  "for",
+  "id",
+  "rows",
+  "cols",
+  "size",
+  "maxlength",
+  "minlength",
+  "colspan",
+  "rowspan",
+  "label",
+  "color",
+];
 
 export interface WriteConfirmationForm {
   id: string;
@@ -45,27 +116,25 @@ function resolveWriteAction(rawAction: string | null, sourceUrl: string): string
   }
 }
 
-function sanitizeStyleValue(value: string): string | null {
-  return DANGEROUS_CSS_PATTERN.test(value) ? null : value;
-}
-
 function sanitizeConfirmationDocument(
   document: Document,
   expectedAction: string,
   sourceUrl: string,
 ): WriteConfirmationForm[] {
   const forms: WriteConfirmationForm[] = [];
-  const dangerousElements = document.querySelectorAll(
-    "script, iframe, frame, frameset, object, embed, applet, portal, base, link, meta, audio, video, source, track, svg, math, canvas",
-  );
-  for (const element of dangerousElements) {
-    element.remove();
-  }
-
   let formIndex = 0;
-  for (const form of Array.from(document.forms)) {
+  for (const form of Array.from(document.querySelectorAll("form"))) {
     const method = (form.getAttribute("method") ?? "get").toLowerCase();
-    const action = resolveWriteAction(form.getAttribute("action"), sourceUrl);
+    const encodedAction = form.getAttribute("action");
+    if (encodedAction != null && !encodedAction.startsWith(CONFIRMATION_ACTION_PREFIX)) {
+      form.remove();
+      continue;
+    }
+    // DOMPurify が危険な action を削除すると未指定扱いになってしまうため、元の値で検証する。
+    const rawAction = encodedAction?.startsWith(CONFIRMATION_ACTION_PREFIX)
+      ? decodeURIComponent(encodedAction.slice(CONFIRMATION_ACTION_PREFIX.length))
+      : null;
+    const action = resolveWriteAction(rawAction, sourceUrl);
     if (method !== "post" || action == null || !isAllowedWriteAction(action, expectedAction)) {
       form.remove();
       continue;
@@ -74,7 +143,6 @@ function sanitizeConfirmationDocument(
     const id = `form-${formIndex}`;
     formIndex += 1;
     form.setAttribute(CONFIRMATION_FORM_ATTRIBUTE, id);
-    form.setAttribute(CONFIRMATION_ACTION_ATTRIBUTE, action);
     // sandboxで通常送信を止め、親画面が取得した成功コントロールをTauri HTTPへ渡す。
     form.setAttribute("action", "about:blank");
     form.setAttribute("method", "post");
@@ -82,40 +150,11 @@ function sanitizeConfirmationDocument(
     forms.push({ id, action });
   }
 
-  for (const element of Array.from(document.querySelectorAll("*"))) {
-    for (const attribute of Array.from(element.attributes)) {
-      const name = attribute.name.toLowerCase();
-      if (
-        name.startsWith("on") ||
-        ["srcdoc", "formaction", "formmethod", "formtarget"].includes(name)
-      ) {
-        element.removeAttribute(attribute.name);
-        continue;
-      }
-
-      if (["src", "srcset", "poster", "background", "href"].includes(name)) {
-        element.removeAttribute(attribute.name);
-        continue;
-      }
-
-      if (name === "style") {
-        const sanitized = sanitizeStyleValue(attribute.value);
-        if (sanitized == null) element.removeAttribute(attribute.name);
-      }
-    }
-
-    // DOMParserの文書は別Windowになる場合があるため、タグ名で判定して添付ファイル送信を除外する。
-    if (element.tagName.toLowerCase() === "input") {
-      const inputType = (element.getAttribute("type") ?? "text").toLowerCase();
-      if (inputType === "file" || inputType === "image") {
-        element.remove();
-      }
-    }
-  }
-
-  for (const style of Array.from(document.querySelectorAll("style"))) {
-    if (DANGEROUS_CSS_PATTERN.test(style.textContent ?? "")) {
-      style.remove();
+  for (const input of document.querySelectorAll("input")) {
+    // 添付ファイルと画像ボタンは確認フォームの送信対象にしない。
+    const inputType = (input.getAttribute("type") ?? "text").toLowerCase();
+    if (inputType === "file" || inputType === "image") {
+      input.remove();
     }
   }
 
@@ -128,7 +167,7 @@ function sanitizeConfirmationDocument(
   const csp = document.createElement("meta");
   csp.httpEquiv = "Content-Security-Policy";
   csp.content =
-    "default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; form-action 'none'; base-uri 'none'";
+    "default-src 'none'; style-src 'none'; img-src 'none'; form-action 'none'; base-uri 'none'";
   head.prepend(csp);
 
   return forms;
@@ -140,7 +179,32 @@ export function createWriteConfirmationPage(
   expectedAction: string,
   charset: string,
 ): WriteConfirmationPage {
-  const document = new DOMParser().parseFromString(html, "text/html");
+  if (!DOMPurify.isSupported) {
+    throw new Error("DOMPurify が使えない環境で書き込み確認ページを表示できません");
+  }
+  // CSS は DOMPurify の検証対象外なので許可せず、送信先検証はサニタイズ後に行う。
+  // submit などの項目名は DOMPurify の DOM 衝突防止で削除される。
+  // DOM 上では接頭辞を付け、送信値を収集するときだけ元の名前へ戻す。
+  const purifier = DOMPurify(window);
+  purifier.addHook("uponSanitizeAttribute", (node, data) => {
+    if (data.attrName === "action" && node.nodeName.toLowerCase() === "form") {
+      data.attrValue = CONFIRMATION_ACTION_PREFIX + encodeURIComponent(data.attrValue);
+    }
+    if (
+      data.attrName === "name" &&
+      ["input", "button", "textarea", "select"].includes(node.nodeName.toLowerCase())
+    ) {
+      data.attrValue = CONFIRMATION_FIELD_PREFIX + data.attrValue;
+    }
+  });
+  const sanitizedHtml = purifier.sanitize(html, {
+    WHOLE_DOCUMENT: true,
+    ALLOWED_TAGS: CONFIRMATION_TAGS,
+    ALLOWED_ATTR: CONFIRMATION_ATTRIBUTES,
+    ALLOW_DATA_ATTR: false,
+    ALLOW_ARIA_ATTR: false,
+  });
+  const document = new DOMParser().parseFromString(sanitizedHtml, "text/html");
   const forms = sanitizeConfirmationDocument(document, expectedAction, sourceUrl);
   return {
     html: `<!doctype html>${document.documentElement.outerHTML}`,
@@ -178,7 +242,12 @@ export function collectWriteConfirmationFields(
     if (!(control instanceof HTMLElementConstructor) || control.hasAttribute("disabled")) {
       continue;
     }
-    const name = control.getAttribute("name") ?? "";
+    const rawName = control.getAttribute("name") ?? "";
+    const name =
+      form.hasAttribute(CONFIRMATION_FORM_ATTRIBUTE) &&
+      rawName.startsWith(CONFIRMATION_FIELD_PREFIX)
+        ? rawName.slice(CONFIRMATION_FIELD_PREFIX.length)
+        : rawName;
     if (name === "") continue;
 
     if (control instanceof HTMLTextAreaElementConstructor) {
