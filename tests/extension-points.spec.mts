@@ -1,3 +1,4 @@
+import { verifyTwoPaneFilters } from "./extension-points-scenarios.mjs";
 import { expect, test } from "./fixtures.mjs";
 
 test("板からスレへの遷移と再読み込み後もフィルターが対象ページで動く", async ({
@@ -56,4 +57,9 @@ test("板からスレへの遷移と再読み込み後もフィルターが対�
     panel.locator(".thread-page__filter-btn").filter({ hasText: "画像" }),
   ).toHaveAttribute("aria-pressed", "false");
   expect(registrationErrors).toEqual([]);
+});
+
+test("2ペインでフィルター操作がそれぞれのスレに届く", async ({ page, extensionId, localBoard }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await verifyTwoPaneFilters(page, localBoard);
 });
