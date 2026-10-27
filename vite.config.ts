@@ -244,6 +244,7 @@ const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
     "application/imgur-album",
     "application/imgur-deletehash",
     "application/imgur-upload",
+    "browser/use-image-hash-store",
     "browser/use-media-viewer-store",
     "domain/media-settings",
     "domain/thread-images",
@@ -259,6 +260,7 @@ const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
   ],
   ng: [
     "browser/use-ng-status",
+    "browser/use-similar-image-ng",
     "browser/use-thread-title-ng-dialog",
     "ui/NgBadge",
     "ui/NgResponsePlaceholder",

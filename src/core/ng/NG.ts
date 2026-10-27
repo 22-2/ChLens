@@ -1,8 +1,10 @@
 import {
   clearRuleRegexCache,
   evaluateBoardRules,
+  evaluateImageRules,
   evaluateResponseRules,
   formatRuleDsl,
+  type ResponseRuleContext,
   type Rule,
   type RuleMatchResult,
   type RuleRepository,
@@ -219,34 +221,42 @@ export function createNG(deps: NGDeps) {
       : null;
   }
 
-  function isNGThread(res: unknown, title: string, url: string): INGResult | null {
-    const raw = res as Record<string, unknown>;
-    // 外部レスデータを表示用の文字列へ変換し、Rule Engineへ渡す境界をここに集約する。
+  /** 外部レスデータを表示用の文字列へ変換し、Rule Engineへ渡す境界をここに集約する。 */
+  function toResponseRuleContext(
+    raw: Record<string, unknown>,
+    title: string,
+    url: string,
+  ): ResponseRuleContext {
     const name = toText(raw.name);
     const mail = toText(raw.mail);
     const other = toText(raw.other);
     const body = toText(raw.message);
-    const resNum = typeof raw.num === "number" ? raw.num : undefined;
-    const debugTargetResNum = getNgDebugTargetResNum();
     const anchorCount =
       typeof raw.anchorCount === "number" && Number.isFinite(raw.anchorCount)
         ? raw.anchorCount
         : countReplyAnchorTargets(body);
+    return {
+      all: `${name} ${mail} ${other} ${body}`,
+      title,
+      body,
+      name,
+      mail,
+      id: typeof raw.id === "string" ? raw.id : null,
+      slip: typeof raw.slip === "string" ? raw.slip : null,
+      url,
+      replyCount: typeof raw.replyCount === "number" ? raw.replyCount : undefined,
+      anchorCount,
+    };
+  }
+
+  function isNGThread(res: unknown, title: string, url: string): INGResult | null {
+    const raw = res as Record<string, unknown>;
+    const resNum = typeof raw.num === "number" ? raw.num : undefined;
+    const debugTargetResNum = getNgDebugTargetResNum();
     const rules = get();
     const matched = evaluateResponseRules(
       rules,
-      {
-        all: `${name} ${mail} ${other} ${body}`,
-        title,
-        body,
-        name,
-        mail,
-        id: typeof raw.id === "string" ? raw.id : null,
-        slip: typeof raw.slip === "string" ? raw.slip : null,
-        url,
-        replyCount: typeof raw.replyCount === "number" ? raw.replyCount : undefined,
-        anchorCount,
-      },
+      toResponseRuleContext(raw, title, url),
       onRegexError,
     );
     if (matched) {
@@ -266,6 +276,39 @@ export function createNG(deps: NGDeps) {
     return null;
   }
 
+  /** 類似画像NG（blur かつ image 条件）のルールがあるか。画像のハッシュ計算を始めるかの判断に使う。 */
+  function hasImageRules(): boolean {
+    return get().some((rule) => rule.action === "blur" && rule.target === "image");
+  }
+
+  /**
+   * レスの画像のハッシュで類似画像NGを判定する。
+   * 隠す・強調の判定（isNGThread）とは別に呼ぶ。最初の一致だけを返す判定に混ぜると取り合いになるため。
+   */
+  function isSimilarImageNG(
+    res: unknown,
+    title: string,
+    url: string,
+    imageHashes: readonly string[],
+  ): INGResult | null {
+    const matched = evaluateImageRules(
+      get(),
+      toResponseRuleContext(res as Record<string, unknown>, title, url),
+      imageHashes,
+      onRegexError,
+    );
+    return matched
+      ? {
+          type: matched.type,
+          action: matched.rule.action,
+          ruleDescription: formatMatchedRule(matched),
+          name: matched.rule.name,
+          params: matched.params,
+          disabled: false,
+        }
+      : null;
+  }
+
   function execExpire(): void {
     const activeRules = get();
     const now = Date.now();
@@ -278,5 +321,17 @@ export function createNG(deps: NGDeps) {
     }
   }
 
-  return { apply, validate, get, set, invalidateCache, add, isNGBoard, isNGThread, execExpire };
+  return {
+    apply,
+    validate,
+    get,
+    set,
+    invalidateCache,
+    add,
+    isNGBoard,
+    isNGThread,
+    hasImageRules,
+    isSimilarImageNG,
+    execExpire,
+  };
 }

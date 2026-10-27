@@ -1,7 +1,7 @@
 import type { IRes } from "src/service-container/interfaces";
 import { describe, expect, it } from "vite-plus/test";
 
-import { collectThreadImages } from "./thread-images";
+import { collectResImageUrls, collectThreadImages } from "./thread-images";
 
 function res(num: number, message: string): IRes {
   return { num, name: "", mail: "", date: "", message };
@@ -22,5 +22,17 @@ describe("サイドパネルの画像一覧", () => {
       [2, "https://images.example.com/b.png"],
     ]);
     expect(items[0].text).toContain("最初");
+  });
+});
+
+describe("レスごとの画像（類似画像NGの判定に使う）", () => {
+  it("ほかのレスと同じ画像でも除かず、レス内の重複と動画・ページは除く", () => {
+    const message =
+      "https://images.example.com/a.jpg https://images.example.com/a.jpg " +
+      "https://videos.example.com/c.mp4 https://example.com/page https://images.example.com/b.png";
+    expect(collectResImageUrls(res(2, message), "https:")).toEqual([
+      "https://images.example.com/a.jpg",
+      "https://images.example.com/b.png",
+    ]);
   });
 });

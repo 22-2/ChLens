@@ -144,3 +144,49 @@ hide:
     expect(get()).toEqual([expect.objectContaining({ action: "hide", target: "body" })]);
   });
 });
+
+describe("類似画像NG", () => {
+  beforeEach(() => configStore.clear());
+
+  const url = "https://example.com/test/read.cgi/board/1/";
+  const res = { num: 5, name: "名無し", mail: "", id: "abc", message: "画像" };
+
+  it("類似画像NGのルールがあるかを返す", () => {
+    const ng = createNG(deps);
+    configStore.set("ngwords", 'hide:\n  when body contains "x"');
+    ng.invalidateCache();
+    expect(ng.hasImageRules()).toBe(false);
+    configStore.set("ngwords", 'blur:\n  when image similar "0000000000000000"');
+    ng.invalidateCache();
+    expect(ng.hasImageRules()).toBe(true);
+  });
+
+  it("画像のハッシュで判定し、隠す判定とは混ざらない", () => {
+    configStore.set(
+      "ngwords",
+      [
+        "blur:",
+        '  label "類似画像"',
+        '  unless id contains "許可"',
+        '  when image similar "0000000000000000"',
+        "",
+        "hide:",
+        '  when body contains "画像"',
+      ].join("\n"),
+    );
+    const ng = createNG(deps);
+    ng.invalidateCache();
+
+    expect(ng.isSimilarImageNG(res, "スレ", url, ["00000000000001ff"])).toMatchObject({
+      type: "SimilarImage",
+      action: "blur",
+      params: { label: "類似画像" },
+    });
+    expect(ng.isSimilarImageNG(res, "スレ", url, ["00000000000003ff"])).toBeNull();
+    expect(
+      ng.isSimilarImageNG({ ...res, id: "許可ID" }, "スレ", url, ["0000000000000000"]),
+    ).toBeNull();
+    // blurのルールが先にあっても、隠す判定はhideを返す。
+    expect(ng.isNGThread(res, "スレ", url)).toMatchObject({ action: "hide" });
+  });
+});

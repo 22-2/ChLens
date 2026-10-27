@@ -124,6 +124,15 @@ export interface ICoreNoticeService {
 export interface INGService {
   isNGBoard(title: string, url: string, resCount: number): INGResult | null;
   isNGThread(res: unknown, title: string, url: string): INGResult | null;
+  /** 類似画像NGのルールがあるか。ないときは画像のハッシュを計算しない。 */
+  hasImageRules(): boolean;
+  /** レスの画像のハッシュで類似画像NG（blur）を判定する。isNGThreadとは別に呼ぶ。 */
+  isSimilarImageNG(
+    res: unknown,
+    title: string,
+    url: string,
+    imageHashes: readonly string[],
+  ): INGResult | null;
   add(ruleDsl: string): Promise<void> | void;
   invalidateCache(): void;
   execExpire(): void;

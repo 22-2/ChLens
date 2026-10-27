@@ -29,6 +29,7 @@ import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer
 import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/features/next-thread/browser/use-auto-next-thread-setting";
 import { NextThreadSearchDialog } from "src/features/next-thread/ui/NextThreadSearchDialog";
+import { useSimilarImageNg } from "src/features/ng/browser/use-similar-image-ng";
 import type { ContextMenuPopupItem } from "src/features/popup/browser/popup-types";
 import { useThreadPopupManager } from "src/features/popup/browser/use-popup-manager";
 import { PopupRenderer } from "src/features/popup/ui/PopupRenderer";
@@ -766,10 +767,21 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     replyToOwnResNums,
   });
 
-  const blurredResNums = useMemo(() => {
+  const wordBlurredResNums = useMemo(() => {
     if (!imageBlurConfig.enabled) return new Set<number>();
     return buildBlurredResSet(responses, indexes.repIndex, imageBlurConfig.harmfulWordPattern);
   }, [imageBlurConfig, indexes.repIndex, responses]);
+  // 類似画像NGはNGの一部なので、語句によるぼかしの有効・無効（image_blur）には従わない。
+  const similarImageBlurredResNums = useSimilarImageNg({
+    responses,
+    threadTitle: page.title,
+    threadUrl: page.threadUrl,
+    messageProtocol,
+  });
+  const blurredResNums = useMemo(() => {
+    if (similarImageBlurredResNums.size === 0) return wordBlurredResNums;
+    return new Set([...wordBlurredResNums, ...similarImageBlurredResNums]);
+  }, [similarImageBlurredResNums, wordBlurredResNums]);
   // 画像一覧も本文と同じぼかし判定にするため、判定結果を含めて公開する。
   useThreadSnapshotPublisher({
     tabId,
