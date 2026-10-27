@@ -11,7 +11,6 @@ import {
   executeCommandRequest,
 } from "src/view/browser/commands/command-runtime";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
-import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { createQuickAccessPage } from "src/view/browser/utils/tab-pages";
 
 async function toggleBookmark(context: BrowserCommandContext): Promise<void> {
@@ -39,8 +38,7 @@ export function registerBookmarkCommands(api: ExtensionApi): void {
       keywords: ["お気に入り", "favorite", "bookmark"],
       group: "navigation",
       icon: Bookmark,
-      run: (context) =>
-        context.dispatch(tabActions.navigate(createQuickAccessPage("bookmarkList"))),
+      run: (context) => api.workspace.openPage(context, createQuickAccessPage("bookmarkList")),
     },
     { beforeCommandId: "navigation.open-history" },
   );

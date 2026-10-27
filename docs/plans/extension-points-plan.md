@@ -130,12 +130,12 @@ const PAGE_RENDERERS: { [T in PageType]: (page: PageOfType<T>, context: PageRend
 ワークスペースの操作は、機能に `dispatch` を渡す代わりに、Obsidian の `Workspace` に当たる窓口から行う。
 
 ```ts
-api.workspace.openPage(page, { newTab: true });
-api.workspace.getActiveTab();
+api.workspace.openPage(context, page, { newTab: true });
+api.workspace.getActiveTab(context);
 api.workspace.on("active-page-change", (page) => ...);
 ```
 
-- 窓口は実行元の窓・ペインに結び付け、別窓や2ペインで別の対象を操作しないようにする（3.6）。
+- コマンド登録はアプリ全体で共有するため、操作メソッドには実行時のコマンドコンテキストを渡す。窓口はその `viewTab` とペインスコープ付き `dispatch` に結び付け、別窓や2ペインで別の対象を操作しないようにする（3.6）。
 - この窓口が、3.7 で後回しにしている狭いコマンドコンテキストの土台になる。段階0では既存の `dispatch` 経由の処理と併用してよく、移した機能から順に置き換える。
 
 ### 3.5 ステータスバー
@@ -291,6 +291,7 @@ PR1〜3 の実装と見直しで分かったことと、以降の PR で気を�
 - `commands/command-definition.ts`：コマンドの型、グループ定義、定義から使う共通処理（`getCommandPageTarget`・`getCommandToast`・`getCommandSurface`・`isCommandConfigSwitchOn`・`toggleCommandConfigSwitch`）。機能の登録関数と登録 API はここだけを参照する。
 - `commands/browser-commands.ts`：core のコマンド一覧、`browserCommandRegistry`、`registerCoreCommands`、解決・実行処理。参照するのは組み立て側（`index.tsx`）、コマンドパレット周り、テストに限る。機能から import すると、1000行を超える一覧と、その依存がまとめて入る。
 - `extension/`：登録 API とレジストリ。コマンドの具体的な定義や画面の状態を持ち込まない。
+- `api.workspace`：コマンド実行時の `viewTab` とペインスコープ付き `dispatch` を受け取り、表示中の対象タブに対してページを開く。アプリ全体で共有する登録 API に操作元を暗黙に保持させない。
 
 #### 定義を移すとき
 
