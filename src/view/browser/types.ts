@@ -118,6 +118,7 @@ export interface SettingsPageUiState {
 export interface TabViewState {
   // 設定画面の表示状態をタブ単位で保持し、再読み込みや閉じたタブの復元で引き継ぐ。
   settingsPage?: SettingsPageUiState;
+  boardListOpenStates?: Record<string, boolean>;
   searchQuery?: string;
   filter?: ThreadFilter;
   // 人気フィルタの判定条件もフィルタ状態と同じスレッド単位で復元する。
