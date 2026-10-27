@@ -654,10 +654,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const imageBlurConfig = useImageBlurConfig();
   const readPositionMode = useThreadReadPositionMode();
   const storedReadState = useStoredReadState(page.threadUrl);
-  const [manualReadNum, setManualReadNum] = useState<number | null>(null);
-  useEffect(() => {
-    setManualReadNum(storedReadState?.read ?? null);
-  }, [storedReadState?.read, page.threadUrl]);
+  // 変更理由: 取得済みの既読状態をeffect経由でコピーすると、区切り線の表示が1描画遅れる。
+  const manualReadNum = storedReadState?.read ?? null;
 
   const replayBoundary =
     isArchiveReplay && replayPosition
@@ -715,14 +713,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     measureReadState: virtualList.measureReadState,
     readPositionMode,
   });
-  const markReadThroughAndShowLine = useCallback(
-    async (resNum: number) => {
-      await markReadThrough(resNum);
-      setManualReadNum(resNum);
-    },
-    [markReadThrough],
-  );
-
   const handleMinimapResponseClick = useCallback(
     (resNum: number, options: { scroll: boolean; align?: "start" | "center" }) => {
       if (!options.scroll) {
@@ -817,7 +807,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     markReadThrough:
       !isArchiveReplay && readPositionMode === "manual" && isInitialReadStateResolved
-        ? markReadThroughAndShowLine
+        ? markReadThrough
         : undefined,
   });
 
