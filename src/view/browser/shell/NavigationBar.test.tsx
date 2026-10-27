@@ -4,9 +4,14 @@ import "fake-indexeddb/auto";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { container } from "src/service-container";
 import {
+  browserCommandRegistry,
+  registerCoreCommands,
+} from "src/view/browser/commands/browser-commands";
+import {
   commandPalette,
   commandPaletteStore,
 } from "src/view/browser/commands/command-palette-store";
+import { createExtensionApi } from "src/view/browser/extension/extension-api";
 import { NavigationBar } from "src/view/browser/shell/NavigationBar";
 import type { Page } from "src/view/browser/types";
 import { QUICK_ACCESS_FILTER_TOGGLE_EVENT_BY_PAGE_TYPE } from "src/view/browser/utils/filter-toolbar-events";
@@ -31,6 +36,17 @@ vi.mock("src/view/browser/commands/command-palette-history", () => ({
   loadRecentCommandIds: loadRecentCommandIdsMock,
   saveRecentCommandIds: saveRecentCommandIdsMock,
 }));
+
+let coreExtensionApi: ReturnType<typeof createExtensionApi> | null = null;
+beforeEach(() => {
+  coreExtensionApi?.dispose();
+  coreExtensionApi = createExtensionApi("core-test", browserCommandRegistry);
+  registerCoreCommands(coreExtensionApi);
+});
+afterEach(() => {
+  coreExtensionApi?.dispose();
+  coreExtensionApi = null;
+});
 
 const { viewTab, defaultHistory, dispatchMock, longTitle } = vi.hoisted(() => {
   const longTitle = "かなり長い履歴タイトル".repeat(12);

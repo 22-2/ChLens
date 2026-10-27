@@ -52,6 +52,8 @@ import {
 import { TAB_COMMAND_IDS, type TabCommandId } from "src/view/browser/commands/tab-command-runtime";
 import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log-actions";
 import { toggleZenMode } from "src/view/browser/commands/zen-mode-store";
+import { CommandRegistry } from "src/view/browser/extension/command-registry";
+import type { ExtensionApi } from "src/view/browser/extension/extension-api";
 import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   getAutoRefreshPageKey,
@@ -630,7 +632,7 @@ const THREAD_FILTER_MODE_COMMANDS: readonly BrowserCommandDefinition[] = [
   },
 ];
 
-export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
+const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
   {
     id: "navigation.open-settings",
     label: "設定を開く",
@@ -1293,12 +1295,23 @@ export const BROWSER_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = 
   },
 ];
 
+export const browserCommandRegistry = new CommandRegistry<BrowserCommandDefinition>();
+
+/** 既存のブラウザコマンドを、アプリ起動時に1つの所有者として登録する。 */
+export function registerCoreCommands(api: ExtensionApi): void {
+  for (const definition of CORE_COMMAND_DEFINITIONS) {
+    api.addCommand(definition);
+  }
+}
+
 export function resolveBrowserCommands(
   context: BrowserCommandContext,
   runningCommandIds: ReadonlySet<string> = new Set(),
 ): ResolvedBrowserCommand[] {
-  return BROWSER_COMMAND_DEFINITIONS.filter((definition) => definition.when?.(context) ?? true).map(
-    (definition) => ({
+  return browserCommandRegistry
+    .getSnapshot()
+    .filter((definition) => definition.when?.(context) ?? true)
+    .map((definition) => ({
       id: definition.id,
       label: getCommandLabel(definition.label, context),
       englishLabel: getCommandLabel(definition.englishLabel, context),
@@ -1307,8 +1320,7 @@ export function resolveBrowserCommands(
       group: definition.group,
       icon: definition.icon,
       enabled: !runningCommandIds.has(definition.id) && (definition.isEnabled?.(context) ?? true),
-    }),
-  );
+    }));
 }
 
 export async function executeBrowserCommand(
@@ -1337,7 +1349,9 @@ export async function executeBrowserCommand(
 
   const responseJumpResNum = getResponseJumpResNumFromCommandId(commandId);
   const definitionId = responseJumpResNum === null ? commandId : RESPONSE_JUMP_COMMAND_ID;
-  const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === definitionId);
+  const definition = browserCommandRegistry
+    .getSnapshot()
+    .find((command) => command.id === definitionId);
   if (!definition) return false;
 
   // 変更理由: パレットを開いたままページ状態が変わる可能性があるため、
@@ -1373,6 +1387,8 @@ export function getBrowserCommandLabel(commandId: string, context: BrowserComman
     return `レス${responseJumpResNum}へジャンプ`;
   }
 
-  const definition = BROWSER_COMMAND_DEFINITIONS.find((command) => command.id === commandId);
+  const definition = browserCommandRegistry
+    .getSnapshot()
+    .find((command) => command.id === commandId);
   return definition ? getCommandLabel(definition.label, context) : commandId;
 }
