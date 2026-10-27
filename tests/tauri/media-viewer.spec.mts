@@ -65,16 +65,23 @@ test("Tauriの実画像読み込みとホイール入力でも逆行や読込前
     // 非標準ポートの画像はWebViewのCSPからRust HTTPへフォールバックする。
     // srcを外す際のネイティブerrorはDOM単体テストでは自動発火しないため実WebViewで検証する。
     setTimeout(() => {
-      response.writeHead(200, { "Content-Type": "image/svg+xml", "Cache-Control": "no-store" });
-      response.end(
-        `<svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}"><rect width="100%" height="100%" fill="#39546f"/></svg>`,
-      );
+      const body = `<svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}"><rect width="100%" height="100%" fill="#39546f"/></svg>`;
+      // 画像サイズの事前確認（HEAD）はContent-Lengthを使う。writeHeadの後にendしても自動では付かないため明示する。
+      response.writeHead(200, {
+        "Content-Type": "image/svg+xml",
+        "Content-Length": Buffer.byteLength(body),
+        "Cache-Control": "no-store",
+      });
+      response.end(body);
     }, 400);
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   try {
     const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const images = sizes.map((_, index) => `${origin}/${index}.jpg`);
+    // 既定の画像取得は手動（クリックで取得）のため、自動取得を前提にするこの検証では明示的にoffにする。
+    await page.evaluate(() => localStorage.setItem("config_manual_image_loading", "off"));
+    await page.reload();
     localBoard.setDat(`調査<>sage<>2026/10/25 ID:probe<>${images.join(" ")}<>メディア確認\n`);
     await page.getByTestId("title-bar-title").click();
     await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
