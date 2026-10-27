@@ -1,4 +1,4 @@
-import { verifyTwoPaneFilters } from "./extension-points-scenarios.mjs";
+import { verifyDetachedFilters, verifyTwoPaneFilters } from "./extension-points-scenarios.mjs";
 import { expect, test } from "./fixtures.mjs";
 
 test("板からスレへの遷移と再読み込み後もフィルターが対象ページで動く", async ({
@@ -62,4 +62,13 @@ test("板からスレへの遷移と再読み込み後もフィルターが対�
 test("2ペインでフィルター操作がそれぞれのスレに届く", async ({ page, extensionId, localBoard }) => {
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await verifyTwoPaneFilters(page, localBoard);
+});
+
+test("別窓への移動と復帰後もフィルター操作が対象のスレに届く", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await verifyDetachedFilters(page, localBoard);
 });

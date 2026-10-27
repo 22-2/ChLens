@@ -65,3 +65,53 @@ export async function verifyTwoPaneFilters(page: Page, localBoard: LocalBoard): 
   await expect(rightImage).toHaveAttribute("aria-pressed", "false");
   await expect(leftImage).toHaveAttribute("aria-pressed", "true");
 }
+
+/** 切り離しと復帰の前後で、それぞれの窓に表示されたタブだけを操作する。 */
+export async function verifyDetachedFilters(page: Page, localBoard: LocalBoard): Promise<void> {
+  const second = localBoard.addLargeThread(3, { id: "1000000002", title: "別窓のテストスレ" });
+  const registrationErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && message.text().includes("ページ操作の二重登録")) {
+      registrationErrors.push(message.text());
+    }
+  });
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  await expect(page.locator('[data-res-num="2"]')).toBeVisible();
+  await page.getByRole("button", { name: "新しいタブ", exact: true }).click();
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(second.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  await expect(page.getByTestId("title-bar-title")).toHaveText(second.title);
+
+  await page.getByTestId("title-bar-title").click({ button: "right" });
+  const detach = page.getByRole("button", { name: "別窓で開く", exact: true });
+  await expect(detach).toBeVisible();
+  const [popup] = await Promise.all([page.context().waitForEvent("page"), detach.click()]);
+  await expect(page.getByTestId("title-bar-title")).toHaveText("ローカルテストスレッド");
+  await expect(popup.locator('[data-res-num="3"]')).toBeVisible();
+
+  const mainPanel = page.locator('.content-area__tab-panel[data-active="true"]');
+  const mainFilter = mainPanel.getByPlaceholder("フィルタする文字を入力");
+  const popupFilter = popup.getByPlaceholder("フィルタする文字を入力");
+  const mainCount = page.getByRole("button", { name: /^現在のレス数:/u });
+  const popupCount = popup.getByRole("button", { name: /^現在のレス数:/u });
+  await popupCount.click();
+  await expect(popupFilter).toBeVisible();
+  await expect(mainFilter).toHaveCount(0);
+  await mainCount.click();
+  await expect(mainFilter).toBeVisible();
+  await expect(popupFilter).toBeVisible();
+  await mainCount.click();
+  await expect(mainFilter).toHaveCount(0);
+  await expect(popupFilter).toBeVisible();
+
+  await popup.getByTestId("title-bar-title").click({ button: "right" });
+  await popup.getByRole("button", { name: "メイン画面へ戻す", exact: true }).click();
+  await expect(page.getByTestId("title-bar-title")).toHaveText(second.title);
+  await expect(mainPanel.locator('[data-res-num="3"]')).toBeVisible();
+  await page.getByRole("button", { name: /^現在のレス数:/u }).click();
+  await expect(mainFilter).toBeVisible();
+  expect(registrationErrors).toEqual([]);
+}
