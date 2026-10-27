@@ -43,4 +43,25 @@ export async function verifyTwoPaneFilters(page: Page, localBoard: LocalBoard): 
   await leftCount.click();
   await expect(leftFilter).toHaveCount(0);
   await expect(rightFilter).toBeVisible();
+
+  // パレットもフォーカス中のペインだけにモード切り替えを届ける。
+  const runImageFilter = async () => {
+    await page.getByTitle("メニュー", { exact: true }).click();
+    await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
+    await page.getByPlaceholder("コマンドを検索...").fill(">画像のフィルタ");
+    await page.getByRole("option", { name: /画像のフィルタを切り替え/u }).click();
+  };
+  const leftImage = left.locator(".thread-page__filter-btn").filter({ hasText: "画像" });
+  const rightImage = right.locator(".thread-page__filter-btn").filter({ hasText: "画像" });
+  await runImageFilter();
+  await expect(leftImage).toHaveAttribute("aria-pressed", "true");
+  await expect(rightImage).toHaveAttribute("aria-pressed", "false");
+  await rightCount.click();
+  await expect(rightFilter).toHaveCount(0);
+  await runImageFilter();
+  await expect(rightImage).toHaveAttribute("aria-pressed", "true");
+  await expect(leftImage).toHaveAttribute("aria-pressed", "true");
+  await runImageFilter();
+  await expect(rightImage).toHaveAttribute("aria-pressed", "false");
+  await expect(leftImage).toHaveAttribute("aria-pressed", "true");
 }
