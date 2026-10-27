@@ -116,9 +116,14 @@ jobs:
           if-no-files-found: ignore
 
   e2e:
-    name: E2Eテスト
+    name: E2Eテスト (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      # 片方の失敗で他方の結果とカバレッジを失わない。
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -133,23 +138,23 @@ jobs:
 
       # ユニットテストとは独立してE2Eを実行し、E2E単体のカバレッジを生成する。
       - name: Run E2E tests and generate coverage
-        run: pnpm run test:e2e:coverage
+        run: node scripts/e2e-coverage.mjs --e2e-only --shard=${{ matrix.shard }}/2
 
       # 統合ジョブが各レポートを取得できるようにする。
       - name: Upload E2E coverage
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-e2e
-          path: coverage/e2e
-          if-no-files-found: ignore
+          name: coverage-e2e-${{ matrix.shard }}
+          path: coverage/e2e/raw
+          if-no-files-found: error
 
       # 失敗時にトレースとスクリーンショットから原因を追えるよう、結果を残す。
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
@@ -176,11 +181,19 @@ jobs:
       - name: Download E2E coverage
         uses: actions/download-artifact@v8
         with:
-          name: coverage-e2e
-          path: coverage/e2e
+          pattern: coverage-e2e-*
+          path: coverage/e2e-shards
 
       - name: Combine coverage
-        run: pnpm run test:coverage:merge
+        run: node scripts/merge-coverage.mjs --shards
+
+      - name: Upload E2E coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-e2e
+          path: coverage/e2e
+          if-no-files-found: error
 
       - name: Upload combined coverage
         if: ${{ !cancelled() }}

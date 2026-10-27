@@ -92,17 +92,29 @@ async function writeReport(coverageMap, outputDirectory) {
   );
 }
 
-const rawDirectory = path.join(root, "coverage/e2e/raw");
-const rawFiles = (await readdir(rawDirectory)).filter((filename) => filename.endsWith(".json"));
+// CIではシャードごとの成果物を別ディレクトリに展開し、同名ファイルの衝突を避ける。
+const shardRoot = path.join(root, "coverage/e2e-shards");
+const rawDirectories = process.argv.includes("--shards")
+  ? (await readdir(shardRoot, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => path.join(shardRoot, entry.name))
+  : [path.join(root, "coverage/e2e/raw")];
+const rawFiles = (
+  await Promise.all(
+    rawDirectories.map(async (directory) =>
+      (await readdir(directory))
+        .filter((filename) => filename.endsWith(".json"))
+        .map((filename) => path.join(directory, filename)),
+    ),
+  )
+).flat();
 if (!rawFiles.length) {
   throw new Error(
     "E2Eカバレッジを取得できませんでした。ページ上で計測コードが実行されたか確認してください。",
   );
 }
 
-const e2eInputs = await Promise.all(
-  rawFiles.map((filename) => readReport(path.join(rawDirectory, filename))),
-);
+const e2eInputs = await Promise.all(rawFiles.map((filename) => readReport(filename)));
 const e2eMap = mergeCoverage(e2eInputs);
 await writeReport(e2eMap, path.join(root, "coverage/e2e"));
 await writeFile(

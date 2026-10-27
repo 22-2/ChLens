@@ -34,7 +34,12 @@ let exitCode = await run(process.execPath, [vp, "build"], {
 if (exitCode === 0) {
   exitCode = await run(
     process.execPath,
-    ["node_modules/@playwright/test/cli.js", "test", "--project=chrome"],
+    [
+      "node_modules/@playwright/test/cli.js",
+      "test",
+      "--project=chrome",
+      ...process.argv.slice(2).filter((arg) => arg !== "--e2e-only"),
+    ],
     {
       ...process.env,
       E2E_COVERAGE: "true",
@@ -44,16 +49,19 @@ if (exitCode === 0) {
 
 const reportExit = await run(process.execPath, [
   "scripts/merge-coverage.mjs",
-  ...process.argv.slice(2),
+  ...process.argv.slice(2).filter((arg) => arg === "--e2e-only"),
 ]);
 if (reportExit !== 0) exitCode ||= reportExit;
 
-const restoreExit = await run(process.execPath, [vp, "build"], {
-  ...process.env,
-  PLATFORM: "chrome",
-  ENTRY: "browser",
-  VITE_COVERAGE: "false",
-});
-if (restoreExit !== 0) exitCode ||= restoreExit;
+// CIの作業領域は実行後に破棄されるため、通常ビルドへの復元はローカルだけで行う。
+if (!process.env.CI) {
+  const restoreExit = await run(process.execPath, [vp, "build"], {
+    ...process.env,
+    PLATFORM: "chrome",
+    ENTRY: "browser",
+    VITE_COVERAGE: "false",
+  });
+  if (restoreExit !== 0) exitCode ||= restoreExit;
+}
 
 process.exitCode = exitCode;
