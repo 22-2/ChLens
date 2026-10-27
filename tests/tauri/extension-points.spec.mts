@@ -1,5 +1,20 @@
+import type { Page } from "@playwright/test";
+
 import { verifyTwoPaneFilters } from "../extension-points-scenarios.mjs";
 import { expect, test } from "./fixtures.mjs";
+
+async function nativePopupLabels(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const api = (
+      window as typeof window & {
+        __TAURI_INTERNALS__: { invoke: (command: string) => Promise<string[]> };
+      }
+    ).__TAURI_INTERNALS__;
+    return (await api.invoke("plugin:window|get_all_windows")).filter((label) =>
+      label.startsWith("chlens-popup-"),
+    );
+  });
+}
 
 test("2ペインでフィルター操作がそれぞれのスレに届く", async ({ page, localBoard }) => {
   await verifyTwoPaneFilters(page, localBoard);
@@ -36,19 +51,17 @@ test("別窓への移動と復帰後もフィルター操作が対象のスレ�
   });
   await page.getByTestId("title-bar-title").click({ button: "right" });
   await page.getByRole("button", { name: "別窓で開く", exact: true }).click();
-  const nativePopupLabels = () =>
-    page.evaluate(async () => {
-      const api = (
-        window as typeof window & {
-          __TAURI_INTERNALS__: { invoke: (command: string) => Promise<string[]> };
-        }
-      ).__TAURI_INTERNALS__;
-      return (await api.invoke("plugin:window|get_all_windows")).filter((label) =>
-        label.startsWith("chlens-popup-"),
-      );
-    });
-  await expect.poll(nativePopupLabels).toHaveLength(1);
-  const [popupLabel] = await nativePopupLabels();
+  await expect.poll(() => nativePopupLabels(page)).toHaveLength(1);
+  const [popupLabel] = await nativePopupLabels(page);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as typeof window & { __e2eTabWindow: Window & { __chlensPopupLabel?: string } })
+            .__e2eTabWindow.__chlensPopupLabel,
+      ),
+    )
+    .toBe(popupLabel);
   const popupState = () =>
     page.evaluate(() => {
       const child = (window as typeof window & { __e2eTabWindow?: Window | null }).__e2eTabWindow;
@@ -110,9 +123,23 @@ test("別窓への移動と復帰後もフィルター操作が対象のスレ�
   await expect(page.getByTestId("title-bar-title")).toHaveText(second.title);
   await expect.poll(popupState).toMatchObject({ open: false });
   // WindowProxyが閉じてもOS窓が空のまま残ることがあるため、ネイティブ側も確認する。
-  await expect.poll(nativePopupLabels).not.toContain(popupLabel);
+  await expect.poll(() => nativePopupLabels(page)).not.toContain(popupLabel);
   await expect(mainPanel.locator('[data-res-num="3"]')).toBeVisible();
   await mainCount.click();
   await expect(mainFilter).toBeVisible();
   expect(registrationErrors).toEqual([]);
+});
+
+test("本窓の再読み込みで切り離したOS窓も閉じる", async ({ page, localBoard }) => {
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  await expect(page.locator('[data-res-num="2"]')).toBeVisible();
+  await page.getByTestId("title-bar-title").click({ button: "right" });
+  await page.getByRole("button", { name: "別窓で開く", exact: true }).click();
+  await expect.poll(() => nativePopupLabels(page)).toHaveLength(1);
+
+  await page.reload();
+  await expect(page.locator(".browser-shell")).toBeVisible();
+  await expect.poll(() => nativePopupLabels(page)).toEqual([]);
 });
