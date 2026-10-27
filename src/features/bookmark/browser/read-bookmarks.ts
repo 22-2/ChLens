@@ -1,5 +1,6 @@
 import { container } from "src/service-container/index";
 import {
+  type InternalBrowserPage,
   parseInternalBrowserPage,
   resolveBoardUrlForBrowser,
 } from "src/view/browser/utils/link-routing";
@@ -125,4 +126,17 @@ export async function readBookmarks(): Promise<BookmarkEntry[]> {
       } satisfies BookmarkEntry;
     })
     .filter((item): item is BookmarkEntry => item !== null);
+}
+
+/**
+ * お気に入りから開くページ。保存されている題名を使い、板は板名も引き継ぐ。
+ * 開けない URL なら null。
+ */
+export function toBookmarkPage(entry: BookmarkEntry): InternalBrowserPage | null {
+  const page = parseInternalBrowserPage(entry.url);
+  if (!page) return null;
+  if (page.type === "threadList") {
+    return { ...page, title: entry.title, boardTitle: entry.boardTitle || entry.title };
+  }
+  return { ...page, title: entry.title };
 }

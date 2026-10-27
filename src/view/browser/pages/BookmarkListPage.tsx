@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createLogger } from "src/app/logger";
-import { type BookmarkEntry, readBookmarks } from "src/features/bookmark/browser/read-bookmarks";
+import {
+  type BookmarkEntry,
+  readBookmarks,
+  toBookmarkPage,
+} from "src/features/bookmark/browser/read-bookmarks";
 import {
   BookmarkContextMenu,
   type BookmarkContextMenuState,
@@ -12,7 +16,6 @@ import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-ac
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabDispatch, useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
 import { Spinner } from "src/view/browser/ui/Spinner";
-import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
 const logger = createLogger("view/browser");
 
@@ -233,38 +236,17 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
 
   const openEntry = useCallback(
     (entry: BookmarkEntry) => {
-      const parsed = parseInternalBrowserPage(entry.url);
-      if (!parsed) return;
-
-      dispatch(
-        tabActions.navigate({
-          ...parsed,
-          title: entry.title,
-          ...(parsed.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
-        }),
-      );
+      const page = toBookmarkPage(entry);
+      if (page) dispatch(tabActions.navigate(page));
     },
     [dispatch],
   );
 
   const openEntryInNewTab = useCallback(
     (entry: BookmarkEntry, background = true) => {
-      const parsed = parseInternalBrowserPage(entry.url);
-      if (!parsed) return;
-
+      const page = toBookmarkPage(entry);
       // 中クリックは必ず背景で開き、メニューの通常クリックは新規タブの設定に従う。
-      dispatch(
-        tabActions.openInNewTab(
-          {
-            ...parsed,
-            title: entry.title,
-            ...(parsed.type === "threadList"
-              ? { boardTitle: entry.boardTitle || entry.title }
-              : {}),
-          },
-          { background },
-        ),
-      );
+      if (page) dispatch(tabActions.openInNewTab(page, { background }));
     },
     [dispatch],
   );

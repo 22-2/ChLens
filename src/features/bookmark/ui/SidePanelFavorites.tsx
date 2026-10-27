@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { createLogger } from "src/app/logger";
-import { type BookmarkEntry, readBookmarks } from "src/features/bookmark/browser/read-bookmarks";
+import {
+  type BookmarkEntry,
+  readBookmarks,
+  toBookmarkPage,
+} from "src/features/bookmark/browser/read-bookmarks";
 import {
   BookmarkContextMenu,
   type BookmarkContextMenuState,
@@ -9,7 +13,6 @@ import { container } from "src/service-container/index";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 
 const logger = createLogger("bookmark");
 
@@ -42,15 +45,10 @@ export function SidePanelFavorites() {
     return () => container.message.off("bookmark_updated", updated);
   }, [load]);
   const open = (entry: BookmarkEntry, background: boolean) => {
-    const page = parseInternalBrowserPage(entry.url);
+    const page = toBookmarkPage(entry);
     if (!page) return;
-    const target = {
-      ...page,
-      title: entry.title,
-      ...(page.type === "threadList" ? { boardTitle: entry.boardTitle || entry.title } : {}),
-    };
     dispatch(
-      background ? tabActions.openInNewTab(target, { background }) : tabActions.navigate(target),
+      background ? tabActions.openInNewTab(page, { background }) : tabActions.navigate(page),
     );
   };
   const filtered = entries.filter((entry) =>
@@ -113,20 +111,8 @@ export function SidePanelFavorites() {
           }}
           onOpenCurrentTab={() => open(menu.entry, false)}
           onOpenInNewTab={(background) => {
-            const page = parseInternalBrowserPage(menu.entry.url);
-            if (!page) return;
-            dispatch(
-              tabActions.openInNewTab(
-                {
-                  ...page,
-                  title: menu.entry.title,
-                  ...(page.type === "threadList"
-                    ? { boardTitle: menu.entry.boardTitle || menu.entry.title }
-                    : {}),
-                },
-                { background },
-              ),
-            );
+            const page = toBookmarkPage(menu.entry);
+            if (page) dispatch(tabActions.openInNewTab(page, { background }));
           }}
           onRemoved={(url) => setEntries((current) => current.filter((entry) => entry.url !== url))}
           onClose={() => setMenu(null)}
