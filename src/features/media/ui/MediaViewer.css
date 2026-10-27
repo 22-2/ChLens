@@ -30,9 +30,9 @@
 }
 
 .media-viewer__chrome {
-  /* Keep a compact dark frame so the outer scrim remains easy to dismiss. */
-  width: min(80vw, 1100px);
-  height: min(82vh, 800px);
+  /* 画像の表示領域を広げながら、外側の閉じる領域も残す。 */
+  width: var(--sys-media-viewer-width);
+  height: var(--sys-media-viewer-height);
   background: var(--sys-color-media-surface);
   border: 1px solid var(--sys-color-media-border);
   border-radius: var(--sys-radius-xl);

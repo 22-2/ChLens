@@ -14,7 +14,7 @@ export function ExternalLinkDialog({
   onApprove: (url: string) => void;
   onCancel: () => void;
 }) {
-  const [cleaned, setCleaned] = useState(false);
+  const [cleaned, setCleaned] = useState(analysis.cleanedUrl !== null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const destination = cleaned && analysis.cleanedUrl ? analysis.cleanedUrl : analysis.original;
   const hostname = analysis.canOpen ? new URL(destination).hostname : analysis.hostname;

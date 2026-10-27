@@ -41,3 +41,9 @@ export function normalizeSearchUnit(unit: string): string {
 export function normalizeSearchText(text: string): string {
   return splitSearchUnits(text).map(normalizeSearchUnit).join("");
 }
+
+/** 検索対象とクエリを同じ規則で正規化して部分一致を判定する。 */
+export function matchesSearchQuery(text: string, query: string): boolean {
+  const normalizedQuery = normalizeSearchText(query.trim());
+  return normalizedQuery === "" || normalizeSearchText(text).includes(normalizedQuery);
+}

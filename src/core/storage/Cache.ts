@@ -3,6 +3,7 @@ import { platform } from "src/app/platform";
 import type { ObjectStore } from "src/app/platform/types";
 import { isHttps } from "src/core/network/url-protocol";
 import { getTauriRepositories, isTauriRuntime } from "src/core/storage/TauriDrizzleBridge";
+import { stripHtml } from "src/core/util/strip-html";
 
 const logger = createLogger("core/storage");
 
@@ -28,6 +29,15 @@ export interface LogRecord {
   isHttps: boolean;
 }
 
+export interface LogSearchPreview {
+  responseNumber: number;
+  text: string;
+}
+
+export interface LogSearchResult extends LogRecord {
+  preview: LogSearchPreview | null;
+}
+
 /**
  * バックアップ用の過去ログ本体。
  * 一覧用の LogRecord だけでは本文を復元できないため、キャッシュの全フィールドを保持する。
@@ -51,9 +61,109 @@ export interface LogArchiveRecord {
 }
 
 export interface LogSearchPage {
-  logs: LogRecord[];
+  logs: LogSearchResult[];
   nextOffset: number;
   hasMore: boolean;
+}
+
+interface SearchableLogResponse {
+  number: number;
+  message: string;
+}
+
+const PREVIEW_CONTEXT_BEFORE = 64;
+const PREVIEW_CONTEXT_AFTER = 112;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function parseStoredThread(parsed: unknown): unknown {
+  if (typeof parsed !== "string") return parsed;
+
+  try {
+    return JSON.parse(parsed) as unknown;
+  } catch (error) {
+    logger.error("ログ検索プレビューの保存済み本文を解析できません", error);
+    return null;
+  }
+}
+
+function getRawDataMessageIndex(threadUrl: string): number {
+  try {
+    const hostname = new URL(threadUrl).hostname.toLowerCase();
+    return hostname === "machi.to" ||
+      hostname.endsWith(".machi.to") ||
+      hostname.endsWith(".shitaraba.net")
+      ? 4
+      : 3;
+  } catch {
+    return 3;
+  }
+}
+
+function getSearchableLogResponses(
+  data: string | null,
+  parsed: unknown,
+  threadUrl: string,
+): SearchableLogResponse[] {
+  const thread = parseStoredThread(parsed);
+  if (isRecord(thread)) {
+    // 変更理由: read.cgi形式はdataではなくparsedに本文を持つため、保存形式ごとのレス配列を読む。
+    const responseList = Array.isArray(thread.res)
+      ? thread.res
+      : Array.isArray(thread.posts)
+        ? thread.posts
+        : Array.isArray(thread.responses)
+          ? thread.responses
+          : [];
+    const responses = responseList.flatMap((value, index) => {
+      if (!isRecord(value) || typeof value.message !== "string") return [];
+      const responseNumber =
+        typeof value.number === "number"
+          ? value.number
+          : typeof value.num === "number"
+            ? value.num
+            : index + 1;
+      return [{ number: responseNumber, message: value.message }];
+    });
+    if (responses.length > 0) return responses;
+  }
+
+  if (!data) return [];
+  const messageIndex = getRawDataMessageIndex(threadUrl);
+  const responses = data.split(/\r?\n/u).flatMap((line, index) => {
+    const fields = line.split("<>");
+    if (fields.length <= messageIndex) return [];
+    const numberFromData = /^\d+$/u.test(fields[0]) ? Number(fields[0]) : index + 1;
+    return [{ number: numberFromData, message: fields[messageIndex] }];
+  });
+  return responses.length > 0 ? responses : [{ number: 1, message: data }];
+}
+
+function createLogSearchPreview(
+  data: string | null,
+  parsed: unknown,
+  threadUrl: string,
+  query: string,
+): LogSearchPreview | null {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return null;
+
+  for (const response of getSearchableLogResponses(data, parsed, threadUrl)) {
+    const text = stripHtml(response.message).replace(/\r\n?/gu, "\n");
+    const matchStart = text.toLowerCase().indexOf(needle);
+    if (matchStart < 0) continue;
+
+    const start = Math.max(0, matchStart - PREVIEW_CONTEXT_BEFORE);
+    const end = Math.min(text.length, matchStart + needle.length + PREVIEW_CONTEXT_AFTER);
+    return {
+      responseNumber: response.number,
+      text: `${start > 0 ? "…" : ""}${text.slice(start, end)}${end < text.length ? "…" : ""}`,
+    };
+  }
+
+  return null;
 }
 
 export default class Cache {
@@ -339,7 +449,7 @@ export default class Cache {
     if (needle === "") {
       const logs = await Cache.listLogs(offset, scanLimit);
       return {
-        logs,
+        logs: logs.map((log) => ({ ...log, preview: null })),
         nextOffset: offset + logs.length,
         hasMore: logs.length === scanLimit,
       };
@@ -347,11 +457,19 @@ export default class Cache {
 
     if (isTauriRuntime()) {
       const { tauriCacheRepository } = await getTauriRepositories();
-      const rows = await tauriCacheRepository.searchLogs(query.trim(), offset, scanLimit + 1);
+      const rows = await tauriCacheRepository.searchLogs(query.trim(), offset, scanLimit + 1, true);
       const hasMore = rows.length > scanLimit;
       const pageRows = hasMore ? rows.slice(0, scanLimit) : rows;
       return {
-        logs: pageRows.map((row) => Cache._toLogRecord(row)),
+        logs: pageRows.map((row) => ({
+          ...Cache._toLogRecord(row),
+          preview: createLogSearchPreview(
+            row.data ?? null,
+            row.parsed ?? null,
+            row.threadUrl ?? row.url,
+            needle,
+          ),
+        })),
         nextOffset: offset + pageRows.length,
         hasMore,
       };
@@ -373,8 +491,8 @@ export default class Cache {
         const title = typeof row.title === "string" ? row.title : "";
         return `${title}\n${data}\n${parsed}`.toLowerCase().includes(needle);
       })
-      .map((row) =>
-        Cache._toLogRecord({
+      .map((row) => ({
+        ...Cache._toLogRecord({
           url: row.url as string,
           title: (row.title as string) ?? null,
           threadUrl: (row.thread_url as string) ?? null,
@@ -384,7 +502,13 @@ export default class Cache {
           datSize: (row.dat_size as number) ?? null,
           lastUpdated: (row.last_updated as number) ?? 0,
         }),
-      );
+        preview: createLogSearchPreview(
+          typeof row.data === "string" ? row.data : null,
+          row.parsed,
+          typeof row.thread_url === "string" ? row.thread_url : String(row.url),
+          needle,
+        ),
+      }));
     return {
       logs,
       nextOffset: Math.max(offset, 0) + rows.length,

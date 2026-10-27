@@ -35,11 +35,11 @@ describe("外部リンクを承認してから開く", () => {
     expect(open).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
-  it("選択した除去後URLだけを一度開く", async () => {
+  it("検出時に選択済みの除去後URLだけを一度開く", async () => {
     const open = vi.fn();
     act(() => requestExternalLink("https://example.com/article?id=42&utm_source=test", { open }));
     await screen.findByRole("dialog");
-    fireEvent.click(screen.getByRole("checkbox"));
+    expect(screen.getByRole("checkbox")).toBeChecked();
     fireEvent.click(screen.getByRole("button", { name: /^開く$/ }));
     expect(open).toHaveBeenCalledOnce();
     expect(new URL(open.mock.calls[0][0]).search).toBe("?id=42");

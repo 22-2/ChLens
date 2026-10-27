@@ -138,6 +138,8 @@ export function useThreadVirtualList({
     getItemKey: (index) => keys[index]!,
     estimateSize,
     overscan: 8,
+    // レス内で非同期に埋め込みの高さが変わっても、Reactの次の描画を待たず後続レスを移動する。
+    directDomUpdates: true,
     scrollMargin: listTop,
     // 先頭揃えのレスが固定ヘッダーの下に隠れないよう、実際の高さを使う。
     scrollPaddingStart: stickyHeaderHeight,
