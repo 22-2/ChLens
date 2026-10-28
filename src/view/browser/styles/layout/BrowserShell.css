@@ -79,6 +79,7 @@
 
 /* ペインと補助ビューは独立してスクロールし、狭い幅でも本文を残す。 */
 .browser-shell__workspace {
+  position: relative;
   display: flex;
   flex: 1;
   min-height: 0;
@@ -86,14 +87,26 @@
   overflow: hidden;
 }
 .side-panel {
-  position: relative;
-  flex: 0 1 auto;
+  /* ステータスバーの幅を保ちつつ、パネルを本文の上に置く。 */
+  position: absolute;
+  inset: 0 0 var(--sys-space-12) auto;
+  z-index: var(--sys-z-minimap);
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   max-width: 50%;
-  overflow: auto;
+  overflow: hidden;
   border-left: 1px solid var(--sys-color-border);
   /* 変更理由: サイドパネルを垂直タブバーと同じタブストリップ色に揃える。 */
   background: var(--sys-color-tab-strip);
+}
+.browser-shell[data-zen-mode="true"] .side-panel {
+  bottom: 0;
+}
+.side-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 .side-panel__resize {
   position: absolute;
@@ -109,7 +122,9 @@
 }
 .side-panel__tabs {
   display: flex;
+  flex-shrink: 0;
   overflow-x: auto;
+  background: var(--sys-color-tab-strip);
   border-bottom: 1px solid var(--sys-color-border);
 }
 /* 変更理由: メインのタブバー（.tab）と、ホバー色・選択表示・遷移・ドラッグ表示を揃える。 */

@@ -193,8 +193,10 @@ export function SidePanel() {
       </div>
       {activeView && (
         <>
-          <div className="side-panel__heading">{activeView.label}</div>
-          {renderView(activeView, viewTab.id, viewPage)}
+          <div className="side-panel__body">
+            <div className="side-panel__heading">{activeView.label}</div>
+            {renderView(activeView, viewTab.id, viewPage)}
+          </div>
         </>
       )}
     </aside>
