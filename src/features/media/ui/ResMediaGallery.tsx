@@ -1,5 +1,5 @@
 import { parseMessage } from "@chlen/chlib";
-import { Download, Maximize2, Minimize2, MoveDiagonal2, Trash2 } from "lucide-react";
+import { Download, Maximize2, Minimize2, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -300,9 +300,7 @@ function InlineExpandedImage({
             event.stopPropagation();
             onResize(clampWidth(bounds.width + direction * 20, bounds.min, bounds.max));
           }}
-        >
-          <MoveDiagonal2 size={16} aria-hidden="true" />
-        </button>
+        />
       )}
     </div>
   );

@@ -140,6 +140,13 @@ test("サムネイルと展開画像のメニューからビューアを開く",
   localBoard,
 }) => {
   const image = `${localBoard.origin}/img/1.png`;
+  localBoard.setImageBody(
+    1,
+    Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200"><rect width="400" height="200" fill="blue"/></svg>',
+    ),
+    "image/svg+xml",
+  );
   localBoard.setDat(
     `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local001<>画像 ${image}<>ローカルテストスレッド`,
   );

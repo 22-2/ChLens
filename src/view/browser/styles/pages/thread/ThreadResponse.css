@@ -416,16 +416,27 @@
   right: 0;
   bottom: 0;
   z-index: var(--sys-z-local-raised);
-  display: grid;
-  place-items: center;
-  padding: var(--sys-space-2);
+  width: min(var(--sys-space-10), 25%);
+  height: min(var(--sys-space-10), 25%);
+  padding: 0;
   border: 0;
-  border-radius: var(--sys-radius-sm);
-  color: var(--sys-color-accent-fg);
-  background: var(--sys-color-media-badge-bg);
+  background: transparent;
   cursor: nwse-resize;
   touch-action: none;
-  opacity: 0.45;
+  opacity: 0.55;
+}
+/* 小さな四角を見せつつ、周囲もドラッグできるよう操作領域を広く取る。 */
+.res__inline-image-resize::after {
+  content: "";
+  position: absolute;
+  right: var(--sys-space-1);
+  bottom: var(--sys-space-1);
+  width: var(--sys-space-4);
+  height: var(--sys-space-4);
+  box-sizing: border-box;
+  pointer-events: none;
+  border: 2px solid var(--sys-color-accent);
+  background: var(--sys-color-accent-fg);
 }
 .res__inline-image:hover .res__inline-image-resize,
 .res__inline-image-resize:focus-visible {
