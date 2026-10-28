@@ -410,6 +410,27 @@
 .res__inline-image-actions button:hover {
   opacity: 0.8;
 }
+/* つまむ場所はホバーとキーボード操作中に強調する。 */
+.res__inline-image-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: var(--sys-z-local-raised);
+  display: grid;
+  place-items: center;
+  padding: var(--sys-space-2);
+  border: 0;
+  border-radius: var(--sys-radius-sm);
+  color: var(--sys-color-accent-fg);
+  background: var(--sys-color-media-badge-bg);
+  cursor: nwse-resize;
+  touch-action: none;
+  opacity: 0.45;
+}
+.res__inline-image:hover .res__inline-image-resize,
+.res__inline-image-resize:focus-visible {
+  opacity: 1;
+}
 .res__inline-image img {
   display: block;
   max-width: min(100%, var(--sys-thread-inline-image-max-width));
@@ -417,6 +438,15 @@
   width: auto;
   height: auto;
 }
+.res__inline-image--resized .res__inline-image-content,
+.res__inline-image--resized img {
+  width: 100%;
+}
+.res__inline-image--resized img {
+  max-width: 100%;
+  max-height: none;
+}
+
 .res__image-actions {
   padding: var(--sys-space-2) 0 0 var(--sys-space-8);
 }
@@ -456,7 +486,8 @@
 .res__image-save:focus-visible,
 .res__image-save-all:focus-visible,
 .res__inline-image-content:focus-visible,
-.res__inline-image-actions button:focus-visible {
+.res__inline-image-actions button:focus-visible,
+.res__inline-image-resize:focus-visible {
   outline: 2px solid var(--sys-color-focus-ring);
 }
 .res__image-save-all:disabled {

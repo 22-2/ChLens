@@ -66,6 +66,8 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
   ({
     res,
     expandedImageUrls,
+    inlineImageWidths,
+    onResizeImage,
     onToggleImage,
     onOpenDetachedImage,
     idPos,
@@ -323,6 +325,8 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         <ResMediaGallery
           urls={resolvedMedia.urls}
           expandedImageUrls={expandedImageUrls}
+          inlineImageWidths={inlineImageWidths}
+          onResizeImage={onResizeImage}
           onToggleImage={onToggleImage}
           onOpenDetachedImage={onOpenDetachedImage}
           onUrlClick={onUrlClick}
@@ -342,6 +346,8 @@ export interface ResItemProps {
   onEntryDisplayed?: (responseNum: number) => void;
   res: IRes;
   expandedImageUrls?: ReadonlySet<string>;
+  inlineImageWidths?: ReadonlyMap<string, number>;
+  onResizeImage?: (url: string, width: number) => void;
   onToggleImage?: (url: string) => void;
   onOpenDetachedImage?: (url: string, images: string[], saveImages: string[]) => void;
   idPos: number;

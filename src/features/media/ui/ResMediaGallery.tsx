@@ -1,5 +1,5 @@
 import { parseMessage } from "@chlen/chlib";
-import { Download, Maximize2, Minimize2, Trash2 } from "lucide-react";
+import { Download, Maximize2, Minimize2, MoveDiagonal2, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -126,6 +126,8 @@ function InlineExpandedImage({
   blurStyle,
   onClose,
   onOpenViewer,
+  width,
+  onResize,
   onContextMenu,
   onLoad,
   onError,
@@ -136,15 +138,63 @@ function InlineExpandedImage({
   blurStyle: ThumbStyle;
   onClose: () => void;
   onOpenViewer: () => void;
+  width?: number;
+  onResize?: (width: number) => void;
   onContextMenu: (event: React.MouseEvent<HTMLElement>) => void;
   onLoad: (event: React.SyntheticEvent<HTMLImageElement>) => void;
   onError: () => void;
 }) {
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const [previewWidth, setPreviewWidth] = useState<number>();
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    x: number;
+    y: number;
+    width: number;
+    ratio: number;
+    min: number;
+    max: number;
+    current: number;
+  } | null>(null);
+  const displayedWidth = previewWidth ?? width;
+
+  const getBounds = () => {
+    const wrapper = wrapperRef.current;
+    const image = wrapper?.querySelector("img");
+    const parent = wrapper?.parentElement;
+    if (!wrapper || !image || !parent) return null;
+    const rect = image.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const paddingRight = parseFloat(getComputedStyle(parent).paddingRight) || 0;
+    const max = Math.max(
+      1,
+      parent.getBoundingClientRect().right - wrapper.getBoundingClientRect().left - paddingRight,
+    );
+    return {
+      width: rect.width,
+      ratio: rect.width / rect.height,
+      min: Math.min(96, rect.width, max),
+      max,
+    };
+  };
+  const clampWidth = (value: number, min: number, max: number) =>
+    Math.round(Math.max(min, Math.min(max, value)));
+  // ドラッグ中は局所的に描画し、確定時だけ親へ渡して仮想化後も幅を保つ。
+  const updateDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const inverseRatio = 1 / drag.ratio;
+    const delta =
+      (event.clientX - drag.x + (event.clientY - drag.y) * inverseRatio) /
+      (1 + inverseRatio * inverseRatio);
+    drag.current = clampWidth(drag.width + delta, drag.min, drag.max);
+    setPreviewWidth(drag.current);
+  };
   return (
     <div
-      className={`res__inline-image${isBlurred ? " res__thumb--blurred" : ""}`}
-      style={isBlurred ? blurStyle : undefined}
+      ref={wrapperRef}
+      className={`res__inline-image${displayedWidth != null ? " res__inline-image--resized" : ""}${isBlurred ? " res__thumb--blurred" : ""}`}
+      style={{ ...(isBlurred ? blurStyle : undefined), width: displayedWidth }}
       onContextMenu={onContextMenu}
     >
       <button
@@ -199,6 +249,61 @@ function InlineExpandedImage({
           <Minimize2 size={16} aria-hidden="true" />
         </button>
       </div>
+      {status === "loaded" && onResize && (
+        <button
+          type="button"
+          className="res__inline-image-resize"
+          aria-label="画像のサイズを変更"
+          title="ドラッグまたは矢印キーで画像のサイズを変更"
+          onPointerDown={(event) => {
+            if (event.button !== 0) return;
+            const bounds = getBounds();
+            if (!bounds) return;
+            event.preventDefault();
+            event.stopPropagation();
+            dragRef.current = {
+              ...bounds,
+              x: event.clientX,
+              y: event.clientY,
+              current: bounds.width,
+            };
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={(event) => updateDrag(event)}
+          onPointerUp={(event) => {
+            if (!dragRef.current) return;
+            updateDrag(event);
+            const next = dragRef.current.current;
+            dragRef.current = null;
+            setPreviewWidth(undefined);
+            onResize(next);
+          }}
+          onPointerCancel={() => {
+            dragRef.current = null;
+            setPreviewWidth(undefined);
+          }}
+          onLostPointerCapture={() => {
+            dragRef.current = null;
+            setPreviewWidth(undefined);
+          }}
+          onKeyDown={(event) => {
+            const direction =
+              event.key === "ArrowRight" || event.key === "ArrowUp"
+                ? 1
+                : event.key === "ArrowLeft" || event.key === "ArrowDown"
+                  ? -1
+                  : 0;
+            if (!direction) return;
+            const bounds = getBounds();
+            if (!bounds) return;
+            event.preventDefault();
+            event.stopPropagation();
+            onResize(clampWidth(bounds.width + direction * 20, bounds.min, bounds.max));
+          }}
+        >
+          <MoveDiagonal2 size={16} aria-hidden="true" />
+        </button>
+      )}
     </div>
   );
 }
@@ -220,6 +325,8 @@ interface ResMediaGalleryProps {
   isBlurred?: boolean;
   imageBlurRadius?: number;
   expandedImageUrls?: ReadonlySet<string>;
+  inlineImageWidths?: ReadonlyMap<string, number>;
+  onResizeImage?: (url: string, width: number) => void;
   onToggleImage?: (url: string) => void;
   onOpenDetachedImage?: (url: string, images: string[], saveImages: string[]) => void;
 }
@@ -728,6 +835,8 @@ export function ResMediaGallery({
   isBlurred = false,
   imageBlurRadius = 4,
   expandedImageUrls,
+  inlineImageWidths,
+  onResizeImage,
   onToggleImage,
   onOpenDetachedImage,
 }: ResMediaGalleryProps): React.ReactElement | null {
@@ -994,6 +1103,10 @@ export function ResMediaGallery({
                   imageKey={item.rawUrl}
                   isBlurred={isBlurred || isHashPending}
                   blurStyle={blurStyle}
+                  width={inlineImageWidths?.get(item.rawUrl)}
+                  onResize={
+                    onResizeImage ? (width) => onResizeImage(item.rawUrl, width) : undefined
+                  }
                   onClose={() => onToggleImage(item.rawUrl)}
                   onOpenViewer={() =>
                     onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls)

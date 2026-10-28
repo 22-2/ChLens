@@ -59,6 +59,27 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   expect(await image.evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(
     await first.evaluate((el) => el.getBoundingClientRect().width),
   );
+  const handle = first.getByRole("button", { name: "画像のサイズを変更" });
+  await expect(handle).toBeVisible();
+  const initialWidth = (await image.boundingBox())!.width;
+  const handleBox = (await handle.boundingBox())!;
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(
+    handleBox.x + handleBox.width / 2 + 100,
+    handleBox.y + handleBox.height / 2 + 50,
+    { steps: 5 },
+  );
+  await page.mouse.up();
+  await expect
+    .poll(async () => (await image.boundingBox())!.width)
+    .toBeGreaterThan(initialWidth + 80);
+  const adjustedWidth = (await image.boundingBox())!.width;
+  await expect(page.locator(".media-viewer")).toHaveCount(0);
+  await handle.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect.poll(async () => (await image.boundingBox())!.width).toBeLessThan(adjustedWidth);
+  const savedWidth = (await image.boundingBox())!.width;
   await first.locator(".res__thumb--image").first().click();
   const portrait = first.locator(".res__inline-image img").nth(1);
   await expect
@@ -75,7 +96,15 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await expect(first).toHaveCount(0);
   await jumpToResponse(page, 1);
   await expect(first.getByRole("button", { name: "画像を折りたたむ" })).toBeVisible();
+  await expect
+    .poll(async () => (await first.locator(".res__inline-image img").boundingBox())!.width)
+    .toBeCloseTo(savedWidth, 0);
   await first.getByRole("button", { name: "画像を折りたたむ" }).click();
+  await first.locator(".res__thumb--image").first().click();
+  await expect
+    .poll(async () => (await first.locator(".res__inline-image img").boundingBox())!.width)
+    .toBeCloseTo(savedWidth, 0);
+  await first.getByRole("button", { name: "画像を縮小" }).click();
   await expect(first.locator(".res__thumb--image")).toHaveCount(2);
 });
 

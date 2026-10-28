@@ -325,6 +325,23 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   }>(() => ({ threadUrl: page.threadUrl, responses: new Map() }));
   const expandedImages =
     imageExpansion.threadUrl === page.threadUrl ? imageExpansion.responses : null;
+  // レスの再描画や折りたたみを挟んでも、画像ごとの調整幅を保持する。
+  const [imageWidths, setImageWidths] = useState<{
+    threadUrl: string;
+    responses: ReadonlyMap<number, ReadonlyMap<string, number>>;
+  }>(() => ({ threadUrl: page.threadUrl, responses: new Map() }));
+  const resizeImage = useCallback(
+    (resNum: number, url: string, width: number) => {
+      setImageWidths((current) => {
+        const responses = new Map(current.threadUrl === page.threadUrl ? current.responses : []);
+        const widths = new Map(responses.get(resNum));
+        widths.set(url, width);
+        responses.set(resNum, widths);
+        return { threadUrl: page.threadUrl, responses };
+      });
+    },
+    [page.threadUrl],
+  );
   const toggleImage = useCallback(
     (resNum: number, url: string) => {
       setImageExpansion((current) => {
@@ -943,6 +960,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         onEntryDisplayed={liveChatReplies.onEntryDisplayed}
         res={res}
         expandedImageUrls={expandedImages?.get(res.num)}
+        inlineImageWidths={
+          imageWidths.threadUrl === page.threadUrl ? imageWidths.responses.get(res.num) : undefined
+        }
+        onResizeImage={(url, width) => resizeImage(res.num, url, width)}
         onToggleImage={(url) => toggleImage(res.num, url)}
         onOpenDetachedImage={(url, images, saveImages) =>
           openDetachedMediaViewer(url, images, mediaViewerScopeId, saveImages)
