@@ -130,3 +130,34 @@ test("スレプロパティに表示中のスレの情報を出す", async ({ pa
   await expect(property("状態").locator("dd")).toHaveText("取得済み");
   await expect(panel.getByRole("img", { name: "勢い推移グラフ" })).toBeVisible();
 });
+
+test("タブを右端までドラッグしても狭いプロパティ表示が横にはみ出さない", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const thread = localBoard.addLargeThread(150);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, 150);
+  await page.getByRole("button", { name: "サイドパネルを開く" }).click();
+  const panel = page.getByRole("complementary", { name: "サイドパネル" });
+  await panel.getByRole("tab", { name: "スレプロパティ" }).click();
+  const resize = panel.getByRole("separator", { name: "サイドパネルの幅" });
+  await resize.focus();
+  for (let i = 0; i < 6; i++) await resize.press("ArrowRight");
+  const body = panel.locator(".side-panel__body");
+  const tabs = panel.getByRole("tablist", { name: "サイドパネルのビュー" });
+  const source = panel.getByRole("tab", { name: "板一覧" });
+  const last = panel.getByRole("tab", { name: "書き込み" });
+  const box = (await source.boundingBox())!;
+  const end = (await last.boundingBox())!;
+  await expect.poll(() => body.evaluate((e) => e.scrollWidth - e.clientWidth)).toBe(0);
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(end.x + end.width + 50, end.y + end.height / 2, { steps: 20 });
+  await expect(panel.locator(".side-panel__tab--dragging").first()).toBeVisible();
+  await expect.poll(() => body.evaluate((e) => e.scrollWidth - e.clientWidth)).toBe(0);
+  await page.mouse.up();
+  await expect.poll(() => body.evaluate((e) => e.scrollWidth - e.clientWidth)).toBe(0);
+  await expect.poll(() => tabs.evaluate((e) => e.scrollWidth - e.clientWidth)).toBe(0);
+});

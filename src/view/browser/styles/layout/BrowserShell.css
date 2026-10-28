@@ -331,6 +331,12 @@
   min-height: var(--sys-size-side-panel-write-editor);
 }
 
+/* 固定幅の勢いグラフが狭いパネルを横にはみ出さないようにする。 */
+.side-panel .mini-window__momentum-chart {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .side-panel__properties {
   display: grid;
   grid-template-columns: max-content 1fr;
