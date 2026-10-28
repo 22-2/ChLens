@@ -810,7 +810,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       <button
         ref={backButtonRef}
         type="button"
-        className="nav-bar__menu-action"
+        className="nav-bar__menu-action icon-button"
         disabled={!back}
         onClick={() => {
           runTabCommand(TAB_COMMAND_IDS.BACK);
@@ -825,7 +825,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       <button
         ref={forwardButtonRef}
         type="button"
-        className="nav-bar__menu-action"
+        className="nav-bar__menu-action icon-button"
         disabled={!forward}
         onClick={() => {
           runTabCommand(TAB_COMMAND_IDS.FORWARD);
@@ -840,7 +840,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       <button
         ref={refreshButtonRef}
         type="button"
-        className="nav-bar__menu-action"
+        className="nav-bar__menu-action icon-button"
         disabled={
           !isPageRefreshable(viewPage) ||
           threadCapabilities?.canRefresh === false ||
@@ -855,18 +855,18 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       </button>
       <button
         type="button"
-        className={`nav-bar__menu-action${isBookmarked ? " nav-bar__menu-action--active" : ""}`}
+        className={`nav-bar__menu-action icon-button${isBookmarked ? " nav-bar__menu-action--active" : ""}`}
         disabled={!bookmarkTarget || isBookmarkPending}
         onClick={handleMenuBookmark}
         title={isBookmarked ? "お気に入りから削除" : "お気に入りに追加"}
         aria-label={isBookmarked ? "お気に入りから削除" : "お気に入りに追加"}
         aria-pressed={isBookmarked}
       >
-        <Star size={17} fill={isBookmarked ? "currentColor" : "none"} />
+        <Star size={17} />
       </button>
       <button
         type="button"
-        className="nav-bar__menu-action"
+        className="nav-bar__menu-action icon-button"
         onClick={openSettingsTab}
         title="設定を開く"
         aria-label="設定を開く"
@@ -899,7 +899,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         bookmarkTarget ? (
           <button
             type="button"
-            className={`nav-bar__url-action-btn${
+            className={`nav-bar__url-action-btn icon-button${
               isBookmarked ? " nav-bar__url-action-btn--active" : ""
             }`}
             aria-label={
@@ -915,7 +915,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
             }}
             onClick={handleToggleBookmark}
           >
-            <Star size={16} fill={isBookmarked ? "currentColor" : "none"} />
+            <Star size={16} />
           </button>
         ) : null
       }
@@ -928,7 +928,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         // URLバーの開閉ボタンの左へ置き、メニュー項目と同じ切り替え処理を使う。
         <button
           type="button"
-          className={`nav-bar__filter-toggle${
+          className={`nav-bar__filter-toggle icon-button${
             isFilterToolbarOpen ? " nav-bar__filter-toggle--active" : ""
           }`}
           aria-pressed={isFilterToolbarOpen}
@@ -944,7 +944,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       <button
         ref={menuButtonRef}
         type="button"
-        className="nav-bar__btn"
+        className="nav-bar__btn icon-button"
         title="メニュー"
         onClick={handleMenuClick}
         onContextMenu={(e) => {

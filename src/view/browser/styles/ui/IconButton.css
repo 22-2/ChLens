@@ -1,0 +1,35 @@
+/* 操作の意味が変わらないアイコンボタンは、状態を色と背景で共通に示す。 */
+.icon-button.icon-button {
+  background: transparent;
+  color: var(--sys-color-icon-button-fg);
+  transition:
+    background var(--sys-duration-fast),
+    color var(--sys-duration-fast);
+}
+.icon-button.icon-button:hover:not(:disabled) {
+  background: var(--sys-color-icon-button-hover-bg);
+  color: var(--sys-color-icon-button-hover-fg);
+}
+.icon-button.icon-button:is([aria-pressed="true"], [aria-expanded="true"], [data-active="true"]) {
+  background: var(--sys-color-icon-button-active-bg);
+  color: var(--sys-color-icon-button-active-fg);
+}
+/* 親コンテナ側のホバー指定より後に適用し、有効色を維持する。 */
+.icon-button.icon-button:is(
+    [aria-pressed="true"],
+    [aria-expanded="true"],
+    [data-active="true"]
+  ):hover:not(:disabled) {
+  background: var(--sys-color-icon-button-active-hover-bg);
+  color: var(--sys-color-icon-button-active-fg);
+}
+.icon-button.icon-button:disabled {
+  background: transparent;
+  color: var(--sys-color-icon-button-disabled-fg);
+  opacity: 1;
+  cursor: default;
+}
+.icon-button.icon-button:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+  outline-offset: -2px;
+}

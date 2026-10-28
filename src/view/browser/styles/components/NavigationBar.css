@@ -64,13 +64,6 @@
   align-self: center;
   transition: background 0.1s;
 }
-.nav-bar__btn:hover:not(:disabled) {
-  background: var(--sys-color-surface-muted);
-}
-.nav-bar__btn:disabled {
-  color: var(--sys-color-text-disabled);
-  cursor: default;
-}
 .nav-bar__filter-toggle {
   width: 30px;
   height: 30px;
@@ -85,19 +78,6 @@
   cursor: pointer;
   align-self: center;
   transition: background 0.1s;
-}
-.nav-bar__filter-toggle:hover {
-  background: var(--sys-color-tab-strip-hover);
-}
-/* 変更理由: フィルタバーが開いている間は、ボタンの色を変えて開閉状態を示す。 */
-.nav-bar__filter-toggle--active {
-  color: var(--sys-color-accent);
-}
-.nav-bar__btn--active {
-  color: var(--sys-color-accent);
-}
-.nav-bar__btn--active:hover:not(:disabled) {
-  background: var(--sys-color-surface-muted);
 }
 .nav-bar__url {
   position: relative;
@@ -146,23 +126,6 @@
     background 0.12s,
     color 0.12s;
 }
-.nav-bar__url-action-btn:hover:not(:disabled) {
-  background: var(--sys-color-surface-muted);
-}
-.nav-bar__url-action-btn:focus-visible {
-  outline: 2px solid var(--sys-color-focus-ring);
-  outline-offset: 2px;
-}
-.nav-bar__url-action-btn:disabled {
-  color: var(--sys-color-text-disabled);
-  cursor: default;
-}
-.nav-bar__url-action-btn--active {
-  color: var(--sys-color-warning);
-}
-.nav-bar__url-action-btn--active:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--sys-color-warning) 14%, transparent);
-}
 .nav-bar__url-input {
   width: 100%;
   height: 100%;
@@ -203,17 +166,6 @@
   transition:
     background 0.1s,
     color 0.1s;
-}
-.nav-bar__menu-action:hover:not(:disabled) {
-  background: var(--data-table-divider-bg, var(--sys-color-surface-muted));
-  color: var(--data-table-divider-color, var(--sys-color-text));
-}
-.nav-bar__menu-action:disabled {
-  color: var(--sys-color-text-disabled);
-  cursor: default;
-}
-.nav-bar__menu-action--active {
-  color: var(--sys-color-accent);
 }
 .nav-bar__omnibar {
   position: absolute;

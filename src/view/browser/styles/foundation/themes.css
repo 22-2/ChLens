@@ -47,6 +47,22 @@
   --sys-color-accent-fg: var(--ref-color-neutral-0);
   /* 背景ではなく文字として使う強調色。ダークでは背景用の濃い青だと読みにくいため明るい青にする。 */
   --sys-color-accent-text: var(--ref-color-blue-600);
+  /* アイコン操作の状態を、置き場所に依存せず共通化する。 */
+  --sys-color-icon-button-fg: var(--sys-color-text-muted);
+  --sys-color-icon-button-hover-fg: var(--sys-color-text);
+  --sys-color-icon-button-hover-bg: var(--sys-color-hover-overlay);
+  --sys-color-icon-button-active-fg: var(--sys-color-accent-text);
+  --sys-color-icon-button-active-bg: color-mix(
+    in srgb,
+    var(--sys-color-accent-text) 14%,
+    transparent
+  );
+  --sys-color-icon-button-active-hover-bg: color-mix(
+    in srgb,
+    var(--sys-color-accent-text) 25%,
+    transparent
+  );
+  --sys-color-icon-button-disabled-fg: var(--sys-color-text-disabled);
   /* 危険色の背景に載せる文字。ダークの危険色は明るい赤なので、白ではなく暗い文字にする。 */
   --sys-color-error-fg: var(--ref-color-neutral-0);
   --sys-color-link-visited: var(--ref-color-purple-700);
@@ -170,6 +186,22 @@
   --sys-color-evidence: var(--ref-color-dark-blue-300);
   --sys-color-accent-fg: var(--ref-color-neutral-0);
   --sys-color-accent-text: var(--ref-color-dark-blue-300);
+  /* アイコン操作の状態を、置き場所に依存せず共通化する。 */
+  --sys-color-icon-button-fg: var(--sys-color-text-muted);
+  --sys-color-icon-button-hover-fg: var(--sys-color-text);
+  --sys-color-icon-button-hover-bg: var(--sys-color-hover-overlay);
+  --sys-color-icon-button-active-fg: var(--sys-color-accent-text);
+  --sys-color-icon-button-active-bg: color-mix(
+    in srgb,
+    var(--sys-color-accent-text) 14%,
+    transparent
+  );
+  --sys-color-icon-button-active-hover-bg: color-mix(
+    in srgb,
+    var(--sys-color-accent-text) 25%,
+    transparent
+  );
+  --sys-color-icon-button-disabled-fg: var(--sys-color-text-disabled);
   --sys-color-error-fg: var(--ref-color-dark-neutral-0);
   --sys-color-link-visited: var(--ref-color-dark-purple-300);
   --sys-color-focus-ring: var(--ref-color-dark-blue-300);

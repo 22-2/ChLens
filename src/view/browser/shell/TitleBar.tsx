@@ -1,11 +1,4 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  PanelRightClose,
-  PanelRightOpen,
-  RotateCw,
-  Search,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, PanelRight, RotateCw, Search } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { createLogger } from "src/app/logger";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
@@ -150,7 +143,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             {backEnabled && (
               <button
                 type="button"
-                className="title-bar__navigation"
+                className="title-bar__navigation icon-button"
                 disabled={!canNavigateBack}
                 onClick={() => runTabCommand(TAB_COMMAND_IDS.BACK)}
                 title="戻る"
@@ -162,7 +155,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             {forwardEnabled && (
               <button
                 type="button"
-                className="title-bar__navigation"
+                className="title-bar__navigation icon-button"
                 disabled={!canNavigateForward}
                 onClick={() => runTabCommand(TAB_COMMAND_IDS.FORWARD)}
                 title="進む"
@@ -174,7 +167,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             {refreshEnabled && (
               <button
                 type="button"
-                className="title-bar__refresh"
+                className="title-bar__refresh icon-button"
                 disabled={refreshDisabled}
                 onClick={() =>
                   runManualRefresh(manualRefreshScopeKey, () =>
@@ -231,7 +224,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       >
         <button
           type="button"
-          className="title-bar__navigation"
+          className="title-bar__navigation icon-button"
           title={panel.isOpen ? "サイドパネルを閉じる" : "サイドパネルを開く"}
           aria-label={panel.isOpen ? "サイドパネルを閉じる" : "サイドパネルを開く"}
           aria-expanded={panel.isOpen}
@@ -242,7 +235,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             })
           }
         >
-          {panel.isOpen ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+          <PanelRight size={16} aria-hidden="true" />
         </button>
         {/* 変更理由: 垂直モードではアクティブペインではなく自ペインの NavigationBar が
             ここへポータルする。ペイン単位の data-pane-id で描画先を区別する。 */}

@@ -40,24 +40,6 @@
     color var(--sys-duration-fast);
 }
 
-.title-bar__navigation:hover:not(:disabled),
-.title-bar__refresh:hover:not(:disabled) {
-  background: var(--sys-color-tab-strip-hover);
-  color: var(--sys-color-text);
-}
-
-.title-bar__navigation:disabled,
-.title-bar__refresh:disabled {
-  color: var(--sys-color-text-disabled);
-  cursor: default;
-}
-
-.title-bar__navigation:focus-visible,
-.title-bar__refresh:focus-visible {
-  outline: 2px solid var(--sys-color-focus-ring);
-  outline-offset: -2px;
-}
-
 /* 変更理由: タイトルバーの表示対象を増減してもモーダル内の設定項目が崩れないよう、
    ボタンごとに同じ行レイアウトとスイッチ操作を使う。 */
 .title-bar-button-settings-dialog {
@@ -266,12 +248,6 @@
 
 .title-bar__actions .nav-bar--titlebar .nav-bar__btn {
   order: 3;
-}
-
-.title-bar__actions .nav-bar__filter-toggle:hover:not(:disabled),
-.title-bar__actions .nav-bar__btn:hover:not(:disabled) {
-  background: var(--sys-color-tab-strip-hover);
-  color: var(--sys-color-text);
 }
 
 /* 変更理由: 垂直モードでは自ペインのメニューとURL切り替えがここへポータルされる。
