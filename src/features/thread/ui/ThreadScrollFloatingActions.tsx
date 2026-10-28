@@ -7,6 +7,7 @@ interface ThreadScrollFloatingActionsProps {
   rootRef: RefObject<HTMLDivElement | null>;
   isActive: boolean;
   isAutoRefreshEnabled: boolean;
+  canAutoScroll?: boolean;
   readOnly?: boolean;
   isFilterEnabled: boolean;
   loading: boolean;
@@ -82,6 +83,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
   rootRef,
   isActive,
   isAutoRefreshEnabled,
+  canAutoScroll = false,
   readOnly = false,
   isFilterEnabled,
   loading,
@@ -207,7 +209,8 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
     scrollContainer.scrollTo({ top: 0, behavior: "auto" });
   }, [rootRef, viewWindow]);
 
-  if (!layout || !isActive || isFilterEnabled || expired || responseCount === 0) {
+  // 変更理由: 自動更新のしきい線より下では新着へ追従するため、画面を覆う操作ボタンを隠す。
+  if (!layout || !isActive || canAutoScroll || isFilterEnabled || expired || responseCount === 0) {
     return null;
   }
 

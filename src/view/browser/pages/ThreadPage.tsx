@@ -1129,6 +1129,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             rootRef={rootRef}
             isActive={isActive}
             isAutoRefreshEnabled={isAutoRefreshEnabled}
+            canAutoScroll={canAutoScroll}
             readOnly={threadCapabilities.isReadOnly}
             isFilterEnabled={isFilterEnabled}
             loading={loading}
