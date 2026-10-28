@@ -25,17 +25,7 @@ export const PopupHeader: React.FC<PopupHeaderProps> = ({
   <div className="res-popup__header">
     <span>{title}</span>
     <div className="res-popup__header-actions">
-      <button
-        type="button"
-        ref={menuButtonRef}
-        className="res-popup__icon-btn"
-        onClick={onMenuClick}
-        aria-label={menuLabel}
-        title={menuLabel}
-      >
-        <MoreVertical size={14} />
-      </button>
-      {/* ピン留め前もメニューを開かずに固定でき、固定中は同じ位置から解除できる。 */}
+      {/* ピン留めはメニューの左から常に切り替えられる。 */}
       <button
         type="button"
         className="res-popup__icon-btn"
@@ -46,6 +36,16 @@ export const PopupHeader: React.FC<PopupHeaderProps> = ({
         aria-pressed={pinned}
       >
         {pinned ? <PinOff size={14} aria-hidden="true" /> : <Pin size={14} aria-hidden="true" />}
+      </button>
+      <button
+        type="button"
+        ref={menuButtonRef}
+        className="res-popup__icon-btn"
+        onClick={onMenuClick}
+        aria-label={menuLabel}
+        title={menuLabel}
+      >
+        <MoreVertical size={14} />
       </button>
       <button type="button" className="res-popup__close" onClick={onClose} aria-label="閉じる">
         ✕

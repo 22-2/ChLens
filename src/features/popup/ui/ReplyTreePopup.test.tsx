@@ -279,7 +279,7 @@ describe("ReplyTreePopup", () => {
     ).toHaveClass("lucide-pin-off");
   });
 
-  it("ヘッダーのメニュー右側から常にピン留めを切り替えられる", () => {
+  it("ヘッダーのメニュー左側から常にピン留めを切り替えられる", () => {
     const onTogglePinned = vi.fn();
     const { rerender } = render(
       <ReplyTreePopup {...BASE_PROPS} pinned={false} onTogglePinned={onTogglePinned} />,
@@ -288,7 +288,7 @@ describe("ReplyTreePopup", () => {
     const pin = screen.getByRole("button", { name: "ピン留め" });
     expect(pin).toHaveAttribute("aria-pressed", "false");
     expect(pin.querySelector("svg")).toHaveClass("lucide-pin");
-    expect(screen.getByRole("button", { name: "返信ツリーメニュー" }).nextElementSibling).toBe(pin);
+    expect(pin.nextElementSibling).toBe(screen.getByRole("button", { name: "返信ツリーメニュー" }));
     fireEvent.click(pin);
     expect(onTogglePinned).toHaveBeenCalledOnce();
 
