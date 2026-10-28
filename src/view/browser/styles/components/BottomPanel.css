@@ -11,6 +11,18 @@
   overflow: hidden;
 }
 
+.bottom-panel--write {
+  /* 入力欄の行数に応じてパネル全体を伸縮させる。 */
+  max-height: 80%;
+}
+.bottom-panel--write .bottom-panel__body {
+  flex: 0 1 auto;
+  overflow: auto;
+}
+.bottom-panel--write:has(.write-panel__form--confirm) {
+  height: 200px;
+}
+
 .bottom-panel__resize-handle {
   height: var(--sys-space-2);
   cursor: ns-resize;

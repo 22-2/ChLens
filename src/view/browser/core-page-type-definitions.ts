@@ -1,5 +1,11 @@
-import { File, History, House, ScrollText, Settings } from "lucide-react";
 import type { PageOfType, PageTypeDefinitions } from "src/view/browser/page-type-definitions";
+import {
+  GenericPageIcon,
+  HistoryIcon,
+  HomeIcon,
+  LogIcon,
+  SettingsIcon,
+} from "src/view/browser/ui/icons";
 
 export function createHomePage(): PageOfType<"home"> {
   return { type: "home", title: "ホーム" };
@@ -11,7 +17,7 @@ type CorePageDefinitions = Pick<PageTypeDefinitions, CorePageType>;
 /** 機能に属さない基本ページが所有する共通メタデータ。 */
 export const CORE_PAGE_TYPE_DEFINITIONS: CorePageDefinitions = {
   home: {
-    icon: House,
+    icon: HomeIcon,
     refreshable: false,
     filterable: false,
     autoRefreshable: false,
@@ -19,28 +25,28 @@ export const CORE_PAGE_TYPE_DEFINITIONS: CorePageDefinitions = {
   },
   // 旧セッションに残る空タブも同じホームへ描画し、入口画面を一つに保つ。
   newTab: {
-    icon: File,
+    icon: GenericPageIcon,
     refreshable: false,
     filterable: false,
     autoRefreshable: false,
     buildHierarchy: () => [createHomePage()],
   },
   settings: {
-    icon: Settings,
+    icon: SettingsIcon,
     refreshable: false,
     filterable: false,
     autoRefreshable: false,
     displayLabel: "設定",
   },
   historyList: {
-    icon: History,
+    icon: HistoryIcon,
     refreshable: true,
     filterable: true,
     autoRefreshable: false,
     displayLabel: "閲覧履歴",
   },
   logList: {
-    icon: ScrollText,
+    icon: LogIcon,
     refreshable: true,
     filterable: true,
     autoRefreshable: false,

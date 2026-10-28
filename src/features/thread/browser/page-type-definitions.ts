@@ -1,12 +1,12 @@
-import { MessageSquareText } from "lucide-react";
 import { createHomePage } from "src/view/browser/core-page-type-definitions";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
 import { type PageOfType, type PageTypeDefinition } from "src/view/browser/page-type-definitions";
+import { ThreadIcon } from "src/view/browser/ui/icons";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 
 export const THREAD_PAGE_TYPE_DEFINITIONS = {
   thread: {
-    icon: MessageSquareText,
+    icon: ThreadIcon,
     refreshable: true,
     filterable: true,
     autoRefreshable: true,

@@ -1,9 +1,9 @@
-import { ListTree } from "lucide-react";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
 import type { PageOfType, PageTypeDefinition } from "src/view/browser/page-type-definitions";
+import { BoardListIcon } from "src/view/browser/ui/icons";
 
 export const BOARD_PAGE_TYPE_DEFINITION = {
-  icon: ListTree,
+  icon: BoardListIcon,
   refreshable: true,
   filterable: true,
   autoRefreshable: false,

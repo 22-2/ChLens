@@ -1,15 +1,5 @@
 import { validateRuleDsl } from "@chlen/chlib";
-import {
-  Archive,
-  Bug,
-  Eye,
-  Globe2,
-  Image,
-  MessageCircle,
-  MessageSquare,
-  Settings,
-  ShieldAlert,
-} from "lucide-react";
+import { Archive, Bug, Eye, Globe2, Image, ShieldAlert } from "lucide-react";
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
@@ -39,6 +29,7 @@ import {
   isSettingsFieldItem,
 } from "src/view/browser/pages/settings/settings-types";
 import type { SettingsSectionId } from "src/view/browser/types";
+import { CommentOverlayIcon, SettingsIcon, ThreadIcon } from "src/view/browser/ui/icons";
 import {
   NG_DISPLAY_CONFIG_KEY,
   NG_DISPLAY_MODE_OPTIONS,
@@ -121,7 +112,7 @@ const ALL_SETTINGS_SECTIONS = [
     "general",
     "一般",
     "新しいタブで開くページや、通信の方法を設定します。",
-    <Settings size={20} />,
+    <SettingsIcon size={20} />,
     [
       {
         kind: "divider",
@@ -284,7 +275,7 @@ const ALL_SETTINGS_SECTIONS = [
     "thread",
     "スレ",
     "スレの表示・更新・移動と、スレ内リンクの扱いを調整します。",
-    <MessageSquare size={20} />,
+    <ThreadIcon size={20} />,
     [
       {
         kind: "divider",
@@ -453,7 +444,7 @@ const ALL_SETTINGS_SECTIONS = [
     "overlay",
     "実況",
     "Tauri版のコメント流し表示を調整します。最前面表示と分裂スレ取得は変更時に反映します。",
-    <MessageCircle size={20} />,
+    <CommentOverlayIcon size={20} />,
     [
       {
         kind: "divider",

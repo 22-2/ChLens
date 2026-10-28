@@ -1,9 +1,9 @@
-import { Bookmark } from "lucide-react";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
 import type { PageOfType, PageTypeDefinition } from "src/view/browser/page-type-definitions";
+import { BookmarkIcon } from "src/view/browser/ui/icons";
 
 export const BOOKMARK_PAGE_TYPE_DEFINITION = {
-  icon: Bookmark,
+  icon: BookmarkIcon,
   refreshable: false,
   filterable: true,
   autoRefreshable: false,

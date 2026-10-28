@@ -62,7 +62,7 @@ export async function verifyBuiltInPages(page: Page): Promise<void> {
   await verifyPage(
     "thread",
     "ローカルテストスレッド",
-    "message-square-text",
+    "message-square",
     ".thread-page",
     true,
     true,

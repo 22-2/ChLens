@@ -1,8 +1,8 @@
 import type { LucideProps } from "lucide-react";
-import { FileQuestion } from "lucide-react";
 import type { ComponentType } from "react";
 import { createLogger } from "src/app/logger";
 import type { Page, PageType } from "src/view/browser/types";
+import { UnavailablePageIcon } from "src/view/browser/ui/icons";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
 
 const logger = createLogger("view/browser/page-type-definitions");
@@ -39,7 +39,7 @@ const pageTypeDefinitions = new Map<
   { definition: PageTypeDefinition<never>; ownerId: string }
 >();
 const unavailablePageTypeDefinition: PageTypeDefinition<never> = {
-  icon: FileQuestion,
+  icon: UnavailablePageIcon,
   refreshable: false,
   filterable: false,
   autoRefreshable: false,

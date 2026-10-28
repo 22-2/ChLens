@@ -1,9 +1,9 @@
-import { MessageSquare } from "lucide-react";
 import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { commentOverlayController } from "src/features/comment-overlay/application";
 import { toggleCommentOverlayFlow } from "src/features/comment-overlay/application/flow-toggle";
 import type { ExtensionApi } from "src/view/browser/extension/extension-api";
+import { CommentOverlayIcon } from "src/view/browser/ui/icons";
 
 const logger = createLogger("comment-overlay");
 
@@ -16,7 +16,7 @@ export function registerCommentOverlayCommands(api: ExtensionApi): void {
     description: "実況中なら表示を切り替え、停止中なら表示中のスレッドの実況を開始します",
     keywords: ["実況", "コメント", "overlay", "コメント実況"],
     group: "page",
-    icon: MessageSquare,
+    icon: CommentOverlayIcon,
     when: () => isTauriRuntime(),
     run: ({ viewPage }) => {
       const threadUrl = viewPage.type === "thread" ? viewPage.threadUrl : null;
