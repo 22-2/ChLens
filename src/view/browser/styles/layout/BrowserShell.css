@@ -248,6 +248,35 @@
 .side-panel__response strong {
   color: var(--sys-color-accent-text);
 }
+/* 本文と同じアンカーの状態を、抽出欄でもコンパクトに示す。 */
+.side-panel__response-anchor,
+.side-panel__response-replies {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--sys-color-table-link);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.side-panel__response-replies {
+  margin-left: var(--sys-space-2);
+  color: var(--sys-color-res-reply-link);
+}
+.side-panel__response-anchor.anchor--missing-target {
+  color: var(--sys-color-text-muted);
+  font-weight: 700;
+  text-decoration-style: dashed;
+}
+.side-panel__response-anchor.anchor--ng-target {
+  color: var(--sys-color-error);
+  font-weight: 700;
+  text-decoration-style: wavy;
+}
+.side-panel__response-anchor.anchor--missing-target.anchor--ng-target {
+  text-decoration-style: double;
+}
 .side-panel__response mark {
   background: var(--sys-color-warning-surface);
   color: var(--sys-color-warning-fg);

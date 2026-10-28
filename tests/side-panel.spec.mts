@@ -45,7 +45,7 @@ test("抽出結果を強調し、本文のレスへ移動する", async ({ page,
   await expect(panel.locator(".side-panel__response").first()).toBeVisible();
   await search.fill("レス本文マーカー42");
   await expect(panel.locator("mark")).toHaveText("レス本文マーカー42");
-  await panel.getByRole("button", { name: /レス本文マーカー42/ }).click();
+  await panel.locator(".side-panel__response").filter({ hasText: "レス本文マーカー42" }).click();
   await expect(page.locator('.content-area__tab-panel[data-active="true"]')).toContainText(
     "レス本文マーカー42",
   );
@@ -89,6 +89,48 @@ test("抽出レスから更新を除いたレスメニューを操作できる",
   await expect(menu.getByText("選択範囲をNG指定")).toBeVisible();
   await menu.getByText("返信", { exact: true }).click();
   await expect(page.locator(".write-panel__textarea")).toHaveValue(">>2\n");
+});
+
+test("抽出レスのアンカーと返信数から本文と同じポップアップを開く", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  localBoard.setDat(
+    [
+      "名無し<>sage<>2026/10/02(金) 12:00:00 ID:first<>参照先の本文<>ローカルテストスレッド",
+      "名無し<>sage<>2026/10/02(金) 12:01:00 ID:second<>&gt;&gt;1 への返信 &gt;&gt;999<>",
+    ].join("\n"),
+  );
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  await waitForThreadLoaded(page, localBoard.threadUrl, 2);
+  await page.getByRole("button", { name: "サイドパネルを開く" }).click();
+  const panel = page.getByRole("complementary", { name: "サイドパネル" });
+  await panel.getByRole("tab", { name: "抽出レス" }).click();
+  const first = panel.getByRole("group", { name: "レス 1 にジャンプ" });
+  const second = panel.getByRole("group", { name: "レス 2 にジャンプ" });
+  const anchor = second.getByRole("button", { name: ">>1", exact: true });
+  await expect(second.getByRole("button", { name: ">>999" })).toHaveClass(/anchor--missing-target/);
+  await anchor.hover();
+  const preview = page.locator(".anchor-preview");
+  await expect(preview).toBeVisible();
+  await expect(preview).toContainText("参照先の本文");
+  await preview.getByRole("button", { name: "ピン留め", exact: true }).click();
+  await expect(preview.getByRole("button", { name: "ピン留めを解除", exact: true })).toBeVisible();
+  await preview.getByRole("button", { name: "閉じる", exact: true }).click();
+  await first.getByRole("button", { name: "返信(1)" }).click();
+  const tree = page.locator(".res-popup");
+  await expect(tree).toBeVisible();
+  await expect(tree).toContainText("への返信");
+  await expect(tree.getByRole("button", { name: "ピン留め", exact: true })).toBeVisible();
+  await tree.getByRole("button", { name: "閉じる", exact: true }).click();
+  await anchor.click();
+  await expect(
+    page.locator('.content-area__tab-panel[data-active="true"] [data-res-num="1"]'),
+  ).toBeVisible();
 });
 
 test("画像一覧は手動取得の設定に従い、取得した画像をビューアーで開く", async ({

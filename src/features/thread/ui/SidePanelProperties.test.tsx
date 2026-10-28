@@ -35,6 +35,7 @@ function publish(patch: Partial<Parameters<typeof publishThreadSnapshot>[2]> = {
     responses,
     visibleResponses: responses.slice(0, 1),
     updatedAt: new Date(2026, 9, 27, 12, 0).valueOf(),
+    replyIndex: new Map(),
     messageProtocol: "https:",
     blurredResNums: new Set<number>(),
     imageBlurRadius: 4,

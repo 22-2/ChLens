@@ -32,6 +32,7 @@ function options(patch: Partial<Parameters<typeof useThreadSnapshotPublisher>[0]
     threadUrl,
     responses,
     visibleResponses: responses,
+    replyIndex: new Map(),
     messageProtocol: "https:",
     blurredResNums: new Set<number>(),
     imageBlurRadius: 4,
@@ -58,6 +59,12 @@ describe("スナップショットの公開", () => {
     renderHook(() => useThreadSnapshotPublisher(options()));
     expect(published()?.responses).toHaveLength(3);
     expect(published()?.visibleResponses.map((res) => res.num)).toEqual([1]);
+  });
+
+  it("本文の返信数の索引を抽出ビューに共有する", () => {
+    const replyIndex = new Map([[1, new Set([2, 3])]]);
+    renderHook(() => useThreadSnapshotPublisher(options({ replyIndex })));
+    expect(published()?.replyIndex).toBe(replyIndex);
   });
 
   it("NG を一時的に無効にしている間は隠さない", () => {

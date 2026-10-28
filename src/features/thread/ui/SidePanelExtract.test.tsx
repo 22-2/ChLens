@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { SidePanelExtract } from "src/features/thread/ui/SidePanelExtract";
+import { registerThreadResInteractions } from "src/view/browser/state/thread-res-interactions";
 import { publishThreadSnapshot, useThreadSnapshots } from "src/view/browser/state/thread-snapshot";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -31,6 +32,7 @@ describe("抽出レス", () => {
       responses: [{ num: 1, name: "名", mail: "", date: "", message: "テスト本文" }],
       visibleResponses: [{ num: 1, name: "名", mail: "", date: "", message: "テスト本文" }],
       updatedAt: 0,
+      replyIndex: new Map(),
       messageProtocol: "https:",
       blurredResNums: new Set<number>(),
       imageBlurRadius: 4,
@@ -50,6 +52,7 @@ describe("抽出レス", () => {
       responses: [{ num: 1, name: "名", mail: "", date: "", message: "テスト本文" }],
       visibleResponses: [{ num: 1, name: "名", mail: "", date: "", message: "テスト本文" }],
       updatedAt: 0,
+      replyIndex: new Map(),
       messageProtocol: "https:",
       blurredResNums: new Set<number>(),
       imageBlurRadius: 4,
@@ -59,8 +62,53 @@ describe("抽出レス", () => {
     });
     render(<SidePanelExtract tabId="tab" page={page} />);
     expect(screen.getByText("テスト").tagName).toBe("MARK");
-    fireEvent.click(screen.getByRole("button", { name: /テスト本文/ }));
+    fireEvent.click(screen.getByRole("group", { name: "レス 1 にジャンプ" }));
     expect(mocks.jump).toHaveBeenCalledWith(page.threadUrl, 1, "tab", true);
+  });
+  it("アンカーの欠損・NGと返信数を示し、共有ポップアップを呼び出す", () => {
+    const showAnchor = vi.fn();
+    const hideAnchor = vi.fn();
+    const openReplies = vi.fn();
+    const unregister = registerThreadResInteractions("tab", page.threadUrl, {
+      showAnchor,
+      hideAnchor,
+      openReplies,
+    });
+    const responses = [
+      { num: 1, name: "名", mail: "", date: "", message: "最初" },
+      { num: 2, name: "名", mail: "", date: "", message: "&gt;&gt;1 &gt;&gt;3 &gt;&gt;99" },
+      { num: 3, name: "名", mail: "", date: "", message: "NG", ng: { type: "word" } },
+    ];
+    publishThreadSnapshot("tab", Symbol(), {
+      threadUrl: page.threadUrl,
+      responses,
+      visibleResponses: responses.slice(0, 2),
+      replyIndex: new Map([[1, new Set([2])]]),
+      updatedAt: 0,
+      messageProtocol: "https:",
+      blurredResNums: new Set(),
+      imageBlurRadius: 4,
+      loading: false,
+      error: null,
+      expired: false,
+    });
+    render(<SidePanelExtract tabId="tab" page={page} />);
+    const anchor = screen.getByRole("button", { name: ">>1" });
+    expect(screen.getByRole("button", { name: ">>3" })).toHaveClass("anchor--ng-target");
+    expect(screen.getByRole("button", { name: ">>99" })).toHaveClass("anchor--missing-target");
+    fireEvent.mouseEnter(anchor);
+    expect(showAnchor).toHaveBeenCalledWith([1], expect.anything(), ">>1");
+    fireEvent.mouseLeave(anchor);
+    expect(hideAnchor).toHaveBeenCalled();
+    fireEvent.click(anchor);
+    expect(mocks.jump).toHaveBeenCalledWith(page.threadUrl, 1, "tab", true);
+    fireEvent.click(screen.getByRole("button", { name: "返信(1)" }), {
+      clientX: 20,
+      clientY: 30,
+      detail: 1,
+    });
+    expect(openReplies).toHaveBeenCalledWith(1, 20, 30);
+    unregister();
   });
   it("多数のレスは表示範囲だけを描画する", () => {
     const responses = Array.from({ length: 100 }, (_, index) => ({
@@ -75,6 +123,7 @@ describe("抽出レス", () => {
       responses,
       visibleResponses: responses,
       updatedAt: 0,
+      replyIndex: new Map(),
       messageProtocol: "https:",
       blurredResNums: new Set<number>(),
       imageBlurRadius: 4,
@@ -94,6 +143,7 @@ describe("抽出レス", () => {
       responses: [{ num: 1, name: "名", mail: "", date: "", message: "本文" }],
       visibleResponses: [{ num: 1, name: "名", mail: "", date: "", message: "本文" }],
       updatedAt: 0,
+      replyIndex: new Map(),
       messageProtocol: "https:",
       blurredResNums: new Set<number>(),
       imageBlurRadius: 4,

@@ -84,6 +84,7 @@ import {
 } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import { registerThreadResInteractions } from "src/view/browser/state/thread-res-interactions";
 import {
   canGoBack,
   canGoForward,
@@ -801,6 +802,28 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     scrollToResponse,
   });
 
+  useEffect(
+    () =>
+      registerThreadResInteractions(tabId, page.threadUrl, {
+        showAnchor: (targets, rect, label) => showAnchorPreview(targets, rect, label, 0),
+        hideAnchor: () => hideAnchorPreview(0),
+        openReplies: (resNum, x, y) => {
+          hideAnchorPreviewImmediately();
+          closeNonContextPopups();
+          addTreePopup(resNum, x, y);
+        },
+      }),
+    [
+      tabId,
+      page.threadUrl,
+      showAnchorPreview,
+      hideAnchorPreview,
+      hideAnchorPreviewImmediately,
+      closeNonContextPopups,
+      addTreePopup,
+    ],
+  );
+
   const { ngResNums } = useThreadStatusSync({
     tabId,
     threadUrl: page.threadUrl,
@@ -833,6 +856,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     threadUrl: page.threadUrl,
     responses,
     visibleResponses,
+    replyIndex: liveChatReplies.repIndex,
     messageProtocol,
     blurredResNums,
     imageBlurRadius: imageBlurConfig.radius,

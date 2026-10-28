@@ -86,6 +86,7 @@ function PanelStorySeeder({
       threadUrl: STORY_THREAD.threadUrl,
       responses: STORY_RESPONSES,
       visibleResponses: STORY_RESPONSES,
+      replyIndex: new Map(),
       messageProtocol: "https:",
       blurredResNums: new Set(),
       imageBlurRadius: 4,

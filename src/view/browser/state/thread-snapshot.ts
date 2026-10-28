@@ -7,6 +7,8 @@ export interface ThreadSnapshot {
   responses: readonly IRes[];
   /** 本文で表示されるレス。抽出など本文に対応する一覧は NG で隠れたレスを含めない。 */
   visibleResponses: readonly IRes[];
+  /** 返信数は本文と同じNG・実況状態に合わせる。 */
+  replyIndex: ReadonlyMap<number, ReadonlySet<number>>;
   /** 本文の HTML 化に使うプロトコル。本文と同じ URL を取り出すために共有する。 */
   messageProtocol: string;
   /** 本文で画像をぼかすレス番号と、ぼかしの強さ。 */

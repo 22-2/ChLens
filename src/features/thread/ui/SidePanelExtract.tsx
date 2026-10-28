@@ -1,28 +1,117 @@
+import { parseMessage } from "@chlen/chlib";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { stripHtml } from "src/core/util/strip-html";
 import { buildThreadFindIndex, findThreadMatches } from "src/features/thread/domain/thread-find";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
 import { useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
+import { getThreadResInteractions } from "src/view/browser/state/thread-res-interactions";
 import { buildExtractResMenu } from "src/view/browser/state/thread-res-menu";
 import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
+import { hasMissingAnchorTarget, parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
 import { findSearchMatchRanges } from "src/view/browser/utils/search-highlight";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
-function Highlight({ text, query }: { text: string; query: string }) {
+function ExtractMessage({
+  text,
+  query,
+  protocol,
+  tabId,
+  threadUrl,
+  resMap,
+  ngResNums,
+}: {
+  text: string;
+  query: string;
+  protocol: string;
+  tabId: string;
+  threadUrl: string;
+  resMap: ReadonlyMap<number, unknown>;
+  ngResNums: ReadonlySet<number>;
+}) {
+  const hoveredRef = useRef(false);
+  useEffect(
+    () => () => {
+      if (hoveredRef.current) getThreadResInteractions(tabId, threadUrl)?.hideAnchor();
+    },
+    [tabId, threadUrl],
+  );
   const ranges = findSearchMatchRanges(text, query);
+  const parsed = parseMessage(text, { protocol });
+  // パーサーが画像タグなどを正規化した場合は、抽出本文を欠落させない。
+  const tokens =
+    parsed.map((token) => token.value).join("") === text
+      ? parsed
+      : [{ type: "text" as const, value: text }];
+  let offset = 0;
+  const spans: { token: (typeof tokens)[number]; start: number; end: number }[] = [];
+  for (const token of tokens) {
+    const start = offset;
+    offset += token.value.length;
+    spans.push({ token, start, end: offset });
+  }
   return (
     <>
-      {ranges.map((range, index) => (
-        <span key={range.start}>
-          {text.slice(index === 0 ? 0 : ranges[index - 1].end, range.start)}
-          <mark>{text.slice(range.start, range.end)}</mark>
-        </span>
-      ))}
-      {text.slice(ranges.at(-1)?.end ?? 0)}
+      {spans.map(({ token, start, end }, index) => {
+        let cursor = start;
+        const content = ranges
+          .filter((range) => range.end > start && range.start < end)
+          .map((range) => {
+            const from = Math.max(range.start, start);
+            const to = Math.min(range.end, end);
+            const before = text.slice(cursor, from);
+            cursor = to;
+            return (
+              <Fragment key={from}>
+                {before}
+                <mark>{text.slice(from, to)}</mark>
+              </Fragment>
+            );
+          });
+        const contents = (
+          <>
+            {content}
+            {text.slice(cursor, end)}
+          </>
+        );
+        if (token.type !== "anchor") return <Fragment key={index}>{contents}</Fragment>;
+        const targets = parseAnchorDisplayTargets(token.value);
+        if (!targets.length) return <Fragment key={index}>{contents}</Fragment>;
+        const missing = hasMissingAnchorTarget(targets, resMap);
+        const ng = targets.some((target) => ngResNums.has(target));
+        const show = (element: HTMLElement) => {
+          hoveredRef.current = true;
+          getThreadResInteractions(tabId, threadUrl)?.showAnchor(
+            targets,
+            element.getBoundingClientRect(),
+            token.value,
+          );
+        };
+        const hide = () => {
+          hoveredRef.current = false;
+          getThreadResInteractions(tabId, threadUrl)?.hideAnchor();
+        };
+        return (
+          <button
+            type="button"
+            key={index}
+            className={`side-panel__response-anchor${missing ? " anchor--missing-target" : ""}${ng ? " anchor--ng-target" : ""}`}
+            onMouseEnter={(event) => show(event.currentTarget)}
+            onMouseLeave={hide}
+            onFocus={(event) => show(event.currentTarget)}
+            onBlur={hide}
+            onClick={(event) => {
+              event.stopPropagation();
+              requestThreadResJump(threadUrl, targets[0], tabId, true);
+            }}
+          >
+            {contents}
+          </button>
+        );
+      })}
     </>
   );
 }
@@ -40,6 +129,19 @@ function ExtractResults({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  const resMap = useMemo(
+    () => new Map(snapshot.responses.map((res) => [res.num, res])),
+    [snapshot.responses],
+  );
+  const ngResNums = useMemo(
+    () =>
+      new Set(
+        snapshot.responses
+          .filter((res) => res.ng || res.class?.includes("ng"))
+          .map((res) => res.num),
+      ),
+    [snapshot.responses],
+  );
   const results = useMemo(() => {
     if (!query) return snapshot.visibleResponses;
     const matched = new Set(
@@ -76,8 +178,10 @@ function ExtractResults({
                   ref={virtualizer.measureElement}
                   style={{ transform: `translateY(${item.start}px)` }}
                 >
-                  <button
-                    type="button"
+                  <div
+                    role="group"
+                    tabIndex={0}
+                    aria-label={`レス ${response.num} にジャンプ`}
                     className="side-panel__entry side-panel__response"
                     onClick={(event) => {
                       const selection = event.currentTarget.ownerDocument.getSelection();
@@ -90,6 +194,15 @@ function ExtractResults({
                         return;
                       requestThreadResJump(threadUrl, response.num, tabId, true);
                     }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.target !== event.currentTarget ||
+                        (event.key !== "Enter" && event.key !== " ")
+                      )
+                        return;
+                      event.preventDefault();
+                      requestThreadResJump(threadUrl, response.num, tabId, true);
+                    }}
                     onContextMenu={(event) => {
                       const items = buildExtractResMenu(tabId, threadUrl, response);
                       if (!items) return;
@@ -100,11 +213,36 @@ function ExtractResults({
                   >
                     <span className="side-panel__response-meta">
                       <strong>{response.num}</strong> {stripHtml(response.name)} {response.date}
+                      {(snapshot.replyIndex.get(response.num)?.size ?? 0) > 0 && (
+                        <button
+                          type="button"
+                          className="side-panel__response-replies"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            const rect = event.currentTarget.getBoundingClientRect();
+                            getThreadResInteractions(tabId, threadUrl)?.openReplies(
+                              response.num,
+                              event.detail ? event.clientX : rect.left,
+                              event.detail ? event.clientY : rect.bottom,
+                            );
+                          }}
+                        >
+                          返信({snapshot.replyIndex.get(response.num)!.size})
+                        </button>
+                      )}
                     </span>
                     <span>
-                      <Highlight text={stripHtml(response.message)} query={query} />
+                      <ExtractMessage
+                        text={stripHtml(response.message)}
+                        query={query}
+                        protocol={snapshot.messageProtocol}
+                        tabId={tabId}
+                        threadUrl={threadUrl}
+                        resMap={resMap}
+                        ngResNums={ngResNums}
+                      />
                     </span>
-                  </button>
+                  </div>
                 </div>
               );
             })}

@@ -17,6 +17,7 @@ function publish(patch: Partial<ThreadSnapshot> = {}) {
     responses: [{ num: 1, name: "", mail: "", date: "", message: "本文" }],
     visibleResponses: [],
     updatedAt: 0,
+    replyIndex: new Map(),
     messageProtocol: "https:",
     blurredResNums: new Set<number>(),
     imageBlurRadius: 4,

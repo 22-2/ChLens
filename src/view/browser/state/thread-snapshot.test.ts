@@ -13,6 +13,7 @@ describe("スレッド表示の共有状態", () => {
       responses: [],
       visibleResponses: [],
       updatedAt: 0,
+      replyIndex: new Map(),
       messageProtocol: "https:",
       blurredResNums: new Set<number>(),
       imageBlurRadius: 4,
