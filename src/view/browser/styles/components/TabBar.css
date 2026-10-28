@@ -143,21 +143,22 @@
   line-height: var(--sys-space-12);
 }
 
+/* 変更理由: 動作中は赤い再生の三角形、待機（一時停止）中は青い四角形（停止の記号）で区別する。 */
 .tab__auto-refresh-indicator {
   flex-shrink: 0;
   width: 10px;
   height: 10px;
   margin-right: 8px;
   margin-left: 4px;
-  border-radius: 50%;
   background: var(--sys-color-error);
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
   opacity: 0.85;
 }
 
-/* 変更理由: 待機中を青い四角で示すと「再生」の記号として読めないため、赤い再生の三角形にする。 */
 .tab__auto-refresh-indicator--inactive {
-  border-radius: 0;
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  border-radius: 2px;
+  background: var(--sys-color-accent);
+  clip-path: none;
 }
 
 .tab__archive-replay-indicator {
