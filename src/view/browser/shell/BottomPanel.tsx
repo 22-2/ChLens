@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import React, { useEffect, useLayoutEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAutoScrollState } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import { ThreadListPanel } from "src/features/thread-list/ui/ThreadListPanel";
@@ -14,7 +14,7 @@ import {
 import { useResizeHandle } from "src/view/browser/hooks/use-resize-handle";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import { isHTMLElementInWindow } from "src/view/browser/utils/dom";
+import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 interface BottomPanelProps {
   /**
@@ -38,6 +38,7 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = fa
     useBottomPanel();
 
   const rootRef = useRef<HTMLDivElement>(null);
+  const [sideOverlap, setSideOverlap] = useState(0);
   const wasOpenRef = useRef(false);
   const canAutoScrollWhenClosedRef = useRef(canAutoScroll);
 
@@ -97,6 +98,52 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = fa
     };
   }, [activePanelTabId, canAutoScroll, isOpen, viewDocument, viewPage.type, viewWindow]);
 
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const workspace = root?.closest(".browser-shell__workspace");
+    const parent = root?.parentElement;
+    if (!root || !workspace || !parent || !isOpen) return;
+    let side: Element | null = null;
+    const update = () => {
+      const area = parent.getBoundingClientRect();
+      const panel = root.getBoundingClientRect();
+      const other = side?.getBoundingClientRect();
+      const overlap =
+        other &&
+        other.left < area.right &&
+        other.right > area.left &&
+        other.top < panel.bottom &&
+        other.bottom > panel.top
+          ? Math.max(0, area.right - Math.max(area.left, other.left))
+          : 0;
+      setSideOverlap((previous) => (previous === overlap ? previous : overlap));
+    };
+    const ResizeObserverConstructor = getResizeObserverForWindow(viewWindow);
+    const resizeObserver = ResizeObserverConstructor ? new ResizeObserverConstructor(update) : null;
+    resizeObserver?.observe(parent);
+    resizeObserver?.observe(root);
+    const observeSide = () => {
+      const next = workspace.querySelector(":scope > .side-panel");
+      if (side !== next) {
+        if (side) resizeObserver?.unobserve(side);
+        side = next;
+        if (side) resizeObserver?.observe(side);
+      }
+      update();
+    };
+    // サイドパネルは本文に重なって開くため、下部パネルの操作だけ内側へ避ける。
+    const MutationObserverConstructor = (viewWindow as Window & typeof globalThis).MutationObserver;
+    const mutationObserver = new MutationObserverConstructor(observeSide);
+    mutationObserver.observe(workspace, { childList: true });
+    viewWindow.addEventListener("resize", update);
+    observeSide();
+    return () => {
+      resizeObserver?.disconnect();
+      mutationObserver.disconnect();
+      viewWindow.removeEventListener("resize", update);
+    };
+  }, [isOpen, viewWindow]);
+
   const resize = useResizeHandle({
     value: height,
     min: BOTTOM_PANEL_MIN_HEIGHT,
@@ -111,13 +158,22 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = fa
   if (!isOpen || viewPage.type !== "thread") return null;
 
   return (
-    <div ref={rootRef} className="bottom-panel" style={{ height: resize.size }}>
-      <div
-        className="bottom-panel__resize-handle"
-        aria-label="下部パネルの高さ"
-        title="ドラッグしてサイズを変更"
-        {...resize.handleProps}
-      />
+    <div
+      ref={rootRef}
+      className={`bottom-panel${activePanelTabId === BOTTOM_PANEL_WRITE_TAB_ID ? " bottom-panel--write" : ""}`}
+      style={{
+        marginRight: sideOverlap,
+        ...(activePanelTabId === BOTTOM_PANEL_WRITE_TAB_ID ? {} : { height: resize.size }),
+      }}
+    >
+      {activePanelTabId !== BOTTOM_PANEL_WRITE_TAB_ID && (
+        <div
+          className="bottom-panel__resize-handle"
+          aria-label="下部パネルの高さ"
+          title="ドラッグしてサイズを変更"
+          {...resize.handleProps}
+        />
+      )}
 
       {/* タブストリップ */}
       <div className="bottom-panel__header">

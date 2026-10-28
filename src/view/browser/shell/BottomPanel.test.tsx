@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   canAutoScroll: false,
   isAutoScrolling: false,
   detached: false,
+  activePanelTabId: "write",
   viewPage: {
     type: "thread",
     title: "スレッド",
@@ -37,7 +38,7 @@ vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
   useBottomPanel: () => ({
     isOpen: true,
     height: 200,
-    activePanelTabId: "write",
+    activePanelTabId: mocks.activePanelTabId,
     tabs: [
       { id: "write", label: "書き込み" },
       { id: "thread-list", label: "スレ一覧" },
@@ -58,6 +59,10 @@ vi.mock("src/features/auto-refresh/browser/use-auto-scroll-state", () => ({
   }),
 }));
 
+vi.mock("src/features/thread-list/ui/ThreadListPanel", () => ({
+  ThreadListPanel: () => <div>thread list</div>,
+}));
+
 vi.mock("src/features/write/ui/WritePanelContent", () => ({
   WritePanelContent: () => <div>write panel</div>,
 }));
@@ -69,6 +74,7 @@ describe("BottomPanel", () => {
     mocks.canAutoScroll = false;
     mocks.isAutoScrolling = false;
     mocks.detached = false;
+    mocks.activePanelTabId = "write";
     mocks.viewPage = {
       type: "thread",
       title: "スレッド",
@@ -88,6 +94,7 @@ describe("BottomPanel", () => {
   });
 
   it("区切り線を上へ動かすと高くなり、キーボードでも変えられる", () => {
+    mocks.activePanelTabId = "thread-list";
     render(<BottomPanel />);
     const handle = screen.getByRole("separator", { name: "下部パネルの高さ" });
     fireEvent.pointerDown(handle, { clientY: 500, pointerId: 1 });
