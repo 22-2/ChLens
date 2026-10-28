@@ -1,5 +1,5 @@
 import { parseMessage } from "@chlen/chlib";
-import { Download, Maximize2, Minimize2, Trash2 } from "lucide-react";
+import { Download, ExternalLink, Minimize2, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -235,7 +235,7 @@ function InlineExpandedImage({
             onOpenViewer();
           }}
         >
-          <Maximize2 size={16} aria-hidden="true" />
+          <ExternalLink size={16} aria-hidden="true" />
         </button>
         <button
           type="button"
