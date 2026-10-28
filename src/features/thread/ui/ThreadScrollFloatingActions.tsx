@@ -8,7 +8,7 @@ interface ThreadScrollFloatingActionsProps {
   isActive: boolean;
   isAutoRefreshEnabled: boolean;
   canAutoScroll?: boolean;
-  readOnly?: boolean;
+  canAutoRefresh?: boolean;
   isFilterEnabled: boolean;
   loading: boolean;
   expired: boolean;
@@ -84,7 +84,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
   isActive,
   isAutoRefreshEnabled,
   canAutoScroll = false,
-  readOnly = false,
+  canAutoRefresh = true,
   isFilterEnabled,
   loading,
   expired,
@@ -274,7 +274,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
 
   return (
     <>
-      {layout.isAtBottom && !loading && !isAutoRefreshEnabled && !readOnly && (
+      {layout.isAtBottom && !loading && !isAutoRefreshEnabled && canAutoRefresh && (
         <button
           type="button"
           className="thread-page__floating-action thread-page__floating-action--auto-load"

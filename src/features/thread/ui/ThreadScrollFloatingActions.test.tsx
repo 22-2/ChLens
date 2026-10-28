@@ -89,7 +89,7 @@ describe("ThreadScrollFloatingActions", () => {
         rootRef={rootRef}
         isActive
         isAutoRefreshEnabled={isAutoRefreshEnabled}
-        readOnly={readOnly}
+        canAutoRefresh={!readOnly}
         isFilterEnabled={false}
         loading={loading}
         expired={false}
@@ -111,10 +111,17 @@ describe("ThreadScrollFloatingActions", () => {
     expect(screen.queryByRole("button", { name: "下へジャンプ" })).not.toBeInTheDocument();
   });
 
-  it("読み取り専用スレッドでは自動読み込みを開始できない", () => {
+  it("過去ログのポリシーで自動更新不可なら開始ボタンを表示しない", () => {
     renderActions(false, true);
 
     expect(screen.queryByRole("button", { name: "自動読み込みを開始" })).toBeNull();
+  });
+
+  it("自動更新が許可されない場合もスクロール用のボタンは使える", () => {
+    scrollTop = 0;
+    renderActions(false, true);
+    expect(screen.getByRole("button", { name: "下へジャンプ" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "自動読み込みを開始" })).not.toBeInTheDocument();
   });
 
   it("最下部から大きく上ではミニマップの左側に下へジャンプを表示する", () => {

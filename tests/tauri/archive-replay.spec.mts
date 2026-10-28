@@ -74,6 +74,11 @@ test("再生中に表示領域を全画面と初期位置へ再指定しても�
 
   const statusBar = page.locator(".status-bar");
   await expect(statusBar.getByRole("button", { name: /スレッド自動更新/u })).toHaveCount(0);
+  // 過去実況のポリシーは、スレ末尾の開始ボタンにも適用する。
+  await page.locator('.content-area__tab-panel[data-active="true"]').evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect(page.getByRole("button", { name: "自動読み込みを開始" })).toHaveCount(0);
   await expect(statusBar.getByRole("button", { name: /コメントOverlay制御/u })).toHaveCount(0);
   await expect(statusBar.getByRole("button", { name: "書き込みパネルを開閉" })).toHaveCount(0);
   await expect(statusBar.getByRole("button", { name: /現在のレス数/u })).toBeVisible();
