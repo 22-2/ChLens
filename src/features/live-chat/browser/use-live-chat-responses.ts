@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
@@ -16,15 +16,18 @@ interface PlaybackState {
   catchUp: CatchUpPhase;
 }
 
-// 一度に流す上限。これを超える新着は取得の遅れ・復帰・スリープ明けなどで溜まった分とみなし、
-// 古い分を即表示して末尾だけを流す。全件を流すと数秒〜数十秒ふわふわ表示され続けて追いつけない。
+// 一時停止から復帰したときだけ、長時間の未表示分をすぐ表示して末尾を流す。
+// 通常の更新では件数だけで追いつき処理を行うと、速いスレの表示速度が頭打ちになる。
 export const LIVE_CHAT_MAX_PENDING = 30;
 export const LIVE_CHAT_TAIL_COUNT = 10;
 
-// 取得周期の手前でキューを消化し、勢いの大きいスレでも表示遅延を積み重ねない。
+// 少数の新着は待たせすぎず、多いときは実際の取得間隔と新着数からペースを決める。
 export function getLiveChatDelay(pendingCount: number, intervalMs: number): number {
-  return Math.max(16, Math.min(600, (intervalMs * 0.8) / Math.max(1, pendingCount)));
+  return Math.min(600, Math.max(1, intervalMs) / Math.max(1, pendingCount));
 }
+
+// 高速時は描画間隔ごとに複数件をまとめ、1フレーム1レスの速度制限を避ける。
+const MIN_LIVE_CHAT_TICK_MS = 16;
 
 function releaseAll(playback: PlaybackState, lastNum: number | null): PlaybackState {
   return { ...playback, baseline: lastNum, released: lastNum, catchUp: "none" };
@@ -102,43 +105,74 @@ export function useLiveChatResponses<T extends ResponseNumber>({
   playback = advanceCatchUp(playback, lastNum, isFetching);
 
   let pending = isFlowing ? responses.filter((res) => res.num > (playback.released ?? 0)) : [];
-  // バッチ内では一定間隔を保つ。残り件数が減るたびに間隔を延ばすと、最後尾が次回取得に間に合わない。
-  const [pace, setPace] = useState({
-    scope,
-    lastNum,
-    delay: getLiveChatDelay(pending.length, intervalMs),
-  });
-  let delay = pace.delay;
-  if (
-    pace.scope !== scope ||
-    pace.lastNum !== lastNum ||
-    (!paused && pending.length > LIVE_CHAT_MAX_PENDING)
-  ) {
-    // 一時停止中は新着が上限を超えても表示を進めず、再開時に通常の追いつき処理へ渡す。
-    if (!paused && pending.length > LIVE_CHAT_MAX_PENDING) {
-      // 読み飛ばす分は入場動作も付けず、末尾だけを新着として流す。
-      const skippedNum = pending[pending.length - LIVE_CHAT_TAIL_COUNT - 1].num;
-      playback = { ...playback, baseline: skippedNum, released: skippedNum };
-      pending = pending.slice(-LIVE_CHAT_TAIL_COUNT);
-    }
-    delay = getLiveChatDelay(pending.length, intervalMs);
-    setPace({ scope, lastNum, delay });
+  const [wasPaused, setWasPaused] = useState(paused);
+  const justResumed = wasPaused && !paused;
+  if (wasPaused !== paused) setWasPaused(paused);
+  if (justResumed && pending.length > LIVE_CHAT_MAX_PENDING) {
+    // 停止中に溜まった古い分は、再開時だけ入場動作を省いて追いつく。
+    const skippedNum = pending[pending.length - LIVE_CHAT_TAIL_COUNT - 1].num;
+    playback = { ...playback, baseline: skippedNum, released: skippedNum };
+    pending = pending.slice(-LIVE_CHAT_TAIL_COUNT);
   }
-  if (playback !== stored) {
-    setPlayback(playback);
-  }
-  const nextNum = pending[0]?.num;
+  if (playback !== stored) setPlayback(playback);
+  const pendingRef = useLatestRef(pending);
+  const fetchClockRef = useRef<{ scope: string; wasFetching: boolean; completedAt: number | null }>(
+    {
+      scope,
+      wasFetching: isFetching,
+      completedAt: null,
+    },
+  );
 
   useEffect(() => {
-    if (!isFlowing || paused || nextNum === undefined) return;
-    const timer = viewWindow.setTimeout(() => {
+    if (!isFlowing || paused) return;
+    // 新しい取得分が加わるとタイマーを作り直し、未表示分を含めてペースを更新する。
+    const batch = pendingRef.current;
+    if (batch.length === 0) return;
+    const clock = fetchClockRef.current;
+    const now = viewWindow.performance.now();
+    const measuredInterval =
+      clock.scope === scope && clock.completedAt !== null ? now - clock.completedAt : intervalMs;
+    const delay = getLiveChatDelay(
+      batch.length,
+      measuredInterval > 0 ? measuredInterval : intervalMs,
+    );
+    const start = now;
+    let emitted = 0;
+    let timer: number | undefined;
+    const tick = () => {
+      if (pausedRef.current) return;
+      // タイマーや描画が遅れた分も時刻から計算し、設定した速度に追いつく。
+      const elapsed = viewWindow.performance.now() - start;
+      const due = Math.min(batch.length, Math.max(emitted + 1, Math.floor(elapsed / delay)));
+      emitted = due;
+      const released = batch[due - 1].num;
       setPlayback((current) =>
-        !pausedRef.current && current.scope === scope ? { ...current, released: nextNum } : current,
+        !pausedRef.current && current.scope === scope
+          ? { ...current, released: Math.max(current.released ?? 0, released) }
+          : current,
       );
-    }, delay);
-    // 非表示化・通常表示への切り替え・次スレ移動で予約を破棄し、旧スレのレスを混ぜない。
-    return () => viewWindow.clearTimeout(timer);
-  }, [delay, isFlowing, nextNum, paused, pausedRef, scope, viewWindow]);
+      if (emitted < batch.length) schedule();
+    };
+    const schedule = () => {
+      const remaining = (emitted + 1) * delay - (viewWindow.performance.now() - start);
+      timer = viewWindow.setTimeout(tick, Math.max(MIN_LIVE_CHAT_TICK_MS, remaining));
+    };
+    schedule();
+    return () => {
+      if (timer !== undefined) viewWindow.clearTimeout(timer);
+    };
+  }, [scope, lastNum, isFlowing, paused, intervalMs, pendingRef, pausedRef, viewWindow]);
+
+  useEffect(() => {
+    const clock = fetchClockRef.current;
+    if (clock.scope !== scope) {
+      fetchClockRef.current = { scope, wasFetching: isFetching, completedAt: null };
+      return;
+    }
+    if (clock.wasFetching && !isFetching) clock.completedAt = viewWindow.performance.now();
+    clock.wasFetching = isFetching;
+  }, [scope, isFetching, viewWindow]);
 
   useEffect(() => {
     // 最後の行の高さをResizeObserverが追従させてから、満了停止や次スレ移動を許可する。

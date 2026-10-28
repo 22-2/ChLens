@@ -214,15 +214,76 @@ describe("ライブチャットの新着表示", () => {
     expect(result.current.baseline).toBe(1);
   });
 
-  it("上限を超える新着は古い分をすぐ表示し、末尾だけを流す", () => {
+  it("新着が多くても件数で飛ばさず、取得間隔と件数に応じた速さで流す", () => {
     const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: initial });
-    const nums = Array.from({ length: 102 }, (_, i) => i + 1);
-    rerender({ ...initial, responses: rows(...nums) });
-    expect(result.current.responses).toEqual(rows(...nums.slice(0, 92)));
-    expect(result.current.pendingCount).toBe(10);
-    expect(result.current.baseline).toBe(92);
+    const responses = rows(...Array.from({ length: 102 }, (_, i) => i + 1));
+    rerender({ ...initial, responses });
+    expect(result.current.responses).toEqual(rows(1, 2));
+    expect(result.current.pendingCount).toBe(100);
+    advance(200);
+    expect(result.current.responses).toEqual(rows(1, 2, 3));
+    advance(9800);
+    expect(result.current.responses.at(-1)?.num).toBe(52);
+    advance(10000);
+    expect(result.current.responses).toEqual(responses);
+    expect(result.current.pendingCount).toBe(0);
+  });
+
+  it("描画間隔より速いペースでは複数レスをまとめて流して追いつく", () => {
+    const fast = { ...initial, intervalMs: 5000 };
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: fast });
+    const responses = rows(...Array.from({ length: 1002 }, (_, i) => i + 1));
+    rerender({ ...fast, responses });
+    advance(16);
+    expect(result.current.responses.at(-1)?.num).toBe(5);
+    advance(2480);
+    expect(result.current.responses.length).toBeGreaterThanOrEqual(500);
+    advance(2512);
+    expect(result.current.responses).toEqual(responses);
+  });
+
+  it("高速再生中の一時停止でも新着を進めず、再開後は残りから流す", () => {
+    const fast = { ...initial, intervalMs: 5000 };
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: fast });
+    const responses = rows(...Array.from({ length: 102 }, (_, i) => i + 1));
+    rerender({ ...fast, responses });
+    advance(50);
+    expect(result.current.responses.at(-1)?.num).toBe(3);
+    rerender({ ...fast, responses, paused: true });
+    advance(10000);
+    expect(result.current.responses.at(-1)?.num).toBe(3);
+    rerender({ ...fast, responses });
+    expect(result.current.responses.at(-1)?.num).toBe(92);
     for (let i = 0; i < 10; i++) advance(600);
-    expect(result.current.responses).toEqual(rows(...nums));
+    expect(result.current.responses).toEqual(responses);
+  });
+
+  it("設定値より長い実際の取得間隔に合わせて流す", () => {
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: initial });
+    rerender({ ...initial, isFetching: true });
+    advance(100);
+    rerender(initial);
+    advance(30000);
+    const responses = rows(...Array.from({ length: 102 }, (_, i) => i + 1));
+    rerender({ ...initial, isFetching: true, responses });
+    advance(300);
+    expect(result.current.responses).toEqual(rows(1, 2, 3));
+    advance(14700);
+    expect(result.current.responses.at(-1)?.num).toBe(52);
+  });
+
+  it("前の取得分を流している間に新着が増えても順番を維持して追いつく", () => {
+    const fast = { ...initial, intervalMs: 5000 };
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: fast });
+    const first = rows(...Array.from({ length: 102 }, (_, i) => i + 1));
+    rerender({ ...fast, responses: first });
+    advance(2500);
+    expect(result.current.responses.at(-1)?.num).toBe(52);
+    const second = rows(...Array.from({ length: 202 }, (_, i) => i + 1));
+    rerender({ ...fast, responses: second });
+    expect(result.current.responses.at(-1)?.num).toBe(52);
+    advance(5008);
+    expect(result.current.responses).toEqual(second);
   });
 
   it("上限以内の新着は間隔を詰めて次の取得前に全件を流し、途中の追加を欠落させない", () => {

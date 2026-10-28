@@ -84,6 +84,17 @@ describe("ライブチャットの表示完了と返信数", () => {
     expect(result.current.replies.repIndex.get(1)).toEqual(new Set([2, 3]));
   });
 
+  it("仮想スクロールで描画されない新着も、入場時間の後に返信数へ反映する", () => {
+    const fast = { ...initial, intervalMs: 5000 };
+    const { result, rerender } = renderHook(useProbe, { initialProps: fast });
+    rerender({ ...fast, responses: rows(...Array.from({ length: 1002 }, (_, i) => i + 1)) });
+    advance(16);
+    expect(result.current.playback.responses.at(-1)?.num).toBe(5);
+    expect(result.current.replies.repIndex.get(1)?.size).toBe(1);
+    advance(300);
+    expect(result.current.replies.repIndex.get(1)).toEqual(new Set([2, 3, 4, 5]));
+  });
+
   it("通常表示は取得済み全件の返信数を使い、別スレの入場完了を持ち込まない", () => {
     const { result, rerender } = renderHook(useProbe, { initialProps: initial });
     const staleComplete = result.current.replies.onEntryDisplayed;
@@ -101,14 +112,14 @@ describe("ライブチャットの表示完了と返信数", () => {
     expect(result.current.replies.repIndex.get(1)).toEqual(new Set([2]));
   });
 
-  it("大量取得で入場を省略した既存分は即反映し、末尾の入場待ちは数えない", () => {
+  it("大量取得も入場完了した返信だけを数える", () => {
     const { result, rerender } = renderHook(useProbe, { initialProps: initial });
     rerender({ ...initial, responses: rows(...Array.from({ length: 102 }, (_, i) => i + 1)) });
-    expect(result.current.replies.repIndex.get(1)?.size).toBe(91);
-    advance(600);
-    expect(result.current.playback.responses.at(-1)?.num).toBe(93);
-    expect(result.current.replies.repIndex.get(1)?.size).toBe(91);
-    act(() => result.current.replies.onEntryDisplayed(93));
-    expect(result.current.replies.repIndex.get(1)?.size).toBe(92);
+    expect(result.current.replies.repIndex.get(1)?.size).toBe(1);
+    advance(200);
+    expect(result.current.playback.responses.at(-1)?.num).toBe(3);
+    expect(result.current.replies.repIndex.get(1)?.size).toBe(1);
+    act(() => result.current.replies.onEntryDisplayed(3));
+    expect(result.current.replies.repIndex.get(1)?.size).toBe(2);
   });
 });
