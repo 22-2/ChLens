@@ -378,7 +378,7 @@ describe("設定画面のタブ単位の表示状態", () => {
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(state));
     await renderViewer();
-    expect(screen.getByRole("heading", { name: "板", level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "サイト", level: 2 })).toBeInTheDocument();
   });
 
   it("旧形式の全タブ共通の表示状態を新しい設定タブへ持ち込まない", async () => {

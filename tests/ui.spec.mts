@@ -24,7 +24,7 @@ test("ボタンのツールチップがホバー中は表示され続ける", as
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.getByTitle("メニュー", { exact: true }).click();
   await page.getByTitle("設定を開く", { exact: true }).click();
-  await page.getByRole("button", { name: "板", exact: true }).click();
+  await page.getByRole("button", { name: "サイト", exact: true }).click();
   await page.getByRole("button", { name: "板一覧を再取得" }).hover();
   const tooltip = page.locator(".browser-tooltip").filter({ hasText: "強制取得" });
   await expect(tooltip).toBeVisible();

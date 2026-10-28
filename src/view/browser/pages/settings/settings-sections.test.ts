@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { ThreadListIcon } from "src/view/browser/ui/icons";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { saveConfig, sendMessage } = vi.hoisted(() => ({
@@ -180,6 +181,21 @@ describe("設定セクションの実行環境フィルター", () => {
     expect(readAllSettings().ng.display_ng).toBe("hard-ng");
   });
 
+  it("書き込みの確認とCtrl+Enter投稿を、板ごとではなくスレの全体設定に置く", () => {
+    const thread = getSettingsSections(false).find((section) => section.id === "thread");
+    const keys = thread?.fields.map((field) => ("key" in field ? field.key : field.id));
+
+    expect(keys).toContain("write_submit_ctrl_enter");
+    expect(keys).toContain("write_pre_submit_warnings");
+  });
+
+  it("板設定のタブをサイトと呼び、タブバーの板と同じアイコンにする", () => {
+    const site = getSettingsSections(false).find((section) => section.id === "site-board");
+
+    expect(site?.title).toBe("サイト");
+    expect((site?.icon as { type: unknown }).type).toBe(ThreadListIcon);
+  });
+
   it("書き込み操作の設定を一般セクションへ表示しない", () => {
     const general = getSettingsSections(false).find((section) => section.id === "general");
     const keys = general?.fields.map((field) => ("key" in field ? field.key : field.id));
@@ -335,11 +351,11 @@ describe("設定カテゴリの見出しごとのまとめ", () => {
     expect(getSettingsSections(true).map((section) => section.title)).toEqual([
       "一般",
       "表示",
-      "画像",
       "スレ",
+      "サイト",
+      "画像",
       "NG",
       "実況",
-      "板",
       "データ",
       "デバッグ",
     ]);

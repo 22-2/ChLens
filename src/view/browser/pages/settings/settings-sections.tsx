@@ -1,5 +1,5 @@
 import { validateRuleDsl } from "@chlen/chlib";
-import { Archive, Bug, Eye, Globe2, Image, ShieldAlert } from "lucide-react";
+import { Archive, Bug, Eye, Image, ShieldAlert } from "lucide-react";
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
@@ -29,7 +29,12 @@ import {
   isSettingsFieldItem,
 } from "src/view/browser/pages/settings/settings-types";
 import type { SettingsSectionId } from "src/view/browser/types";
-import { CommentOverlayIcon, SettingsIcon, ThreadIcon } from "src/view/browser/ui/icons";
+import {
+  CommentOverlayIcon,
+  SettingsIcon,
+  ThreadIcon,
+  ThreadListIcon,
+} from "src/view/browser/ui/icons";
 import {
   NG_DISPLAY_CONFIG_KEY,
   NG_DISPLAY_MODE_OPTIONS,
@@ -227,52 +232,6 @@ const ALL_SETTINGS_SECTIONS = [
     },
   ),
   defineSection(
-    "images",
-    "画像",
-    "画像の取得方法と、サムネイルに適用するぼかしを調整します。",
-    <Image size={20} />,
-    [
-      {
-        kind: "divider",
-        id: "thumbnails",
-        title: "サムネイル",
-      },
-      {
-        kind: "boolean",
-        key: "image_blur",
-        title: "画像にぼかしを適用する",
-      },
-      {
-        kind: "string",
-        key: "image_blur_word",
-        title: "ぼかし判定ワード",
-        description: "正規表現で指定します。",
-      },
-      {
-        kind: "divider",
-        id: "external-images",
-        title: "外部画像",
-      },
-      {
-        kind: "boolean",
-        key: MANUAL_IMAGE_LOADING_CONFIG_KEY,
-        title: "画像をクリックしてから取得する",
-        description:
-          "ONにすると、画像やサムネイルはプレースホルダーで表示され、クリック後に取得します。外部リンクを開く前の確認設定とは独立しています。",
-      },
-      {
-        kind: "number",
-        key: IMAGE_AUTO_DOWNLOAD_LIMIT_CONFIG_KEY,
-        title: "画像の自動取得上限（MB）",
-        description:
-          "上限を超える画像は自動取得せず、取得前に確認します。サイズを事前に確認できない画像も確認対象です。既定値は5MBです。",
-        minimum: 1,
-        maximum: 1000,
-        step: 1,
-      },
-    ],
-  ),
-  defineSection(
     "thread",
     "スレ",
     "スレの表示・更新・移動と、スレ内リンクの扱いを調整します。",
@@ -370,9 +329,78 @@ const ALL_SETTINGS_SECTIONS = [
       relatedSection: {
         id: "site-board",
         description: "自動更新の間隔は、ドメインや板ごとに設定します。",
-        label: "板の設定を開く",
+        label: "サイトの設定を開く",
       },
     },
+  ),
+  // 変更理由: ドメイン共通から各板への継承は通常の全体設定フォームとは異なるため、
+  // 専用パネルへ閉じ込めて項目追加時のフォーム分岐を増やさない。
+  // 必要な板だけを上書きする応用設定なので、よく使う閲覧の設定より後ろに置く。
+  // BBSMENUは下の板の候補にもなるため、「その他」から移して同じカテゴリの先頭に置く。
+  defineSection(
+    "site-board",
+    "サイト",
+    "板一覧の取得元と、自動更新の間隔や名前・メールの既定値をドメイン共通・板ごとに設定します。",
+    <ThreadListIcon size={20} />,
+    [
+      {
+        kind: "string",
+        key: "bbsmenu",
+        title: "bbsmenu の URL",
+        description: "1行に1つ指定します。",
+        widget: "textarea",
+        rows: 6,
+      },
+    ],
+    {
+      supplementaryPanelIds: ["siteBoardSettings"],
+    },
+  ),
+  defineSection(
+    "images",
+    "画像",
+    "画像の取得方法と、サムネイルに適用するぼかしを調整します。",
+    <Image size={20} />,
+    [
+      {
+        kind: "divider",
+        id: "thumbnails",
+        title: "サムネイル",
+      },
+      {
+        kind: "boolean",
+        key: "image_blur",
+        title: "画像にぼかしを適用する",
+      },
+      {
+        kind: "string",
+        key: "image_blur_word",
+        title: "ぼかし判定ワード",
+        description: "正規表現で指定します。",
+      },
+      {
+        kind: "divider",
+        id: "external-images",
+        title: "外部画像",
+      },
+      {
+        kind: "boolean",
+        key: MANUAL_IMAGE_LOADING_CONFIG_KEY,
+        title: "画像をクリックしてから取得する",
+        description:
+          "ONにすると、画像やサムネイルはプレースホルダーで表示され、クリック後に取得します。外部リンクを開く前の確認設定とは独立しています。",
+      },
+      {
+        kind: "number",
+        key: IMAGE_AUTO_DOWNLOAD_LIMIT_CONFIG_KEY,
+        title: "画像の自動取得上限（MB）",
+        description:
+          "上限を超える画像は自動取得せず、取得前に確認します。サイズを事前に確認できない画像も確認対象です。既定値は5MBです。",
+        minimum: 1,
+        maximum: 1000,
+        step: 1,
+      },
+    ],
   ),
   defineSection(
     "ng",
@@ -481,29 +509,6 @@ const ALL_SETTINGS_SECTIONS = [
           "コメントOverlay限定で同じ番組の候補スレを並行取得し、本流が決まった後に非本流の待機コメントを除外します。",
       },
     ],
-  ),
-  // 変更理由: ドメイン共通から各板への継承は通常の全体設定フォームとは異なるため、
-  // 専用パネルへ閉じ込めて項目追加時のフォーム分岐を増やさない。
-  // 必要な板だけを上書きする応用設定なので、よく使う閲覧の設定より後ろに置く。
-  // BBSMENUは下の板の候補にもなるため、「その他」から移して同じカテゴリの先頭に置く。
-  defineSection(
-    "site-board",
-    "板",
-    "板一覧の取得元と、自動更新の間隔や書き込みの既定値をドメイン共通・板ごとに設定します。",
-    <Globe2 size={20} />,
-    [
-      {
-        kind: "string",
-        key: "bbsmenu",
-        title: "bbsmenu の URL",
-        description: "1行に1つ指定します。",
-        widget: "textarea",
-        rows: 6,
-      },
-    ],
-    {
-      supplementaryPanelIds: ["siteBoardSettings"],
-    },
   ),
   defineSection(
     "data",
