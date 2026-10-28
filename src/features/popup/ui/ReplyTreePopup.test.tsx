@@ -263,7 +263,10 @@ describe("ReplyTreePopup", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
-    const pinButton = screen.getByRole("button", { name: "ピン留め" });
+    const pinButton = within(document.querySelector(".context-menu") as HTMLElement).getByRole(
+      "button",
+      { name: "ピン留め" },
+    );
     expect(pinButton.querySelector("svg")).toHaveClass("lucide-pin");
     fireEvent.click(pinButton);
     expect(onTogglePinned).toHaveBeenCalledOnce();
@@ -276,13 +279,18 @@ describe("ReplyTreePopup", () => {
     ).toHaveClass("lucide-pin-off");
   });
 
-  it("ピン留め中はヘッダーから解除でき、解除後はピンアイコンを隠す", () => {
+  it("ヘッダーのメニュー右側から常にピン留めを切り替えられる", () => {
     const onTogglePinned = vi.fn();
     const { rerender } = render(
       <ReplyTreePopup {...BASE_PROPS} pinned={false} onTogglePinned={onTogglePinned} />,
     );
 
-    expect(screen.queryByRole("button", { name: "ピン留めを解除" })).not.toBeInTheDocument();
+    const pin = screen.getByRole("button", { name: "ピン留め" });
+    expect(pin).toHaveAttribute("aria-pressed", "false");
+    expect(pin.querySelector("svg")).toHaveClass("lucide-pin");
+    expect(screen.getByRole("button", { name: "返信ツリーメニュー" }).nextElementSibling).toBe(pin);
+    fireEvent.click(pin);
+    expect(onTogglePinned).toHaveBeenCalledOnce();
 
     rerender(<ReplyTreePopup {...BASE_PROPS} pinned onTogglePinned={onTogglePinned} />);
     const unpinButton = screen.getByRole("button", { name: "ピン留めを解除" });
@@ -290,10 +298,10 @@ describe("ReplyTreePopup", () => {
     expect(unpinButton.querySelector("svg")).toHaveClass("lucide-pin-off");
 
     fireEvent.click(unpinButton);
-    expect(onTogglePinned).toHaveBeenCalledOnce();
+    expect(onTogglePinned).toHaveBeenCalledTimes(2);
 
     rerender(<ReplyTreePopup {...BASE_PROPS} pinned={false} onTogglePinned={onTogglePinned} />);
-    expect(screen.queryByRole("button", { name: "ピン留めを解除" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ピン留め" })).toBeInTheDocument();
   });
 
   it("ピン留め中はマウス離脱や外側クリックで閉じない", () => {

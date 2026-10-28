@@ -51,8 +51,15 @@ test("実況中もアンカーポップアップで取得を待機し、閉じ�
   await responses.locator('[data-res-num="2"] a.anchor').hover();
   const popup = page.locator(".anchor-preview");
   await expect(popup).toBeVisible();
-  await popup.getByRole("button", { name: "アンカーポップアップメニュー" }).click();
-  await page.getByRole("button", { name: "ピン留め", exact: true }).click();
+  const pin = popup.getByRole("button", { name: "ピン留め", exact: true });
+  await expect(
+    popup.getByRole("button", { name: "アンカーポップアップメニュー" }).locator("+ button"),
+  ).toHaveAttribute("aria-label", "ピン留め");
+  await pin.click();
+  await expect(popup.getByRole("button", { name: "ピン留めを解除" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(status).toHaveAccessibleName(/一時停止中/);
   // 開く直前から進行中の取得は完了を待ち、新しい周期の取得だけを数える。
   await page.waitForTimeout(500);
@@ -75,8 +82,7 @@ test("実況中もアンカーポップアップで取得を待機し、閉じ�
   // 別タブへ移ったら、以前のポップアップ状態でOverlayの取得を止めない。
   await responses.locator('[data-res-num="2"] a.anchor').hover();
   await expect(popup).toBeVisible();
-  await popup.getByRole("button", { name: "アンカーポップアップメニュー" }).click();
-  await page.getByRole("button", { name: "ピン留め", exact: true }).click();
+  await popup.getByRole("button", { name: "ピン留め", exact: true }).click();
   await page.getByTestId("title-bar-title").click();
   await input.fill(localBoard.boardUrl);
   await input.press("Enter");

@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type React from "react";
 import { ResPopup } from "src/features/popup/ui/ResPopup";
 import { container } from "src/service-container";
@@ -141,7 +141,11 @@ describe("ResPopup", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "IDポップアップメニュー" }));
-    fireEvent.click(screen.getByRole("button", { name: "ピン留め" }));
+    fireEvent.click(
+      within(document.querySelector(".context-menu") as HTMLElement).getByRole("button", {
+        name: "ピン留め",
+      }),
+    );
     expect(onTogglePinned).toHaveBeenCalledOnce();
 
     rerender(<ResPopup {...BASE_PROPS} pinned onTogglePinned={onTogglePinned} onClose={onClose} />);

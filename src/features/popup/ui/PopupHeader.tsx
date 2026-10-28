@@ -1,4 +1,4 @@
-import { MoreVertical, PinOff } from "lucide-react";
+import { MoreVertical, Pin, PinOff } from "lucide-react";
 import type { MouseEventHandler, ReactNode, RefObject } from "react";
 import React from "react";
 
@@ -25,18 +25,6 @@ export const PopupHeader: React.FC<PopupHeaderProps> = ({
   <div className="res-popup__header">
     <span>{title}</span>
     <div className="res-popup__header-actions">
-      {pinned && onTogglePinned && (
-        <button
-          type="button"
-          className="res-popup__icon-btn"
-          onClick={onTogglePinned}
-          aria-label="ピン留めを解除"
-          title="ピン留めを解除"
-        >
-          {/* 固定中だけ解除操作を常設し、メニューを開かずに popup を解放できるようにする。 */}
-          <PinOff size={14} />
-        </button>
-      )}
       <button
         type="button"
         ref={menuButtonRef}
@@ -46,6 +34,18 @@ export const PopupHeader: React.FC<PopupHeaderProps> = ({
         title={menuLabel}
       >
         <MoreVertical size={14} />
+      </button>
+      {/* ピン留め前もメニューを開かずに固定でき、固定中は同じ位置から解除できる。 */}
+      <button
+        type="button"
+        className="res-popup__icon-btn"
+        onClick={onTogglePinned}
+        disabled={!onTogglePinned}
+        aria-label={pinned ? "ピン留めを解除" : "ピン留め"}
+        title={pinned ? "ピン留めを解除" : "ピン留め"}
+        aria-pressed={pinned}
+      >
+        {pinned ? <PinOff size={14} aria-hidden="true" /> : <Pin size={14} aria-hidden="true" />}
       </button>
       <button type="button" className="res-popup__close" onClick={onClose} aria-label="閉じる">
         ✕

@@ -52,6 +52,15 @@
   background: var(--sys-color-popup-hover-bg);
 }
 
+/* ピンの状態をアイコンだけに頼らず、固定中は色でも示す。 */
+.res-popup__icon-btn[aria-pressed="true"] {
+  color: var(--sys-color-accent-text);
+}
+.res-popup__icon-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .res-popup__close {
   font-size: var(--sys-font-size-md);
 }
