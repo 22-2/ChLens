@@ -576,7 +576,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   const addTabButton = (
     <button
       type="button"
-      className="tab-bar__add"
+      className="tab-bar__add icon-button"
       onClick={onAddTab}
       onContextMenu={(e) => e.stopPropagation()}
       title="新しいタブ"

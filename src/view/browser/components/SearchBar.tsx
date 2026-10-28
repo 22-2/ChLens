@@ -53,7 +53,7 @@ export const SearchBar: React.FC<Props> = ({
         <span className="search-bar__count">{hitCount}件</span>
       ) : null}
       {onClose ? (
-        <button className="search-bar__close" onClick={onClose}>
+        <button className="search-bar__close icon-button" onClick={onClose}>
           ✕
         </button>
       ) : null}

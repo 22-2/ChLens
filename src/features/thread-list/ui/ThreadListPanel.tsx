@@ -606,7 +606,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
         <div className="thread-list-panel__toolbar-actions">
           <button
             type="button"
-            className={`thread-list-panel__toolbar-btn${isSearchOpen ? " thread-list-panel__toolbar-btn--active" : ""}`}
+            className={`thread-list-panel__toolbar-btn icon-button${isSearchOpen ? " thread-list-panel__toolbar-btn--active" : ""}`}
             title="スレタイ検索"
             aria-label="スレタイ検索"
             aria-pressed={isSearchOpen}
@@ -617,9 +617,10 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
           {/* 変更理由: メイン側の更新操作とアイコン・寸法・状態表示を揃え、一覧間の見た目の差をなくす。 */}
           <button
             type="button"
-            className={`thread-list-panel__toolbar-btn nav-bar__menu-action${threadListAutoRefreshEnabled ? " nav-bar__menu-action--active" : ""}`}
+            className={`thread-list-panel__toolbar-btn nav-bar__menu-action icon-button${threadListAutoRefreshEnabled ? " nav-bar__menu-action--active" : ""}`}
             title={`一覧を更新（左クリック: 今すぐ更新、右クリック: 自動更新設定${threadListAutoRefreshEnabled ? `・現在 ${threadListAutoRefreshIntervalSec}秒` : ""}）`}
             aria-label="スレ一覧を更新"
+            data-active={threadListAutoRefreshEnabled}
             onClick={() => void fetchThreads()}
             onContextMenu={(event) => {
               event.preventDefault();

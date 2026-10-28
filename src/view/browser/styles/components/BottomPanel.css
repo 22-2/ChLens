@@ -89,11 +89,6 @@
   transition: background var(--sys-duration-fast);
 }
 
-.bottom-panel__icon-btn:hover {
-  background: var(--sys-color-border);
-  color: var(--sys-color-text);
-}
-
 .bottom-panel__body {
   flex: 1;
   overflow: hidden;
@@ -170,12 +165,6 @@
 .thread-list-panel .thread-list-panel__toolbar-btn {
   /* ナビゲーションメニューの共通ボタン幅に揃えつつ、ツールバー内で伸長させない。 */
   flex: 0 0 30px;
-}
-
-.thread-list-panel__toolbar-btn:hover,
-.thread-list-panel__toolbar-btn--active {
-  background: var(--sys-color-status-hover-overlay);
-  color: var(--sys-color-text);
 }
 
 .thread-list-panel__search-bar {

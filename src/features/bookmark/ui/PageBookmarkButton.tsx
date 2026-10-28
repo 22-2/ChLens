@@ -18,14 +18,14 @@ export const PageBookmarkButton: React.FC<PageBookmarkButtonProps> = ({ page }) 
   return (
     <button
       type="button"
-      className={`tab-bar__bookmark${isBookmarked ? " tab-bar__bookmark--active" : ""}`}
+      className={`tab-bar__bookmark icon-button${isBookmarked ? " tab-bar__bookmark--active" : ""}`}
       disabled={!bookmarkTarget || isBookmarkPending}
       title={label}
       aria-label={label}
       aria-pressed={bookmarkTarget ? isBookmarked : false}
       onClick={toggleBookmark}
     >
-      <Star size={16} fill={isBookmarked ? "currentColor" : "none"} />
+      <Star size={16} />
     </button>
   );
 };

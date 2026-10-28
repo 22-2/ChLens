@@ -137,7 +137,11 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = fa
           ))}
         </div>
         <div className="bottom-panel__header-actions">
-          <button className="bottom-panel__icon-btn" onClick={closePanel} title="パネルを閉じる">
+          <button
+            className="bottom-panel__icon-btn icon-button"
+            onClick={closePanel}
+            title="パネルを閉じる"
+          >
             <X size={14} />
           </button>
         </div>

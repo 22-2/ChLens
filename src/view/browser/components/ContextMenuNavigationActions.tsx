@@ -22,7 +22,7 @@ export const ContextMenuNavigationActions: React.FC<ContextMenuNavigationActions
   <div className="context-menu__header-actions" role="group" aria-label="ナビゲーション操作">
     <button
       type="button"
-      className="context-menu__header-action"
+      className="context-menu__header-action icon-button"
       disabled={!canGoBack}
       onClick={onBack}
       title="戻る"
@@ -32,7 +32,7 @@ export const ContextMenuNavigationActions: React.FC<ContextMenuNavigationActions
     </button>
     <button
       type="button"
-      className="context-menu__header-action"
+      className="context-menu__header-action icon-button"
       disabled={!canGoForward}
       onClick={onForward}
       title="進む"
@@ -42,7 +42,7 @@ export const ContextMenuNavigationActions: React.FC<ContextMenuNavigationActions
     </button>
     <button
       type="button"
-      className="context-menu__header-action"
+      className="context-menu__header-action icon-button"
       disabled={!canRefresh}
       onClick={onRefresh}
       title="更新"

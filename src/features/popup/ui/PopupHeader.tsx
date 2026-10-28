@@ -1,4 +1,4 @@
-import { MoreVertical, Pin, PinOff } from "lucide-react";
+import { MoreVertical, Pin } from "lucide-react";
 import type { MouseEventHandler, ReactNode, RefObject } from "react";
 import React from "react";
 
@@ -28,26 +28,31 @@ export const PopupHeader: React.FC<PopupHeaderProps> = ({
       {/* ピン留めはメニューの左から常に切り替えられる。 */}
       <button
         type="button"
-        className="res-popup__icon-btn"
+        className="res-popup__icon-btn icon-button"
         onClick={onTogglePinned}
         disabled={!onTogglePinned}
         aria-label={pinned ? "ピン留めを解除" : "ピン留め"}
         title={pinned ? "ピン留めを解除" : "ピン留め"}
         aria-pressed={pinned}
       >
-        {pinned ? <PinOff size={14} aria-hidden="true" /> : <Pin size={14} aria-hidden="true" />}
+        <Pin size={14} aria-hidden="true" />
       </button>
       <button
         type="button"
         ref={menuButtonRef}
-        className="res-popup__icon-btn"
+        className="res-popup__icon-btn icon-button"
         onClick={onMenuClick}
         aria-label={menuLabel}
         title={menuLabel}
       >
         <MoreVertical size={14} />
       </button>
-      <button type="button" className="res-popup__close" onClick={onClose} aria-label="閉じる">
+      <button
+        type="button"
+        className="res-popup__close icon-button"
+        onClick={onClose}
+        aria-label="閉じる"
+      >
         ✕
       </button>
     </div>

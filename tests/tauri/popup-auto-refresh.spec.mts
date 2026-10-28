@@ -52,9 +52,10 @@ test("実況中もアンカーポップアップで取得を待機し、閉じ�
   const popup = page.locator(".anchor-preview");
   await expect(popup).toBeVisible();
   const pin = popup.getByRole("button", { name: "ピン留め", exact: true });
-  await expect(
-    popup.getByRole("button", { name: "アンカーポップアップメニュー" }).locator("+ button"),
-  ).toHaveAttribute("aria-label", "ピン留め");
+  await expect(pin.locator("+ button")).toHaveAttribute(
+    "aria-label",
+    "アンカーポップアップメニュー",
+  );
   await pin.click();
   await expect(popup.getByRole("button", { name: "ピン留めを解除" })).toHaveAttribute(
     "aria-pressed",
