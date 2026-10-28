@@ -340,6 +340,16 @@ const ALL_SETTINGS_SECTIONS = [
         key: "write_sanitize_urls_on_paste",
         ...WRITE_SETTING_COPY.write_sanitize_urls_on_paste,
       },
+      {
+        kind: "boolean",
+        key: "write_submit_ctrl_enter",
+        ...WRITE_SETTING_COPY.write_submit_ctrl_enter,
+      },
+      {
+        kind: "boolean",
+        key: "write_pre_submit_warnings",
+        ...WRITE_SETTING_COPY.write_pre_submit_warnings,
+      },
       // 変更理由: スレ本文中のリンクを制御するため、一般設定からスレ設定へ移す。
       {
         kind: "divider",

@@ -34,12 +34,11 @@ import { WriteEditorElsewhere } from "src/features/write/ui/WriteEditorElsewhere
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
-import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { Dialog } from "src/view/browser/ui/Dialog";
-import { SettingRow, SwitchControl, TextControl } from "src/view/browser/ui/FormControls";
+import { SettingRow, TextControl } from "src/view/browser/ui/FormControls";
 import { Popover } from "src/view/browser/ui/Popover";
 import { copyText } from "src/view/browser/utils/clipboard";
 import { getResizeObserverForWindow } from "src/view/browser/utils/dom";
@@ -135,8 +134,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   // パネル内の歯車モーダルへまとめて、必要な時だけ変更できるようにする。
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { value: submitWithCtrlEnter, setValue: setSubmitWithCtrlEnter } =
-    useScopedConfigBooleanSetting(WRITE_SUBMIT_CTRL_ENTER_KEY, threadUrl);
+  const { value: submitWithCtrlEnter } = useConfigBooleanSetting(WRITE_SUBMIT_CTRL_ENTER_KEY);
   const { value: sanitizeUrlsOnPaste } = useConfigBooleanSetting(WRITE_SANITIZE_URLS_ON_PASTE_KEY);
   const {
     name,
@@ -160,11 +158,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     onDraftChange: handleDraftChange,
     tabId: targets.find((target) => target.threadUrl === threadUrl)?.tabId,
   });
-  // 変更理由: 投稿前確認はドメイン共通・板別の設定画面で上書きできるよう、投稿先URLの設定を解決する。
-  const { value: preSubmitWarningsEnabled } = useScopedConfigBooleanSetting(
-    "write_pre_submit_warnings",
-    threadUrl,
-  );
+  const { value: preSubmitWarningsEnabled } = useConfigBooleanSetting("write_pre_submit_warnings");
 
   // 入力・折り返しに合わせて1行から20行まで伸ばし、それ以上は欄内をスクロールする。
   useLayoutEffect(() => {
@@ -469,13 +463,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
       requestSubmit();
     },
     [canSubmit, closePanel, isSubmitting, requestSubmit, submitWithCtrlEnter],
-  );
-
-  const handleSubmitWithCtrlEnterChange = useCallback(
-    (checked: boolean) => {
-      setSubmitWithCtrlEnter(checked);
-    },
-    [setSubmitWithCtrlEnter],
   );
 
   return (
@@ -795,17 +782,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                   value={mail}
                   onValueChange={setMail}
                   disabled={isSubmitting}
-                />
-              </SettingRow>
-              <SettingRow
-                htmlFor="write-setting-submit-ctrl-enter"
-                label={WRITE_SETTING_COPY.write_submit_ctrl_enter.title}
-                description={WRITE_SETTING_COPY.write_submit_ctrl_enter.description}
-              >
-                <SwitchControl
-                  id="write-setting-submit-ctrl-enter"
-                  checked={submitWithCtrlEnter}
-                  onCheckedChange={handleSubmitWithCtrlEnterChange}
                 />
               </SettingRow>
             </div>

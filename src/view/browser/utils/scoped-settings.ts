@@ -16,10 +16,8 @@ export const SCOPED_SETTING_KEYS = [
   "sage_flag",
   "default_name",
   "default_mail",
-  "write_submit_ctrl_enter",
   "auto_load_second",
   "auto_load_second_board",
-  "write_pre_submit_warnings",
 ] as const;
 
 export type ScopedSettingKey = (typeof SCOPED_SETTING_KEYS)[number];

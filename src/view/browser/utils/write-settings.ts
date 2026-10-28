@@ -9,6 +9,10 @@ export const WRITE_SETTING_COPY = {
     title: "Ctrl+Enterで書き込む",
     description: "本文入力中にCtrl+Enter（Macは⌘+Enter）で投稿します。",
   },
+  write_pre_submit_warnings: {
+    title: "投稿前に確認する",
+    description: "個人情報や危害表現が含まれる場合に確認を表示します。",
+  },
   write_sanitize_urls_on_paste: {
     title: "貼り付け時にURLパラメータを除去する",
     description:

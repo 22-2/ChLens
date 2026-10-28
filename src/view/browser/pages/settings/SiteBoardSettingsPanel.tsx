@@ -19,7 +19,7 @@ import { container } from "src/service-container/index";
 import { SettingsGroup, SettingsGroupNote } from "src/view/browser/pages/settings/SettingsGroup";
 import { Button } from "src/view/browser/ui/Button";
 import { Dialog } from "src/view/browser/ui/Dialog";
-import { SettingRow, SwitchControl, TextControl } from "src/view/browser/ui/FormControls";
+import { SettingRow, TextControl } from "src/view/browser/ui/FormControls";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   clearAllSiteScopedSettings,
@@ -60,17 +60,6 @@ const SETTING_FIELDS = [
   { key: "default_name", ...WRITE_SETTING_COPY.default_name, kind: "text" },
   { key: "default_mail", ...WRITE_SETTING_COPY.default_mail, kind: "text" },
   {
-    key: "write_submit_ctrl_enter",
-    ...WRITE_SETTING_COPY.write_submit_ctrl_enter,
-    kind: "boolean",
-  },
-  {
-    key: "write_pre_submit_warnings",
-    title: "投稿前に確認する",
-    description: "個人情報や危害表現が含まれる場合に確認を表示します。",
-    kind: "boolean",
-  },
-  {
     key: "auto_load_second",
     title: "スレッドの自動更新間隔",
     description: "スレッドを自動更新する間隔です。",
@@ -90,7 +79,7 @@ const SETTING_FIELDS = [
   key: ScopedSettingKey;
   title: string;
   description: string;
-  kind: "boolean" | "interval" | "text";
+  kind: "interval" | "text";
   min?: number;
   max?: number;
 }[];
@@ -176,13 +165,6 @@ function getOverride(
 function getDefaultValue(key: ScopedSettingKey): string {
   const raw = container.config.get(key) ?? DEFAULT_CONFIG[key];
   if (key === "default_name" || key === "default_mail") return raw;
-  if (key === "sage_flag" || key === "write_submit_ctrl_enter") {
-    return raw === "on" ? "on" : "off";
-  }
-  if (key === "write_pre_submit_warnings") {
-    // 変更理由: これらの確認・除去設定はONを既定とし、保存値がない場合も同じ表示にする。
-    return raw === "off" ? "off" : "on";
-  }
   return Number.parseInt(raw, 10) > 0 ? raw : DEFAULT_CONFIG[key];
 }
 
@@ -773,15 +755,7 @@ export function SiteBoardSettingsPanel() {
                 description={field.description}
               >
                 {isSaving && <span className="browser-setting-row__unit">保存中...</span>}
-                {field.kind === "boolean" ? (
-                  <SwitchControl
-                    id={id}
-                    checked={value === "on"}
-                    onCheckedChange={(checked) =>
-                      void saveGlobalSetting(field.key, checked ? "on" : "off")
-                    }
-                  />
-                ) : field.kind === "text" ? (
+                {field.kind === "text" ? (
                   <ScopedTextInput
                     id={id}
                     value={value}
@@ -812,13 +786,7 @@ export function SiteBoardSettingsPanel() {
               ? toIntervalSeconds(fallbackValue, 20, field.min ?? 1, field.max ?? 300)
               : 0;
           const effectiveValueLabel =
-            field.kind === "boolean"
-              ? fallbackValue === "on"
-                ? "ON"
-                : "OFF"
-              : field.kind === "text"
-                ? fallbackValue || "未入力"
-                : `${intervalValue}秒`;
+            field.kind === "text" ? fallbackValue || "未入力" : `${intervalValue}秒`;
           const modeId = `${id}-mode`;
 
           return (
@@ -846,13 +814,7 @@ export function SiteBoardSettingsPanel() {
                     return;
                   }
                   const value =
-                    field.kind === "boolean"
-                      ? fallbackValue === "on"
-                        ? "on"
-                        : "off"
-                      : field.kind === "text"
-                        ? fallbackValue
-                        : String(intervalValue * 1000);
+                    field.kind === "text" ? fallbackValue : String(intervalValue * 1000);
                   void saveOverride(field.key, value);
                 }}
               >
@@ -863,16 +825,6 @@ export function SiteBoardSettingsPanel() {
                   {scope.board ? "この板だけに指定する" : "ドメイン内で共通に指定する"}
                 </option>
               </select>
-              {isCustom && field.kind === "boolean" && (
-                <SwitchControl
-                  id={id}
-                  ariaLabel={`${field.title}の値`}
-                  checked={override === "on"}
-                  onCheckedChange={(checked) =>
-                    void saveOverride(field.key, checked ? "on" : "off")
-                  }
-                />
-              )}
               {isCustom && field.kind === "text" && (
                 <ScopedTextInput
                   id={id}

@@ -149,10 +149,6 @@ export const CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM = [
   "title_bar_forward",
   // 表示設定のタイトルバー操作パネルで表示を切り替える。
   "title_bar_refresh",
-  // 書き込みパネルの設定から投稿ショートカットを切り替える。
-  "write_submit_ctrl_enter",
-  // ドメイン・板設定と書き込みパネルから確認動作を切り替える。
-  "write_pre_submit_warnings",
   // 更新コントロールから自動停止時間を選択できる。
   "auto_load_idle_stop_timeout",
   // 更新コントロールからスレッドの表示形式を選択できる。

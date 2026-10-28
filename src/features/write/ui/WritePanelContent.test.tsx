@@ -417,8 +417,8 @@ describe("WritePanelContent", () => {
 
     const dialog = screen.getByRole("dialog", { name: "書き込み設定" });
     expect(
-      within(dialog).getByRole("switch", { name: "Ctrl+Enterで書き込む" }),
-    ).toBeInTheDocument();
+      within(dialog).queryByRole("switch", { name: "Ctrl+Enterで書き込む" }),
+    ).not.toBeInTheDocument();
     expect(within(dialog).getByRole("textbox", { name: "名前" })).toBeInTheDocument();
     expect(within(dialog).getByRole("textbox", { name: "メール" })).toBeInTheDocument();
     expect(
@@ -429,17 +429,10 @@ describe("WritePanelContent", () => {
       within(dialog).queryByRole("switch", { name: "レス後に書き込みパネルを閉じる" }),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole("switch", { name: "Ctrl+Enterで書き込む" }));
     fireEvent.change(within(dialog).getByRole("textbox", { name: "メール" }), {
       target: { value: "sage" },
     });
 
-    await waitFor(() =>
-      expect(configSetMock).toHaveBeenCalledWith(
-        "site_board_settings",
-        expect.stringContaining('"write_submit_ctrl_enter":"on"'),
-      ),
-    );
     expect(mocks.setMail).toHaveBeenCalledWith("sage");
 
     fireEvent.click(within(dialog).getByRole("button", { name: "閉じる" }));
