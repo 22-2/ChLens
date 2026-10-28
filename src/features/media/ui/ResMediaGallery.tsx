@@ -1,5 +1,5 @@
 import { parseMessage } from "@chlen/chlib";
-import { Download, Trash2 } from "lucide-react";
+import { Download, Maximize2, Minimize2, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -125,6 +125,7 @@ function InlineExpandedImage({
   isBlurred,
   blurStyle,
   onClose,
+  onOpenViewer,
   onContextMenu,
   onLoad,
   onError,
@@ -134,42 +135,71 @@ function InlineExpandedImage({
   isBlurred: boolean;
   blurStyle: ThumbStyle;
   onClose: () => void;
+  onOpenViewer: () => void;
   onContextMenu: (event: React.MouseEvent<HTMLElement>) => void;
   onLoad: (event: React.SyntheticEvent<HTMLImageElement>) => void;
   onError: () => void;
 }) {
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   return (
-    <button
-      type="button"
+    <div
       className={`res__inline-image${isBlurred ? " res__thumb--blurred" : ""}`}
       style={isBlurred ? blurStyle : undefined}
-      aria-label="画像を折りたたむ"
       onContextMenu={onContextMenu}
-      onClick={(event) => {
-        event.stopPropagation();
-        onClose();
-      }}
     >
-      <ExternalImage
-        src={src}
-        data-image-key={imageKey}
-        alt={imageKey}
-        manualLoad={false}
-        insideControl
-        onLoad={(event) => {
-          setStatus("loaded");
-          onLoad(event);
+      <button
+        type="button"
+        className="res__inline-image-content"
+        aria-label="画像を折りたたむ"
+        onClick={(event) => {
+          event.stopPropagation();
+          onClose();
         }}
-        onError={() => {
-          setStatus("error");
-          logger.error("展開した画像を表示できませんでした", { url: imageKey });
-          onError();
-        }}
-      />
-      {status === "loading" && <span role="status">画像を読み込み中…</span>}
-      {status === "error" && <span role="status">画像を表示できません。クリックして閉じる</span>}
-    </button>
+      >
+        <ExternalImage
+          src={src}
+          data-image-key={imageKey}
+          alt={imageKey}
+          manualLoad={false}
+          insideControl
+          onLoad={(event) => {
+            setStatus("loaded");
+            onLoad(event);
+          }}
+          onError={() => {
+            setStatus("error");
+            logger.error("展開した画像を表示できませんでした", { url: imageKey });
+            onError();
+          }}
+        />
+        {status === "loading" && <span role="status">画像を読み込み中…</span>}
+        {status === "error" && <span role="status">画像を表示できません。クリックして閉じる</span>}
+      </button>
+      <div className="res__inline-image-actions">
+        <button
+          type="button"
+          aria-label="ビューアで開く"
+          title="ビューアで開く"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenViewer();
+          }}
+        >
+          <Maximize2 size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          aria-label="画像を縮小"
+          title="画像を縮小"
+          onClick={(event) => {
+            event.stopPropagation();
+            onClose();
+          }}
+        >
+          <Minimize2 size={16} aria-hidden="true" />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -965,6 +995,9 @@ export function ResMediaGallery({
                   isBlurred={isBlurred || isHashPending}
                   blurStyle={blurStyle}
                   onClose={() => onToggleImage(item.rawUrl)}
+                  onOpenViewer={() =>
+                    onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls)
+                  }
                   onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
                   onLoad={requestImageHash}
                   onError={markImageUnavailable}

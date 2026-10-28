@@ -25,12 +25,12 @@ vi.mock("src/view/browser/hooks/use-config-number-setting", () => ({
 
 const image1 = "https://example.com/1.png";
 const image2 = "https://example.com/2.png";
-function Gallery() {
+function Gallery({ onUrlClick = () => {} }: { onUrlClick?: (...args: unknown[]) => void }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   return (
     <ResMediaGallery
       urls={[image1, image2]}
-      onUrlClick={() => {}}
+      onUrlClick={onUrlClick}
       expandedImageUrls={expanded}
       onToggleImage={(url) =>
         setExpanded((old) => {
@@ -56,6 +56,19 @@ describe("レス内の画像展開", () => {
     );
     expect(screen.getByRole("link", { name: image2 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "画像を折りたたむ" }));
+    expect(screen.getByRole("link", { name: image1 })).toBeInTheDocument();
+  });
+  it("展開画像の操作からビューアを開き、画像を縮小できる", () => {
+    const onUrlClick = vi.fn();
+    render(<Gallery onUrlClick={onUrlClick} />);
+    fireEvent.click(screen.getByRole("link", { name: image1 }));
+    fireEvent.click(screen.getByRole("button", { name: "ビューアで開く" }));
+    expect(onUrlClick).toHaveBeenCalledWith(image1, [image1, image2], 0, undefined, [
+      image1,
+      image2,
+    ]);
+    expect(screen.getByRole("button", { name: "画像を折りたたむ" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "画像を縮小" }));
     expect(screen.getByRole("link", { name: image1 })).toBeInTheDocument();
   });
   it("複数画像を一括保存し、失敗件数を通知する", async () => {

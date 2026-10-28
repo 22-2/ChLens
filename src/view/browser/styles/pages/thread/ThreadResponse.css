@@ -379,10 +379,36 @@
   justify-self: start;
   position: relative;
   max-width: 100%;
+}
+.res__inline-image-content {
+  display: block;
+  max-width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
   cursor: zoom-out;
+}
+/* 画像に重ねても操作を見失わないよう、常に右上に表示する。 */
+.res__inline-image-actions {
+  position: absolute;
+  top: var(--sys-space-2);
+  right: var(--sys-space-2);
+  display: flex;
+  gap: var(--sys-space-1);
+  z-index: var(--sys-z-local-raised);
+}
+.res__inline-image-actions button {
+  display: grid;
+  place-items: center;
+  padding: var(--sys-space-2);
+  border: 0;
+  border-radius: var(--sys-radius-sm);
+  color: var(--sys-color-accent-fg);
+  background: var(--sys-color-media-badge-bg);
+  cursor: pointer;
+}
+.res__inline-image-actions button:hover {
+  opacity: 0.8;
 }
 .res__inline-image img {
   display: block;
@@ -429,7 +455,8 @@
 }
 .res__image-save:focus-visible,
 .res__image-save-all:focus-visible,
-.res__inline-image:focus-visible {
+.res__inline-image-content:focus-visible,
+.res__inline-image-actions button:focus-visible {
   outline: 2px solid var(--sys-color-focus-ring);
 }
 .res__image-save-all:disabled {
