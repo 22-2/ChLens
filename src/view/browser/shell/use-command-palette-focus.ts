@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 import {
   commandPalette,
   commandPaletteStore,
@@ -37,7 +37,7 @@ export function useCommandPaletteFocus({
     commandPaletteStore.getState,
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isActivePane) {
       return;
     }
@@ -51,7 +51,10 @@ export function useCommandPaletteFocus({
       // Ctrl/Cmd+LはブラウザのURL入力に任せ、アプリはコマンドパレットのショートカットだけを扱う。
       if (event.shiftKey && key === "p") {
         event.preventDefault();
-        if (paletteState.opened && paletteState.mode === "command") {
+        // 変更理由: Zen切替直後など、再描画後にeffectが再登録される前のキー入力でも、
+        // 古い開閉状態でショートカットを処理しないようイベント時点の状態を読む。
+        const currentPaletteState = commandPaletteStore.getState();
+        if (currentPaletteState.opened && currentPaletteState.mode === "command") {
           commandPalette.close();
         } else {
           commandPalette.open("command");
@@ -61,7 +64,7 @@ export function useCommandPaletteFocus({
 
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-  }, [isActivePane, paletteState.mode, paletteState.opened]);
+  }, [isActivePane]);
 
   useEffect(() => {
     if (!paletteState.opened || !isActivePane) {
