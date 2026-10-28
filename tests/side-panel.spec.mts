@@ -41,7 +41,8 @@ test("抽出結果を強調し、本文のレスへ移動する", async ({ page,
   const panel = page.getByRole("complementary", { name: "サイドパネル" });
   await panel.getByRole("tab", { name: "抽出レス" }).click();
   const search = panel.getByRole("searchbox", { name: "レスを抽出" });
-  await expect(panel.locator(".side-panel__response")).toHaveCount(0);
+  await expect(panel.getByText("150 件")).toBeVisible();
+  await expect(panel.locator(".side-panel__response").first()).toBeVisible();
   await search.fill("レス本文マーカー42");
   await expect(panel.locator("mark")).toHaveText("レス本文マーカー42");
   await panel.getByRole("button", { name: /レス本文マーカー42/ }).click();
