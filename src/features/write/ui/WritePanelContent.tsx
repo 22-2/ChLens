@@ -180,8 +180,12 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
       const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
       const border =
         Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
+      // 測定のために一瞬縮めると親の行ごとパネルが縮み、スレの追従が外れるため、行の高さを保つ。
+      const row = textarea.parentElement;
+      if (row) row.style.minHeight = `${row.offsetHeight}px`;
       textarea.style.height = "0px";
       textarea.style.height = `${Math.min(textarea.scrollHeight + border, lineHeight * 20 + padding + border)}px`;
+      if (row) row.style.minHeight = "";
     };
     resize();
     // 横幅が変わって改行位置だけが変わる場合も高さを更新する。
@@ -572,6 +576,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                 disabled={isSubmitting || isImgurUploading}
                 placeholder={threadUrl ? "本文を入力..." : "スレッドを開いてから書き込んでください"}
               />
+              {/* 送信操作は本文欄の右上に固定して重ね、本文は右パディングで文字と重ならないようにする。 */}
               <div className="write-panel__side">
                 <button
                   type="submit"
@@ -582,90 +587,90 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                 >
                   <ArrowBigUp size={18} aria-hidden="true" />
                 </button>
-                {status === "error" && (
-                  <button
-                    type="button"
-                    className="write-panel__btn write-panel__btn--secondary"
-                    onClick={handleRetry}
-                  >
-                    再入力
-                  </button>
-                )}
-              </div>
-              <Popover.Root open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-                <Popover.Trigger asChild>
-                  <button
-                    type="button"
-                    className="write-panel__menu-trigger"
-                    aria-label="その他の操作"
-                    title="その他の操作"
-                  >
-                    <MoreVertical size={16} aria-hidden="true" />
-                  </button>
-                </Popover.Trigger>
-                {/* パネル外へ表示し、狭い画面では表示位置を自動調整する。 */}
-                <Popover.Portal container={dialogPortalContainer ?? viewDocument.body}>
-                  <Popover.Content
-                    className="write-panel__menu-items"
-                    side="top"
-                    align="end"
-                    sideOffset={4}
-                    collisionPadding={8}
-                  >
+                <Popover.Root open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                  <Popover.Trigger asChild>
                     <button
                       type="button"
-                      className="write-panel__menu-item"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        setIsSettingsDialogOpen(true);
-                      }}
-                      disabled={isSubmitting || isImgurUploading}
+                      className="write-panel__menu-trigger"
+                      aria-label="その他の操作"
+                      title="その他の操作"
                     >
-                      <Settings size={14} aria-hidden="true" />
-                      <span>書き込み設定</span>
+                      <MoreVertical size={16} aria-hidden="true" />
                     </button>
-                    {!isWindow && (
+                  </Popover.Trigger>
+                  {/* パネル外へ表示し、狭い画面では表示位置を自動調整する。 */}
+                  <Popover.Portal container={dialogPortalContainer ?? viewDocument.body}>
+                    <Popover.Content
+                      className="write-panel__menu-items"
+                      side="top"
+                      align="end"
+                      sideOffset={4}
+                      collisionPadding={8}
+                    >
                       <button
                         type="button"
                         className="write-panel__menu-item"
                         onClick={() => {
                           setIsMenuOpen(false);
-                          handleOpenWriteWindow();
+                          setIsSettingsDialogOpen(true);
                         }}
                         disabled={isSubmitting || isImgurUploading}
                       >
-                        <ExternalLink size={14} aria-hidden="true" />
-                        <span>書き込みを別窓で開く</span>
+                        <Settings size={14} aria-hidden="true" />
+                        <span>書き込み設定</span>
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      className="write-panel__menu-item"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        imgurFileInputRef.current?.click();
-                      }}
-                      disabled={isSubmitting || isImgurUploading || !threadUrl}
-                    >
-                      <ImagePlus size={14} aria-hidden="true" />
-                      <span>ローカル画像をImgurに投稿</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="write-panel__menu-item"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        handlePasteClipboardImage();
-                      }}
-                      disabled={isSubmitting || isImgurUploading || !threadUrl}
-                    >
-                      <Clipboard size={14} aria-hidden="true" />
-                      <span>クリップボード画像をImgurに投稿</span>
-                    </button>
-                  </Popover.Content>
-                </Popover.Portal>
-              </Popover.Root>
+                      {!isWindow && (
+                        <button
+                          type="button"
+                          className="write-panel__menu-item"
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            handleOpenWriteWindow();
+                          }}
+                          disabled={isSubmitting || isImgurUploading}
+                        >
+                          <ExternalLink size={14} aria-hidden="true" />
+                          <span>書き込みを別窓で開く</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="write-panel__menu-item"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          imgurFileInputRef.current?.click();
+                        }}
+                        disabled={isSubmitting || isImgurUploading || !threadUrl}
+                      >
+                        <ImagePlus size={14} aria-hidden="true" />
+                        <span>ローカル画像をImgurに投稿</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="write-panel__menu-item"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          handlePasteClipboardImage();
+                        }}
+                        disabled={isSubmitting || isImgurUploading || !threadUrl}
+                      >
+                        <Clipboard size={14} aria-hidden="true" />
+                        <span>クリップボード画像をImgurに投稿</span>
+                      </button>
+                    </Popover.Content>
+                  </Popover.Portal>
+                </Popover.Root>
+              </div>
             </div>
+            {status === "error" && (
+              <button
+                type="button"
+                className="write-panel__btn write-panel__btn--secondary write-panel__retry"
+                onClick={handleRetry}
+              >
+                再入力
+              </button>
+            )}
             {previewImages.length > 0 && (
               <div
                 className="write-panel__image-previews"

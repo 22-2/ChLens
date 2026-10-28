@@ -210,22 +210,24 @@
 }
 
 .write-panel__body-row {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--sys-space-2);
+  /* 送信操作を本文欄の右上へ重ねるための基準にする。 */
+  --write-panel-actions-width: calc(var(--sys-space-11) * 2 + var(--sys-space-4));
+  position: relative;
   min-height: 0;
 }
 
 .write-panel__textarea {
   box-sizing: border-box;
-  flex: 1;
+  display: block;
+  width: 100%;
   min-width: 0;
   resize: none;
   line-height: 1.4;
   overflow-y: auto;
   border: 1px solid var(--sys-color-input-border);
   border-radius: var(--sys-radius-md);
-  padding: var(--sys-space-2) var(--sys-space-3);
+  /* 右上に重ねた操作の下へ文字が入らないよう、操作の幅だけ右を空ける。 */
+  padding: var(--sys-space-2) var(--write-panel-actions-width) var(--sys-space-2) var(--sys-space-3);
   font-size: var(--sys-font-size-md);
   font-family: inherit;
   background: var(--sys-color-input-bg);
@@ -235,16 +237,24 @@
 }
 
 .write-panel__side {
+  position: absolute;
+  top: var(--sys-space-1);
+  right: var(--sys-space-2);
   display: flex;
-  align-items: flex-end;
-  gap: var(--sys-space-2);
-  flex-shrink: 0;
+  align-items: center;
+  gap: var(--sys-space-1);
 }
 .write-panel__side .write-panel__btn--primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--sys-space-3);
+  width: var(--sys-space-11);
+  height: var(--sys-space-10);
+  padding: 0;
+}
+
+.write-panel__retry {
+  align-self: flex-end;
 }
 
 .write-panel__image-previews {
