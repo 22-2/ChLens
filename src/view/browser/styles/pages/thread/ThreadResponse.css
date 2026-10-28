@@ -335,7 +335,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--sys-space-2);
-  padding: var(--sys-space-2) 0 0 var(--sys-space-8);
+  padding: var(--sys-space-1) 0 0 var(--sys-space-8);
 }
 
 .res__link {
@@ -400,6 +400,14 @@
   padding: var(--sys-space-1) var(--sys-space-2);
   font: inherit;
   cursor: pointer;
+}
+/* URLの隣でベースラインに揃え、アイコンだけでも操作対象を認識できるようにする。 */
+.res__image-save,
+.res__image-save-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+  vertical-align: middle;
 }
 .res__image-save:hover,
 .res__image-save-all:hover {

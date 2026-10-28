@@ -1,5 +1,5 @@
 import { parseMessage } from "@chlen/chlib";
-import { Trash2 } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -908,18 +908,6 @@ export function ResMediaGallery({
 
   return (
     <>
-      {onToggleImage && saveImageUrls.length > 1 && (
-        <div className="res__image-actions">
-          <button
-            type="button"
-            className="res__image-save-all"
-            disabled={saving}
-            onClick={() => void save(saveImageUrls)}
-          >
-            {saving ? "保存中…" : "レスの画像をすべて保存"}
-          </button>
-        </div>
-      )}
       <div className="res__thumbs" ref={thumbsRef}>
         {mediaItems.map((item) => {
           if (item.type === "image") {
@@ -1153,6 +1141,20 @@ export function ResMediaGallery({
           );
         })}
       </div>
+
+      {onToggleImage && saveImageUrls.length > 1 && (
+        <div className="res__image-actions">
+          <button
+            type="button"
+            className="res__image-save-all"
+            disabled={saving}
+            onClick={() => void save(saveImageUrls)}
+          >
+            <Download size={14} aria-hidden="true" />
+            {saving ? "保存中…" : "このレスの画像をすべて保存"}
+          </button>
+        </div>
+      )}
 
       {expandedMediaItem && (
         <div

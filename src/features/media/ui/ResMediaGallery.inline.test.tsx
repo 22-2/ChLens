@@ -61,7 +61,7 @@ describe("レス内の画像展開", () => {
   it("複数画像を一括保存し、失敗件数を通知する", async () => {
     mocks.save.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("失敗"));
     render(<Gallery />);
-    fireEvent.click(screen.getByRole("button", { name: "レスの画像をすべて保存" }));
+    fireEvent.click(screen.getByRole("button", { name: "このレスの画像をすべて保存" }));
     await waitFor(() =>
       expect(mocks.error).toHaveBeenCalledWith("画像 2 件のうち 1 件を保存できませんでした"),
     );
