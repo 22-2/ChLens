@@ -154,9 +154,10 @@
   opacity: 0.85;
 }
 
+/* 変更理由: 待機中を青い四角で示すと「再生」の記号として読めないため、赤い再生の三角形にする。 */
 .tab__auto-refresh-indicator--inactive {
-  border-radius: 2px;
-  background: var(--sys-color-accent);
+  border-radius: 0;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
 }
 
 .tab__archive-replay-indicator {

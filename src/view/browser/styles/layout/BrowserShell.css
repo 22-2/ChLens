@@ -90,7 +90,8 @@
   /* ステータスバーの幅を保ちつつ、パネルを本文の上に置く。 */
   position: absolute;
   inset: 0 0 var(--sys-space-12) auto;
-  z-index: var(--sys-z-minimap);
+  /* 変更理由: dat落ち通知（minimap+1のsticky領域）がサイドパネルの上に被らないよう、それより前面に置く。 */
+  z-index: calc(var(--sys-z-minimap) + 2);
   display: flex;
   flex-direction: column;
   min-width: 0;
