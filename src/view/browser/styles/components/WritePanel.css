@@ -251,6 +251,16 @@
   width: var(--sys-space-11);
   height: var(--sys-space-10);
   padding: 0;
+  /* 本文欄の中に置くため背景は付けず、3dotsと同じアイコンだけの見た目にする。 */
+  background: transparent;
+  color: var(--sys-color-accent);
+}
+.write-panel__side .write-panel__btn--primary:hover:not(:disabled) {
+  background: var(--sys-color-border);
+}
+.write-panel__side .write-panel__btn--primary:disabled {
+  background: transparent;
+  color: var(--sys-color-text-disabled);
 }
 
 .write-panel__retry {
