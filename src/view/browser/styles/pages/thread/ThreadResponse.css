@@ -386,7 +386,9 @@
 }
 .res__inline-image img {
   display: block;
-  max-width: 100%;
+  max-width: min(100%, var(--sys-thread-inline-image-max-width));
+  max-height: var(--sys-thread-inline-image-max-height);
+  width: auto;
   height: auto;
 }
 .res__image-actions {

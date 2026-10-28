@@ -165,6 +165,9 @@
   /* 通信ステータスの表示を共通化しても、書き込み表示の幅とアイコン寸法を維持する。 */
   --ref-status-operation-max-width: min(40vw, 360px);
   --ref-status-operation-icon-size: 13px;
+  /* 展開画像が本文全体を占めないよう、元画像の比率を保ったまま大きさを制限する。 */
+  --ref-thread-inline-image-max-width: 480px;
+  --ref-thread-inline-image-max-height: 60vh;
   --ref-space-1: 2px;
   --ref-space-2: 4px;
   --ref-space-3: 6px;
@@ -253,6 +256,8 @@
   --sys-toast-width: var(--ref-toast-width);
   /* 変更理由: 書き込み欄の高さを本文に残しつつ、投稿画像を見分けられるサイズに揃える。 */
   --sys-size-write-preview-thumbnail: var(--ref-space-16);
+  --sys-thread-inline-image-max-width: var(--ref-thread-inline-image-max-width);
+  --sys-thread-inline-image-max-height: var(--ref-thread-inline-image-max-height);
   /* 狭いサイドパネルでも3列ほど並び、画像の内容を見分けられる大きさにする。 */
   --sys-size-side-panel-image-tile: calc(var(--ref-space-16) * 2);
   /* 縦長のサイドパネルでは本文欄の高さを確保し、数行の返信を見渡せるようにする。 */

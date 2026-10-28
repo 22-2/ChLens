@@ -15,6 +15,13 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
     ),
     "image/svg+xml",
   );
+  localBoard.setImageBody(
+    2,
+    Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="2000"><rect width="400" height="2000" fill="blue"/></svg>',
+    ),
+    "image/svg+xml",
+  );
   const posts = Array.from({ length: 150 }, (_, i) =>
     i === 0
       ? `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local001<>画像 ${image1} ${image2}<>ローカルテストスレッド`
@@ -32,15 +39,37 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await urlInput.press("Enter");
   const first = page.locator('[data-res-num="1"]');
   await expect(first.locator(".res__thumb--image")).toHaveCount(2);
-  await expect(first.getByRole("button", { name: "レスの画像をすべて保存" })).toBeVisible();
-  await expect(first.getByRole("button", { name: `画像を保存: ${image1}` })).toBeVisible();
+  await expect(first.getByRole("button", { name: "このレスの画像をすべて保存" })).toBeVisible();
+  const saveAll = first.getByRole("button", { name: "このレスの画像をすべて保存" });
+  const saveOne = first.getByRole("button", { name: `画像を保存: ${image1}` });
+  await expect(saveOne).toBeVisible();
+  await expect(saveOne.locator("svg")).toHaveCount(1);
+  await expect(saveOne).toHaveText("");
+  await expect(saveAll.locator("svg")).toHaveCount(1);
+  const thumbsBox = (await first.locator(".res__thumbs").boundingBox())!;
+  expect((await saveAll.boundingBox())!.y).toBeGreaterThanOrEqual(thumbsBox.y + thumbsBox.height);
   await first.locator(".res__thumb--image").first().click();
   await expect(first.getByRole("button", { name: "画像を折りたたむ" })).toBeVisible();
   const image = first.locator(".res__inline-image img");
   await expect.poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(1800);
+  expect(await image.evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(480);
+  expect(await image.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThanOrEqual(
+    (await page.evaluate(() => window.innerHeight)) * 0.6,
+  );
   expect(await image.evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(
     await first.evaluate((el) => el.getBoundingClientRect().width),
   );
+  await first.locator(".res__thumb--image").first().click();
+  const portrait = first.locator(".res__inline-image img").nth(1);
+  await expect
+    .poll(() => portrait.evaluate((el) => (el as HTMLImageElement).naturalHeight))
+    .toBe(2000);
+  const portraitBox = (await portrait.boundingBox())!;
+  expect(portraitBox.height).toBeLessThanOrEqual(
+    (await page.evaluate(() => window.innerHeight)) * 0.6,
+  );
+  expect(portraitBox.width / portraitBox.height).toBeCloseTo(0.2, 2);
+  await first.getByRole("button", { name: "画像を折りたたむ" }).nth(1).click();
   await expect(page.locator(".media-viewer")).toHaveCount(0);
   await jumpToResponse(page, 150);
   await expect(first).toHaveCount(0);
