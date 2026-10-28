@@ -204,12 +204,41 @@
   background: var(--sys-color-list-hover-bg);
 }
 
+/* 抽出ビューだけ一覧を独立してスクロールし、可変高のレスを仮想化する。 */
+.side-panel__body--extract,
+.side-panel__extract {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.side-panel__extract {
+  flex: 1;
+}
+.side-panel__responses {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.side-panel__response-list {
+  position: relative;
+}
+.side-panel__response-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
 .side-panel__response {
   display: grid;
   gap: var(--sys-space-2);
   border-bottom: 1px solid var(--sys-color-border);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+.side-panel__response-meta {
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-xs);
 }
 .side-panel__response strong {
   color: var(--sys-color-accent-text);

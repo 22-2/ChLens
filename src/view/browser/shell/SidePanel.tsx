@@ -193,7 +193,9 @@ export function SidePanel() {
       </div>
       {activeView && (
         <>
-          <div className="side-panel__body">
+          <div
+            className={`side-panel__body${state.activeView === "extract" ? " side-panel__body--extract" : ""}`}
+          >
             <div className="side-panel__heading">{activeView.label}</div>
             {renderView(activeView, viewTab.id, viewPage)}
           </div>

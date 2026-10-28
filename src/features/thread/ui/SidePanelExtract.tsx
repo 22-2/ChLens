@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useMemo, useRef } from "react";
 import { stripHtml } from "src/core/util/strip-html";
 import { buildThreadFindIndex, findThreadMatches } from "src/features/thread/domain/thread-find";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
@@ -35,7 +36,9 @@ function ExtractResults({
   snapshot: ThreadSnapshot;
   query: string;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const results = useMemo(() => {
+    if (!query) return snapshot.visibleResponses;
     const matched = new Set(
       findThreadMatches(buildThreadFindIndex(snapshot.visibleResponses), query)
         .filter((match) => match.field === "body")
@@ -43,23 +46,51 @@ function ExtractResults({
     );
     return snapshot.visibleResponses.filter((response) => matched.has(response.num));
   }, [snapshot, query]);
-  if (results.length === 0) return <SidePanelMessage>一致するレスはありません。</SidePanelMessage>;
+  // 本文の長さはレスごとに異なるため、表示した行を実測して後続の位置を補正する。
+  const virtualizer = useVirtualizer({
+    count: results.length,
+    getScrollElement: () => scrollRef.current,
+    getItemKey: (index) => results[index]!.num,
+    estimateSize: () => 80,
+    overscan: 5,
+    initialRect: { width: 0, height: 400 },
+  });
   return (
     <>
       <p>{results.length} 件</p>
-      {results.map((response) => (
-        <button
-          type="button"
-          className="side-panel__entry side-panel__response"
-          key={response.num}
-          onClick={() => requestThreadResJump(threadUrl, response.num, tabId, true)}
-        >
-          <strong>{response.num}</strong>
-          <span>
-            <Highlight text={stripHtml(response.message)} query={query} />
-          </span>
-        </button>
-      ))}
+      <div className="side-panel__responses" ref={scrollRef}>
+        {results.length === 0 ? (
+          <SidePanelMessage>一致するレスはありません。</SidePanelMessage>
+        ) : (
+          <div className="side-panel__response-list" style={{ height: virtualizer.getTotalSize() }}>
+            {virtualizer.getVirtualItems().map((item) => {
+              const response = results[item.index]!;
+              return (
+                <div
+                  className="side-panel__response-item"
+                  key={item.key}
+                  data-index={item.index}
+                  ref={virtualizer.measureElement}
+                  style={{ transform: `translateY(${item.start}px)` }}
+                >
+                  <button
+                    type="button"
+                    className="side-panel__entry side-panel__response"
+                    onClick={() => requestThreadResJump(threadUrl, response.num, tabId, true)}
+                  >
+                    <span className="side-panel__response-meta">
+                      <strong>{response.num}</strong> {stripHtml(response.name)} {response.date}
+                    </span>
+                    <span>
+                      <Highlight text={stripHtml(response.message)} query={query} />
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </>
   );
 }
@@ -68,7 +99,7 @@ export function SidePanelExtract({ tabId, page }: { tabId: string; page: ThreadP
   const { state, update } = useTabViewState(tabId, page);
   const query = (state.sidePanelExtractQuery ?? "").trim();
   return (
-    <div className="side-panel__content">
+    <div className="side-panel__content side-panel__extract">
       <input
         className="side-panel__search"
         type="search"
@@ -78,17 +109,14 @@ export function SidePanelExtract({ tabId, page }: { tabId: string; page: ThreadP
         onChange={(event) => update({ sidePanelExtractQuery: event.currentTarget.value })}
       />
       <ThreadSnapshotGate tabId={tabId} threadUrl={page.threadUrl}>
-        {(snapshot) =>
-          // 空欄では結果も件数も出さない。
-          query ? (
-            <ExtractResults
-              tabId={tabId}
-              threadUrl={page.threadUrl}
-              snapshot={snapshot}
-              query={query}
-            />
-          ) : null
-        }
+        {(snapshot) => (
+          <ExtractResults
+            tabId={tabId}
+            threadUrl={page.threadUrl}
+            snapshot={snapshot}
+            query={query}
+          />
+        )}
       </ThreadSnapshotGate>
     </div>
   );
