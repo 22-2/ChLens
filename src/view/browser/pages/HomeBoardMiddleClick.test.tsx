@@ -3,20 +3,27 @@ import "@testing-library/jest-dom/vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { historyRecords, favoriteBoards, removeBookmarkMock, copyTextMock, toastErrorMock } =
-  vi.hoisted(() => ({
-    removeBookmarkMock: vi.fn(async (_url: string) => true),
-    copyTextMock: vi.fn(async (_text: string) => undefined),
-    toastErrorMock: vi.fn(),
-    historyRecords: [
-      {
-        url: "https://example.com/test/read.cgi/sample/1/",
-        boardTitle: "サンプル板",
-        date: 1,
-      },
-    ],
-    favoriteBoards: [{ url: "https://example.com/sample/", title: "サンプル板" }],
-  }));
+const {
+  historyRecords,
+  historyGetAllMock,
+  favoriteBoards,
+  removeBookmarkMock,
+  copyTextMock,
+  toastErrorMock,
+} = vi.hoisted(() => ({
+  removeBookmarkMock: vi.fn(async (_url: string) => true),
+  copyTextMock: vi.fn(async (_text: string) => undefined),
+  toastErrorMock: vi.fn(),
+  historyGetAllMock: vi.fn(),
+  historyRecords: [
+    {
+      url: "https://example.com/test/read.cgi/sample/1/",
+      boardTitle: "サンプル板",
+      date: 1,
+    },
+  ],
+  favoriteBoards: [{ url: "https://example.com/sample/", title: "サンプル板" }],
+}));
 
 const loggerMock = vi.hoisted(() => ({
   error: vi.fn(),
@@ -46,7 +53,7 @@ vi.mock("src/service-container/index", () => ({
     // src/core/board/BoardTitleSolver.js はサービスコンテナの boardTitle から使う。
     boardTitle: { askByUrl: askBoardTitleMock, getCachedTitles: getCachedTitlesMock },
     // src/core/history/History はサービスコンテナの history から使う。
-    history: { getAll: vi.fn(async () => historyRecords) },
+    history: { getAll: historyGetAllMock },
     config: { get: vi.fn(() => openedBoards.raw) },
     message: {
       on: vi.fn((type: string, handler: (payload: { key?: string }) => void) => {
@@ -104,6 +111,7 @@ function createMemoryStorage(): Storage {
 describe("ホームの板項目のミドルクリック", () => {
   beforeEach(() => {
     openedBoards.raw = "[]";
+    historyGetAllMock.mockReset().mockImplementation(async () => historyRecords);
     listeners.clear();
     askBoardTitleMock.mockReset().mockResolvedValue("表示用の板名");
     getCachedTitlesMock
@@ -287,6 +295,115 @@ describe("ホームの板項目のミドルクリック", () => {
     expect(group.getAllByRole("button", { name: /サンプル板/ })).toHaveLength(1);
     expect(group.getByRole("button", { name: /別の板/ })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "それ以前" })).not.toBeInTheDocument();
+  });
+
+  it("ホームを作り直しても前回の板を表示しながら履歴を更新する", async () => {
+    await renderPage();
+    await screen.findByRole("heading", { name: "それ以前" });
+    cleanup();
+    const pending = Promise.withResolvers<typeof historyRecords>();
+    historyGetAllMock.mockImplementation(() => pending.promise);
+    const { TabProvider } = await import("src/view/browser/state/tabs/use-tab-store");
+    const { HomeTabPage } = await import("src/view/browser/pages/HomeTabPage");
+    render(
+      <TabProvider>
+        <HomeTabPage />
+      </TabProvider>,
+    );
+    const section = screen.getByRole("heading", { name: "最近開いた板" }).closest("section")!;
+    expect(within(section).getByRole("button", { name: /サンプル板/ })).toBeInTheDocument();
+    expect(within(section).queryByText("最近開いた板を読み込み中...")).not.toBeInTheDocument();
+    await act(async () => pending.resolve([{ ...historyRecords[0], date: Date.now() }]));
+    expect(within(section).getByRole("heading", { name: "今日" })).toBeInTheDocument();
+  });
+
+  it("再取得中は前の板名を保ち、更新された板名を反映する", async () => {
+    historyRecords[0].boardTitle = "sample";
+    getCachedTitlesMock.mockResolvedValue(new Map([["example.com/sample/", "以前の板名"]]));
+    await renderPage();
+    await screen.findByRole("button", { name: /以前の板名/ });
+    const pending = Promise.withResolvers<Map<string, string>>();
+    getCachedTitlesMock.mockImplementation(() => pending.promise);
+    act(() => listeners.get("bbs_menu_updated")?.forEach((handler) => handler({})));
+    expect(screen.getByRole("button", { name: /以前の板名/ })).toBeInTheDocument();
+    await act(async () => pending.resolve(new Map([["example.com/sample/", "新しい板名"]])));
+    await screen.findByRole("button", { name: /新しい板名/ });
+  });
+
+  it("再取得が失敗しても以前の板一覧を残し、エラーを表示する", async () => {
+    await renderPage();
+    await screen.findByRole("heading", { name: "それ以前" });
+    cleanup();
+    const pending = Promise.withResolvers<typeof historyRecords>();
+    historyGetAllMock.mockImplementation(() => pending.promise);
+    const { TabProvider } = await import("src/view/browser/state/tabs/use-tab-store");
+    const { HomeTabPage } = await import("src/view/browser/pages/HomeTabPage");
+    render(
+      <TabProvider>
+        <HomeTabPage />
+      </TabProvider>,
+    );
+    const section = screen.getByRole("heading", { name: "最近開いた板" }).closest("section")!;
+    await act(async () => pending.reject(new Error("履歴の取得失敗")));
+    expect(within(section).getByRole("button", { name: /サンプル板/ })).toBeInTheDocument();
+    expect(within(section).getByText("履歴の取得失敗")).toBeInTheDocument();
+    expect(loggerMock.error).toHaveBeenCalledWith(
+      "最近開いた板の読み込みに失敗しました",
+      expect.any(Error),
+    );
+  });
+
+  it("複数ホームの取得が前後しても共有した一覧を古い結果に戻さない", async () => {
+    vi.resetModules();
+    const { TabProvider } = await import("src/view/browser/state/tabs/use-tab-store");
+    const { HomeTabPage } = await import("src/view/browser/pages/HomeTabPage");
+    const old = Promise.withResolvers<typeof historyRecords>();
+    const next = Promise.withResolvers<typeof historyRecords>();
+    historyGetAllMock
+      .mockImplementationOnce(() => old.promise)
+      .mockImplementationOnce(() => next.promise);
+    const first = render(
+      <TabProvider>
+        <HomeTabPage />
+      </TabProvider>,
+    );
+    const second = render(
+      <TabProvider>
+        <HomeTabPage />
+      </TabProvider>,
+    );
+    await act(async () => next.resolve([{ ...historyRecords[0], boardTitle: "新しい板名" }]));
+    expect(
+      within(second.container).getByRole("button", { name: /新しい板名/ }),
+    ).toBeInTheDocument();
+    await act(async () => old.resolve([{ ...historyRecords[0], boardTitle: "古い板名" }]));
+    first.unmount();
+    second.unmount();
+    const pending = Promise.withResolvers<typeof historyRecords>();
+    historyGetAllMock.mockImplementation(() => pending.promise);
+    const third = render(
+      <TabProvider>
+        <HomeTabPage />
+      </TabProvider>,
+    );
+    expect(within(third.container).getByRole("button", { name: /新しい板名/ })).toBeInTheDocument();
+    expect(
+      within(third.container).queryByRole("button", { name: /古い板名/ }),
+    ).not.toBeInTheDocument();
+    await act(async () => pending.resolve(historyRecords));
+  });
+
+  it("起動直後も保存済みの板は履歴を待たず表示する", async () => {
+    const pending = Promise.withResolvers<typeof historyRecords>();
+    historyGetAllMock.mockImplementation(() => pending.promise);
+    openedBoards.raw = JSON.stringify([
+      { url: "https://example.com/sample/", title: "サンプル板", lastVisited: Date.now() },
+    ]);
+    await renderPage();
+    const section = screen.getByRole("heading", { name: "最近開いた板" }).closest("section")!;
+    expect(within(section).getByRole("button", { name: /サンプル板/ })).toBeInTheDocument();
+    expect(within(section).queryByText("最近開いた板を読み込み中...")).not.toBeInTheDocument();
+    await act(async () => pending.resolve(historyRecords));
   });
 
   it("スレ閲覧の保存通知とホームへの復帰でも一覧を再読込する", async () => {

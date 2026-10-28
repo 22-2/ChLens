@@ -25,6 +25,27 @@ interface RecentBoard {
   lastVisited: number;
 }
 
+// ホームが作り直されても直前の結果を表示し、履歴の再取得を画面から切り離す。
+let cachedRecentBoards: RecentBoard[] | null = null;
+let nextBoardsRequest = 0;
+let cachedBoardsRequest = 0;
+
+function readOpenedBoards(): RecentBoard[] {
+  try {
+    return parseOpenedBoardEntries(container.config.get(OPENED_BOARDS_CONFIG_KEY))
+      .map((entry) => ({
+        boardUrl: entry.url,
+        boardTitle: entry.title || entry.url,
+        lastVisited: entry.lastVisited ?? 0,
+      }))
+      .sort((a, b) => b.lastVisited - a.lastVisited)
+      .slice(0, 100);
+  } catch (error) {
+    logger.error("保存済みの板を読み込めませんでした", error);
+    return [];
+  }
+}
+
 function normalizeString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
@@ -63,8 +84,12 @@ const GROUP_LABELS: Record<BoardGroupKey, string> = {
 // すべてのタブで同じホームを使い、お気に入り板と最近開いた板の入口をまとめる。
 export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) => {
   const { dispatch, viewPage } = useTabStore();
-  const [boards, setBoards] = React.useState<RecentBoard[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [boards, setBoards] = React.useState<RecentBoard[]>(
+    () => cachedRecentBoards ?? readOpenedBoards(),
+  );
+  const [loading, setLoading] = React.useState(
+    () => cachedRecentBoards === null && boards.length === 0,
+  );
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -73,6 +98,16 @@ export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) 
     // 変更理由: この非同期処理は内部で失敗を表示用状態へ変換して処理するため、呼び出し側で待たないことを明示する。
     const loadBoards = async () => {
       const requestRevision = ++revision;
+      const cacheRequest = ++nextBoardsRequest;
+      const publishBoards = (next: RecentBoard[]) => {
+        if (cancelled || revision !== requestRevision) return;
+        setBoards(next);
+        // 複数ホームの取得が前後しても、古い結果で共有キャッシュを巻き戻さない。
+        if (cacheRequest >= cachedBoardsRequest) {
+          cachedBoardsRequest = cacheRequest;
+          cachedRecentBoards = next;
+        }
+      };
       setError(null);
       try {
         const records = await container.history.getAll();
@@ -110,12 +145,26 @@ export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) 
         )) {
           addBoard(entry.url, entry.title ?? "", entry.lastVisited ?? 0);
         }
+        const previousTitles = new Map(
+          (cachedRecentBoards ?? []).map((board) => [
+            getBoardUrlKey(board.boardUrl),
+            board.boardTitle,
+          ]),
+        );
         const recentBoards = [...grouped.values()]
           .sort((a, b) => b.lastVisited - a.lastVisited)
           .slice(0, 100);
+        const withPreviousTitle = (board: RecentBoard): RecentBoard => {
+          const previous = previousTitles.get(getBoardUrlKey(board.boardUrl));
+          return !isResolvedBoardTitle(board.boardUrl, board.boardTitle) &&
+            previous &&
+            isResolvedBoardTitle(board.boardUrl, previous)
+            ? { ...board, boardTitle: previous }
+            : board;
+        };
         // 保存済み板一覧の読み込みが遅くても、開いた日時の反映や他の板への移動は待たせない。
         if (!cancelled && revision === requestRevision) {
-          setBoards(recentBoards);
+          publishBoards(recentBoards.map(withPreviousTitle));
           setLoading(false);
         }
         // 板キーしかない旧履歴も手元の情報で補完し、表示・再読込・F5では通信しない。
@@ -129,11 +178,11 @@ export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) 
           const title = cachedTitles.get(getBoardUrlKey(board.boardUrl)!);
           return title && isResolvedBoardTitle(board.boardUrl, title)
             ? { ...board, boardTitle: title }
-            : board;
+            : withPreviousTitle(board);
         });
         // 連続通知で古い読み込みが後から完了しても、最新の閲覧日時を巻き戻さない。
         if (!cancelled && revision === requestRevision) {
-          setBoards(titledBoards);
+          publishBoards(titledBoards);
         }
       } catch (e) {
         logger.error("最近開いた板の読み込みに失敗しました", e);
@@ -222,17 +271,20 @@ export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) 
         <h2 className="home-tab-page__section-heading">最近開いた板</h2>
         <div className="home-tab-page__section-content">
           {/* 履歴の取得に失敗しても、お気に入り板と板一覧の入口は使えるようにする。 */}
+          {error && (
+            <Alert className="home-tab-page__alert" color="red" title="読み込みエラー">
+              {error}
+            </Alert>
+          )}
           {loading ? (
             <div className="home-tab-page__status">
               <Spinner size="xs" />
               <span>最近開いた板を読み込み中...</span>
             </div>
-          ) : error ? (
-            <Alert className="home-tab-page__alert" color="red" title="読み込みエラー">
-              {error}
-            </Alert>
           ) : boards.length === 0 ? (
-            <div className="home-tab-page__empty">最近開いた板はまだありません。</div>
+            error ? null : (
+              <div className="home-tab-page__empty">最近開いた板はまだありません。</div>
+            )
           ) : (
             grouped.map((group) => (
               <div key={group.key} className="home-tab-page__date-group">
