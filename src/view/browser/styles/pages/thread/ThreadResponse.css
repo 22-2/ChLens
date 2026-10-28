@@ -388,7 +388,7 @@
   background: transparent;
   cursor: zoom-out;
 }
-/* 画像に重ねても操作を見失わないよう、常に右上に表示する。 */
+/* 画像にポインターがあるときだけ操作を表示する。 */
 .res__inline-image-actions {
   position: absolute;
   top: var(--sys-space-2);
@@ -437,6 +437,21 @@
   border: 2px solid var(--sys-color-accent);
   outline: 2px solid var(--sys-color-media-badge-bg);
   background: var(--sys-color-accent-fg);
+}
+/* キーボード操作中とドラッグ中は、ポインターが画像の外にあっても操作を保つ。 */
+.res__inline-image-actions,
+.res__inline-image-resize {
+  opacity: 0;
+  pointer-events: none;
+}
+.res__inline-image:hover .res__inline-image-actions,
+.res__inline-image:hover .res__inline-image-resize,
+.res__inline-image:has(:focus-visible) .res__inline-image-actions,
+.res__inline-image:has(:focus-visible) .res__inline-image-resize,
+.res__inline-image:has(.res__inline-image-resize:active) .res__inline-image-actions,
+.res__inline-image:has(.res__inline-image-resize:active) .res__inline-image-resize {
+  opacity: 1;
+  pointer-events: auto;
 }
 .res__inline-image:hover .res__inline-image-resize::after,
 .res__inline-image-resize:focus-visible::after {

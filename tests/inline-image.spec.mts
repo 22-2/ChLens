@@ -70,7 +70,19 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   expect(await image.evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(
     await first.evaluate((el) => el.getBoundingClientRect().width),
   );
-  const handle = first.getByRole("button", { name: "画像のサイズを変更" });
+  const handle = first.locator(".res__inline-image-resize");
+  const actions = first.locator(".res__inline-image-actions");
+  await page.mouse.move(0, 0);
+  await expect(handle).toHaveCSS("opacity", "0");
+  await expect(actions).toHaveCSS("opacity", "0");
+  await first.locator(".res__inline-image").hover();
+  await expect(handle).toHaveCSS("opacity", "1");
+  await expect(actions).toHaveCSS("opacity", "1");
+  await page.mouse.move(0, 0);
+  await page.keyboard.press("Tab");
+  await handle.focus();
+  await expect(handle).toHaveCSS("opacity", "1");
+  await expect(actions).toHaveCSS("opacity", "1");
   await expect(handle).toBeVisible();
   const initialWidth = (await image.boundingBox())!.width;
   const handleBox = (await handle.boundingBox())!;
