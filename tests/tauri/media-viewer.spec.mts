@@ -86,7 +86,11 @@ test("Tauriの実画像読み込みとホイール入力でも逆行や読込前
     await page.getByTestId("title-bar-title").click();
     await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
     await page.getByPlaceholder("URLを入力").press("Enter");
-    await page.locator('[data-res-num="1"] .res__thumb').first().click();
+    // サイドパネルは画像ビューアを開く動作を維持する。
+    await page.getByRole("button", { name: "サイドパネルを開く" }).click();
+    const sidePanel = page.getByRole("complementary", { name: "サイドパネル" });
+    await sidePanel.getByRole("tab", { name: "画像一覧" }).click();
+    await sidePanel.getByRole("button", { name: ">>1 の画像を拡大" }).first().click();
     await expect
       .poll(() =>
         page

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { extractUrlsFromMessage } from "src/core/util/url-media";
+import { extractUrlsFromMessage, toViewerImageUrl } from "src/core/util/url-media";
 import { useImgurAlbumMedia } from "src/features/media/application/imgur-album";
+import { useImageSave } from "src/features/media/browser/use-image-save";
 import { ResMediaGallery } from "src/features/media/ui/ResMediaGallery";
 import {
   useIsNgTemporarilyDisabled,
@@ -64,6 +65,9 @@ function renderHighlightedText(
 export const ResItem: React.FC<ResItemProps> = React.memo(
   ({
     res,
+    expandedImageUrls,
+    onToggleImage,
+    onOpenDetachedImage,
     idPos,
     idCount,
     repCount,
@@ -95,6 +99,8 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     findActiveOccurrence = -1,
   }) => {
     const { window: viewWindow } = useViewSurface();
+    const { save } = useImageSave();
+    const saveImage = useCallback((url: string) => void save([url]), [save]);
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     // collapseルールに一致したレスは全体設定より優先して折りたたむため、レスごとに解決する。
     const ngDisplayMode = resolveNgDisplayMode(useNgDisplayMode(), res.ng);
@@ -158,6 +164,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     const nameMarkup = useMemo(() => ({ __html: highlightedNameHtml }), [highlightedNameHtml]);
     const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
     const resolvedMedia = useImgurAlbumMedia(decoded.messageHtml, urls, threadUrl);
+    const imageUrls = useMemo(() => urls.filter((url) => toViewerImageUrl(url) != null), [urls]);
     const replyHeat = getReplyHeatLevel(repCount);
     const resNumClassName = `res__num${
       replyHeat === "hot" ? " res__num--hot" : replyHeat === "warm" ? " res__num--warm" : ""
@@ -297,6 +304,8 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         </header>
         <ResBody
           messageHtml={resolvedMedia.messageHtml}
+          imageUrls={onToggleImage ? imageUrls : undefined}
+          onSaveImage={onToggleImage ? saveImage : undefined}
           searchQuery={searchQuery}
           searchTarget={searchTarget}
           findQuery={findQuery}
@@ -313,6 +322,9 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         />
         <ResMediaGallery
           urls={resolvedMedia.urls}
+          expandedImageUrls={expandedImageUrls}
+          onToggleImage={onToggleImage}
+          onOpenDetachedImage={onOpenDetachedImage}
           onUrlClick={onUrlClick}
           isBlurred={isImageBlurred}
           imageBlurRadius={imageBlurRadius}
@@ -329,6 +341,9 @@ export interface ResItemProps {
   /** ライブチャットの入場完了を返信数などの表示へ反映する。 */
   onEntryDisplayed?: (responseNum: number) => void;
   res: IRes;
+  expandedImageUrls?: ReadonlySet<string>;
+  onToggleImage?: (url: string) => void;
+  onOpenDetachedImage?: (url: string, images: string[], saveImages: string[]) => void;
   idPos: number;
   idCount: number;
   repCount: number;

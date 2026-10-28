@@ -40,6 +40,8 @@ interface MiddleClickState {
 
 interface ResBodyProps {
   messageHtml: string;
+  imageUrls?: readonly string[];
+  onSaveImage?: (url: string) => void;
   searchQuery?: string;
   searchTarget?: ThreadSearchTarget;
   /** ページ内検索（Ctrl+F）の検索語と、本文の中で現在の一致が何番目か（なければ -1）。 */
@@ -166,6 +168,7 @@ function useResBodyInteractionHandlers({
   onAnchorLeave,
   viewWindow,
   openExternalMenu,
+  onSaveImage,
 }: Omit<ResBodyProps, "messageHtml" | "ngResNums"> & {
   viewWindow: Window;
   openExternalMenu: (url: string, event: React.MouseEvent<HTMLElement>) => void;
@@ -269,6 +272,14 @@ function useResBodyInteractionHandlers({
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
+      const target = getEventTargetElement(e.target, viewWindow);
+      const saveButton = target?.closest<HTMLElement>("button[data-save-image-url]");
+      if (saveButton && onSaveImage) {
+        stopEvent(e);
+        const url = saveButton.dataset.saveImageUrl;
+        if (url) onSaveImage(url);
+        return;
+      }
       const anchor = getAnchorElement(e.target, viewWindow);
       if (!anchor) {
         return;
@@ -320,7 +331,7 @@ function useResBodyInteractionHandlers({
         stopEvent(e);
       }
     },
-    [onAnchorClick, onIdLinkClick, onUrlClick, viewWindow],
+    [onAnchorClick, onIdLinkClick, onSaveImage, onUrlClick, viewWindow],
   );
 
   const handleKeyDown = useCallback(
@@ -418,6 +429,8 @@ function useResBodyInteractionHandlers({
 export const ResBody: React.FC<ResBodyProps> = React.memo(
   ({
     messageHtml,
+    imageUrls,
+    onSaveImage,
     searchQuery = "",
     searchTarget = "all",
     findQuery = "",
@@ -447,6 +460,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       onAnchorLeave,
       viewWindow,
       openExternalMenu: openMenu,
+      onSaveImage,
     });
     const highlightedMessageHtml = useMemo(() => {
       const searched =
@@ -461,7 +475,12 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       });
     }, [findActiveOccurrence, findQuery, messageHtml, searchQuery, searchTarget]);
     const decoratedMessageHtml = useMemo(() => {
-      if (!confirmExternal && (ngResNums == null || ngResNums.size === 0) && resMap == null) {
+      if (
+        !confirmExternal &&
+        !imageUrls?.length &&
+        (ngResNums == null || ngResNums.size === 0) &&
+        resMap == null
+      ) {
         return highlightedMessageHtml;
       }
 
@@ -470,6 +489,21 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       // NG対象・欠損対象のアンカーを常に同じフレームで表示する。
       const template = viewDocument.createElement("template");
       template.innerHTML = highlightedMessageHtml;
+      if (imageUrls?.length && onSaveImage) {
+        const imageSet = new Set(imageUrls);
+        for (const anchor of template.content.querySelectorAll<HTMLAnchorElement>("a[href]")) {
+          const href = anchor.getAttribute("href") ?? "";
+          if (!imageSet.has(href)) continue;
+          const button = viewDocument.createElement("button");
+          button.type = "button";
+          button.className = "res__image-save";
+          button.dataset.saveImageUrl = href;
+          button.setAttribute("aria-label", `画像を保存: ${href}`);
+          button.title = "画像を保存";
+          button.textContent = "保存";
+          anchor.after(button);
+        }
+      }
       if (confirmExternal) {
         for (const anchor of template.content.querySelectorAll<HTMLAnchorElement>("a[href]")) {
           const href = anchor.getAttribute("href") ?? "";
@@ -500,7 +534,15 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
         anchor.classList.toggle("anchor--missing-target", hasMissingTarget);
       }
       return template.innerHTML;
-    }, [confirmExternal, highlightedMessageHtml, ngResNums, resMap, viewDocument]);
+    }, [
+      confirmExternal,
+      highlightedMessageHtml,
+      imageUrls,
+      onSaveImage,
+      ngResNums,
+      resMap,
+      viewDocument,
+    ]);
     // React 19 は dangerouslySetInnerHTML の object identity が変わると、
     // HTML文字列が同じでも innerHTML を再代入して選択中のText nodeを置換する。
     // 自動更新時の親再描画では同じHTMLを再利用し、ユーザーの選択範囲を保持する。

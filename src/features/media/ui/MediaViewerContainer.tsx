@@ -14,7 +14,7 @@ import {
   ViewSurfaceProvider,
 } from "src/view/browser/hooks/use-view-surface";
 
-import { useMediaViewerStore } from "../browser/use-media-viewer-store";
+import { registerMediaViewerDetach, useMediaViewerStore } from "../browser/use-media-viewer-store";
 import { MediaViewerContent } from "./MediaViewerContent";
 
 interface MediaViewerContainerProps {
@@ -120,6 +120,8 @@ export function MediaViewerContainer({
     setDetached(entry);
     focusAuxiliaryWindow(opened.window, MEDIA_VIEWER_WINDOW_OPTIONS.logLabel);
   }, [removeDetachedWindow, scopeId, sourceSurface.document, sourceSurface.window]);
+
+  useEffect(() => registerMediaViewerDetach(scopeId, detach), [scopeId, detach]);
 
   useEffect(() => {
     if (!detached) {

@@ -368,6 +368,53 @@
   padding: var(--sys-space-3) 0 var(--sys-space-1) var(--sys-space-8);
 }
 
+/* 展開画像は列を横断し、狭いペインでも元の比率を保って収める。 */
+.res__thumbs:has(.res__inline-image) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.res__inline-image {
+  grid-column: 1 / -1;
+  justify-self: start;
+  position: relative;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-out;
+}
+.res__inline-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.res__image-actions {
+  padding: var(--sys-space-2) 0 0 var(--sys-space-8);
+}
+.res__image-save,
+.res__image-save-all {
+  color: var(--sys-color-link);
+  background: transparent;
+  border: 0;
+  padding: var(--sys-space-1) var(--sys-space-2);
+  font: inherit;
+  cursor: pointer;
+}
+.res__image-save:hover,
+.res__image-save-all:hover {
+  text-decoration: underline;
+}
+.res__image-save:focus-visible,
+.res__image-save-all:focus-visible,
+.res__inline-image:focus-visible {
+  outline: 2px solid var(--sys-color-focus-ring);
+}
+.res__image-save-all:disabled {
+  color: var(--sys-color-text-muted);
+  cursor: wait;
+}
+
 .res__thumb {
   display: block;
   position: relative;

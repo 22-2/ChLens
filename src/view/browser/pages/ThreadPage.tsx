@@ -23,6 +23,7 @@ import { useLiveChatResponses } from "src/features/live-chat/browser/use-live-ch
 import { useThreadDisplayModeSetting } from "src/features/live-chat/browser/use-thread-display-mode-setting";
 import {
   getThreadMediaViewerScopeId,
+  openDetachedMediaViewer,
   useMediaViewerStore,
 } from "src/features/media/browser/use-media-viewer-store";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
@@ -317,6 +318,28 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   );
 
   const isFilterDefaultOpen = useThreadFilterDefaultOpenSetting();
+  // 仮想化でレスが外れても、展開状態はスレ表示の間保持する。
+  const [imageExpansion, setImageExpansion] = useState<{
+    threadUrl: string;
+    responses: ReadonlyMap<number, ReadonlySet<string>>;
+  }>(() => ({ threadUrl: page.threadUrl, responses: new Map() }));
+  const expandedImages =
+    imageExpansion.threadUrl === page.threadUrl ? imageExpansion.responses : null;
+  const toggleImage = useCallback(
+    (resNum: number, url: string) => {
+      setImageExpansion((current) => {
+        // 同じタブで別スレに移ったとき、前のスレのレス番号を引き継がない。
+        const next = new Map(current.threadUrl === page.threadUrl ? current.responses : []);
+        const urls = new Set(next.get(resNum));
+        if (urls.has(url)) urls.delete(url);
+        else urls.add(url);
+        if (urls.size) next.set(resNum, urls);
+        else next.delete(resNum);
+        return { threadUrl: page.threadUrl, responses: next };
+      });
+    },
+    [page.threadUrl],
+  );
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
   // 範囲外へ外れたレスを描画し直しても、ソフトNGを「表示」した状態を保つ。
   const [revealedNgResNums, setRevealedNgResNums] = useState<ReadonlySet<number>>(new Set());
@@ -919,6 +942,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         }
         onEntryDisplayed={liveChatReplies.onEntryDisplayed}
         res={res}
+        expandedImageUrls={expandedImages?.get(res.num)}
+        onToggleImage={(url) => toggleImage(res.num, url)}
+        onOpenDetachedImage={(url, images, saveImages) =>
+          openDetachedMediaViewer(url, images, mediaViewerScopeId, saveImages)
+        }
         idPos={idPos}
         idCount={idCount}
         repCount={repCount}

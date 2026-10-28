@@ -247,6 +247,7 @@ const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
     "browser/image-hash-reader",
     "browser/image-menu-contributions",
     "browser/use-image-hash-store",
+    "browser/use-image-save",
     "browser/use-media-viewer-store",
     "domain/media-settings",
     "domain/thread-images",

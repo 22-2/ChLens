@@ -18,6 +18,24 @@ export function getThreadMediaViewerScopeId(tabId: string, threadUrl: string): s
   return `${tabId}\u0000${threadUrl}`;
 }
 
+// 別窓はクリックの同期中に開く必要があるため、表示中のコンテナへ直接依頼する。
+const detachHandlers = new Map<string, () => void>();
+export function registerMediaViewerDetach(scopeId: string, detach: () => void): () => void {
+  detachHandlers.set(scopeId, detach);
+  return () => {
+    if (detachHandlers.get(scopeId) === detach) detachHandlers.delete(scopeId);
+  };
+}
+export function openDetachedMediaViewer(
+  url: string,
+  images: string[],
+  scopeId: string,
+  saveImages: string[],
+): void {
+  useMediaViewerStore.getState().openMediaFromUrl(url, images, scopeId, saveImages);
+  detachHandlers.get(scopeId)?.();
+}
+
 interface MediaViewerStoreState {
   viewer: ViewerState | null;
   viewerScopeId: string | null;

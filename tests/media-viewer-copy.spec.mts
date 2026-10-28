@@ -36,7 +36,11 @@ test("スレの画像をビューアで開き、PNG画像としてコピーす�
 
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await openUrl(page, localBoard.threadUrl);
-  await page.locator('.content-area__tab-panel[data-active="true"] .res__thumb--image').click();
+  // サイドパネルの画像一覧は従来どおりビューアを開く。
+  await page.getByRole("button", { name: "サイドパネルを開く" }).click();
+  const sidePanel = page.getByRole("complementary", { name: "サイドパネル" });
+  await sidePanel.getByRole("tab", { name: "画像一覧" }).click();
+  await sidePanel.getByRole("button", { name: ">>1 の画像を拡大" }).click();
   const viewer = page.locator(".media-viewer");
   await expect(viewer).toBeVisible();
   // 画像のコピーは右クリックメニューにあり、項目の有効状態はメニューを開いた時点で決まる。

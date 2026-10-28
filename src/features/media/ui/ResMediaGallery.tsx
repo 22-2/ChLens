@@ -12,7 +12,7 @@ import {
   toRuntimeVideoEmbedUrl,
   toTwitterPostEmbed,
 } from "src/core/util/external-media";
-import { toViewerImageUrl } from "src/core/util/url-media";
+import { toOriginalImageUrl, toViewerImageUrl } from "src/core/util/url-media";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
 import { ConfirmableLink } from "src/view/browser/ui/ConfirmableLink";
@@ -31,6 +31,7 @@ import {
 import { requestMediaImageDownload } from "../browser/image-download-preflight";
 import { collectImageMenuItems } from "../browser/image-menu-contributions";
 import { isImageHashPending, useImageHashStore } from "../browser/use-image-hash-store";
+import { useImageSave } from "../browser/use-image-save";
 import {
   type MediaImageState,
   type MediaImageStatus,
@@ -117,6 +118,61 @@ function ManualLoadExternalImage({
   );
 }
 
+/** 元画像の読み込み中と失敗を同じ展開位置に表示する。 */
+function InlineExpandedImage({
+  src,
+  imageKey,
+  isBlurred,
+  blurStyle,
+  onClose,
+  onContextMenu,
+  onLoad,
+  onError,
+}: {
+  src: string;
+  imageKey: string;
+  isBlurred: boolean;
+  blurStyle: ThumbStyle;
+  onClose: () => void;
+  onContextMenu: (event: React.MouseEvent<HTMLElement>) => void;
+  onLoad: (event: React.SyntheticEvent<HTMLImageElement>) => void;
+  onError: () => void;
+}) {
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  return (
+    <button
+      type="button"
+      className={`res__inline-image${isBlurred ? " res__thumb--blurred" : ""}`}
+      style={isBlurred ? blurStyle : undefined}
+      aria-label="画像を折りたたむ"
+      onContextMenu={onContextMenu}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClose();
+      }}
+    >
+      <ExternalImage
+        src={src}
+        data-image-key={imageKey}
+        alt={imageKey}
+        manualLoad={false}
+        insideControl
+        onLoad={(event) => {
+          setStatus("loaded");
+          onLoad(event);
+        }}
+        onError={() => {
+          setStatus("error");
+          logger.error("展開した画像を表示できませんでした", { url: imageKey });
+          onError();
+        }}
+      />
+      {status === "loading" && <span role="status">画像を読み込み中…</span>}
+      {status === "error" && <span role="status">画像を表示できません。クリックして閉じる</span>}
+    </button>
+  );
+}
+
 // ギャラリーはThreadViewやPopupのURLルーティング実装を知らず、クリック時の引数だけを契約にする。
 export type MediaUrlClickHandler = (
   url: string,
@@ -133,6 +189,9 @@ interface ResMediaGalleryProps {
   openOnMiddleMouseDown?: boolean;
   isBlurred?: boolean;
   imageBlurRadius?: number;
+  expandedImageUrls?: ReadonlySet<string>;
+  onToggleImage?: (url: string) => void;
+  onOpenDetachedImage?: (url: string, images: string[], saveImages: string[]) => void;
 }
 
 type ThumbStyle = React.CSSProperties & {
@@ -638,10 +697,14 @@ export function ResMediaGallery({
   openOnMiddleMouseDown = false,
   isBlurred = false,
   imageBlurRadius = 4,
+  expandedImageUrls,
+  onToggleImage,
+  onOpenDetachedImage,
 }: ResMediaGalleryProps): React.ReactElement | null {
   const { value: confirmExternal } = useConfigBooleanSetting(EXTERNAL_LINK_CONFIRM_CONFIG_KEY);
   const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
   const { menu, openMenu } = useExternalLinkMenu();
+  const { save, saving } = useImageSave();
   const imageStates = useMediaImageStore((state) => state.images);
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
@@ -656,14 +719,24 @@ export function ResMediaGallery({
   >(new Map());
   const openImageContextMenu = (url: string, event: React.MouseEvent<HTMLElement>) => {
     const imageIsLoaded = useMediaImageStore.getState().images.get(url)?.status === "loaded";
-    if (!confirmExternal && !imageIsLoaded) return;
+    if (!confirmExternal && !imageIsLoaded && !onOpenDetachedImage) return;
     const image = event.currentTarget.querySelector<HTMLImageElement>("img[data-image-key]");
     const targetWindow = event.currentTarget.ownerDocument.defaultView;
 
-    openMenu(
-      url,
-      event,
-      imageIsLoaded
+    openMenu(url, event, [
+      ...(onToggleImage
+        ? [{ id: "save-image", label: "画像を保存", onSelect: () => void save([url]) }]
+        : []),
+      ...(onOpenDetachedImage
+        ? [
+            {
+              id: "open-detached-viewer",
+              label: "メディアビューアを別窓で開く",
+              onSelect: () => onOpenDetachedImage(url, imageUrls, saveImageUrls),
+            },
+          ]
+        : []),
+      ...(imageIsLoaded
         ? [
             {
               id: "discard-image",
@@ -676,8 +749,8 @@ export function ResMediaGallery({
               ? collectImageMenuItems({ imageKey: url, image, targetWindow })
               : []),
           ]
-        : [],
-    );
+        : []),
+    ]);
   };
   const blurStyle: ThumbStyle = { "--res-thumb-blur-radius": `${imageBlurRadius}px` };
   const thumbStyle: ThumbStyle | undefined = isBlurred ? blurStyle : undefined;
@@ -835,6 +908,18 @@ export function ResMediaGallery({
 
   return (
     <>
+      {onToggleImage && saveImageUrls.length > 1 && (
+        <div className="res__image-actions">
+          <button
+            type="button"
+            className="res__image-save-all"
+            disabled={saving}
+            onClick={() => void save(saveImageUrls)}
+          >
+            {saving ? "保存中…" : "レスの画像をすべて保存"}
+          </button>
+        </div>
+      )}
       <div className="res__thumbs" ref={thumbsRef}>
         {mediaItems.map((item) => {
           if (item.type === "image") {
@@ -877,6 +962,22 @@ export function ResMediaGallery({
             const markImageUnavailable = () => {
               useImageHashStore.getState().markImageUnavailable(item.rawUrl);
             };
+            if (onToggleImage && expandedImageUrls?.has(item.rawUrl)) {
+              const fullSrc = toOriginalImageUrl(item.src) ?? item.src;
+              return (
+                <InlineExpandedImage
+                  key={`image:${item.rawUrl}`}
+                  src={fullSrc}
+                  imageKey={item.rawUrl}
+                  isBlurred={isBlurred || isHashPending}
+                  blurStyle={blurStyle}
+                  onClose={() => onToggleImage(item.rawUrl)}
+                  onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
+                  onLoad={requestImageHash}
+                  onError={markImageUnavailable}
+                />
+              );
+            }
             return (
               <ConfirmableLink
                 key={`image:${item.rawUrl}`}
@@ -895,11 +996,13 @@ export function ResMediaGallery({
                         setExpandedVideoUrl(item.rawUrl);
                         return;
                       }
-                      onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls);
+                      if (onToggleImage) onToggleImage(item.rawUrl);
+                      else onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls);
                     });
                     return;
                   }
-                  onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls);
+                  if (onToggleImage) onToggleImage(item.rawUrl);
+                  else onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls);
                 }}
                 onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
                 onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}

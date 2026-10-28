@@ -28,6 +28,31 @@ const INTERNAL_URL_HTML =
 const ID_LINK_HTML = '<a href="javascript:undefined;" class="anchor_id">id:ABC123(4)</a>';
 
 describe("ResBody anchor behavior", () => {
+  it("画像URLの直後から個別保存し、リンク遷移を起こさない", () => {
+    const url = "https://example.com/image.png";
+    const save = vi.fn();
+    const onUrlClick = vi.fn();
+    const { container } = render(
+      <ResBody
+        messageHtml={`<a href="${url}">${url}</a>`}
+        imageUrls={[url]}
+        onSaveImage={save}
+        anchorPreviewDepth={0}
+        onUrlClick={onUrlClick}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+      />,
+    );
+    const link = container.querySelector("a")!;
+    const button = link.nextElementSibling!;
+    expect(button).toHaveAttribute("aria-label", `画像を保存: ${url}`);
+    fireEvent.click(button);
+    expect(save).toHaveBeenCalledWith(url);
+    expect(onUrlClick).not.toHaveBeenCalled();
+  });
   it("同じHTMLの再描画では本文のテキスト選択を保持する", () => {
     const { container, rerender } = render(
       <ResBody
