@@ -1,6 +1,10 @@
 import { PanelLeft, PanelTop, Plus, RotateCcw } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { createLogger } from "src/app/logger";
+import {
+  isArchiveReplayThread as matchesArchiveReplayThread,
+  useArchiveReplayPositionStore,
+} from "src/features/archive-replay/browser/position-store";
 import { useAutoScrollState } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import type { TabBarItem } from "src/features/tabs/browser/tab-bar-layout";
 import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
@@ -111,19 +115,25 @@ export function useTabBarModel(isVertical: boolean): TabBarModel {
     [isDetachedTab, state.tabs],
   );
   const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
+  const archiveReplayPosition = useArchiveReplayPositionStore((state) => state.position);
   const { collapsed, width, setCollapsed, setWidth } = useVerticalTabBarLayout();
 
   const items = useMemo<TabBarItem[]>(() => {
     const autoScroll = { canAutoScroll, isAutoScrolling, isPaused };
     return visibleTabs.map((tab) => {
       const isActive = tab.id === selectedTabId;
+      const page = getCurrentPage(tab);
       return {
         tab,
         isActive,
         autoRefreshIndicatorState: getAutoRefreshIndicatorState(tab, isActive, autoScroll),
+        // 変更理由: 再生対象の専用スレッドタブを、通常のスレッドタブと見分けられるようにする。
+        isArchiveReplayThread:
+          page.type === "thread" &&
+          matchesArchiveReplayThread(archiveReplayPosition, tab.id, page.threadUrl),
       };
     });
-  }, [canAutoScroll, isAutoScrolling, isPaused, selectedTabId, visibleTabs]);
+  }, [archiveReplayPosition, canAutoScroll, isAutoScrolling, isPaused, selectedTabId, visibleTabs]);
 
   const selectedTab = visibleTabs.find((tab) => tab.id === selectedTabId) ?? visibleTabs[0] ?? null;
   const runTabCommand = useTabCommandRunner(selectedTab?.id ?? "");

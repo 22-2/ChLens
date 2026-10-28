@@ -9,6 +9,7 @@ export interface TabBarItem {
   tab: Tab;
   isActive: boolean;
   autoRefreshIndicatorState: "active" | "inactive" | null;
+  isArchiveReplayThread?: boolean;
 }
 
 export const TAB_BAR_WIDTH_DEFAULT = 208;

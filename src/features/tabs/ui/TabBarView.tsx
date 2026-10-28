@@ -1,5 +1,5 @@
 import { DragDropProvider } from "@dnd-kit/react";
-import { PanelLeftClose, PanelLeftOpen, Pin, Plus, X } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Pin, Play, Plus, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -30,6 +30,7 @@ interface SortableTabProps {
   isActive: boolean;
   isHighlighted: boolean;
   autoRefreshIndicatorState: TabBarItem["autoRefreshIndicatorState"];
+  isArchiveReplayThread?: boolean;
   canClose: boolean;
   isVertical: boolean;
   compact: boolean;
@@ -52,6 +53,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
   isActive,
   isHighlighted,
   autoRefreshIndicatorState,
+  isArchiveReplayThread = false,
   canClose,
   isVertical,
   compact,
@@ -144,12 +146,24 @@ const SortableTab: React.FC<SortableTabProps> = ({
         {tab.pinned ? (
           <Pin size={11} />
         ) : compact ? (
-          <span className="tab__icon">
-            <PageTypeIcon type={page.type} size={15} />
+          <span
+            className={`tab__icon${isArchiveReplayThread ? " tab__icon--archive-replay" : ""}`}
+            title={isArchiveReplayThread ? "過去実況の再生対象" : undefined}
+          >
+            {isArchiveReplayThread ? (
+              <Play size={15} fill="currentColor" aria-hidden="true" />
+            ) : (
+              <PageTypeIcon type={page.type} size={15} />
+            )}
           </span>
         ) : (
           <span className="tab__title">{page.title}</span>
         )}
+        {isArchiveReplayThread && (!compact || tab.pinned) ? (
+          <span className="tab__archive-replay-indicator" title="過去実況の再生対象">
+            <Play size={13} fill="currentColor" aria-hidden="true" />
+          </span>
+        ) : null}
         {/* 変更理由: 共通タブバーでは2つのペインが同時に表示中のタブを持つため、
             どのタブが同じ画面に並んでいるか（左右の組）をタブ上の印で示す。 */}
         {paneBadge ? (
@@ -598,26 +612,29 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
             role="tablist"
             aria-orientation={isVertical ? "vertical" : "horizontal"}
           >
-            {items.map(({ tab, isActive, autoRefreshIndicatorState }, index) => (
-              <SortableTab
-                key={tab.id}
-                tab={tab}
-                index={index}
-                isActive={isActive}
-                isHighlighted={highlightedTabIds.has(tab.id)}
-                autoRefreshIndicatorState={autoRefreshIndicatorState}
-                canClose={canCloseTab}
-                isVertical={isVertical}
-                compact={isVertical && collapsed}
-                paneBadge={isActive && sectionLabel ? sectionLabel : undefined}
-                isPaneUnfocused={isActive && Boolean(sectionLabel) && !isPaneFocused}
-                wasDraggingRef={wasDraggingRef}
-                onSelect={onSelectTab}
-                onClose={onCloseTab}
-                onContextMenu={handleContextMenu}
-                onArrowNavigate={handleArrowNavigate}
-              />
-            ))}
+            {items.map(
+              ({ tab, isActive, autoRefreshIndicatorState, isArchiveReplayThread }, index) => (
+                <SortableTab
+                  key={tab.id}
+                  tab={tab}
+                  index={index}
+                  isActive={isActive}
+                  isHighlighted={highlightedTabIds.has(tab.id)}
+                  autoRefreshIndicatorState={autoRefreshIndicatorState}
+                  isArchiveReplayThread={isArchiveReplayThread}
+                  canClose={canCloseTab}
+                  isVertical={isVertical}
+                  compact={isVertical && collapsed}
+                  paneBadge={isActive && sectionLabel ? sectionLabel : undefined}
+                  isPaneUnfocused={isActive && Boolean(sectionLabel) && !isPaneFocused}
+                  wasDraggingRef={wasDraggingRef}
+                  onSelect={onSelectTab}
+                  onClose={onCloseTab}
+                  onContextMenu={handleContextMenu}
+                  onArrowNavigate={handleArrowNavigate}
+                />
+              ),
+            )}
             {/* 変更理由: 水平モードでは従来どおり溢れたときだけ外へ固定する。
                 垂直モードでは最終タブの直後に置き、一覧と一緒にスクロールさせる。 */}
             {!isVertical && !isTabListScrollable ? addTabButton : null}

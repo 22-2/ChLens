@@ -159,6 +159,15 @@
   background: var(--sys-color-accent);
 }
 
+.tab__archive-replay-indicator {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-left: var(--sys-space-1);
+  color: var(--sys-color-error);
+}
+
 .tab__close {
   display: flex;
   flex-shrink: 0;
@@ -437,6 +446,11 @@
 
 .tab--active .tab__icon {
   color: var(--sys-color-text);
+}
+
+.tab__icon--archive-replay,
+.tab--active .tab__icon--archive-replay {
+  color: var(--sys-color-error);
 }
 
 /* 変更理由: 簡易表示ではタイトルを隠してアイコンだけの細幅にする。
