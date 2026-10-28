@@ -154,6 +154,32 @@ describe("ライブチャットの新着表示", () => {
     expect(result.current.baseline).toBe(3);
   });
 
+  it("タブ復帰直後の取得分は流さず、その次の取得から流す", () => {
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: initial });
+    rerender({ ...initial, isActive: false });
+    rerender(initial);
+    rerender({ ...initial, isFetching: true });
+    rerender({ ...initial, isFetching: true, responses: rows(1, 2, 3, 4) });
+    expect(result.current.responses).toEqual(rows(1, 2, 3, 4));
+    rerender({ ...initial, responses: rows(1, 2, 3, 4) });
+    rerender({ ...initial, responses: rows(1, 2, 3, 4, 5) });
+    expect(result.current.pendingCount).toBe(1);
+  });
+
+  it("過去レスを読んでいる間は一括表示し、末尾に戻ると新着を流す", () => {
+    const following = { ...initial, isFollowing: true };
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: following });
+    rerender({ ...following, responses: rows(1, 2, 3, 4) });
+    expect(result.current.pendingCount).toBe(2);
+    rerender({ ...following, isFollowing: false, responses: rows(1, 2, 3, 4) });
+    expect(result.current.responses).toEqual(rows(1, 2, 3, 4));
+    rerender({ ...following, isFollowing: false, responses: rows(1, 2, 3, 4, 5) });
+    expect(result.current.responses).toEqual(rows(1, 2, 3, 4, 5));
+    rerender({ ...following, responses: rows(1, 2, 3, 4, 5) });
+    rerender({ ...following, responses: rows(1, 2, 3, 4, 5, 6) });
+    expect(result.current.pendingCount).toBe(1);
+  });
+
   it("流している途中で非表示になっても、復帰時は残りを待たずに表示する", () => {
     const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: initial });
     rerender({ ...initial, responses: rows(1, 2, 3, 4) });

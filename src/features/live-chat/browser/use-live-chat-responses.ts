@@ -56,6 +56,7 @@ export function useLiveChatResponses<T extends ResponseNumber>({
   isAutoRefreshEnabled,
   isFetching,
   intervalMs,
+  isFollowing = true,
   paused = false,
 }: {
   responses: T[];
@@ -65,6 +66,8 @@ export function useLiveChatResponses<T extends ResponseNumber>({
   isAutoRefreshEnabled: boolean;
   isFetching: boolean;
   intervalMs: number;
+  /** 末尾を追従している間だけ新着を流す。 */
+  isFollowing?: boolean;
   /** ポップアップを読んでいる間など、保留した新着を残して再生だけを止める。 */
   paused?: boolean;
 }) {
@@ -73,8 +76,9 @@ export function useLiveChatResponses<T extends ResponseNumber>({
   const pausedRef = useLatestRef(paused);
   // 流すのは自動更新で追いかけている最中だけ。手動更新やdat落ち後の取得、非表示の間に
   // 届いた分は利用者が待つ理由がないため、scopeを切り替えてその場で全件表示する。
-  const isFlowing = enabled && isActive && isAutoRefreshEnabled;
-  const scope = `${scopeKey}\u0000${isFlowing}`;
+  const eligible = enabled && isActive && isAutoRefreshEnabled;
+  const isFlowing = eligible && isFollowing;
+  const scope = `${scopeKey}\u0000${eligible}`;
   const lastNum = responses.at(-1)?.num ?? null;
   const [stored, setPlayback] = useState<PlaybackState>({
     scope,
@@ -87,6 +91,9 @@ export function useLiveChatResponses<T extends ResponseNumber>({
     setWasAutoRefreshEnabled(isAutoRefreshEnabled);
   }
   const hasJustEnabledAutoRefresh = isAutoRefreshEnabled && !wasAutoRefreshEnabled;
+  const [wasActive, setWasActive] = useState(isActive);
+  const hasJustActivated = isActive && !wasActive;
+  if (wasActive !== isActive) setWasActive(isActive);
   const [settled, setSettled] = useState({ scope, released: lastNum });
   let playback = stored;
   if (stored.scope !== scope) {
@@ -96,13 +103,15 @@ export function useLiveChatResponses<T extends ResponseNumber>({
       scope,
       baseline: lastNum,
       released: lastNum,
-      catchUp: isFlowing && hasJustEnabledAutoRefresh ? "waiting" : "none",
+      catchUp: eligible && (hasJustEnabledAutoRefresh || hasJustActivated) ? "waiting" : "none",
     };
   } else if (stored.baseline === null && lastNum !== null) {
     // 初回取得も全件をすぐ表示する。
     playback = releaseAll(stored, lastNum);
   }
   playback = advanceCatchUp(playback, lastNum, isFetching);
+  // 過去レスを読んでいる間は保留分を流さず、通常表示の末尾に同期する。
+  if (!isFlowing && playback.released !== lastNum) playback = releaseAll(playback, lastNum);
 
   let pending = isFlowing ? responses.filter((res) => res.num > (playback.released ?? 0)) : [];
   const [wasPaused, setWasPaused] = useState(paused);

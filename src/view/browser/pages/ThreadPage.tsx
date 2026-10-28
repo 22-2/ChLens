@@ -1,4 +1,12 @@
-import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import { recordDebugEvent } from "src/app/debug/debug-log";
 import { createLogger } from "src/app/logger";
@@ -465,6 +473,31 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // ポップアップを読む間は取得・追従・キュー再生を一緒に待機する。
   // タブを離れた後のポップアップ状態で、非表示タブのOverlay実況を止めない。
   const isThreadDisplayPaused = isActive && pauseAutoScrollOnPopup && popups.length > 0;
+  // 自動追従の結果は自動更新と再生の循環依存を避けて描画後に同期する。
+  const [liveChatFollowing, setLiveChatFollowing] = useState(false);
+  const [activation, setActivation] = useState({
+    isActive,
+    isAutoRefreshEnabled,
+    followedBeforeLeaving: false,
+    moveToBottom: false,
+  });
+  let currentActivation = activation;
+  if (
+    activation.isActive !== isActive ||
+    activation.isAutoRefreshEnabled !== isAutoRefreshEnabled
+  ) {
+    // 別タブに移る直前の追従状態を覚え、復帰時はその位置を引き継ぐ。
+    currentActivation = {
+      isActive,
+      isAutoRefreshEnabled,
+      followedBeforeLeaving: !isActive ? liveChatFollowing : activation.followedBeforeLeaving,
+      moveToBottom:
+        (isAutoRefreshEnabled && !activation.isAutoRefreshEnabled) ||
+        (isActive && !activation.isActive && activation.followedBeforeLeaving),
+    };
+    setActivation(currentActivation);
+  }
+  const moveToBottomOnEnable = currentActivation.moveToBottom;
   const liveChat = useLiveChatResponses({
     responses: filteredResponses,
     scopeKey: `${tabId}\u0000${page.threadUrl}`,
@@ -474,6 +507,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     isAutoRefreshEnabled,
     isFetching: loading,
     intervalMs: readThreadAutoRefreshIntervalSec(page.threadUrl) * 1000,
+    isFollowing: liveChatFollowing,
     paused: isThreadDisplayPaused,
   });
   const displayedResponses = liveChat.responses;
@@ -557,6 +591,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
     enabled: isActiveAutoRefreshEnabled,
     startAtBottom: startAutoRefreshAtBottom,
+    moveToBottomOnEnable,
     threadUrl: page.threadUrl,
     refreshController,
     expired: shouldStopFetching,
@@ -606,6 +641,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       isDraining: liveChat.isDraining,
     }),
   });
+
+  useLayoutEffect(() => {
+    // 循環する二つのフックの間で、レイアウト測定結果を次の描画へ渡す。
+    // oxlint-disable-next-line react/set-state-in-effect
+    setLiveChatFollowing(canAutoScroll);
+  }, [canAutoScroll]);
 
   const handleFollowNextThread = useCallback(
     (nextThread: Pick<IThread, "title" | "url">) => {

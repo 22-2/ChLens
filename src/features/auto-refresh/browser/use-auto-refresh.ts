@@ -26,6 +26,8 @@ export interface UseAutoRefreshOptions {
   scopeUrl?: string;
   /** 自動更新が有効なまま新しいスレッドを表示するとき、最初に最下部へ同期する。 */
   startAtBottom?: boolean;
+  /** 自動更新の再有効化で現在の閲覧位置を維持する場合は false。 */
+  moveToBottomOnEnable?: boolean;
   expired: boolean;
   loading: boolean;
   refreshController: ThreadRefreshController;
@@ -75,6 +77,7 @@ export function useAutoRefresh({
   enabled,
   scopeUrl,
   startAtBottom = false,
+  moveToBottomOnEnable = true,
   expired,
   loading,
   refreshController,
@@ -235,7 +238,8 @@ export function useAutoRefresh({
     // ポップアップ中のONでも本文を動かさず、閉じてから通常間隔で取得を再開する。
     if (pauseRefresh) return;
 
-    const scrollContainer = moveToThreadBottom();
+    // タブ復帰では閲覧位置を維持し、明示的な自動更新開始時だけ末尾へ移動する。
+    const scrollContainer = moveToBottomOnEnable ? moveToThreadBottom() : getScrollContainer();
     viewWindow.requestAnimationFrame(() => {
       syncCanAutoScroll();
     });
@@ -257,6 +261,8 @@ export function useAutoRefresh({
     pauseRefresh,
     expired,
     moveToThreadBottom,
+    moveToBottomOnEnable,
+    getScrollContainer,
     requestRefreshFromHook,
     syncCanAutoScroll,
     viewWindow,
