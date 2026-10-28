@@ -295,10 +295,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const mediaViewerScopeId = getThreadMediaViewerScopeId(tabId, page.threadUrl);
   const openMedia = useMediaViewerStore((state) => state.openMediaFromUrl);
   const openMediaFromUrl = useCallback(
-    (url: string, resImages?: string[]) => {
+    (url: string, resImages?: string[], resSaveImages?: string[]) => {
       // 変更理由: 画像ビューアーのストアは画面全体で共有されるため、
       // 開いたスレッドを識別して、別スレッドの破棄処理が表示中の画像へ影響しないようにする。
-      openMedia(url, resImages, mediaViewerScopeId);
+      if (resSaveImages) {
+        openMedia(url, resImages, mediaViewerScopeId, resSaveImages);
+      } else {
+        openMedia(url, resImages, mediaViewerScopeId);
+      }
     },
     [mediaViewerScopeId, openMedia],
   );

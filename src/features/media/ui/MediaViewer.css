@@ -92,6 +92,13 @@
   background: var(--sys-color-media-button-hover-bg);
 }
 
+.media-viewer__save-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sys-space-2);
+}
+
 .media-viewer__btn:disabled {
   opacity: 0.38;
   cursor: default;

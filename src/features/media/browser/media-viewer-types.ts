@@ -5,5 +5,7 @@ export interface ViewerState {
   label: string;
   /** 同じレス内の画像URL一覧（前後移動に使用） */
   images?: string[];
+  /** 同じレス内の画像URL一覧（一括保存に使用） */
+  saveImages?: string[];
   currentIndex?: number;
 }

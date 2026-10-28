@@ -4,12 +4,6 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const manualImageLoadingMock = vi.hoisted(() => ({ value: false }));
-const saveMock = vi.hoisted(() => vi.fn<(url: string, filename: string) => Promise<void>>());
-const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
-vi.mock("src/app/platform/DownloadManager", () => ({
-  platformDownloadManager: { save: saveMock },
-}));
-vi.mock("src/view/browser/hooks/use-toast", () => ({ useToast: () => toastMock }));
 const requestMediaImageDownloadMock = vi.hoisted(() =>
   vi.fn<(key: string, url: string) => Promise<void>>(),
 );
@@ -35,9 +29,6 @@ import { useMediaImageStore } from "../browser/use-media-image-store";
 import { ResMediaGallery } from "./ResMediaGallery";
 
 beforeEach(() => {
-  saveMock.mockReset().mockResolvedValue(undefined);
-  toastMock.success.mockReset();
-  toastMock.error.mockReset();
   requestMediaImageDownloadMock.mockReset();
   requestMediaImageDownloadMock.mockImplementation((key, url) => {
     useMediaImageStore.getState().requestImage(key, url);
@@ -53,27 +44,14 @@ afterEach(() => {
 });
 
 describe("ResMediaGallery", () => {
-  it("同じレスの画像を重複なく元のサイズで保存し、失敗しても残りを保存する", async () => {
-    saveMock.mockRejectedValueOnce(new Error("保存できません"));
+  it("複数画像があっても一括保存操作はギャラリーに表示しない", () => {
     render(
       <ResMediaGallery
-        urls={[
-          "https://imgur.com/Example",
-          "https://example.com/photo.png",
-          "https://example.com/photo.png",
-          "https://example.com/video.mp4",
-        ]}
+        urls={["https://example.com/photo.png", "https://example.com/photo-2.png"]}
         onUrlClick={() => {}}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "レスの画像をすべて保存" }));
-    await waitFor(() =>
-      expect(toastMock.error).toHaveBeenCalledWith("画像 2 件のうち 1 件を保存できませんでした"),
-    );
-    expect(saveMock.mock.calls).toEqual([
-      ["https://i.imgur.com/Example.jpg", "Example.jpg"],
-      ["https://example.com/photo.png", "photo.png"],
-    ]);
+    expect(screen.queryByRole("button", { name: "レスの画像をすべて保存" })).toBeNull();
   });
 
   it("画像がないレスには保存ボタンを出さない", () => {
@@ -96,7 +74,7 @@ describe("ResMediaGallery", () => {
     fireEvent.load(image);
     expect(onUrlClick).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("link", { name: imageUrl }));
-    expect(onUrlClick).toHaveBeenCalledWith(imageUrl, [imageUrl], 0);
+    expect(onUrlClick).toHaveBeenCalledWith(imageUrl, [imageUrl], 0, undefined, [imageUrl]);
   });
 
   it("別のギャラリーでも取得済み状態を共有する", async () => {
@@ -320,17 +298,13 @@ describe("ResMediaGallery", () => {
       expect(screen.getByRole("link", { name: "Xで投稿を開く" })).toHaveAttribute("href", rawUrl);
       expect(resolve).toHaveBeenCalledWith(rawUrl);
 
-      fireEvent.click(screen.getByRole("button", { name: "レスの画像をすべて保存" }));
-      await waitFor(() =>
-        expect(toastMock.success).toHaveBeenCalledWith("画像を 2 件保存しました"),
-      );
-      expect(saveMock).toHaveBeenCalledTimes(2);
-
       fireEvent.click(screen.getByRole("link", { name: "写真の説明" }));
       expect(onUrlClick).toHaveBeenCalledWith(
         "https://pbs.twimg.com/media/photo.jpg",
         ["https://pbs.twimg.com/media/photo.jpg", "https://pbs.twimg.com/media/second-photo.jpg"],
         0,
+        undefined,
+        ["https://pbs.twimg.com/media/photo.jpg", "https://pbs.twimg.com/media/second-photo.jpg"],
       );
     } finally {
       resolve.mockRestore();

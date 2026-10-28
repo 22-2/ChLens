@@ -19,6 +19,7 @@ export type UrlClickHandler = (
   resImages?: string[],
   button?: 0 | 1,
   mode?: UrlHandlingMode,
+  resSaveImages?: string[],
 ) => boolean | void;
 
 export type UrlContextMenuHandler = (

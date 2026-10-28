@@ -5,6 +5,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
 } from "react";
 import { createLogger } from "src/app/logger";
 import { platformDownloadManager } from "src/app/platform/DownloadManager";
@@ -15,7 +16,7 @@ import { copyPngImageWithNotice } from "src/view/browser/utils/clipboard";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
 
 import { deleteImgurImage } from "../application/imgur-deletehash";
-import { getImageDownloadFilename } from "./image-save";
+import { getImageDownloadFilename, saveMediaImage } from "./image-save";
 import { createViewerClipboardPng } from "./media-viewer-copy";
 import type { ViewerState } from "./media-viewer-types";
 import {
@@ -54,6 +55,8 @@ export interface MediaViewerProps {
   onZoomReset: () => void;
   onZoomIn: () => void;
   onSave: () => void;
+  onSaveAllImages: () => void;
+  isSavingAllImages: boolean;
   onCopy: () => void;
   canDeleteImage: boolean;
   onDeleteImage: () => void;
@@ -109,6 +112,7 @@ export function useMediaViewerController(
   const viewSurface = useViewSurface();
   const { window: viewWindow } = viewSurface;
   const toast = useToast();
+  const [isSavingAllImages, setIsSavingAllImages] = useState(false);
   const viewer = useMediaViewerStore((state) =>
     state.viewerScopeId === scopeId ? state.viewer : null,
   );
@@ -540,6 +544,30 @@ export function useMediaViewerController(
     }
   };
 
+  const saveAllViewerImages = async () => {
+    const images = viewer.saveImages;
+    if (!images || images.length < 2 || isSavingAllImages) {
+      return;
+    }
+
+    setIsSavingAllImages(true);
+    let failed = 0;
+    for (const url of images) {
+      try {
+        await saveMediaImage(url);
+      } catch (error) {
+        failed++;
+        logger.error("画像の保存に失敗しました", { url, error });
+      }
+    }
+    setIsSavingAllImages(false);
+    if (failed > 0) {
+      toast.error(`画像 ${images.length} 件のうち ${failed} 件を保存できませんでした`);
+    } else {
+      toast.success(`画像を ${images.length} 件保存しました`);
+    }
+  };
+
   const deleteViewerImage = async () => {
     const imageUrl = viewer.label;
     // Imgurからの削除は元に戻せないため、誤操作を防ぐために確認してから実行する。
@@ -584,6 +612,10 @@ export function useMediaViewerController(
     onSave: () => {
       void saveViewerImage();
     },
+    onSaveAllImages: () => {
+      void saveAllViewerImages();
+    },
+    isSavingAllImages,
     onCopy: () => {
       void copyPngImageWithNotice(
         async () => {

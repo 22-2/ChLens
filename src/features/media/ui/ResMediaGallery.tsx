@@ -1,5 +1,5 @@
 import { parseMessage } from "@chlen/chlib";
-import { Download, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -15,11 +15,11 @@ import {
 import { toViewerImageUrl } from "src/core/util/url-media";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
-import { useToast } from "src/view/browser/hooks/use-toast";
 import { ConfirmableLink } from "src/view/browser/ui/ConfirmableLink";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
 import { EXTERNAL_LINK_CONFIRM_CONFIG_KEY } from "src/view/browser/utils/external-link-analysis";
+import type { UrlHandlingMode } from "src/view/browser/utils/link-routing";
 
 import { imgurVideoResolver, isImgurVideoResolutionCandidate } from "../application/imgur-album";
 import {
@@ -30,7 +30,6 @@ import {
 } from "../application/twitter-post";
 import { requestMediaImageDownload } from "../browser/image-download-preflight";
 import { collectImageMenuItems } from "../browser/image-menu-contributions";
-import { saveMediaImage } from "../browser/image-save";
 import { isImageHashPending, useImageHashStore } from "../browser/use-image-hash-store";
 import {
   type MediaImageState,
@@ -123,6 +122,8 @@ export type MediaUrlClickHandler = (
   url: string,
   resImages?: string[],
   button?: 0 | 1,
+  mode?: UrlHandlingMode,
+  resSaveImages?: string[],
 ) => boolean | void;
 
 interface ResMediaGalleryProps {
@@ -295,6 +296,7 @@ function TwitterPostCard({
   embed,
   post,
   manualImageLoading,
+  resSaveImages,
   onUrlClick,
   onMiddleMouseDown,
   onAuxClick,
@@ -303,6 +305,7 @@ function TwitterPostCard({
   embed: ExternalMediaEmbed;
   post: TwitterPost;
   manualImageLoading: boolean;
+  resSaveImages: string[];
   onUrlClick: MediaUrlClickHandler;
   onMiddleMouseDown: (
     event: React.MouseEvent<HTMLElement>,
@@ -494,7 +497,7 @@ function TwitterPostCard({
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    onUrlClick(media.url, imageUrls, 0);
+                    onUrlClick(media.url, imageUrls, 0, undefined, resSaveImages);
                   }}
                   onMouseDown={(event) => onMiddleMouseDown(event, media.url, imageUrls)}
                   onAuxClick={(event) => onAuxClick(event, media.url, imageUrls)}
@@ -639,8 +642,6 @@ export function ResMediaGallery({
   const { value: confirmExternal } = useConfigBooleanSetting(EXTERNAL_LINK_CONFIRM_CONFIG_KEY);
   const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
   const { menu, openMenu } = useExternalLinkMenu();
-  const toast = useToast();
-  const [isSavingImages, setIsSavingImages] = useState(false);
   const imageStates = useMediaImageStore((state) => state.images);
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
@@ -712,24 +713,6 @@ export function ResMediaGallery({
     ]),
   ];
 
-  const saveImages = async () => {
-    setIsSavingImages(true);
-    let failed = 0;
-    for (const url of saveImageUrls) {
-      try {
-        await saveMediaImage(url);
-      } catch (error) {
-        failed++;
-        logger.error("画像の保存に失敗しました", { url, error });
-      }
-    }
-    setIsSavingImages(false);
-    if (failed > 0) {
-      toast.error(`画像 ${saveImageUrls.length} 件のうち ${failed} 件を保存できませんでした`);
-    } else {
-      toast.success(`画像を ${saveImageUrls.length} 件保存しました`);
-    }
-  };
   const pageOrigin = typeof window === "undefined" ? undefined : window.location.origin;
   const expandedMediaItem = useMemo(
     () =>
@@ -852,17 +835,6 @@ export function ResMediaGallery({
 
   return (
     <>
-      {saveImageUrls.length > 0 && (
-        <button
-          type="button"
-          className="res__save-images"
-          disabled={isSavingImages}
-          onClick={() => void saveImages()}
-        >
-          <Download size={14} aria-hidden="true" />
-          {isSavingImages ? "保存中…" : "レスの画像をすべて保存"}
-        </button>
-      )}
       <div className="res__thumbs" ref={thumbsRef}>
         {mediaItems.map((item) => {
           if (item.type === "image") {
@@ -923,11 +895,11 @@ export function ResMediaGallery({
                         setExpandedVideoUrl(item.rawUrl);
                         return;
                       }
-                      onUrlClick(item.rawUrl, imageUrls, 0);
+                      onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls);
                     });
                     return;
                   }
-                  onUrlClick(item.rawUrl, imageUrls, 0);
+                  onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls);
                 }}
                 onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
                 onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
@@ -1109,6 +1081,7 @@ export function ResMediaGallery({
                   embed={expandedMediaItem.embed}
                   post={state.post}
                   manualImageLoading={manualImageLoading}
+                  resSaveImages={saveImageUrls}
                   onUrlClick={onUrlClick}
                   onMiddleMouseDown={handleMiddleMouseDown}
                   onAuxClick={handleMiddleAuxClick}

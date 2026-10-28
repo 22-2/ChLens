@@ -1,4 +1,4 @@
-import { Copy, ExternalLink, Trash2, Undo2 } from "lucide-react";
+import { Copy, Download, ExternalLink, Trash2, Undo2 } from "lucide-react";
 import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { Spinner } from "src/view/browser/ui/Spinner";
@@ -28,6 +28,8 @@ export function MediaViewer({
   onNavigatePrev,
   onNavigateNext,
   onSave,
+  onSaveAllImages,
+  isSavingAllImages,
   onCopy,
   canDeleteImage,
   onDeleteImage,
@@ -137,6 +139,18 @@ export function MediaViewer({
               <button type="button" className="media-viewer__btn" onClick={onSave} title="保存">
                 保存
               </button>
+              {viewer.saveImages && viewer.saveImages.length > 1 && (
+                <button
+                  type="button"
+                  className="media-viewer__btn media-viewer__save-all"
+                  disabled={isSavingAllImages}
+                  onClick={onSaveAllImages}
+                  title="レスの画像をすべて保存"
+                >
+                  <Download size={14} aria-hidden="true" />
+                  {isSavingAllImages ? "保存中…" : "レスの画像をすべて保存"}
+                </button>
+              )}
               {/* 変更理由: 削除キーを持つこのアプリの投稿画像だけ削除を出し、他人の画像に操作を出さない。 */}
               {canDeleteImage && (
                 <button

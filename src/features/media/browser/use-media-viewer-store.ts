@@ -23,7 +23,12 @@ interface MediaViewerStoreState {
   viewerScopeId: string | null;
   viewerScale: number;
   isLoading: boolean;
-  openMediaFromUrl: (url: string, resImages: string[] | undefined, scopeId: string) => void;
+  openMediaFromUrl: (
+    url: string,
+    resImages: string[] | undefined,
+    scopeId: string,
+    resSaveImages?: string[],
+  ) => void;
   closeViewer: (scopeId: string) => void;
   navigateViewer: (delta: number) => void;
   zoomIn: () => void;
@@ -39,7 +44,7 @@ export const useMediaViewerStore = create<MediaViewerStoreState>((set, get) => (
   viewerScale: 1,
   isLoading: false,
 
-  openMediaFromUrl: (url, resImages, scopeId) => {
+  openMediaFromUrl: (url, resImages, scopeId, resSaveImages) => {
     const imageUrl = toViewerImageUrl(url);
     if (!imageUrl) {
       requestExternalLink(url, {
@@ -52,6 +57,7 @@ export const useMediaViewerStore = create<MediaViewerStoreState>((set, get) => (
 
     const images = resImages && resImages.length > 1 ? resImages : undefined;
     const currentIndex = images ? Math.max(0, images.indexOf(url)) : undefined;
+    const saveImages = resSaveImages ?? resImages;
 
     // ズーム途中で画像が切り替わると視覚的な違和感が大きいため、
     // 最初からオリジナル解像度を表示して表示の一貫性を優先する。
@@ -62,6 +68,7 @@ export const useMediaViewerStore = create<MediaViewerStoreState>((set, get) => (
         src: initialSrc,
         label: url,
         images,
+        ...(saveImages ? { saveImages: [...new Set(saveImages)] } : {}),
         currentIndex,
       },
       viewerScopeId: scopeId,

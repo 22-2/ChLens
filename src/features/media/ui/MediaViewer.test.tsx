@@ -44,6 +44,8 @@ describe("MediaViewer", () => {
         onZoomReset={() => {}}
         onZoomIn={() => {}}
         onSave={() => {}}
+        onSaveAllImages={() => {}}
+        isSavingAllImages={false}
         onCopy={() => {}}
         canDeleteImage={false}
         onDeleteImage={() => {}}
@@ -130,6 +132,8 @@ describe("MediaViewer", () => {
         onZoomReset={() => {}}
         onZoomIn={() => {}}
         onSave={() => {}}
+        onSaveAllImages={() => {}}
+        isSavingAllImages={false}
         onCopy={() => {}}
         canDeleteImage={false}
         onDeleteImage={() => {}}

@@ -21,7 +21,7 @@ import {
 interface UseUrlHandlersParams {
   threadUrl: string;
   dispatch: Dispatch<TabAction>;
-  openMediaFromUrl: (url: string, resImages?: string[]) => void;
+  openMediaFromUrl: (url: string, resImages?: string[], resSaveImages?: string[]) => void;
   addPopupContextMenu: (
     clientX: number,
     clientY: number,
@@ -36,6 +36,7 @@ interface UseUrlHandlersResult {
     resImages?: string[],
     button?: 0 | 1,
     mode?: typeof RESPECT_DEFAULT_EXTERNAL,
+    resSaveImages?: string[],
   ) => boolean;
   handleUrlContextMenu: (
     rawUrl: string,
@@ -76,12 +77,17 @@ export function useUrlHandlers({
       // 変更理由: クリック経路はホスト互換チェック付きのstrict版を使う。
       // オムニバー入力では parseInternalBrowserPage（広い許容）が使われる。
       internalPage = parseInternalBrowserPageStrict(absoluteUrl),
+      resSaveImages?: string[],
     ) => {
       // 変更理由: /<board>/ 形式が全ドメインで内部遷移対象になったため、
       // imgur のようにURLが画像として解釈できる場合は button=0 で画像ビューアを優先する。
       // こうすることで「板URL広受け入れ」と「imgur サムネクリック → 画像ビューア」が共存できる。
       if (button === 0 && toViewerImageUrl(absoluteUrl) != null) {
-        openMediaFromUrl(absoluteUrl, resImages);
+        if (resSaveImages) {
+          openMediaFromUrl(absoluteUrl, resImages, resSaveImages);
+        } else {
+          openMediaFromUrl(absoluteUrl, resImages);
+        }
         return;
       }
 
@@ -113,6 +119,8 @@ export function useUrlHandlers({
             viewWindow.open(url, "_blank", "noopener,noreferrer");
           },
         });
+      } else if (resSaveImages) {
+        openMediaFromUrl(absoluteUrl, resImages, resSaveImages);
       } else openMediaFromUrl(absoluteUrl, resImages);
     },
     [dispatch, openMediaFromUrl, viewWindow],
@@ -163,13 +171,14 @@ export function useUrlHandlers({
       resImages?: string[],
       button: 0 | 1 = 0,
       mode?: typeof RESPECT_DEFAULT_EXTERNAL,
+      resSaveImages?: string[],
     ) => {
       const absoluteUrl = resolveAbsoluteUrl(rawUrl, threadUrl);
       const internalPage = parseInternalBrowserPageStrict(absoluteUrl);
       if (mode === RESPECT_DEFAULT_EXTERNAL) {
         if (!internalPage && !isExternalLinkConfirmationEnabled()) return false;
       }
-      openResolvedUrl(absoluteUrl, button, resImages, internalPage);
+      openResolvedUrl(absoluteUrl, button, resImages, internalPage, resSaveImages);
       return true;
     },
     [openResolvedUrl, threadUrl],
