@@ -417,34 +417,37 @@ describe("WritePanelContent", () => {
 
     const dialog = screen.getByRole("dialog", { name: "書き込み設定" });
     expect(
-      within(dialog).getByRole("checkbox", { name: "Ctrl+Enterで書き込む" }),
+      within(dialog).getByRole("switch", { name: "Ctrl+Enterで書き込む" }),
     ).toBeInTheDocument();
-    expect(within(dialog).getByRole("checkbox", { name: "sageで書き込む" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("textbox", { name: "名前" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("textbox", { name: "メール" })).toBeInTheDocument();
     expect(
-      within(dialog).getByRole("checkbox", { name: "レス後に書き込みパネルを閉じる" }),
+      within(dialog).queryByRole("switch", { name: "sageで書き込む" }),
+    ).not.toBeInTheDocument();
+    expect(dialog).toHaveTextContent("この板のすべてのスレッドで共有");
+    expect(
+      within(dialog).getByRole("switch", { name: "レス後に書き込みパネルを閉じる" }),
     ).toBeInTheDocument();
-    expect(
-      within(dialog).getByRole("checkbox", { name: "貼り付け時にURLパラメータを除去する" }),
-    ).toBeChecked();
 
-    fireEvent.click(within(dialog).getByRole("checkbox", { name: "Ctrl+Enterで書き込む" }));
-    fireEvent.click(within(dialog).getByRole("checkbox", { name: "sageで書き込む" }));
-    fireEvent.click(
-      within(dialog).getByRole("checkbox", { name: "レス後に書き込みパネルを閉じる" }),
-    );
-    fireEvent.click(
-      within(dialog).getByRole("checkbox", { name: "貼り付け時にURLパラメータを除去する" }),
-    );
+    fireEvent.click(within(dialog).getByRole("switch", { name: "Ctrl+Enterで書き込む" }));
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "メール" }), {
+      target: { value: "sage" },
+    });
+    fireEvent.click(within(dialog).getByRole("switch", { name: "レス後に書き込みパネルを閉じる" }));
 
-    expect(configSetMock).toHaveBeenCalledWith("write_submit_ctrl_enter", "on");
-    expect(configSetMock).toHaveBeenCalledWith("write_close_panel_after_submit", "on");
     await waitFor(() =>
       expect(configSetMock).toHaveBeenCalledWith(
         "site_board_settings",
-        expect.stringContaining('"write_sanitize_urls_on_paste":"off"'),
+        expect.stringContaining('"write_submit_ctrl_enter":"on"'),
       ),
     );
-    expect(mocks.setSage).toHaveBeenCalledWith(true);
+    await waitFor(() =>
+      expect(configSetMock).toHaveBeenCalledWith(
+        "site_board_settings",
+        expect.stringContaining('"write_close_panel_after_submit":"on"'),
+      ),
+    );
+    expect(mocks.setMail).toHaveBeenCalledWith("sage");
 
     fireEvent.click(within(dialog).getByRole("button", { name: "閉じる" }));
     expect(screen.queryByRole("dialog", { name: "書き込み設定" })).not.toBeInTheDocument();

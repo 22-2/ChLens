@@ -17,9 +17,7 @@ import { wait } from "src/app/Defer";
 import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import type { HttpResponse, WriteFormData, WriteFormField } from "src/app/platform/types";
-import { getStore2String, setStore2String } from "src/app/Store2Storage";
-import { container } from "src/service-container/index";
-import { useScopedConfigBooleanSetting } from "src/view/browser/hooks/use-scoped-config-boolean-setting";
+import { useScopedConfigStringSetting } from "src/view/browser/hooks/use-scoped-config-string-setting";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
@@ -41,10 +39,6 @@ const logger = createLogger("write");
 // -----------------------------------------------------------------------
 // 定数
 // -----------------------------------------------------------------------
-const NAME_KEY = "chlens_write_name";
-const MAIL_KEY = "chlens_write_mail";
-// sageの切り替えは投稿ごとではなく書き込み設定モーダルで管理し、パネルを簡潔に保つ。
-const SAGE_CONFIG_KEY = "sage_flag";
 // cs_write.js が ping に対して期待する応答文字列
 const PONG_MSG = "write_iframe_pong";
 // postMessage を受け取れない環境でも「書き込み中...」で固着しないための上限待機時間
@@ -58,7 +52,6 @@ export type WriteStatus = "idle" | "submitting" | "confirm" | "success" | "error
 export interface UseWriteResult {
   name: string;
   mail: string;
-  sage: boolean;
   message: string;
   status: WriteStatus;
   statusText: string;
@@ -69,7 +62,6 @@ export interface UseWriteResult {
   iframeRef: RefObject<HTMLIFrameElement | null>;
   setName: (v: string) => void;
   setMail: (v: string) => void;
-  setSage: (v: boolean) => void;
   setMessage: (v: string) => void;
   submit: (messageOverride?: string) => Promise<void>;
   submitConfirmation: (submission: WriteConfirmationSubmission) => Promise<void>;
@@ -202,15 +194,12 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
   // Windowへ登録し、メイン窓のライフサイクルに依存しないようにする。
   const { window: viewWindow } = useViewSurface();
 
-  const [name, setNameState] = useState(
-    () => getStore2String(NAME_KEY) ?? container.config.get("default_name") ?? "",
+  const { value: name, setValue: setName } = useScopedConfigStringSetting(
+    "default_name",
+    threadUrl,
   );
-  const [mail, setMailState] = useState(
-    () => getStore2String(MAIL_KEY) ?? container.config.get("default_mail") ?? "",
-  );
-  // 板ごとのsage上書きを投稿時にも適用し、設定画面で選んだ値と投稿欄の表示を一致させる。
-  const { value: sage, setValue: setSage } = useScopedConfigBooleanSetting(
-    SAGE_CONFIG_KEY,
+  const { value: mail, setValue: setMail } = useScopedConfigStringSetting(
+    "default_mail",
     threadUrl,
   );
   const [message, setMessageState] = useState(() => draft ?? "");
@@ -308,17 +297,6 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
   }, [draft]);
 
   const canSubmit = status === "idle" && threadUrl !== "" && message.trim() !== "";
-
-  // 名前・メールを localStorage に保存
-  const setName = useCallback((v: string) => {
-    setNameState(v);
-    void setStore2String(NAME_KEY, v);
-  }, []);
-
-  const setMail = useCallback((v: string) => {
-    setMailState(v);
-    void setStore2String(MAIL_KEY, v);
-  }, []);
 
   // 書き込み成功後、少し待ってから idle に戻す
   useEffect(() => {
@@ -446,10 +424,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
       const messageToSubmit = messageOverride ?? message;
       if (!canSubmit || !messageToSubmit.trim()) return;
 
-      // 変更理由: eddibbは認証ページで発行した#トークンをメール欄で認証するため、
-      // sage設定がONでも認証トークンを「sage」で上書きしない。
-      const effectiveMail = sage && !isWriteAuthToken(threadUrl, mail) ? "sage" : mail;
-      const formData = buildFormData(threadUrl, name, effectiveMail, messageToSubmit);
+      const formData = buildFormData(threadUrl, name, mail, messageToSubmit);
       if (!formData) {
         pendingSubmittedWriteRef.current = null;
         setStatus("error");
@@ -462,7 +437,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
         threadUrl,
         message: messageToSubmit,
         inputName: name,
-        inputMail: effectiveMail,
+        inputMail: mail,
         submittedAt,
       };
 
@@ -569,7 +544,7 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
       iframe.addEventListener("load", onLoad);
       iframe.src = "about:blank";
     },
-    [armSubmitWatchdog, canSubmit, handleWriteResult, threadUrl, name, mail, sage, message],
+    [armSubmitWatchdog, canSubmit, handleWriteResult, threadUrl, name, mail, message],
   );
 
   const submitConfirmation = useCallback(
@@ -641,7 +616,6 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
   return {
     name,
     mail,
-    sage,
     message,
     status,
     statusText,
@@ -652,7 +626,6 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
     iframeRef,
     setName,
     setMail,
-    setSage,
     setMessage,
     submit,
     submitConfirmation,

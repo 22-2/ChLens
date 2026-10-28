@@ -1,5 +1,20 @@
-import { Clipboard, ExternalLink, ImagePlus, MoreVertical, Settings } from "lucide-react";
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  ArrowBigUp,
+  Clipboard,
+  ExternalLink,
+  ImagePlus,
+  MoreVertical,
+  Settings,
+} from "lucide-react";
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { createLogger } from "src/app/logger";
 import { extractUrlsFromMessage, toViewerImageUrl } from "src/core/util/url-media";
@@ -24,11 +39,13 @@ import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { Dialog } from "src/view/browser/ui/Dialog";
-import { CheckboxField } from "src/view/browser/ui/FormControls";
+import { SettingRow, SwitchControl, TextControl } from "src/view/browser/ui/FormControls";
 import { Popover } from "src/view/browser/ui/Popover";
 import { copyText } from "src/view/browser/utils/clipboard";
+import { getResizeObserverForWindow } from "src/view/browser/utils/dom";
 import { sanitizeUrlsInText } from "src/view/browser/utils/url-tracking";
 import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
+import { WRITE_SETTING_COPY } from "src/view/browser/utils/write-settings";
 import { findUrlTrackingWarning, findWriteWarnings } from "src/view/browser/utils/write-warning";
 
 const logger = createLogger("write");
@@ -119,17 +136,14 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   // パネル内の歯車モーダルへまとめて、必要な時だけ変更できるようにする。
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { value: submitWithCtrlEnter, setValue: setSubmitWithCtrlEnter } = useConfigBooleanSetting(
-    WRITE_SUBMIT_CTRL_ENTER_KEY,
-  );
+  const { value: submitWithCtrlEnter, setValue: setSubmitWithCtrlEnter } =
+    useScopedConfigBooleanSetting(WRITE_SUBMIT_CTRL_ENTER_KEY, threadUrl);
   const { value: closePanelAfterSubmit, setValue: setClosePanelAfterSubmit } =
-    useConfigBooleanSetting(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY);
-  const { value: sanitizeUrlsOnPaste, setValue: setSanitizeUrlsOnPaste } =
-    useScopedConfigBooleanSetting(WRITE_SANITIZE_URLS_ON_PASTE_KEY, threadUrl);
+    useScopedConfigBooleanSetting(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY, threadUrl);
+  const { value: sanitizeUrlsOnPaste } = useConfigBooleanSetting(WRITE_SANITIZE_URLS_ON_PASTE_KEY);
   const {
     name,
     mail,
-    sage,
     message,
     status,
     statusText,
@@ -140,7 +154,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     iframeRef,
     setName,
     setMail,
-    setSage,
     setMessage,
     submit,
     submitConfirmation,
@@ -155,6 +168,28 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     "write_pre_submit_warnings",
     threadUrl,
   );
+
+  // 入力・折り返しに合わせて1行から20行まで伸ばし、それ以上は欄内をスクロールする。
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const resize = () => {
+      const style = viewWindow.getComputedStyle(textarea);
+      const lineHeight =
+        Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.4;
+      const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
+      const border =
+        Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
+      textarea.style.height = "0px";
+      textarea.style.height = `${Math.min(textarea.scrollHeight + border, lineHeight * 20 + padding + border)}px`;
+    };
+    resize();
+    // 横幅が変わって改行位置だけが変わる場合も高さを更新する。
+    const ResizeObserverConstructor = getResizeObserverForWindow(viewWindow);
+    const observer = ResizeObserverConstructor ? new ResizeObserverConstructor(resize) : null;
+    if (textarea.parentElement) observer?.observe(textarea.parentElement);
+    return () => observer?.disconnect();
+  }, [message, status, viewWindow]);
 
   const isSubmitting = status === "submitting";
   // 変更理由: 投稿前の本文から画像だけを既存ビューアへ渡し、URLの復元や
@@ -452,13 +487,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     [setSubmitWithCtrlEnter],
   );
 
-  const handleSageChange = useCallback(
-    (checked: boolean) => {
-      setSage(checked);
-    },
-    [setSage],
-  );
-
   const handleClosePanelAfterSubmitChange = useCallback(
     (checked: boolean) => {
       setClosePanelAfterSubmit(checked);
@@ -519,30 +547,51 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                 </select>
               </label>
             )}
-            <div className="write-panel__header-row">
-              <label className="write-panel__field-group">
-                <span className="write-panel__field-label">名前</span>
-                <input
-                  className="write-panel__input"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={isSubmitting}
-                  placeholder="名無し"
-                />
-              </label>
-              <label className="write-panel__field-group write-panel__field-group--grow">
-                <span className="write-panel__field-label">メール</span>
-                <input
-                  className="write-panel__input"
-                  type="text"
-                  value={sage ? "sage" : mail}
-                  onChange={(e) => setMail(e.target.value)}
-                  disabled={isSubmitting || sage}
-                  placeholder=""
-                />
-              </label>
-              {/* 投稿操作を入力欄の行へ寄せ、本文欄の縦幅を確保する。 */}
+            <input
+              ref={imgurFileInputRef}
+              className="write-panel__file-input"
+              type="file"
+              accept="image/*"
+              aria-label="Imgurに投稿する画像を選択"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = "";
+                if (file) void runImgurUpload(async () => file);
+              }}
+            />
+            <div className="write-panel__body-row">
+              <textarea
+                ref={textareaRef}
+                className="write-panel__textarea"
+                rows={1}
+                aria-label="本文"
+                value={message}
+                onPaste={handleMessagePaste}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={handleTextareaKeyDown}
+                disabled={isSubmitting || isImgurUploading}
+                placeholder={threadUrl ? "本文を入力..." : "スレッドを開いてから書き込んでください"}
+              />
+              <div className="write-panel__side">
+                <button
+                  type="submit"
+                  className="write-panel__btn write-panel__btn--primary"
+                  disabled={!canSubmit || isSubmitting || isImgurUploading}
+                  aria-label="書き込む"
+                  title="書き込む"
+                >
+                  <ArrowBigUp size={18} aria-hidden="true" />
+                </button>
+                {status === "error" && (
+                  <button
+                    type="button"
+                    className="write-panel__btn write-panel__btn--secondary"
+                    onClick={handleRetry}
+                  >
+                    再入力
+                  </button>
+                )}
+              </div>
               <Popover.Root open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <Popover.Trigger asChild>
                   <button
@@ -566,7 +615,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                     <button
                       type="button"
                       className="write-panel__menu-item"
-                      onClick={(event) => {
+                      onClick={() => {
                         setIsMenuOpen(false);
                         setIsSettingsDialogOpen(true);
                       }}
@@ -592,7 +641,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                     <button
                       type="button"
                       className="write-panel__menu-item"
-                      onClick={(event) => {
+                      onClick={() => {
                         setIsMenuOpen(false);
                         imgurFileInputRef.current?.click();
                       }}
@@ -604,7 +653,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                     <button
                       type="button"
                       className="write-panel__menu-item"
-                      onClick={(event) => {
+                      onClick={() => {
                         setIsMenuOpen(false);
                         handlePasteClipboardImage();
                       }}
@@ -616,48 +665,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                   </Popover.Content>
                 </Popover.Portal>
               </Popover.Root>
-              <input
-                ref={imgurFileInputRef}
-                className="write-panel__file-input"
-                type="file"
-                accept="image/*"
-                aria-label="Imgurに投稿する画像を選択"
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  event.currentTarget.value = "";
-                  if (file) void runImgurUpload(async () => file);
-                }}
-              />
-            </div>
-            <div className="write-panel__body-row">
-              <textarea
-                ref={textareaRef}
-                className="write-panel__textarea"
-                value={message}
-                onPaste={handleMessagePaste}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleTextareaKeyDown}
-                disabled={isSubmitting || isImgurUploading}
-                placeholder={threadUrl ? "本文を入力..." : "スレッドを開いてから書き込んでください"}
-              />
-              <div className="write-panel__side">
-                <button
-                  type="submit"
-                  className="write-panel__btn write-panel__btn--primary"
-                  disabled={!canSubmit || isSubmitting || isImgurUploading}
-                >
-                  書き込む
-                </button>
-                {status === "error" && (
-                  <button
-                    type="button"
-                    className="write-panel__btn write-panel__btn--secondary"
-                    onClick={handleRetry}
-                  >
-                    再入力
-                  </button>
-                )}
-              </div>
             </div>
             {previewImages.length > 0 && (
               <div
@@ -775,37 +782,58 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
               id={settingsDialogDescriptionId}
               className="browser-dialog-description"
             >
-              書き込みパネルの操作と投稿後の動作を設定します。
+              <strong>この板のすべてのスレッドで共有されます。</strong> 変更はすぐに反映されます。
             </Dialog.Description>
             <div className="write-panel__settings-list">
-              <CheckboxField
-                id="write-setting-submit-ctrl-enter"
-                label="Ctrl+Enterで書き込む"
-                description="本文入力中にCtrl+Enter（Macは⌘+Enter）で投稿します。"
-                checked={submitWithCtrlEnter}
-                onCheckedChange={handleSubmitWithCtrlEnterChange}
-              />
-              <CheckboxField
-                id="write-setting-sage"
-                label="sageで書き込む"
-                description="ONにすると、メール欄へsageを自動設定して投稿します。"
-                checked={sage}
-                onCheckedChange={handleSageChange}
-              />
-              <CheckboxField
-                id="write-setting-close-panel"
-                label="レス後に書き込みパネルを閉じる"
-                description="投稿が成功したときだけ、下部の書き込みパネルを閉じます。"
-                checked={closePanelAfterSubmit}
-                onCheckedChange={handleClosePanelAfterSubmitChange}
-              />
-              <CheckboxField
-                id="write-setting-sanitize-urls-on-paste"
-                label="貼り付け時にURLパラメータを除去する"
-                description="投稿先に応じて適用します。全体・ドメイン・板ごとの値はドメイン・板設定で変更できます。"
-                checked={sanitizeUrlsOnPaste}
-                onCheckedChange={setSanitizeUrlsOnPaste}
-              />
+              <SettingRow
+                htmlFor="write-setting-name"
+                label={WRITE_SETTING_COPY.default_name.title}
+                description={WRITE_SETTING_COPY.default_name.description}
+                layout="stacked"
+              >
+                <TextControl
+                  id="write-setting-name"
+                  value={name}
+                  onValueChange={setName}
+                  disabled={isSubmitting}
+                  placeholder="名無し"
+                />
+              </SettingRow>
+              <SettingRow
+                htmlFor="write-setting-mail"
+                label={WRITE_SETTING_COPY.default_mail.title}
+                description={WRITE_SETTING_COPY.default_mail.description}
+                layout="stacked"
+              >
+                <TextControl
+                  id="write-setting-mail"
+                  value={mail}
+                  onValueChange={setMail}
+                  disabled={isSubmitting}
+                />
+              </SettingRow>
+              <SettingRow
+                htmlFor="write-setting-submit-ctrl-enter"
+                label={WRITE_SETTING_COPY.write_submit_ctrl_enter.title}
+                description={WRITE_SETTING_COPY.write_submit_ctrl_enter.description}
+              >
+                <SwitchControl
+                  id="write-setting-submit-ctrl-enter"
+                  checked={submitWithCtrlEnter}
+                  onCheckedChange={handleSubmitWithCtrlEnterChange}
+                />
+              </SettingRow>
+              <SettingRow
+                htmlFor="write-setting-close-panel"
+                label={WRITE_SETTING_COPY.write_close_panel_after_submit.title}
+                description={WRITE_SETTING_COPY.write_close_panel_after_submit.description}
+              >
+                <SwitchControl
+                  id="write-setting-close-panel"
+                  checked={closePanelAfterSubmit}
+                  onCheckedChange={handleClosePanelAfterSubmitChange}
+                />
+              </SettingRow>
             </div>
             <div className="write-panel__settings-actions">
               <Dialog.Close asChild>
