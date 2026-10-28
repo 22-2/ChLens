@@ -411,8 +411,20 @@
   gap: var(--sys-space-2);
   vertical-align: middle;
 }
+/* 一括保存は補助操作として抑え、ホバー時に操作可能なことを示す。 */
+.res__image-save-all {
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+.res__image-save-all svg {
+  width: var(--sys-space-6);
+  height: var(--sys-space-6);
+}
+.res__image-save-all:not(:disabled):hover {
+  color: var(--sys-color-text);
+}
 .res__image-save:hover,
-.res__image-save-all:hover {
+.res__image-save-all:not(:disabled):hover {
   text-decoration: underline;
 }
 .res__image-save:focus-visible,
