@@ -65,11 +65,6 @@ const SETTING_FIELDS = [
     kind: "boolean",
   },
   {
-    key: "write_close_panel_after_submit",
-    ...WRITE_SETTING_COPY.write_close_panel_after_submit,
-    kind: "boolean",
-  },
-  {
     key: "write_pre_submit_warnings",
     title: "投稿前に確認する",
     description: "個人情報や危害表現が含まれる場合に確認を表示します。",
@@ -181,11 +176,7 @@ function getOverride(
 function getDefaultValue(key: ScopedSettingKey): string {
   const raw = container.config.get(key) ?? DEFAULT_CONFIG[key];
   if (key === "default_name" || key === "default_mail") return raw;
-  if (
-    key === "sage_flag" ||
-    key === "write_submit_ctrl_enter" ||
-    key === "write_close_panel_after_submit"
-  ) {
+  if (key === "sage_flag" || key === "write_submit_ctrl_enter") {
     return raw === "on" ? "on" : "off";
   }
   if (key === "write_pre_submit_warnings") {

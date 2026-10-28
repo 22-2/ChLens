@@ -17,7 +17,6 @@ export const SCOPED_SETTING_KEYS = [
   "default_name",
   "default_mail",
   "write_submit_ctrl_enter",
-  "write_close_panel_after_submit",
   "auto_load_second",
   "auto_load_second_board",
   "write_pre_submit_warnings",

@@ -51,7 +51,6 @@ import { findUrlTrackingWarning, findWriteWarnings } from "src/view/browser/util
 const logger = createLogger("write");
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
-const WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY = "write_close_panel_after_submit";
 const WRITE_SANITIZE_URLS_ON_PASTE_KEY = "write_sanitize_urls_on_paste";
 const noop = () => {};
 
@@ -138,8 +137,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { value: submitWithCtrlEnter, setValue: setSubmitWithCtrlEnter } =
     useScopedConfigBooleanSetting(WRITE_SUBMIT_CTRL_ENTER_KEY, threadUrl);
-  const { value: closePanelAfterSubmit, setValue: setClosePanelAfterSubmit } =
-    useScopedConfigBooleanSetting(WRITE_CLOSE_PANEL_AFTER_SUBMIT_KEY, threadUrl);
   const { value: sanitizeUrlsOnPaste } = useConfigBooleanSetting(WRITE_SANITIZE_URLS_ON_PASTE_KEY);
   const {
     name,
@@ -408,16 +405,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   }, [authCodeUrl, status]);
 
   useEffect(() => {
-    if (status !== "success" || !closePanelAfterSubmit) {
-      return;
-    }
-
-    // 変更理由: 投稿成功を受け取った後だけ閉じることで、通信失敗や確認画面の途中で
-    // 入力内容を隠さず、設定をONにした利用者の連続投稿だけを短くできる。
-    closePanel();
-  }, [closePanel, closePanelAfterSubmit, status]);
-
-  useEffect(() => {
     if (!writePanelInsertRequest) {
       return;
     }
@@ -489,13 +476,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
       setSubmitWithCtrlEnter(checked);
     },
     [setSubmitWithCtrlEnter],
-  );
-
-  const handleClosePanelAfterSubmitChange = useCallback(
-    (checked: boolean) => {
-      setClosePanelAfterSubmit(checked);
-    },
-    [setClosePanelAfterSubmit],
   );
 
   return (
@@ -826,17 +806,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                   id="write-setting-submit-ctrl-enter"
                   checked={submitWithCtrlEnter}
                   onCheckedChange={handleSubmitWithCtrlEnterChange}
-                />
-              </SettingRow>
-              <SettingRow
-                htmlFor="write-setting-close-panel"
-                label={WRITE_SETTING_COPY.write_close_panel_after_submit.title}
-                description={WRITE_SETTING_COPY.write_close_panel_after_submit.description}
-              >
-                <SwitchControl
-                  id="write-setting-close-panel"
-                  checked={closePanelAfterSubmit}
-                  onCheckedChange={handleClosePanelAfterSubmitChange}
                 />
               </SettingRow>
             </div>

@@ -426,25 +426,18 @@ describe("WritePanelContent", () => {
     ).not.toBeInTheDocument();
     expect(dialog).toHaveTextContent("この板のすべてのスレッドで共有");
     expect(
-      within(dialog).getByRole("switch", { name: "レス後に書き込みパネルを閉じる" }),
-    ).toBeInTheDocument();
+      within(dialog).queryByRole("switch", { name: "レス後に書き込みパネルを閉じる" }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole("switch", { name: "Ctrl+Enterで書き込む" }));
     fireEvent.change(within(dialog).getByRole("textbox", { name: "メール" }), {
       target: { value: "sage" },
     });
-    fireEvent.click(within(dialog).getByRole("switch", { name: "レス後に書き込みパネルを閉じる" }));
 
     await waitFor(() =>
       expect(configSetMock).toHaveBeenCalledWith(
         "site_board_settings",
         expect.stringContaining('"write_submit_ctrl_enter":"on"'),
-      ),
-    );
-    await waitFor(() =>
-      expect(configSetMock).toHaveBeenCalledWith(
-        "site_board_settings",
-        expect.stringContaining('"write_close_panel_after_submit":"on"'),
       ),
     );
     expect(mocks.setMail).toHaveBeenCalledWith("sage");
@@ -674,15 +667,12 @@ describe("WritePanelContent", () => {
     expect(within(dialog).getAllByRole("button", { name: "コピーしました" })).toHaveLength(2);
   });
 
-  it("書き込み成功時に設定がONならパネルを閉じる", () => {
-    configMock.get = vi.fn((key: string) =>
-      key === "write_close_panel_after_submit" ? "on" : "off",
-    );
+  it("書き込みに成功しても下部パネルを閉じない", () => {
     mocks.status = "success";
 
     renderWritePanel();
 
-    expect(mocks.closePanel).toHaveBeenCalledTimes(1);
+    expect(mocks.closePanel).not.toHaveBeenCalled();
   });
 
   it("別窓を開いたら下部パネルを閉じる", () => {

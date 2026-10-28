@@ -9,10 +9,6 @@ export const WRITE_SETTING_COPY = {
     title: "Ctrl+Enterで書き込む",
     description: "本文入力中にCtrl+Enter（Macは⌘+Enter）で投稿します。",
   },
-  write_close_panel_after_submit: {
-    title: "レス後に書き込みパネルを閉じる",
-    description: "投稿が成功したときだけ、下部の書き込みパネルを閉じます。",
-  },
   write_sanitize_urls_on_paste: {
     title: "貼り付け時にURLパラメータを除去する",
     description:

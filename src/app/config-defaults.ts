@@ -62,8 +62,6 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   title_bar_forward: "on",
   title_bar_refresh: "on",
   write_submit_ctrl_enter: "off",
-  // 変更理由: 書き込み後のパネルは利用者が明示的に選んだ場合だけ閉じ、既存の操作感を保つ。
-  write_close_panel_after_submit: "off",
   // 変更理由: 投稿前警告は従来どおり表示しつつ、利用者が書き込み設定から任意で無効化できるようにする。
   write_pre_submit_warnings: "on",
   // 変更理由: 現在の貼り付け時除去を既定で維持し、利用者が書き込み・ドメイン設定から切り替えられるようにする。
@@ -153,8 +151,6 @@ export const CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM = [
   "title_bar_refresh",
   // 書き込みパネルの設定から投稿ショートカットを切り替える。
   "write_submit_ctrl_enter",
-  // 書き込みパネルの設定から投稿後の動作を切り替える。
-  "write_close_panel_after_submit",
   // ドメイン・板設定と書き込みパネルから確認動作を切り替える。
   "write_pre_submit_warnings",
   // 更新コントロールから自動停止時間を選択できる。
