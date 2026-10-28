@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { CheckboxField, ChoiceControl, SettingRow, SwitchControl } from "./FormControls";
+import { CheckboxField, SelectControl, SettingRow, SwitchControl } from "./FormControls";
 import { Surface, SurfaceBody, SurfaceHeader, SurfaceTitle } from "./Surface";
 
 export default { title: "ChLens/共通UI/FormControls" };
@@ -38,13 +38,11 @@ export function Settings() {
               onCheckedChange={setShowImages}
             />
           </SettingRow>
-          <SettingRow label="レス一覧の密度" labelId="storybook-density-label">
-            <ChoiceControl
+          <SettingRow label="レス一覧の密度" htmlFor="storybook-density">
+            <SelectControl
               id="storybook-density"
-              labelledBy="storybook-density-label"
               value={density}
               options={densityOptions}
-              variant="segmented"
               onValueChange={setDensity}
             />
           </SettingRow>

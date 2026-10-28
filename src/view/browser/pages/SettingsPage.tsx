@@ -42,7 +42,7 @@ import type {
 } from "src/view/browser/types";
 import { Alert } from "src/view/browser/ui/Alert";
 import { Button } from "src/view/browser/ui/Button";
-import { ChoiceControl, SettingRow, SwitchControl } from "src/view/browser/ui/FormControls";
+import { SelectControl, SettingRow, SwitchControl } from "src/view/browser/ui/FormControls";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   Surface,
@@ -65,10 +65,11 @@ function toBooleanValue(value: SettingsFormValue): boolean {
 }
 
 // 統合・分割でなくなったカテゴリの古い保存値とページリンクを、移った先のカテゴリへ案内する。
-// 旧サムネイルカテゴリの設定は画像カテゴリへ、「その他」の中心だった bbsmenu は板へ移した。
+// 旧サムネイルは画像、「その他」の中心だった bbsmenu は板、自動更新・次スレはスレへ移した。
 const LEGACY_SECTION_IDS: Readonly<Record<string, SettingsSectionId>> = {
   thumbnail: "images",
   other: "site-board",
+  reload: "thread",
 };
 
 function findSectionId(sectionId?: string): SettingsSectionId | undefined {
@@ -335,22 +336,18 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
       }
 
       if (field.options && field.options.length > 0) {
-        const labelId = `${id}-label`;
-        const isSegmented = field.widget === "segmented";
+        // 変更理由: 選択肢の数でラジオ群と横並びボタンに分かれていたため、すべて同じドロップダウンに揃える。
         return (
           <SettingRow
             key={field.key}
-            labelId={labelId}
+            htmlFor={id}
             label={field.title}
             description={field.description}
-            layout={isSegmented ? "inline" : "stacked"}
           >
-            <ChoiceControl
+            <SelectControl
               id={id}
-              labelledBy={labelId}
               value={toStringValue(value)}
               options={field.options}
-              variant={isSegmented ? "segmented" : "list"}
               onValueChange={(nextValue) => updateFieldValue(sectionId, field.key, nextValue)}
             />
           </SettingRow>

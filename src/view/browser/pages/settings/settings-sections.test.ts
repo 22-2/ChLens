@@ -175,7 +175,6 @@ describe("設定セクションの実行環境フィルター", () => {
 
     expect(displayField).toMatchObject({
       kind: "string",
-      widget: "radio",
       options: [{ const: "hard-ng" }, { const: "soft-ng" }, { const: "highlight-ng" }],
     });
     expect(readAllSettings().ng.display_ng).toBe("hard-ng");
@@ -289,10 +288,19 @@ describe("設定項目の置き場所", () => {
     expect(board?.supplementaryPanelIds).toContain("siteBoardSettings");
   });
 
-  it("自動更新・次スレから、更新間隔のある板ごとの設定へ案内する", () => {
-    const reload = getSettingsSections(false).find((section) => section.id === "reload");
+  it("スレ設定から更新間隔のある板ごとの設定へ案内し、外部リンク確認もまとめる", () => {
+    const sections = getSettingsSections(false);
+    const thread = sections.find((section) => section.id === "thread");
+    const general = sections.find((section) => section.id === "general");
 
-    expect(reload?.relatedSection?.id).toBe("site-board");
+    expect(thread?.title).toBe("スレ");
+    expect(thread?.relatedSection?.id).toBe("site-board");
+    expect(
+      thread?.fields.some((field) => "key" in field && field.key === "confirm_external_links"),
+    ).toBe(true);
+    expect(
+      general?.fields.some((field) => "key" in field && field.key === "confirm_external_links"),
+    ).toBe(false);
   });
 });
 
@@ -323,7 +331,7 @@ describe("設定カテゴリの見出しごとのまとめ", () => {
       "一般",
       "表示",
       "画像",
-      "自動更新・次スレ",
+      "スレ",
       "NG",
       "実況",
       "板",
@@ -353,7 +361,7 @@ describe("設定項目の区切りごとのまとめ", () => {
     ).toEqual([
       [undefined, ["before"]],
       ["new-tab", ["new_tab_page_mode", "focus_new_tab_on_open"]],
-      ["network", ["https_mode", "confirm_external_links"]],
+      ["network", ["https_mode"]],
     ]);
   });
 });

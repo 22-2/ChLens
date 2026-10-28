@@ -1,4 +1,4 @@
-/* Shared form controls. Radix handles keyboard/state semantics; tokens own the visual contract. */
+/* Shared form controls. Radix handles checkbox and switch semantics; tokens own the visual contract. */
 .browser-field {
   display: grid;
   gap: var(--sys-space-3);
@@ -12,8 +12,7 @@
   line-height: 1.5;
 }
 
-.browser-checkbox-field__control:focus-visible,
-.browser-radio-field__control:focus-visible {
+.browser-checkbox-field__control:focus-visible {
   border-color: var(--sys-color-focus-ring);
   outline: 2px solid var(--sys-color-selection);
   outline-offset: 1px;
@@ -25,8 +24,7 @@
   gap: var(--sys-space-4);
 }
 
-.browser-checkbox-field__control,
-.browser-radio-field__control {
+.browser-checkbox-field__control {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
@@ -64,36 +62,6 @@
 
 .browser-field--checkbox .browser-field__description {
   margin-left: calc(var(--sys-space-7) + var(--sys-space-4));
-}
-
-.browser-radio-field__group {
-  display: grid;
-  gap: var(--sys-space-3);
-  margin-top: var(--sys-space-2);
-}
-
-.browser-radio-field__option {
-  display: flex;
-  align-items: center;
-  gap: var(--sys-space-4);
-  color: var(--sys-color-text);
-  font-size: var(--sys-font-size-md);
-  cursor: pointer;
-}
-
-.browser-radio-field__control {
-  border-radius: var(--sys-radius-pill);
-}
-
-.browser-radio-field__control[data-state="checked"] {
-  border-color: var(--sys-color-accent);
-}
-
-.browser-radio-field__indicator {
-  width: var(--sys-space-3);
-  height: var(--sys-space-3);
-  border-radius: var(--sys-radius-pill);
-  background: var(--sys-color-accent);
 }
 
 /* 設定画面の1項目＝1行。左に名前と説明、右に操作部品を置き、左端と右端を全項目で揃える。 */
@@ -180,8 +148,7 @@
 
 .browser-setting-row__control > input:focus,
 .browser-setting-row__control > select:focus,
-.browser-setting-row__control > textarea:focus,
-.browser-segmented__item:focus-visible {
+.browser-setting-row__control > textarea:focus {
   border-color: var(--sys-color-focus-ring);
   outline: 2px solid var(--sys-color-selection);
   outline-offset: 1px;
@@ -227,35 +194,4 @@
 
 .browser-switch__thumb[data-state="checked"] {
   transform: translateX(calc(var(--sys-space-13) - var(--sys-space-8) - var(--sys-space-1)));
-}
-
-.browser-segmented {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: var(--sys-space-1);
-  padding: var(--sys-space-1);
-  border: 1px solid var(--sys-color-input-border);
-  border-radius: var(--sys-radius-lg);
-  background: var(--sys-color-input-bg);
-}
-
-.browser-segmented__item {
-  padding: var(--sys-space-2) var(--sys-space-6);
-  border: 1px solid transparent;
-  border-radius: var(--sys-radius-md);
-  background: transparent;
-  color: var(--sys-color-text-muted);
-  font: inherit;
-  font-size: var(--sys-font-size-md);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.browser-segmented__item:hover {
-  color: var(--sys-color-text);
-}
-
-.browser-segmented__item[data-state="checked"] {
-  background: var(--sys-color-accent);
-  color: var(--sys-color-accent-fg);
 }

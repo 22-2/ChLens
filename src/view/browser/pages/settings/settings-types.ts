@@ -13,13 +13,7 @@ export type SettingsSupplementaryPanelId =
   | "dataManagement"
   | "siteBoardSettings";
 
-// segmented は短い2〜3択を行の右へ横並びで置き、radio は長い選択肢を行の下へ縦に並べる。
-export type SettingsFormWidget =
-  | "radio"
-  | "segmented"
-  | "textarea"
-  | "ng_editor"
-  | "replacement_editor";
+export type SettingsFormWidget = "textarea" | "ng_editor" | "replacement_editor";
 export type SettingsFormValue = boolean | number | string | undefined;
 export type SettingsSectionFormData = Record<string, SettingsFormValue>;
 export type SettingsFormState = Record<SettingsSectionId, SettingsSectionFormData>;

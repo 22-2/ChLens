@@ -1,8 +1,4 @@
-import {
-  Checkbox as RadixCheckbox,
-  RadioGroup as RadixRadioGroup,
-  Switch as RadixSwitch,
-} from "radix-ui";
+import { Checkbox as RadixCheckbox, Switch as RadixSwitch } from "radix-ui";
 import type { ReactNode } from "react";
 
 interface CheckboxFieldProps {
@@ -42,7 +38,7 @@ export function CheckboxField({
   );
 }
 
-export interface RadioFieldOption {
+export interface SelectFieldOption {
   const: string;
   title: string;
 }
@@ -60,8 +56,6 @@ interface SettingRowProps {
   description?: ReactNode;
   /** 操作部品が1つの入力要素なら、その id を渡して label で関連付ける。 */
   htmlFor?: string;
-  /** ラジオ群のように label で関連付けられない部品は、この id で aria-labelledby から参照する。 */
-  labelId?: string;
   /** inline は名前の右に部品を置き、stacked は長い入力のために名前の下へ全幅で置く。 */
   layout?: "inline" | "stacked";
   children: ReactNode;
@@ -75,7 +69,6 @@ export function SettingRow({
   label,
   description,
   htmlFor,
-  labelId,
   layout = "inline",
   children,
 }: SettingRowProps) {
@@ -83,13 +76,11 @@ export function SettingRow({
     <div className="browser-setting-row" data-layout={layout}>
       <div className="browser-setting-row__text">
         {htmlFor ? (
-          <label id={labelId} className="browser-setting-row__label" htmlFor={htmlFor}>
+          <label className="browser-setting-row__label" htmlFor={htmlFor}>
             {label}
           </label>
         ) : (
-          <span id={labelId} className="browser-setting-row__label">
-            {label}
-          </span>
+          <span className="browser-setting-row__label">{label}</span>
         )}
         {description ? <p className="browser-setting-row__description">{description}</p> : null}
       </div>
@@ -129,69 +120,21 @@ export function SwitchControl({
   );
 }
 
-interface ChoiceControlProps {
+interface SelectControlProps {
   id: string;
-  labelledBy: string;
   value: string;
-  options: readonly RadioFieldOption[];
-  /** segmented は短い2〜3択を横並びで、list は長い選択肢を縦に並べる。 */
-  variant: "segmented" | "list";
+  options: readonly SelectFieldOption[];
   onValueChange: (value: string) => void;
 }
 
-export function ChoiceControl({
-  id,
-  labelledBy,
-  value,
-  options,
-  variant,
-  onValueChange,
-}: ChoiceControlProps) {
-  if (variant === "segmented") {
-    return (
-      <RadixRadioGroup.Root
-        aria-labelledby={labelledBy}
-        className="browser-segmented"
-        orientation="horizontal"
-        value={value}
-        onValueChange={onValueChange}
-      >
-        {options.map((option) => (
-          <RadixRadioGroup.Item
-            key={option.const}
-            id={`${id}-${option.const}`}
-            value={option.const}
-            className="browser-segmented__item"
-          >
-            {option.title}
-          </RadixRadioGroup.Item>
-        ))}
-      </RadixRadioGroup.Root>
-    );
-  }
-
+export function SelectControl({ id, value, options, onValueChange }: SelectControlProps) {
   return (
-    <RadixRadioGroup.Root
-      aria-labelledby={labelledBy}
-      className="browser-radio-field__group"
-      value={value}
-      onValueChange={onValueChange}
-    >
-      {options.map((option) => {
-        const optionId = `${id}-${option.const}`;
-        return (
-          <label key={option.const} className="browser-radio-field__option" htmlFor={optionId}>
-            <RadixRadioGroup.Item
-              id={optionId}
-              value={option.const}
-              className="browser-radio-field__control"
-            >
-              <RadixRadioGroup.Indicator className="browser-radio-field__indicator" />
-            </RadixRadioGroup.Item>
-            <span>{option.title}</span>
-          </label>
-        );
-      })}
-    </RadixRadioGroup.Root>
+    <select id={id} value={value} onChange={(event) => onValueChange(event.currentTarget.value)}>
+      {options.map((option) => (
+        <option key={option.const} value={option.const}>
+          {option.title}
+        </option>
+      ))}
+    </select>
   );
 }

@@ -6,7 +6,7 @@ import {
   Globe2,
   Image,
   MessageCircle,
-  RefreshCw,
+  MessageSquare,
   Settings,
   ShieldAlert,
 } from "lucide-react";
@@ -133,7 +133,6 @@ const ALL_SETTINGS_SECTIONS = [
         key: "new_tab_page_mode",
         title: "新しいタブで開くページ",
         options: NEW_TAB_PAGE_MODE_OPTIONS,
-        widget: "segmented",
       },
       {
         kind: "boolean",
@@ -154,14 +153,6 @@ const ALL_SETTINGS_SECTIONS = [
         description:
           "HTTPのURLを読み込むときの扱いです。HTTPS onlyはHTTPSだけで接続し、HTTPS非対応の板は読めません。HTTPS優先はHTTPSで接続できないときだけHTTPで接続します。自動はURLのとおりに接続します。",
         options: HTTPS_MODE_OPTIONS,
-        widget: "radio",
-      },
-      {
-        kind: "boolean",
-        key: "confirm_external_links",
-        title: "外部リンクを開く前に確認する",
-        description:
-          "外部リンクをリンク風のボタンにし、開く前にURLと追跡パラメータの警告を表示します。画像のアプリ内表示は維持します。OFFにすると確認・警告・専用メニューをまとめて無効にします。",
       },
       // 変更理由: 書き込み設定は書き込みパネルの歯車モーダルに集約し、
       // 全体設定画面で同じ項目を重複表示しない。
@@ -175,7 +166,6 @@ const ALL_SETTINGS_SECTIONS = [
       //   key: "format_2chnet",
       //   title: "2chnetの取得形式",
       //   options: FORMAT_2CH_OPTIONS,
-      //   widget: "radio",
       // },
     ],
   ),
@@ -196,7 +186,6 @@ const ALL_SETTINGS_SECTIONS = [
         key: "theme_id",
         title: "テーマ",
         options: THEME_ID_OPTIONS,
-        widget: "segmented",
       },
       {
         kind: "divider",
@@ -209,7 +198,6 @@ const ALL_SETTINGS_SECTIONS = [
         title: "タブバーの配置",
         description: "タブ一覧を上部の横並びと左端の縦並びで切り替えます。",
         options: TAB_BAR_ORIENTATION_OPTIONS,
-        widget: "segmented",
       },
       {
         kind: "boolean",
@@ -293,10 +281,10 @@ const ALL_SETTINGS_SECTIONS = [
     ],
   ),
   defineSection(
-    "reload",
-    "自動更新・次スレ",
-    "次スレ追従と、更新後のスクロール挙動を調整します。",
-    <RefreshCw size={20} />,
+    "thread",
+    "スレ",
+    "スレの表示・更新・移動と、スレ内リンクの扱いを調整します。",
+    <MessageSquare size={20} />,
     [
       {
         kind: "divider",
@@ -313,7 +301,6 @@ const ALL_SETTINGS_SECTIONS = [
           { const: "auto", title: "自動" },
           { const: "manual", title: "手動" },
         ],
-        widget: "segmented",
       },
       {
         kind: "divider",
@@ -355,7 +342,19 @@ const ALL_SETTINGS_SECTIONS = [
         description:
           "標準は精度と追従性のバランスを取り、積極はスレタイの変化を広く許容します。どちらも別板や古いスレには移動しません。",
         options: AUTO_NEXT_THREAD_MODE_OPTIONS,
-        widget: "radio",
+      },
+      // 変更理由: スレ本文中のリンクを制御するため、一般設定からスレ設定へ移す。
+      {
+        kind: "divider",
+        id: "thread-links",
+        title: "スレ内リンク",
+      },
+      {
+        kind: "boolean",
+        key: "confirm_external_links",
+        title: "外部リンクを開く前に確認する",
+        description:
+          "外部リンクをリンク風のボタンにし、開く前にURLと追跡パラメータの警告を表示します。画像のアプリ内表示は維持します。OFFにすると確認・警告・専用メニューをまとめて無効にします。",
       },
     ],
     {
@@ -412,7 +411,6 @@ const ALL_SETTINGS_SECTIONS = [
         description:
           "完全非表示、クリックで一時表示、表示したまま強調する方式を選べます。一時的なNG解除はこの設定とは独立して動作します。",
         options: NG_DISPLAY_MODE_OPTIONS,
-        widget: "radio",
       },
       {
         kind: "divider",
@@ -448,7 +446,6 @@ const ALL_SETTINGS_SECTIONS = [
         key: "how_to_judgment_id",
         title: "ID / SLIP 判定方法",
         options: HOW_TO_JUDGMENT_ID_OPTIONS,
-        widget: "radio",
       },
     ],
   ),
@@ -545,7 +542,7 @@ const SETTINGS_SECTION_GROUP_OF = {
   display: "app",
   images: "browsing",
   "site-board": "browsing",
-  reload: "browsing",
+  thread: "browsing",
   overlay: "browsing",
   ng: "browsing",
   data: "manage",
@@ -589,7 +586,7 @@ function readFieldValue(field: SettingsFieldDefinition): SettingsFormValue {
       return Number.isFinite(parsed) ? parsed : 0;
     }
     case "string":
-      // 変更理由: 未設定時でもラジオ選択が空表示にならないよう、
+      // 変更理由: 未設定時でも選択欄が空表示にならないよう、
       // 新規タブ初期ページは実挙動と同じ既定値をUIにも反映する。
       if (field.key === "new_tab_page_mode") {
         return typeof rawValue === "string" && rawValue !== ""
