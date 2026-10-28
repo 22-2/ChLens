@@ -63,6 +63,20 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   };
   await expect.poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(1800);
   await expectNoOverlap();
+  const expectImageFrameFits = async (index: number) => {
+    const frame = first.locator(".res__inline-image").nth(index);
+    const size = await frame.evaluate((element) => {
+      const frameRect = element.getBoundingClientRect();
+      const imageRect = element.querySelector("img")!.getBoundingClientRect();
+      return {
+        width: frameRect.width - imageRect.width,
+        height: frameRect.height - imageRect.height,
+      };
+    });
+    expect(Math.abs(size.width)).toBeLessThan(1);
+    expect(Math.abs(size.height)).toBeLessThan(1);
+  };
+  await expectImageFrameFits(0);
   expect(await image.evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(480);
   expect(await image.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThanOrEqual(
     (await page.evaluate(() => window.innerHeight)) * 0.6,
@@ -98,6 +112,7 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
     .poll(async () => (await image.boundingBox())!.width)
     .toBeGreaterThan(initialWidth + 80);
   await expectNoOverlap();
+  await expectImageFrameFits(0);
   const adjustedWidth = (await image.boundingBox())!.width;
   await expect(page.locator(".media-viewer")).toHaveCount(0);
   await handle.focus();
@@ -110,6 +125,7 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
     .poll(() => portrait.evaluate((el) => (el as HTMLImageElement).naturalHeight))
     .toBe(2000);
   await expectNoOverlap();
+  await expectImageFrameFits(1);
   const portraitBox = (await portrait.boundingBox())!;
   expect(portraitBox.height).toBeLessThanOrEqual(
     (await page.evaluate(() => window.innerHeight)) * 0.6,

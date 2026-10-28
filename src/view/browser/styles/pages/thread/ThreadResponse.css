@@ -378,6 +378,11 @@
   grid-column: 1 / -1;
   justify-self: start;
   position: relative;
+  /* 操作を画像の端に置くため、元画像の幅ではなく表示上の最大幅で枠を制限する。 */
+  width: max-content;
+  max-width: min(100%, var(--sys-thread-inline-image-max-width));
+}
+.res__inline-image--resized {
   max-width: 100%;
 }
 .res__inline-image-content {
