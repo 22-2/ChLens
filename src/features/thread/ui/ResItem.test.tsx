@@ -284,7 +284,7 @@ describe("ResItem", () => {
     expect(screen.getByText("返信(5)")).toHaveClass("res__rep--hot");
   });
 
-  it("リンクと画像の右クリックでは既定コンテキストメニューを維持する", () => {
+  it("本文リンクは既定メニューを使い、画像はビューアのメニューを開く", () => {
     const onContextMenu = vi.fn();
 
     const { container } = render(
@@ -321,12 +321,15 @@ describe("ResItem", () => {
       cancelable: true,
     });
 
-    link.dispatchEvent(linkEvent);
-    thumb.dispatchEvent(thumbEvent);
+    act(() => {
+      link.dispatchEvent(linkEvent);
+      thumb.dispatchEvent(thumbEvent);
+    });
 
     expect(onContextMenu).not.toHaveBeenCalled();
     expect(linkEvent.defaultPrevented).toBe(false);
-    expect(thumbEvent.defaultPrevented).toBe(false);
+    expect(thumbEvent.defaultPrevented).toBe(true);
+    expect(screen.getByRole("menuitem", { name: "ビューアで開く" })).toBeInTheDocument();
   });
 
   it("状態クラスはNG、自分、自分宛て返信の優先順位で解決する", () => {

@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NgStatusProvider, useNgStatus } from "src/features/ng/browser/use-ng-status";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
 import type { IRes } from "src/service-container/interfaces";
@@ -315,7 +315,7 @@ describe("PopupResCard", () => {
     expect(onLinkMiddleClickStart).toHaveBeenCalled();
   });
 
-  it("サムネイル右クリックでは既定コンテキストメニューを維持する", () => {
+  it("サムネイル右クリックではビューアのメニューを開く", () => {
     const onContextMenu = vi.fn();
 
     const { container } = render(
@@ -339,10 +339,11 @@ describe("PopupResCard", () => {
       cancelable: true,
     });
 
-    thumb.dispatchEvent(contextMenuEvent);
+    act(() => thumb.dispatchEvent(contextMenuEvent));
 
     expect(onContextMenu).not.toHaveBeenCalled();
-    expect(contextMenuEvent.defaultPrevented).toBe(false);
+    expect(contextMenuEvent.defaultPrevented).toBe(true);
+    expect(screen.getByRole("menuitem", { name: "ビューアで開く" })).toBeInTheDocument();
   });
 
   it("ルート起点ボタン押下で先頭ツリー展開ハンドラを呼ぶ", () => {
