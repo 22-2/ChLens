@@ -14,6 +14,12 @@
   list-style: none;
 }
 
+/* 変更理由: dat落ち表示中は「関連スレを探す」とトーストが重なるため、表示中タブの通知がある間は下へずらす。 */
+.browser-shell:has(.content-area__tab-panel[data-active="true"] .thread-page__notice--expired)
+  .browser-toast-viewport {
+  top: calc(var(--cmp-toast-offset-top) + var(--sys-space-16));
+}
+
 .browser-toast {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
