@@ -137,6 +137,12 @@ export function useThreadVirtualList({
     getScrollElement: () => scrollContainerRef.current,
     getItemKey: (index) => keys[index]!,
     estimateSize,
+    // 画面外から戻ったレスは画像や埋め込みの状態が以前と異なるため、
+    // 再マウント時も古いキャッシュではなく現在の高さを計測する。
+    measureElement: (element, entry) =>
+      entry?.borderBoxSize?.[0]
+        ? Math.round(entry.borderBoxSize[0].blockSize)
+        : element.offsetHeight,
     overscan: 8,
     // レス内で非同期に埋め込みの高さが変わっても、Reactの次の描画を待たず後続レスを移動する。
     directDomUpdates: true,

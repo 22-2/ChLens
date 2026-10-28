@@ -75,6 +75,17 @@ describe("TanStack Virtualを使ったレス一覧", () => {
     const { result } = setup();
     expect(result.current.list.virtualizer.options.scrollPaddingStart).toBe(72);
   });
+  it("画面外から戻ったレスは以前の高さより現在の実測値を優先する", () => {
+    const { result } = setup();
+    const virtualizer = result.current.list.virtualizer;
+    const element = document.createElement("div");
+    element.dataset.index = "2";
+    Object.defineProperty(element, "offsetHeight", { value: 240 });
+    virtualizer.itemSizeCache.set(3, 80);
+    expect(virtualizer.options.measureElement(element, undefined, virtualizer)).toBe(240);
+    const entry = { borderBoxSize: [{ blockSize: 260.4 }] } as unknown as ResizeObserverEntry;
+    expect(virtualizer.options.measureElement(element, entry, virtualizer)).toBe(260);
+  });
   it("NG解除後も非表示レスが実測できるよう、推定高さを確保する", () => {
     const { result } = setup();
     const virtualizer = result.current.list.virtualizer;

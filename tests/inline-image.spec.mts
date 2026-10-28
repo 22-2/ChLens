@@ -51,7 +51,18 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await first.locator(".res__thumb--image").first().click();
   await expect(first.getByRole("button", { name: "画像を折りたたむ" })).toBeVisible();
   const image = first.locator(".res__inline-image img");
+  const nextResponse = page.locator('[data-res-num="2"]');
+  const expectNoOverlap = async () => {
+    await expect
+      .poll(async () => {
+        const firstBox = await first.boundingBox();
+        const nextBox = await nextResponse.boundingBox();
+        return firstBox && nextBox ? nextBox.y - (firstBox.y + firstBox.height) : -999;
+      })
+      .toBeGreaterThanOrEqual(-1);
+  };
   await expect.poll(() => image.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(1800);
+  await expectNoOverlap();
   expect(await image.evaluate((el) => el.getBoundingClientRect().width)).toBeLessThanOrEqual(480);
   expect(await image.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThanOrEqual(
     (await page.evaluate(() => window.innerHeight)) * 0.6,
@@ -74,6 +85,7 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await expect
     .poll(async () => (await image.boundingBox())!.width)
     .toBeGreaterThan(initialWidth + 80);
+  await expectNoOverlap();
   const adjustedWidth = (await image.boundingBox())!.width;
   await expect(page.locator(".media-viewer")).toHaveCount(0);
   await handle.focus();
@@ -85,6 +97,7 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await expect
     .poll(() => portrait.evaluate((el) => (el as HTMLImageElement).naturalHeight))
     .toBe(2000);
+  await expectNoOverlap();
   const portraitBox = (await portrait.boundingBox())!;
   expect(portraitBox.height).toBeLessThanOrEqual(
     (await page.evaluate(() => window.innerHeight)) * 0.6,
@@ -96,6 +109,7 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await expect(first).toHaveCount(0);
   await jumpToResponse(page, 1);
   await expect(first.getByRole("button", { name: "画像を折りたたむ" })).toBeVisible();
+  await expectNoOverlap();
   await expect
     .poll(async () => (await first.locator(".res__inline-image img").boundingBox())!.width)
     .toBeCloseTo(savedWidth, 0);
@@ -106,6 +120,86 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
     .toBeCloseTo(savedWidth, 0);
   await first.getByRole("button", { name: "画像を縮小" }).click();
   await expect(first.locator(".res__thumb--image")).toHaveCount(2);
+});
+
+test("スレ途中の画像を続けて展開しても後続のレスと重ならない", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const image = `${localBoard.origin}/img/1.png`;
+  localBoard.setImageBody(
+    1,
+    Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="1200"><rect width="600" height="1200" fill="blue"/></svg>',
+    ),
+    "image/svg+xml",
+  );
+  localBoard.setDat(
+    Array.from(
+      { length: 150 },
+      (_, i) =>
+        `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local001<>${i === 79 || i === 80 ? `画像 ${image}` : `本文 ${i + 1}`}<>${i === 0 ? "ローカルテストスレッド" : ""}`,
+    ).join("\n"),
+  );
+  await page.addInitScript(() => localStorage.setItem("config_manual_image_loading", "off"));
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  await jumpToResponse(page, 80);
+  const first = page.locator('[data-res-num="80"]');
+  const second = page.locator('[data-res-num="81"]');
+  await first.locator(".res__thumb--image").click();
+  await second.locator(".res__thumb--image").click();
+  const third = page.locator('[data-res-num="82"]');
+  const checkRows = async () =>
+    expect
+      .poll(async () => {
+        const boxes = await Promise.all([
+          first.boundingBox(),
+          second.boundingBox(),
+          third.boundingBox(),
+        ]);
+        return boxes.every(Boolean)
+          ? Math.min(
+              boxes[1]!.y - boxes[0]!.y - boxes[0]!.height,
+              boxes[2]!.y - boxes[1]!.y - boxes[1]!.height,
+            )
+          : -999;
+      })
+      .toBeGreaterThanOrEqual(-1);
+  await checkRows();
+  await jumpToResponse(page, 150);
+  await expect(first).toHaveCount(0);
+  await page.evaluate(() => {
+    const probe = window as typeof window & { overlapSamples: number[]; stopOverlapProbe: boolean };
+    probe.overlapSamples = [];
+    probe.stopOverlapProbe = false;
+    const sample = () => {
+      if (probe.stopOverlapProbe) return;
+      const first = document.querySelector('[data-res-num="80"]');
+      const second = document.querySelector('[data-res-num="81"]');
+      if (first && second && first.querySelector(".res__inline-image img")) {
+        const a = first.getBoundingClientRect();
+        const b = second.getBoundingClientRect();
+        probe.overlapSamples.push(b.top - a.bottom);
+      }
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await jumpToResponse(page, 80);
+  await expect(first.locator(".res__inline-image img")).toBeVisible();
+  await expect(second.locator(".res__inline-image img")).toBeVisible();
+  await checkRows();
+  const samples = await page.evaluate(() => {
+    const probe = window as typeof window & { overlapSamples: number[]; stopOverlapProbe: boolean };
+    probe.stopOverlapProbe = true;
+    return probe.overlapSamples;
+  });
+  expect(samples.length).toBeGreaterThan(0);
+  expect(Math.min(...samples)).toBeGreaterThanOrEqual(-1);
 });
 
 test("画像のメニューからビューアを別窓で開く", async ({
