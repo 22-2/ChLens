@@ -110,10 +110,8 @@ export const CONFIG_KEYS_OUTSIDE_SETTINGS_FORM = [
   "chain_ng_slip",
   // 同一文の繰り返しをNGにするレス数のしきい値。
   "repeat_message_ng_count",
-  // 書き込み欄に入れる既定の名前。書き込みパネルで編集する。
-  "default_name",
-  // 書き込み欄に入れる既定のメール文字列。書き込みパネルで編集する。
-  "default_mail",
+  // 旧sage設定は互換データとして残すが、メール欄に統合したため使わない。
+  "sage_flag",
   // 閲覧履歴を記録しない設定。履歴タブの生成処理が参照する。
   "no_history",
   // 書き込み履歴を記録しない設定。書き込み履歴の保存処理が参照する。
@@ -159,14 +157,13 @@ export const CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM = [
   "write_close_panel_after_submit",
   // ドメイン・板設定と書き込みパネルから確認動作を切り替える。
   "write_pre_submit_warnings",
-  // 書き込みパネルとドメイン・板設定からURLの貼り付け時除去を切り替える。
-  "write_sanitize_urls_on_paste",
   // 更新コントロールから自動停止時間を選択できる。
   "auto_load_idle_stop_timeout",
   // 更新コントロールからスレッドの表示形式を選択できる。
   "thread_display_mode",
   // 実況の表示領域パネルで縦横比の固定を切り替えるため、通常の設定フォームには置かない。
   "comment_overlay_lock_aspect_ratio",
-  // ドメイン・板設定からsageの既定動作を切り替える。
-  "sage_flag",
+  // 書き込み設定とドメイン・板設定から名前とメール欄を編集できる。
+  "default_name",
+  "default_mail",
 ] as const;

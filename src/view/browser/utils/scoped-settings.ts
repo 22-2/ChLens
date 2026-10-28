@@ -14,10 +14,13 @@ export const SCOPED_SETTINGS_CONFIG_KEY = "site_board_settings";
 
 export const SCOPED_SETTING_KEYS = [
   "sage_flag",
+  "default_name",
+  "default_mail",
+  "write_submit_ctrl_enter",
+  "write_close_panel_after_submit",
   "auto_load_second",
   "auto_load_second_board",
   "write_pre_submit_warnings",
-  "write_sanitize_urls_on_paste",
 ] as const;
 
 export type ScopedSettingKey = (typeof SCOPED_SETTING_KEYS)[number];

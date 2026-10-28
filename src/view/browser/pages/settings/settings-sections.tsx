@@ -36,6 +36,7 @@ import {
   normalizeNgDisplayMode,
 } from "src/view/browser/utils/ng-display-mode";
 import { POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY } from "src/view/browser/utils/popup-settings";
+import { WRITE_SETTING_COPY } from "src/view/browser/utils/write-settings";
 
 const THEME_ID_OPTIONS = [
   { const: "system", title: "OSに合わせる" },
@@ -333,6 +334,11 @@ const ALL_SETTINGS_SECTIONS = [
         description:
           "標準は精度と追従性のバランスを取り、積極はスレタイの変化を広く許容します。どちらも別板や古いスレには移動しません。",
         options: AUTO_NEXT_THREAD_MODE_OPTIONS,
+      },
+      {
+        kind: "boolean",
+        key: "write_sanitize_urls_on_paste",
+        ...WRITE_SETTING_COPY.write_sanitize_urls_on_paste,
       },
       // 変更理由: スレ本文中のリンクを制御するため、一般設定からスレ設定へ移す。
       {

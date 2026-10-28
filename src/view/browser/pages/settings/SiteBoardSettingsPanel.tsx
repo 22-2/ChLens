@@ -19,7 +19,7 @@ import { container } from "src/service-container/index";
 import { SettingsGroup, SettingsGroupNote } from "src/view/browser/pages/settings/SettingsGroup";
 import { Button } from "src/view/browser/ui/Button";
 import { Dialog } from "src/view/browser/ui/Dialog";
-import { SettingRow, SwitchControl } from "src/view/browser/ui/FormControls";
+import { SettingRow, SwitchControl, TextControl } from "src/view/browser/ui/FormControls";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   clearAllSiteScopedSettings,
@@ -35,6 +35,7 @@ import {
   type ScopedSettingsDocument,
   SITE_SHARED_SCOPE,
 } from "src/view/browser/utils/scoped-settings";
+import { WRITE_SETTING_COPY } from "src/view/browser/utils/write-settings";
 
 const logger = createLogger("view/browser");
 
@@ -56,23 +57,22 @@ const SOURCE_LABELS = {
 } as const;
 
 const SETTING_FIELDS = [
+  { key: "default_name", ...WRITE_SETTING_COPY.default_name, kind: "text" },
+  { key: "default_mail", ...WRITE_SETTING_COPY.default_mail, kind: "text" },
   {
-    key: "sage_flag",
-    title: "sage",
-    description: "メール欄へsageを自動設定して投稿します。",
+    key: "write_submit_ctrl_enter",
+    ...WRITE_SETTING_COPY.write_submit_ctrl_enter,
+    kind: "boolean",
+  },
+  {
+    key: "write_close_panel_after_submit",
+    ...WRITE_SETTING_COPY.write_close_panel_after_submit,
     kind: "boolean",
   },
   {
     key: "write_pre_submit_warnings",
     title: "投稿前に確認する",
     description: "個人情報や危害表現が含まれる場合に確認を表示します。",
-    kind: "boolean",
-  },
-  {
-    key: "write_sanitize_urls_on_paste",
-    title: "貼り付け時にURLパラメータを除去する",
-    description:
-      "URLを貼り付けると追跡用パラメータを除去します。Instagramはクエリ全体を除去します。",
     kind: "boolean",
   },
   {
@@ -95,7 +95,7 @@ const SETTING_FIELDS = [
   key: ScopedSettingKey;
   title: string;
   description: string;
-  kind: "boolean" | "interval";
+  kind: "boolean" | "interval" | "text";
   min?: number;
   max?: number;
 }[];
@@ -180,10 +180,15 @@ function getOverride(
 
 function getDefaultValue(key: ScopedSettingKey): string {
   const raw = container.config.get(key) ?? DEFAULT_CONFIG[key];
-  if (key === "sage_flag") {
+  if (key === "default_name" || key === "default_mail") return raw;
+  if (
+    key === "sage_flag" ||
+    key === "write_submit_ctrl_enter" ||
+    key === "write_close_panel_after_submit"
+  ) {
     return raw === "on" ? "on" : "off";
   }
-  if (key === "write_pre_submit_warnings" || key === "write_sanitize_urls_on_paste") {
+  if (key === "write_pre_submit_warnings") {
     // 変更理由: これらの確認・除去設定はONを既定とし、保存値がない場合も同じ表示にする。
     return raw === "off" ? "off" : "on";
   }
@@ -198,6 +203,38 @@ function readGlobalSettingValues(): Record<ScopedSettingKey, string> {
 
 function getScopeUrl(site: string, board: string): string {
   return board === SITE_SHARED_SCOPE ? `https://${site}/` : board;
+}
+
+/** 入力途中は外部通知で文字を戻さず、確定後は他画面からの設定変更も反映する。 */
+function ScopedTextInput({
+  id,
+  value,
+  ariaLabel,
+  onSave,
+}: {
+  id: string;
+  value: string;
+  ariaLabel?: string;
+  onSave: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState(value);
+  const [editing, setEditing] = useState(false);
+  return (
+    <TextControl
+      id={id}
+      ariaLabel={ariaLabel}
+      value={editing ? draft : value}
+      onFocus={() => {
+        setDraft(value);
+        setEditing(true);
+      }}
+      onValueChange={setDraft}
+      onBlur={() => {
+        setEditing(false);
+        onSave(draft);
+      }}
+    />
+  );
 }
 
 export function SiteBoardSettingsPanel() {
@@ -753,6 +790,13 @@ export function SiteBoardSettingsPanel() {
                       void saveGlobalSetting(field.key, checked ? "on" : "off")
                     }
                   />
+                ) : field.kind === "text" ? (
+                  <ScopedTextInput
+                    id={id}
+                    value={value}
+                    key={`${field.key}-${selectedSite}`}
+                    onSave={(next) => void saveGlobalSetting(field.key, next)}
+                  />
                 ) : (
                   renderIntervalInput(
                     id,
@@ -781,7 +825,9 @@ export function SiteBoardSettingsPanel() {
               ? fallbackValue === "on"
                 ? "ON"
                 : "OFF"
-              : `${intervalValue}秒`;
+              : field.kind === "text"
+                ? fallbackValue || "未入力"
+                : `${intervalValue}秒`;
           const modeId = `${id}-mode`;
 
           return (
@@ -813,7 +859,9 @@ export function SiteBoardSettingsPanel() {
                       ? fallbackValue === "on"
                         ? "on"
                         : "off"
-                      : String(intervalValue * 1000);
+                      : field.kind === "text"
+                        ? fallbackValue
+                        : String(intervalValue * 1000);
                   void saveOverride(field.key, value);
                 }}
               >
@@ -832,6 +880,15 @@ export function SiteBoardSettingsPanel() {
                   onCheckedChange={(checked) =>
                     void saveOverride(field.key, checked ? "on" : "off")
                   }
+                />
+              )}
+              {isCustom && field.kind === "text" && (
+                <ScopedTextInput
+                  id={id}
+                  ariaLabel={`${field.title}の値`}
+                  value={override ?? ""}
+                  key={`${field.key}-${scope.site}-${scope.board ?? "site"}`}
+                  onSave={(next) => void saveOverride(field.key, next)}
                 />
               )}
               {isCustom &&

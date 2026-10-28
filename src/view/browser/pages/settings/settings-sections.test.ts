@@ -294,6 +294,11 @@ describe("設定項目の置き場所", () => {
     const general = sections.find((section) => section.id === "general");
 
     expect(thread?.title).toBe("スレ");
+    expect(
+      thread?.fields.some(
+        (field) => "key" in field && field.key === "write_sanitize_urls_on_paste",
+      ),
+    ).toBe(true);
     expect(thread?.relatedSection?.id).toBe("site-board");
     expect(
       thread?.fields.some((field) => "key" in field && field.key === "confirm_external_links"),

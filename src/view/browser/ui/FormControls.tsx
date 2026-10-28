@@ -138,3 +138,40 @@ export function SelectControl({ id, value, options, onValueChange }: SelectContr
     </select>
   );
 }
+
+interface TextControlProps {
+  id: string;
+  value: string;
+  ariaLabel?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  onValueChange: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
+}
+
+/** 行の右端（または下）に置く1行テキスト入力。設定画面と各画面内の設定モーダルで共有する。 */
+export function TextControl({
+  id,
+  value,
+  ariaLabel,
+  placeholder,
+  disabled,
+  onValueChange,
+  onFocus,
+  onBlur,
+}: TextControlProps) {
+  return (
+    <input
+      id={id}
+      type="text"
+      aria-label={ariaLabel}
+      value={value}
+      placeholder={placeholder}
+      disabled={disabled}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onChange={(event) => onValueChange(event.currentTarget.value)}
+    />
+  );
+}

@@ -90,35 +90,32 @@ describe("サイト・板設定", () => {
     });
   });
 
-  it("貼り付け時のURL除去を板・ドメイン共通・全体設定の順に解決する", () => {
-    state.values.set("write_sanitize_urls_on_paste", "on");
+  it("メール欄を板・ドメイン共通・全体設定の順に解決する", () => {
+    state.values.set("default_mail", "sage");
     state.values.set(
       SCOPED_SETTINGS_CONFIG_KEY,
       JSON.stringify({
         sites: {
           "example.com": {
-            overrides: { write_sanitize_urls_on_paste: "off" },
+            overrides: { default_mail: "test" },
             boards: {
-              "https://example.com/live/": { write_sanitize_urls_on_paste: "on" },
+              "https://example.com/live/": { default_mail: "sage" },
             },
           },
         },
       }),
     );
 
-    expect(
-      resolveScopedSetting("write_sanitize_urls_on_paste", "https://example.com/live/"),
-    ).toEqual({
-      value: "on",
+    expect(resolveScopedSetting("default_mail", "https://example.com/live/")).toEqual({
+      value: "sage",
       source: "board",
     });
-    expect(
-      resolveScopedSetting("write_sanitize_urls_on_paste", "https://example.com/other/"),
-    ).toEqual({ value: "off", source: "site" });
-    expect(
-      resolveScopedSetting("write_sanitize_urls_on_paste", "https://example.net/live/"),
-    ).toEqual({
-      value: "on",
+    expect(resolveScopedSetting("default_mail", "https://example.com/other/")).toEqual({
+      value: "test",
+      source: "site",
+    });
+    expect(resolveScopedSetting("default_mail", "https://example.net/live/")).toEqual({
+      value: "sage",
       source: "global",
     });
   });
