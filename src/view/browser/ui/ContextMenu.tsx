@@ -11,6 +11,7 @@ export interface ContextMenuItem {
   allowMultilineLabel?: boolean;
   icon?: ReactNode;
   disabled?: boolean;
+  checked?: boolean;
   danger?: boolean;
   separator?: boolean;
   onSelect?: () => void;
@@ -213,6 +214,9 @@ export const ContextMenu: React.FC<Props> = ({
                   item.allowMultilineLabel ? " context-menu__item--multiline" : ""
                 }`}
                 disabled={item.disabled}
+                {...(item.checked === undefined
+                  ? {}
+                  : { role: "menuitemcheckbox", "aria-checked": item.checked })}
                 title={item.label}
                 // mousedown でフォーカスが移動するとページ上のテキスト選択が消えるため、
                 // preventDefault でフォーカス移動を抑止し、選択状態を維持する。

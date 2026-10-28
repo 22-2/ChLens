@@ -27,6 +27,20 @@ describe("サイドパネルの保存状態", () => {
     expect(result.views).not.toContain("unknown");
     expect(result.activeView).toBe("boards");
   });
+  it("非表示の保存値を復元し、選択が隠れた場合は表示中のビューへ切り替える", () => {
+    const result = normalizeSidePanel({
+      views: ["images", "boards"],
+      hiddenViews: ["images", "images", "unknown"],
+      activeView: "images",
+    });
+    expect(result.hiddenViews).toEqual(["images"]);
+    expect(result.activeView).toBe("boards");
+  });
+  it("直接開くビューは非表示から戻す", () => {
+    const result = showSidePanelView({ hiddenViews: ["write", "images"] }, "write");
+    expect(result.hiddenViews).toEqual(["images"]);
+    expect(result.activeView).toBe("write");
+  });
   it("指定のビューで開き、幅と並び順は保つ", () => {
     const result = showSidePanelView(
       { isOpen: false, width: 360, views: ["write", "boards"], activeView: "boards" },

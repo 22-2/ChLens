@@ -20,6 +20,7 @@ export const DEFAULT_SIDE_PANEL: SidePanelState = {
   isOpen: false,
   width: 320,
   views: [...SIDE_PANEL_VIEWS],
+  hiddenViews: [],
   activeView: "boards",
 };
 
@@ -28,7 +29,14 @@ export function showSidePanelView(
   value: unknown,
   view: (typeof SIDE_PANEL_VIEWS)[number],
 ): SidePanelState {
-  return { ...normalizeSidePanel(value), isOpen: true, activeView: view };
+  const state = normalizeSidePanel(value);
+  // 書き込み欄などを直接開く操作では、非表示にしたタブも再び操作できるようにする。
+  return {
+    ...state,
+    isOpen: true,
+    activeView: view,
+    hiddenViews: state.hiddenViews?.filter((id) => id !== view),
+  };
 }
 
 /** 保存値の破損や古いビュー種別で画面全体が開けなくならないようにする。 */
@@ -41,6 +49,14 @@ export function normalizeSidePanel(value: unknown): SidePanelState {
     ? input.views.filter((id): id is string => typeof id === "string" && allowed.has(id))
     : [];
   const views = [...new Set([...saved, ...SIDE_PANEL_VIEWS])];
+  const hiddenViews = Array.isArray(input.hiddenViews)
+    ? [
+        ...new Set(
+          input.hiddenViews.filter((id): id is string => typeof id === "string" && allowed.has(id)),
+        ),
+      ]
+    : [];
+  const visibleViews = views.filter((id) => !hiddenViews.includes(id));
   return {
     isOpen: input.isOpen === true,
     width:
@@ -48,9 +64,10 @@ export function normalizeSidePanel(value: unknown): SidePanelState {
         ? clampSidePanelWidth(input.width)
         : DEFAULT_SIDE_PANEL.width,
     views,
+    hiddenViews,
     activeView:
-      typeof input.activeView === "string" && views.includes(input.activeView)
+      typeof input.activeView === "string" && visibleViews.includes(input.activeView)
         ? input.activeView
-        : views[0],
+        : (visibleViews[0] ?? views[0]),
   };
 }

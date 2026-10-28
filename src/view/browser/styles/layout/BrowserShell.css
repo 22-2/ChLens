@@ -121,6 +121,8 @@
   outline-offset: -2px;
 }
 .side-panel__tabs {
+  /* 全タブを隠しても右クリックで戻せる余白を残す。 */
+  min-height: var(--sys-space-12);
   display: flex;
   flex-shrink: 0;
   overflow-x: auto;

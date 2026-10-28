@@ -181,13 +181,20 @@ describe("サイドパネルのセッション", () => {
       panes: [{ id: "pane", activeTabId: "tab", tabs: [createHomeTab("tab")] }],
       activePaneId: "pane",
       closedTabs: [],
-      sidePanel: { isOpen: true, width: 360, views: ["images", "boards"], activeView: "images" },
+      sidePanel: {
+        isOpen: true,
+        width: 360,
+        views: ["images", "boards"],
+        hiddenViews: ["write"],
+        activeView: "images",
+      },
     });
     const restored = loadTabStoreSession();
     expect(restored?.sidePanel?.isOpen).toBe(true);
     expect(restored?.sidePanel?.width).toBe(360);
     expect(restored?.sidePanel?.views.slice(0, 2)).toEqual(["images", "boards"]);
     expect(restored?.sidePanel?.activeView).toBe("images");
+    expect(restored?.sidePanel?.hiddenViews).toEqual(["write"]);
   });
 });
 

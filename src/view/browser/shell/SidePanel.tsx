@@ -1,6 +1,6 @@
 import { DragDropProvider } from "@dnd-kit/react";
-import { BookOpen, Image, Info, ListTree, Pencil, Search } from "lucide-react";
-import { type ReactNode, type RefObject, useRef } from "react";
+import { BookOpen, Check, Image, Info, ListTree, Pencil, Search } from "lucide-react";
+import { type ReactNode, type RefObject, useRef, useState } from "react";
 import { SidePanelBoards } from "src/features/board/ui/SidePanelBoards";
 import { SidePanelFavorites } from "src/features/bookmark/ui/SidePanelFavorites";
 import { SidePanelImages } from "src/features/media/ui/SidePanelImages";
@@ -19,6 +19,7 @@ import {
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import type { Page, ThreadPage } from "src/view/browser/types";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 
 type ViewId = (typeof SIDE_PANEL_VIEWS)[number];
 type ViewDefinition = { label: string; Icon: typeof ListTree } & (
@@ -138,14 +139,18 @@ export function SidePanel() {
   const state = normalizeSidePanel(saved);
   // ドラッグ終了直後の click によるビュー切り替えを1回だけ抑止する（タブバーと同じ挙動）。
   const wasDragging = useRef(false);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null);
+  const hiddenViews = state.hiddenViews ?? [];
+  const visibleViews = state.views.filter((id) => !hiddenViews.includes(id));
   const update = (patch: Partial<typeof state>) =>
     dispatch({ type: TAB_ACTION_TYPES.UPDATE_SIDE_PANEL, sidePanel: { ...state, ...patch } });
   const move = (id: string, target: number) => {
+    const from = visibleViews.indexOf(id);
+    if (from < 0 || target < 0 || target >= visibleViews.length || from === target) return false;
     const items = [...state.views];
-    const from = items.indexOf(id);
-    if (from < 0 || target < 0 || target >= items.length || from === target) return false;
-    items.splice(from, 1);
-    items.splice(target, 0, id);
+    const targetId = visibleViews[target]!;
+    items.splice(items.indexOf(id), 1);
+    items.splice(items.indexOf(targetId) + (target > from ? 1 : 0), 0, id);
     update({ views: items });
     return true;
   };
@@ -166,13 +171,36 @@ export function SidePanel() {
     onCommit: (width) => update({ width }),
   });
   if (!state.isOpen) return null;
-  const activeView = isViewId(state.activeView) ? views[state.activeView] : null;
+  const activeView =
+    visibleViews.includes(state.activeView) && isViewId(state.activeView)
+      ? views[state.activeView]
+      : null;
+  const toggleView = (id: string) => {
+    const nextHidden = hiddenViews.includes(id)
+      ? hiddenViews.filter((item) => item !== id)
+      : [...hiddenViews, id];
+    const nextVisible = state.views.filter((item) => !nextHidden.includes(item));
+    update({
+      hiddenViews: nextHidden,
+      activeView: nextVisible.includes(state.activeView)
+        ? state.activeView
+        : (nextVisible[0] ?? state.activeView),
+    });
+  };
   return (
     <aside className="side-panel" style={{ width: resize.size }} aria-label="サイドパネル">
       <div className="side-panel__resize" aria-label="サイドパネルの幅" {...resize.handleProps} />
-      <div className="side-panel__tabs" role="tablist" aria-label="サイドパネルのビュー">
+      <div
+        className="side-panel__tabs"
+        role="tablist"
+        aria-label="サイドパネルのビュー"
+        onContextMenu={(event) => {
+          event.preventDefault();
+          setMenuPosition({ x: event.clientX, y: event.clientY });
+        }}
+      >
         <DragDropProvider onDragEnd={handleDragEnd}>
-          {state.views.map((id, index) => {
+          {visibleViews.map((id, index) => {
             if (!isViewId(id)) return null;
             const view = views[id];
             return (
@@ -191,6 +219,21 @@ export function SidePanel() {
           })}
         </DragDropProvider>
       </div>
+      {menuPosition && (
+        <ContextMenu
+          x={menuPosition.x}
+          y={menuPosition.y}
+          onClose={() => setMenuPosition(null)}
+          enableKeyboardNavigation
+          items={state.views.filter(isViewId).map((id) => ({
+            id,
+            label: views[id].label,
+            checked: !hiddenViews.includes(id),
+            icon: !hiddenViews.includes(id) ? <Check size={16} /> : <span />,
+            onSelect: () => toggleView(id),
+          }))}
+        />
+      )}
       {activeView && (
         <>
           <div

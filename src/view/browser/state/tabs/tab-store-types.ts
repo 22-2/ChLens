@@ -5,6 +5,7 @@ export interface SidePanelState {
   isOpen: boolean;
   width: number;
   views: string[];
+  hiddenViews?: string[];
   activeView: string;
 }
 
