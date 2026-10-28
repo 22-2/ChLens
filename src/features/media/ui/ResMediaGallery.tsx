@@ -719,11 +719,16 @@ export function ResMediaGallery({
   >(new Map());
   const openImageContextMenu = (url: string, event: React.MouseEvent<HTMLElement>) => {
     const imageIsLoaded = useMediaImageStore.getState().images.get(url)?.status === "loaded";
-    if (!confirmExternal && !imageIsLoaded && !onOpenDetachedImage) return;
     const image = event.currentTarget.querySelector<HTMLImageElement>("img[data-image-key]");
     const targetWindow = event.currentTarget.ownerDocument.defaultView;
 
+    const viewerImages = imageUrls.includes(url) ? imageUrls : saveImageUrls;
     openMenu(url, event, [
+      {
+        id: "open-viewer",
+        label: "ビューアで開く",
+        onSelect: () => onUrlClick(url, viewerImages, 0, undefined, saveImageUrls),
+      },
       ...(onToggleImage
         ? [{ id: "save-image", label: "画像を保存", onSelect: () => void save([url]) }]
         : []),
@@ -731,8 +736,8 @@ export function ResMediaGallery({
         ? [
             {
               id: "open-detached-viewer",
-              label: "メディアビューアを別窓で開く",
-              onSelect: () => onOpenDetachedImage(url, imageUrls, saveImageUrls),
+              label: "ビューアを別窓で開く",
+              onSelect: () => onOpenDetachedImage(url, viewerImages, saveImageUrls),
             },
           ]
         : []),

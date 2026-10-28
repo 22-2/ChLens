@@ -70,6 +70,15 @@ describe("画像一覧", () => {
     expect(mocks.download).toHaveBeenCalledWith(imageUrl, expect.any(String), expect.anything());
   });
 
+  it("画像一覧の右クリックからビューアで開ける", async () => {
+    publish();
+    const { container } = render(<SidePanelImages tabId="tab" page={page} />);
+    fireEvent.contextMenu(container.querySelector(".side-panel__image")!);
+    fireEvent.click(await screen.findByRole("menuitem", { name: "ビューアで開く" }));
+    expect(useMediaViewerStore.getState().viewer?.label).toBe(imageUrl);
+    expect(useMediaViewerStore.getState().viewerScopeId).toBe(`tab\u0000${page.threadUrl}`);
+  });
+
   it("取得済みの画像は本文と同じビューアーで開き、レスへ移動できる", () => {
     useMediaImageStore.setState({
       images: new Map([[imageUrl, { status: "loaded", version: 1, fallbackSrc: null }]]),

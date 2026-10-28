@@ -61,6 +61,12 @@ function ThreadImageGrid({
           );
           const contextMenuItems: ContextMenuItem[] = [
             {
+              id: "open-viewer",
+              label: "ビューアで開く",
+              onSelect: () =>
+                openMedia(item.rawUrl, rawUrls, getThreadMediaViewerScopeId(tabId, threadUrl)),
+            },
+            {
               id: "jump-to-response",
               label: "レスにジャンプ",
               icon: <Undo2 size={14} />,

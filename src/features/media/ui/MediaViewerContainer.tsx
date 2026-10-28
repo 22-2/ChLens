@@ -30,7 +30,7 @@ interface DetachedMediaViewerWindow {
 const MEDIA_VIEWER_WINDOW_OPTIONS: AuxiliaryWindowOptions = {
   name: "readcrx-media-viewer",
   features: "popup,width=1180,height=820,resizable=yes",
-  title: "画像ビューア - read.crx 2",
+  title: "ビューア - read.crx 2",
   shellClassName: "detached-media-viewer-window",
   logLabel: "MediaViewer",
 };

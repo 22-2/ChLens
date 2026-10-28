@@ -96,10 +96,38 @@ test("画像のメニューからビューアを別窓で開く", async ({
   await page.getByPlaceholder("URLを入力").press("Enter");
   const thumb = page.locator('.content-area__tab-panel[data-active="true"] .res__thumb--image');
   await thumb.click({ button: "right" });
-  const open = page.getByRole("menuitem", { name: "メディアビューアを別窓で開く" });
+  const open = page.getByRole("menuitem", { name: "ビューアを別窓で開く" });
   await expect(open).toBeVisible();
   const popupPromise = context.waitForEvent("page");
   await open.click();
   const popup = await popupPromise;
   await expect(popup.locator(".media-viewer")).toBeVisible();
+  await expect(popup).toHaveTitle("ビューア - read.crx 2");
+});
+
+test("サムネイルと展開画像のメニューからビューアを開く", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const image = `${localBoard.origin}/img/1.png`;
+  localBoard.setDat(
+    `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local001<>画像 ${image}<>ローカルテストスレッド`,
+  );
+  await page.addInitScript(() => localStorage.setItem("config_manual_image_loading", "off"));
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  const thumb = page.locator('.content-area__tab-panel[data-active="true"] .res__thumb--image');
+  await thumb.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "ビューアで開く", exact: true }).click();
+  await expect(page.locator(".media-viewer__label")).toHaveText(image);
+  await page.locator(".media-viewer__close").click();
+  await thumb.click();
+  const expanded = page.getByRole("button", { name: "画像を折りたたむ" });
+  await expect(expanded).toBeVisible();
+  await expanded.click({ button: "right" });
+  await page.getByRole("menuitem", { name: "ビューアで開く", exact: true }).click();
+  await expect(page.locator(".media-viewer__label")).toHaveText(image);
 });
