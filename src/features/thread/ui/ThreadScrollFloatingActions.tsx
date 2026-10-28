@@ -129,6 +129,19 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         return;
       }
 
+      const workspace = currentRoot.closest(".browser-shell__workspace");
+      const sidePanel = workspace?.querySelector<HTMLElement>(":scope > .side-panel");
+      const sideRect = sidePanel?.getBoundingClientRect();
+      // サイドパネルはペインを縮めずに重なるため、実際に見える右端で操作を配置する。
+      const overlapsSidePanel =
+        sideRect != null &&
+        sideRect.width > 0 &&
+        sideRect.left < rect.right &&
+        sideRect.right > rect.left &&
+        sideRect.top < rect.bottom &&
+        sideRect.bottom > rect.top;
+      const visibleRight = overlapsSidePanel ? Math.max(rect.left, sideRect.left) : rect.right;
+
       const distanceToBottom = Math.max(
         0,
         currentScrollContainer.scrollHeight -
@@ -137,7 +150,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
       const isAtBottom = distanceToBottom <= BOTTOM_EPSILON;
       const nextLayout: ScrollFloatingLayout = {
         panelLeft: rect.left,
-        panelRight: rect.right,
+        panelRight: visibleRight,
         panelBottom: rect.bottom,
         // 上端から十分離れた位置でだけ戻りボタンを出し、短いスクロールでは本文を隠さない。
         isFarFromTop: currentScrollContainer.scrollTop > NEAR_BOTTOM_DISTANCE,
@@ -147,7 +160,11 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         // 小さいペインでも下端操作を見失いにくくする。
         isSlightlyAboveBottom:
           !isAtBottom && distanceToBottom <= Math.max(NEAR_BOTTOM_DISTANCE, rect.height * 0.4),
-        minimapReservation: readMinimapReservation(currentRoot, viewWindow),
+        // ミニマップ自体がパネルに隠れる部分は二重に避けない。
+        minimapReservation: Math.max(
+          0,
+          visibleRight - (rect.right - readMinimapReservation(currentRoot, viewWindow)),
+        ),
       };
 
       setLayout((previous) => (isSameLayout(previous, nextLayout) ? previous : nextLayout));
@@ -174,6 +191,26 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
       : null;
     resizeObserver?.observe(scrollContainer);
     resizeObserver?.observe(root);
+    const workspace = root.closest(".browser-shell__workspace");
+    let observedSidePanel: Element | null = null;
+    const observeSidePanel = () => {
+      const next = workspace?.querySelector(":scope > .side-panel") ?? null;
+      if (observedSidePanel === next) return;
+      if (observedSidePanel) resizeObserver?.unobserve(observedSidePanel);
+      observedSidePanel = next;
+      if (observedSidePanel) resizeObserver?.observe(observedSidePanel);
+    };
+    observeSidePanel();
+    // 開閉はペインの寸法を変えないため、サイドパネルの追加・削除も監視する。
+    const MutationObserverConstructor = (viewWindow as Window & typeof globalThis).MutationObserver;
+    const mutationObserver =
+      workspace && MutationObserverConstructor
+        ? new MutationObserverConstructor(() => {
+            observeSidePanel();
+            scheduleLayout();
+          })
+        : null;
+    if (workspace) mutationObserver?.observe(workspace, { childList: true });
     scrollContainer.addEventListener("scroll", scheduleLayout, { passive: true });
     viewWindow.addEventListener("resize", scheduleLayout);
     scheduleLayout();
@@ -183,6 +220,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         viewWindow.cancelAnimationFrame(frameId);
       }
       resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
       scrollContainer.removeEventListener("scroll", scheduleLayout);
       viewWindow.removeEventListener("resize", scheduleLayout);
     };
@@ -210,7 +248,15 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
   }, [rootRef, viewWindow]);
 
   // 変更理由: 自動更新のしきい線より下では新着へ追従するため、画面を覆う操作ボタンを隠す。
-  if (!layout || !isActive || canAutoScroll || isFilterEnabled || expired || responseCount === 0) {
+  if (
+    !layout ||
+    layout.panelRight - layout.panelLeft < 48 ||
+    !isActive ||
+    canAutoScroll ||
+    isFilterEnabled ||
+    expired ||
+    responseCount === 0
+  ) {
     return null;
   }
 
@@ -232,7 +278,12 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         <button
           type="button"
           className="thread-page__floating-action thread-page__floating-action--auto-load"
-          style={{ left: `${centerLeft}px`, bottom: `${autoLoadBottom}px` }}
+          style={{
+            left: `${centerLeft}px`,
+            bottom: `${autoLoadBottom}px`,
+            maxWidth: `${layout.panelRight - layout.panelLeft}px`,
+            boxSizing: "border-box",
+          }}
           aria-label="自動読み込みを開始"
           title="自動読み込みを開始"
           onClick={onEnableAutoRefresh}
