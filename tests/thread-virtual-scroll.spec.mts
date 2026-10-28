@@ -39,6 +39,112 @@ test.describe("大きなスレッドのスクロール位置", () => {
     await expectViewportAnchor(page, before!);
   });
 
+  test("ウィンドウを大きくリサイズしても末尾付近のレス間に余白ができない", async ({
+    page,
+    extensionId,
+    localBoard,
+  }) => {
+    await page.setViewportSize({ width: 400, height: 600 });
+    const thread = localBoard.addLargeThread(500);
+    await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+    await waitForThreadLoaded(page, thread.threadUrl, 500);
+    await scrollActivePanelToRatio(page, 1);
+    await page.setViewportSize({ width: 1200, height: 900 });
+    await waitForScrollSettled(page);
+    await expect
+      .poll(() =>
+        page.locator(ACTIVE_PANEL).evaluate((panel) => {
+          const items = [...panel.querySelectorAll<HTMLElement>(".virtual-res-list__item")];
+          const visible = items
+            .map((item) => item.getBoundingClientRect())
+            .filter(
+              (rect) =>
+                rect.bottom > panel.getBoundingClientRect().top &&
+                rect.top < panel.getBoundingClientRect().bottom,
+            );
+          return visible.length
+            ? Math.max(0, visible[0].top - panel.getBoundingClientRect().top)
+            : 9999;
+        }),
+      )
+      .toBeLessThan(100);
+    await expect
+      .poll(() =>
+        page.locator(ACTIVE_PANEL).evaluate((panel) => {
+          const rects = [...panel.querySelectorAll<HTMLElement>(".virtual-res-list__item")].map(
+            (item) => item.getBoundingClientRect(),
+          );
+          return Math.max(
+            0,
+            ...rects.slice(1).map((rect, index) => rect.top - rects[index].bottom),
+          );
+        }),
+      )
+      .toBeLessThan(3);
+  });
+
+  test("自動追従中に拡大と縮小を繰り返しても、表示範囲に空白を作らず末尾を維持する", async ({
+    page,
+    extensionId,
+    localBoard,
+  }) => {
+    await page.setViewportSize({ width: 500, height: 600 });
+    const thread = localBoard.addLargeThread(500);
+    await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+    await waitForThreadLoaded(page, thread.threadUrl, 500);
+    await page.getByRole("button", { name: /^スレッド自動更新: / }).click();
+    const toggle = page
+      .locator(".mini-window__toggle-row")
+      .filter({ has: page.getByText("自動更新", { exact: true }) })
+      .getByRole("button");
+    await toggle.click();
+    await expect(toggle).toHaveText("ON");
+    await page.keyboard.press("Escape");
+    const panel = page.locator(ACTIVE_PANEL);
+    await expect
+      .poll(() =>
+        panel.evaluate(
+          (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
+        ),
+      )
+      .toBeLessThanOrEqual(2);
+    for (const size of [
+      { width: 500, height: 1000 },
+      { width: 1200, height: 900 },
+      { width: 450, height: 600 },
+      { width: 1200, height: 900 },
+    ]) {
+      await page.setViewportSize(size);
+      await waitForScrollSettled(page);
+      await expect
+        .poll(() =>
+          panel.evaluate((element) => {
+            const panelRect = element.getBoundingClientRect();
+            const rects = [...element.querySelectorAll<HTMLElement>(".virtual-res-list__item")].map(
+              (item) => item.getBoundingClientRect(),
+            );
+            const visible = rects.filter(
+              (rect) => rect.bottom > panelRect.top && rect.top < panelRect.bottom,
+            );
+            const firstGap = visible.length ? Math.max(0, visible[0].top - panelRect.top) : 9999;
+            const between = Math.max(
+              0,
+              ...rects.slice(1).map((rect, index) => rect.top - rects[index].bottom),
+            );
+            return Math.max(firstGap, between);
+          }),
+        )
+        .toBeLessThan(30);
+      await expect
+        .poll(() =>
+          panel.evaluate(
+            (element) => element.scrollHeight - element.scrollTop - element.clientHeight,
+          ),
+        )
+        .toBeLessThanOrEqual(2);
+    }
+  });
+
   test("再読み込みしても、保存した既読位置へ戻る", async ({ page, extensionId, localBoard }) => {
     const thread = localBoard.addLargeThread(RESPONSE_COUNT);
     await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);

@@ -208,7 +208,18 @@ export function useThreadVirtualList({
       const previous = signatureRef.current.get(key);
       return previous !== undefined && previous !== signature;
     });
-    if (changed) virtualizer.measure();
+    if (changed) {
+      virtualizer.measure();
+      // 幅が変わっても高さが同じ要素には ResizeObserver の通知が来ない。
+      // キャッシュ消去後に描画中の要素を実測しないと、推定値のまま余白や重なりが残る。
+      for (const [key, element] of virtualizer.elementsCache) {
+        if (!element.isConnected) continue;
+        const index = virtualizer.indexFromElement(element);
+        if (index >= 0 && index < keys.length && keys[index] === key) {
+          virtualizer.resizeItem(index, element.offsetHeight);
+        }
+      }
+    }
     signatureRef.current = new Map(
       displaySignature.map((signature, index) => [keys[index]!, signature]),
     );
