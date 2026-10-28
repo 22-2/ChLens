@@ -25,6 +25,7 @@ import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { CheckboxField } from "src/view/browser/ui/FormControls";
+import { Popover } from "src/view/browser/ui/Popover";
 import { copyText } from "src/view/browser/utils/clipboard";
 import { sanitizeUrlsInText } from "src/view/browser/utils/url-tracking";
 import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
@@ -117,6 +118,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   // 変更理由: 書き込み中の入力欄を増やさず、書き込みに関する設定を
   // パネル内の歯車モーダルへまとめて、必要な時だけ変更できるようにする。
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { value: submitWithCtrlEnter, setValue: setSubmitWithCtrlEnter } = useConfigBooleanSetting(
     WRITE_SUBMIT_CTRL_ENTER_KEY,
   );
@@ -541,67 +543,79 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                 />
               </label>
               {/* 投稿操作を入力欄の行へ寄せ、本文欄の縦幅を確保する。 */}
-              <details className="write-panel__menu">
-                <summary
-                  className="write-panel__menu-trigger"
-                  aria-label="その他の操作"
-                  title="その他の操作"
-                >
-                  <MoreVertical size={16} aria-hidden="true" />
-                </summary>
-                <div className="write-panel__menu-items">
+              <Popover.Root open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                <Popover.Trigger asChild>
                   <button
                     type="button"
-                    className="write-panel__menu-item"
-                    onClick={(event) => {
-                      event.currentTarget.closest("details")?.removeAttribute("open");
-                      setIsSettingsDialogOpen(true);
-                    }}
-                    disabled={isSubmitting || isImgurUploading}
+                    className="write-panel__menu-trigger"
+                    aria-label="その他の操作"
+                    title="その他の操作"
                   >
-                    <Settings size={14} aria-hidden="true" />
-                    <span>書き込み設定</span>
+                    <MoreVertical size={16} aria-hidden="true" />
                   </button>
-                  {!isWindow && (
+                </Popover.Trigger>
+                {/* パネル外へ表示し、狭い画面では表示位置を自動調整する。 */}
+                <Popover.Portal container={dialogPortalContainer ?? viewDocument.body}>
+                  <Popover.Content
+                    className="write-panel__menu-items"
+                    side="top"
+                    align="end"
+                    sideOffset={4}
+                    collisionPadding={8}
+                  >
                     <button
                       type="button"
                       className="write-panel__menu-item"
                       onClick={(event) => {
-                        event.currentTarget.closest("details")?.removeAttribute("open");
-                        handleOpenWriteWindow();
+                        setIsMenuOpen(false);
+                        setIsSettingsDialogOpen(true);
                       }}
                       disabled={isSubmitting || isImgurUploading}
                     >
-                      <ExternalLink size={14} aria-hidden="true" />
-                      <span>書き込みを別窓で開く</span>
+                      <Settings size={14} aria-hidden="true" />
+                      <span>書き込み設定</span>
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    className="write-panel__menu-item"
-                    onClick={(event) => {
-                      event.currentTarget.closest("details")?.removeAttribute("open");
-                      imgurFileInputRef.current?.click();
-                    }}
-                    disabled={isSubmitting || isImgurUploading || !threadUrl}
-                  >
-                    <ImagePlus size={14} aria-hidden="true" />
-                    <span>ローカル画像をImgurに投稿</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="write-panel__menu-item"
-                    onClick={(event) => {
-                      event.currentTarget.closest("details")?.removeAttribute("open");
-                      handlePasteClipboardImage();
-                    }}
-                    disabled={isSubmitting || isImgurUploading || !threadUrl}
-                  >
-                    <Clipboard size={14} aria-hidden="true" />
-                    <span>クリップボード画像をImgurに投稿</span>
-                  </button>
-                </div>
-              </details>
+                    {!isWindow && (
+                      <button
+                        type="button"
+                        className="write-panel__menu-item"
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          handleOpenWriteWindow();
+                        }}
+                        disabled={isSubmitting || isImgurUploading}
+                      >
+                        <ExternalLink size={14} aria-hidden="true" />
+                        <span>書き込みを別窓で開く</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="write-panel__menu-item"
+                      onClick={(event) => {
+                        setIsMenuOpen(false);
+                        imgurFileInputRef.current?.click();
+                      }}
+                      disabled={isSubmitting || isImgurUploading || !threadUrl}
+                    >
+                      <ImagePlus size={14} aria-hidden="true" />
+                      <span>ローカル画像をImgurに投稿</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="write-panel__menu-item"
+                      onClick={(event) => {
+                        setIsMenuOpen(false);
+                        handlePasteClipboardImage();
+                      }}
+                      disabled={isSubmitting || isImgurUploading || !threadUrl}
+                    >
+                      <Clipboard size={14} aria-hidden="true" />
+                      <span>クリップボード画像をImgurに投稿</span>
+                    </button>
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
               <input
                 ref={imgurFileInputRef}
                 className="write-panel__file-input"

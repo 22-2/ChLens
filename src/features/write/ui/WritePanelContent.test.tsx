@@ -412,6 +412,7 @@ describe("WritePanelContent", () => {
   it("歯車ボタンから書き込み設定を開いて各項目を変更できる", async () => {
     renderWritePanel();
 
+    fireEvent.click(screen.getByRole("button", { name: "その他の操作" }));
     fireEvent.click(screen.getByRole("button", { name: "書き込み設定" }));
 
     const dialog = screen.getByRole("dialog", { name: "書き込み設定" });
@@ -684,6 +685,7 @@ describe("WritePanelContent", () => {
   it("別窓を開いたら下部パネルを閉じる", () => {
     renderWritePanel();
 
+    fireEvent.click(screen.getByRole("button", { name: "その他の操作" }));
     fireEvent.click(screen.getByRole("button", { name: "書き込みを別窓で開く" }));
 
     expect(mocks.openWriteWindow).toHaveBeenCalledTimes(1);
@@ -695,6 +697,7 @@ describe("WritePanelContent", () => {
 
     renderWritePanel();
 
+    fireEvent.click(screen.getByRole("button", { name: "その他の操作" }));
     fireEvent.click(screen.getByRole("button", { name: "書き込みを別窓で開く" }));
 
     expect(mocks.openWriteWindow).toHaveBeenCalledTimes(1);

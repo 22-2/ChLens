@@ -128,12 +128,6 @@
   cursor: default;
 }
 
-.write-panel__menu {
-  position: relative;
-  display: flex;
-  justify-content: flex-end;
-}
-
 .write-panel__menu-trigger {
   display: inline-flex;
   align-items: center;
@@ -155,7 +149,7 @@
 }
 
 .write-panel__menu-trigger:hover,
-.write-panel__menu[open] > .write-panel__menu-trigger {
+.write-panel__menu-trigger[data-state="open"] {
   background: var(--sys-color-border);
   color: var(--sys-color-text);
 }
@@ -167,11 +161,8 @@
 
 .write-panel__menu-items {
   /* 小さな書き込みパネルでも画面からはみ出しにくい寸法にする。 */
-  position: absolute;
-  /* 変更理由: トリガーより前面に出しつつ、画面共通の重なり順をトークンで保つ。 */
-  z-index: var(--sys-z-local-raised);
-  top: calc(100% + var(--sys-space-1));
-  right: 0;
+  /* Portal でパネルの切り抜きを避け、ダイアログと同じ画面内に表示する。 */
+  z-index: var(--sys-z-popup-layer);
   display: grid;
   width: max-content;
   max-width: min(240px, calc(100vw - 24px));
