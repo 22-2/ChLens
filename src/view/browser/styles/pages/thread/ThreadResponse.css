@@ -423,7 +423,6 @@
   background: transparent;
   cursor: nwse-resize;
   touch-action: none;
-  opacity: 0.55;
 }
 /* 小さな四角を見せつつ、周囲もドラッグできるよう操作領域を広く取る。 */
 .res__inline-image-resize::after {
@@ -431,16 +430,20 @@
   position: absolute;
   right: var(--sys-space-1);
   bottom: var(--sys-space-1);
-  width: var(--sys-space-4);
-  height: var(--sys-space-4);
+  width: var(--sys-space-7);
+  height: var(--sys-space-7);
   box-sizing: border-box;
   pointer-events: none;
   border: 2px solid var(--sys-color-accent);
+  outline: 2px solid var(--sys-color-media-badge-bg);
   background: var(--sys-color-accent-fg);
 }
-.res__inline-image:hover .res__inline-image-resize,
-.res__inline-image-resize:focus-visible {
-  opacity: 1;
+.res__inline-image:hover .res__inline-image-resize::after,
+.res__inline-image-resize:focus-visible::after {
+  width: var(--sys-space-8);
+  height: var(--sys-space-8);
+  border-color: var(--sys-color-accent-fg);
+  background: var(--sys-color-accent);
 }
 .res__inline-image img {
   display: block;
