@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
 interface DisplayedState {
   scope: string;
@@ -11,14 +12,17 @@ export function useLiveChatReplyIndex({
   isFlowing,
   baseline,
   responses,
+  releasedResponses,
   repIndex,
 }: {
   scopeKey: string;
   isFlowing: boolean;
   baseline: number;
   responses: readonly { num: number }[];
+  releasedResponses: readonly { num: number }[];
   repIndex: Map<number, Set<number>>;
 }) {
+  const { window: viewWindow } = useViewSurface();
   const scope = `${scopeKey}\u0000${isFlowing}`;
   const [stored, setDisplayed] = useState<DisplayedState>({
     scope,
@@ -40,6 +44,38 @@ export function useLiveChatReplyIndex({
     },
     [scope],
   );
+  const scheduledRef = useRef<{ nums: Set<number>; timers: Set<number> }>({
+    nums: new Set(),
+    timers: new Set(),
+  });
+  useEffect(() => {
+    const scheduled = { nums: new Set<number>(), timers: new Set<number>() };
+    scheduledRef.current = scheduled;
+    return () => {
+      for (const timer of scheduled.timers) viewWindow.clearTimeout(timer);
+    };
+  }, [scope, viewWindow]);
+  useEffect(() => {
+    if (!isFlowing) return;
+    const scheduled = scheduledRef.current;
+    const nums = releasedResponses
+      .filter((res) => res.num > baseline && !scheduled.nums.has(res.num))
+      .map((res) => res.num);
+    if (!nums.length) return;
+    for (const num of nums) scheduled.nums.add(num);
+    // 高速で流れると仮想化されたレスは描画されず、animationendが届かない。
+    // 描画済みの入場完了を優先しつつ、十分な待機後に残りも返信数へ反映する。
+    const timer = viewWindow.setTimeout(() => {
+      scheduled.timers.delete(timer);
+      setDisplayed((current) => {
+        if (current.scope !== scope || nums.every((num) => current.responseNums.has(num)))
+          return current;
+        return { ...current, responseNums: new Set([...current.responseNums, ...nums]) };
+      });
+    }, 300);
+    scheduled.timers.add(timer);
+  }, [scope, isFlowing, baseline, releasedResponses, viewWindow]);
+
   const replySourceNums = useMemo(
     () =>
       isFlowing

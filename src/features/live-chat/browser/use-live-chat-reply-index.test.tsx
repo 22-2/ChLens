@@ -24,6 +24,7 @@ function useProbe(props: typeof initial) {
     isFlowing: playback.isFlowing,
     baseline: playback.baseline,
     responses: props.responses,
+    releasedResponses: playback.responses,
     repIndex: buildReplyIndexes(props.responses).repIndex,
   });
   return { playback, replies };

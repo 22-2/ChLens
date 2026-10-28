@@ -482,6 +482,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     isFlowing: liveChat.isFlowing,
     baseline: liveChat.baseline,
     responses,
+    releasedResponses: liveChat.responses,
     repIndex: indexes.repIndex,
   });
 
