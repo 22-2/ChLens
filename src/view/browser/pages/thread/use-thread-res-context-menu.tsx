@@ -28,12 +28,14 @@ import {
 } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import { registerThreadResMenu } from "src/view/browser/state/thread-res-menu";
 import type { Tab, ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
 import { buildKyodemoUrl } from "src/view/browser/utils/kyodemo-url";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { formatResForCopy, stripHtml } from "src/view/browser/utils/response-format";
+import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 const logger = createLogger("view/browser");
 
@@ -242,7 +244,12 @@ export function useThreadResContextMenu({
   );
 
   const buildContextMenuItems = useCallback(
-    (targetRes: IRes, fromPopup: boolean, clickedOnId: boolean): ContextMenuItem[] => {
+    (
+      targetRes: IRes,
+      fromPopup: boolean,
+      clickedOnId: boolean,
+      fromExtract = false,
+    ): ContextMenuItem[] => {
       const rawId = targetRes.id ?? "";
       const kyodemoUrl = rawId ? buildKyodemoUrl(page.threadUrl, rawId) : null;
       const isMiniAa = targetRes.isAA === true || miniAaResNums.has(targetRes.num);
@@ -302,24 +309,34 @@ export function useThreadResContextMenu({
               { id: "sep-archive-replay", separator: true },
             ]
           : []),
-        ...(filter !== "all" || hasKeywordFilter
+        ...(fromExtract
           ? [
               {
-                id: "clear-filter-jump",
-                label: "フィルタリングを解除してこのレスにジャンプ",
-                icon: <FilterX size={14} />,
-                onSelect: () => {
-                  // 変更理由: ポップアップ内のレスも元本文と同じフィルター状態を共有するため、
-                  // 先に解除してDOMへ対象レスが戻った後でジャンプする。
-                  pendingJumpNumRef.current = targetRes.num;
-                  setFilter("all");
-                  setSearchQuery("");
-                },
+                id: "jump-to-res",
+                label: "このレスにジャンプ",
+                icon: <ArrowDown size={14} />,
+                onSelect: () => requestThreadResJump(page.threadUrl, targetRes.num, tabId, true),
               },
-              { id: "sep-filter", separator: true },
+              { id: "sep-jump", separator: true },
             ]
-          : []),
-        ...(fromPopup && filter === "all" && !hasKeywordFilter
+          : filter !== "all" || hasKeywordFilter
+            ? [
+                {
+                  id: "clear-filter-jump",
+                  label: "フィルタリングを解除してこのレスにジャンプ",
+                  icon: <FilterX size={14} />,
+                  onSelect: () => {
+                    // 変更理由: ポップアップ内のレスも元本文と同じフィルター状態を共有するため、
+                    // 先に解除してDOMへ対象レスが戻った後でジャンプする。
+                    pendingJumpNumRef.current = targetRes.num;
+                    setFilter("all");
+                    setSearchQuery("");
+                  },
+                },
+                { id: "sep-filter", separator: true },
+              ]
+            : []),
+        ...(!fromExtract && fromPopup && filter === "all" && !hasKeywordFilter
           ? [
               {
                 id: "jump-to-res",
@@ -337,35 +354,41 @@ export function useThreadResContextMenu({
 
       // ID系メニューの前後に分割。ID系は通常「コピー」と「返信」の間に配置される。
       const itemsBeforeIdSlot: ContextMenuItem[] = [
-        {
-          id: "refresh-thread",
-          label: "スレッドを更新",
-          icon: <RotateCw size={14} />,
-          onSelect: () => {
-            // 変更理由: 共通ヘッダーの更新は一般的な再読み込みを担う一方、
-            // レス固有メニューの明示更新ではsubject.txtも再確認してdat落ちを判定する。
-            const scopeKey = getManualRefreshScopeKey(tabId, page);
-            runManualRefresh(scopeKey, () => void fetchThread(true));
-          },
-        },
-        {
-          id: "auto-refresh",
-          label: isAutoRefreshEnabled ? "スレッドの自動更新を停止" : "スレッドを自動更新",
-          icon: isAutoRefreshEnabled ? <Pause size={14} /> : <RefreshCw size={14} />,
-          onSelect: () => {
-            const nextEnabled = !isAutoRefreshEnabled;
-            dispatch(
-              tabActions.setAutoRefreshEnabled(
-                nextEnabled,
-                getAutoRefreshPageKey(page) ?? undefined,
-              ),
-            );
-            toast.info(
-              nextEnabled ? "スレッドの自動更新を開始しました" : "スレッドの自動更新を停止しました",
-            );
-          },
-        },
-        { id: "sep-1", separator: true },
+        ...(!fromExtract
+          ? [
+              {
+                id: "refresh-thread",
+                label: "スレッドを更新",
+                icon: <RotateCw size={14} />,
+                onSelect: () => {
+                  // 変更理由: 共通ヘッダーの更新は一般的な再読み込みを担う一方、
+                  // レス固有メニューの明示更新ではsubject.txtも再確認してdat落ちを判定する。
+                  const scopeKey = getManualRefreshScopeKey(tabId, page);
+                  runManualRefresh(scopeKey, () => void fetchThread(true));
+                },
+              },
+              {
+                id: "auto-refresh",
+                label: isAutoRefreshEnabled ? "スレッドの自動更新を停止" : "スレッドを自動更新",
+                icon: isAutoRefreshEnabled ? <Pause size={14} /> : <RefreshCw size={14} />,
+                onSelect: () => {
+                  const nextEnabled = !isAutoRefreshEnabled;
+                  dispatch(
+                    tabActions.setAutoRefreshEnabled(
+                      nextEnabled,
+                      getAutoRefreshPageKey(page) ?? undefined,
+                    ),
+                  );
+                  toast.info(
+                    nextEnabled
+                      ? "スレッドの自動更新を開始しました"
+                      : "スレッドの自動更新を停止しました",
+                  );
+                },
+              },
+              { id: "sep-1", separator: true },
+            ]
+          : []),
         {
           id: "copy-res",
           label: "レスをコピー",
@@ -502,6 +525,14 @@ export function useThreadResContextMenu({
       toast,
       viewSurface,
     ],
+  );
+
+  useEffect(
+    () =>
+      registerThreadResMenu(tabId, page.threadUrl, (response) =>
+        buildContextMenuItems(response, true, false, true),
+      ),
+    [tabId, page.threadUrl, buildContextMenuItems],
   );
 
   const openResContextMenu = useCallback(

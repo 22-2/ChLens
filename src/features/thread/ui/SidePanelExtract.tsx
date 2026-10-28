@@ -1,12 +1,14 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { stripHtml } from "src/core/util/strip-html";
 import { buildThreadFindIndex, findThreadMatches } from "src/features/thread/domain/thread-find";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
 import { useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
+import { buildExtractResMenu } from "src/view/browser/state/thread-res-menu";
 import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
+import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { findSearchMatchRanges } from "src/view/browser/utils/search-highlight";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
@@ -37,6 +39,7 @@ function ExtractResults({
   query: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [menu, setMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
   const results = useMemo(() => {
     if (!query) return snapshot.visibleResponses;
     const matched = new Set(
@@ -76,7 +79,24 @@ function ExtractResults({
                   <button
                     type="button"
                     className="side-panel__entry side-panel__response"
-                    onClick={() => requestThreadResJump(threadUrl, response.num, tabId, true)}
+                    onClick={(event) => {
+                      const selection = event.currentTarget.ownerDocument.getSelection();
+                      // 選択した本文をコピーやNG指定するとき、選択の終了をジャンプ扱いにしない。
+                      if (
+                        selection &&
+                        !selection.isCollapsed &&
+                        event.currentTarget.contains(selection.anchorNode)
+                      )
+                        return;
+                      requestThreadResJump(threadUrl, response.num, tabId, true);
+                    }}
+                    onContextMenu={(event) => {
+                      const items = buildExtractResMenu(tabId, threadUrl, response);
+                      if (!items) return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setMenu({ x: event.clientX, y: event.clientY, items });
+                    }}
                   >
                     <span className="side-panel__response-meta">
                       <strong>{response.num}</strong> {stripHtml(response.name)} {response.date}
@@ -91,6 +111,9 @@ function ExtractResults({
           </div>
         )}
       </div>
+      {menu && (
+        <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />
+      )}
     </>
   );
 }

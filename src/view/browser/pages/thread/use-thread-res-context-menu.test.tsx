@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import React, { useEffect, useState } from "react";
 import type { IRes } from "src/service-container/interfaces";
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
+import { buildExtractResMenu } from "src/view/browser/state/thread-res-menu";
 import type { ThreadFilter } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
@@ -261,6 +262,42 @@ describe("useThreadResContextMenu", () => {
     mocks.requestArchiveReplaySeek.mockReset();
     mocks.isAutoRefreshEnabled = false;
     mocks.fetchThread.mockReset();
+  });
+
+  it("抽出レスは対象タブのレス操作を共有し、更新項目を表示しない", () => {
+    const { unmount } = render(<HookHarness />);
+    const items = buildExtractResMenu(
+      "tab-1",
+      "https://example.com/test/read.cgi/live/1/",
+      TARGET_RES,
+    )!;
+    expect(items.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "jump-to-res",
+        "copy-res",
+        "copy-id",
+        "add-ng-id",
+        "reply",
+        "add-write-history",
+        "toggle-aa",
+      ]),
+    );
+    expect(items.map((item) => item.id)).not.toEqual(
+      expect.arrayContaining(["refresh-thread", "auto-refresh"]),
+    );
+    expect(
+      buildExtractResMenu("other-tab", "https://example.com/test/read.cgi/live/1/", TARGET_RES),
+    ).toBeNull();
+    expect(buildExtractResMenu("tab-1", "https://example.com/other/", TARGET_RES)).toBeNull();
+    items.find((item) => item.id === "reply")?.onSelect?.();
+    expect(mocks.openWritePanelWithText).toHaveBeenCalledWith(
+      ">>10\n",
+      "https://example.com/test/read.cgi/live/1/",
+    );
+    unmount();
+    expect(
+      buildExtractResMenu("tab-1", "https://example.com/test/read.cgi/live/1/", TARGET_RES),
+    ).toBeNull();
   });
 
   it("ID/IPのNG追加は再起動後も有効なDSL形式で保存する", async () => {

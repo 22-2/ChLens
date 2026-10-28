@@ -232,6 +232,9 @@
   width: 100%;
 }
 .side-panel__response {
+  /* ボタン内でも本文の選択と右クリック操作ができるようにする。 */
+  user-select: text;
+  -webkit-user-select: text;
   display: grid;
   gap: var(--sys-space-2);
   border-bottom: 1px solid var(--sys-color-border);

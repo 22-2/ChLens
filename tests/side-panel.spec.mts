@@ -51,6 +51,46 @@ test("抽出結果を強調し、本文のレスへ移動する", async ({ page,
   );
 });
 
+test("抽出レスから更新を除いたレスメニューを操作できる", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const thread = localBoard.addLargeThread(10);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, 10);
+  await page.getByRole("button", { name: "サイドパネルを開く" }).click();
+  const panel = page.getByRole("complementary", { name: "サイドパネル" });
+  await panel.getByRole("tab", { name: "抽出レス" }).click();
+  await panel.getByRole("searchbox", { name: "レスを抽出" }).fill("レス本文マーカー2");
+  await panel.locator(".side-panel__response").first().click({ button: "right" });
+  const menu = page.locator(".context-menu");
+  await expect(menu).toBeVisible();
+  await expect(menu.getByText("このレスにジャンプ")).toBeVisible();
+  await expect(menu.getByText("レスをコピー")).toBeVisible();
+  await expect(menu.getByText("ID/IPをNG指定")).toBeVisible();
+  await expect(menu.getByText("書込履歴に追加")).toBeVisible();
+  await expect(menu.getByText("AA表示モードに変更")).toBeVisible();
+  await expect(menu.getByText("スレッドを更新")).toHaveCount(0);
+  await expect(menu.getByText("スレッドを自動更新")).toHaveCount(0);
+  await menu.getByText("このレスにジャンプ").click();
+  await expect(page.locator('[data-res-num="2"]')).toBeVisible();
+  const match = panel.locator(".side-panel__response mark");
+  const matchBox = (await match.boundingBox())!;
+  await page.mouse.move(matchBox.x + 2, matchBox.y + matchBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(matchBox.x + matchBox.width - 2, matchBox.y + matchBox.height / 2, {
+    steps: 8,
+  });
+  await page.mouse.up();
+  expect(await page.evaluate(() => window.getSelection()?.toString().length)).toBeGreaterThan(0);
+  await match.click({ button: "right" });
+  await expect(menu.getByText("選択範囲をコピー")).toBeVisible();
+  await expect(menu.getByText("選択範囲をNG指定")).toBeVisible();
+  await menu.getByText("返信", { exact: true }).click();
+  await expect(page.locator(".write-panel__textarea")).toHaveValue(">>2\n");
+});
+
 test("画像一覧は手動取得の設定に従い、取得した画像をビューアーで開く", async ({
   page,
   extensionId,
