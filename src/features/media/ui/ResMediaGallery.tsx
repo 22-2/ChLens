@@ -894,6 +894,14 @@ export function ResMediaGallery({
         : []),
     ]);
   };
+  // 複数画像のレスはインライン展開だと縦に長くなり比較しづらいため、クリックでビューアを開く。
+  const openImage = (url: string) => {
+    if (onToggleImage && imageUrls.length <= 1) {
+      onToggleImage(url);
+      return;
+    }
+    onUrlClick(url, imageUrls, 0, undefined, saveImageUrls);
+  };
   const blurStyle: ThumbStyle = { "--res-thumb-blur-radius": `${imageBlurRadius}px` };
   const thumbStyle: ThumbStyle | undefined = isBlurred ? blurStyle : undefined;
   const hashingEnabled = useImageHashStore((state) => state.hashingEnabled);
@@ -1133,13 +1141,11 @@ export function ResMediaGallery({
                         setExpandedVideoUrl(item.rawUrl);
                         return;
                       }
-                      if (onToggleImage) onToggleImage(item.rawUrl);
-                      else onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls);
+                      openImage(item.rawUrl);
                     });
                     return;
                   }
-                  if (onToggleImage) onToggleImage(item.rawUrl);
-                  else onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls);
+                  openImage(item.rawUrl);
                 }}
                 onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
                 onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}

@@ -25,11 +25,17 @@ vi.mock("src/view/browser/hooks/use-config-number-setting", () => ({
 
 const image1 = "https://example.com/1.png";
 const image2 = "https://example.com/2.png";
-function Gallery({ onUrlClick = () => {} }: { onUrlClick?: (...args: unknown[]) => void }) {
+function Gallery({
+  onUrlClick = () => {},
+  urls = [image1, image2],
+}: {
+  onUrlClick?: (...args: unknown[]) => void;
+  urls?: string[];
+}) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   return (
     <ResMediaGallery
-      urls={[image1, image2]}
+      urls={urls}
       onUrlClick={onUrlClick}
       expandedImageUrls={expanded}
       onToggleImage={(url) =>
@@ -48,28 +54,34 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 describe("レス内の画像展開", () => {
-  it("画像ごとに展開して畳める", () => {
-    render(<Gallery />);
+  it("画像が1枚のレスではクリックで展開して畳める", () => {
+    render(<Gallery urls={[image1]} />);
     fireEvent.click(screen.getByRole("link", { name: image1 }));
     expect(screen.getByRole("button", { name: "画像を折りたたむ" })).toContainElement(
       screen.getByRole("img", { name: image1 }),
     );
-    expect(screen.getByRole("link", { name: image2 })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "画像を折りたたむ" }));
     expect(screen.getByRole("link", { name: image1 })).toBeInTheDocument();
   });
   it("展開画像の操作からビューアを開き、画像を縮小できる", () => {
     const onUrlClick = vi.fn();
-    render(<Gallery onUrlClick={onUrlClick} />);
+    render(<Gallery onUrlClick={onUrlClick} urls={[image1]} />);
     fireEvent.click(screen.getByRole("link", { name: image1 }));
     fireEvent.click(screen.getByRole("button", { name: "ビューアで開く" }));
-    expect(onUrlClick).toHaveBeenCalledWith(image1, [image1, image2], 0, undefined, [
-      image1,
-      image2,
-    ]);
+    expect(onUrlClick).toHaveBeenCalledWith(image1, [image1], 0, undefined, [image1]);
     expect(screen.getByRole("button", { name: "画像を折りたたむ" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "画像を縮小" }));
     expect(screen.getByRole("link", { name: image1 })).toBeInTheDocument();
+  });
+  it("画像が複数あるレスではクリックでビューアを開く", () => {
+    const onUrlClick = vi.fn();
+    render(<Gallery onUrlClick={onUrlClick} />);
+    fireEvent.click(screen.getByRole("link", { name: image2 }));
+    expect(onUrlClick).toHaveBeenCalledWith(image2, [image1, image2], 0, undefined, [
+      image1,
+      image2,
+    ]);
+    expect(screen.queryByRole("button", { name: "画像を折りたたむ" })).not.toBeInTheDocument();
   });
   it("複数画像を一括保存し、失敗件数を通知する", async () => {
     mocks.save.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("失敗"));
