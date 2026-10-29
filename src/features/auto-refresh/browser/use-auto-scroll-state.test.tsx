@@ -6,6 +6,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   AutoScrollPaneStatesProvider,
   AutoScrollStateProvider,
+  useAutoScrollState,
   usePaneAutoScrollState,
   useSetAutoScrollState,
 } from "./use-auto-scroll-state";
@@ -26,6 +27,11 @@ function Writer() {
   );
 }
 
+function LocalReader() {
+  const state = useAutoScrollState();
+  return <output data-testid="local">{state.canAutoScroll ? "追従中" : "待機中"}</output>;
+}
+
 describe("ペインごとの自動スクロール状態", () => {
   it("共通タブバーへ各ペインの状態を独立して伝え、ペイン削除時に破棄する", () => {
     const tree = (showFirst: boolean) => (
@@ -35,6 +41,7 @@ describe("ペインごとの自動スクロール状態", () => {
         {showFirst && (
           <AutoScrollStateProvider paneId="first">
             <Writer />
+            <LocalReader />
           </AutoScrollStateProvider>
         )}
         <AutoScrollStateProvider paneId="second">{null}</AutoScrollStateProvider>
@@ -43,8 +50,20 @@ describe("ペインごとの自動スクロール状態", () => {
     const { rerender } = render(tree(true));
     fireEvent.click(screen.getByRole("button", { name: "追従開始" }));
     expect(screen.getByTestId("first")).toHaveTextContent("追従中");
+    expect(screen.getByTestId("local")).toHaveTextContent("追従中");
     expect(screen.getByTestId("second")).toHaveTextContent("待機中");
     rerender(tree(false));
     expect(screen.getByTestId("first")).toHaveTextContent("待機中");
+  });
+
+  it("共通プロバイダーのない切り離し窓でも状態を読み書きできる", () => {
+    render(
+      <AutoScrollStateProvider>
+        <Writer />
+        <LocalReader />
+      </AutoScrollStateProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "追従開始" }));
+    expect(screen.getByTestId("local")).toHaveTextContent("追従中");
   });
 });

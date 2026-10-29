@@ -5,7 +5,10 @@ import {
   isArchiveReplayThread as matchesArchiveReplayThread,
   useArchiveReplayPositionStore,
 } from "src/features/archive-replay/browser/position-store";
-import { usePaneAutoScrollState } from "src/features/auto-refresh/browser/use-auto-scroll-state";
+import {
+  type AutoScrollState,
+  usePaneAutoScrollState,
+} from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import type { TabBarItem } from "src/features/tabs/browser/tab-bar-layout";
 import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import {
@@ -24,16 +27,10 @@ import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 
 const logger = createLogger("tabs");
 
-interface AutoScrollSnapshot {
-  canAutoScroll: boolean;
-  isAutoScrolling: boolean;
-  isPaused: boolean;
-}
-
 function getAutoRefreshIndicatorState(
   tab: Tab,
   isActive: boolean,
-  autoScroll: AutoScrollSnapshot,
+  autoScroll: AutoScrollState,
 ): TabBarItem["autoRefreshIndicatorState"] {
   const page = getCurrentPage(tab);
   // 変更理由: スレ/スレ一覧どちらも同じページ単位の自動更新として扱い、

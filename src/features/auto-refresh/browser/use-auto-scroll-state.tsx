@@ -1,9 +1,9 @@
 import React, {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 
@@ -22,14 +22,13 @@ const INITIAL: AutoScrollState = {
   isPaused: false,
 };
 
-const ReadContext = createContext<AutoScrollState>(INITIAL);
-const WriteContext = createContext<(state: AutoScrollState) => void>(() => {});
-const PaneStatesContext = createContext<Record<string, AutoScrollState>>({});
+const PaneStatesContext = createContext<Record<string, AutoScrollState> | null>(null);
 const SetPaneStatesContext = createContext<React.Dispatch<
   React.SetStateAction<Record<string, AutoScrollState>>
 > | null>(null);
+const PaneIdContext = createContext<string | null>(null);
 
-/** ペイン外の共通タブバーにも各ペインの追従状態を共有する。 */
+/** ペイン内の画面と共通タブバーが同じ追従状態を読む。 */
 export const AutoScrollPaneStatesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [states, setStates] = useState<Record<string, AutoScrollState>>({});
   return (
@@ -39,18 +38,13 @@ export const AutoScrollPaneStatesProvider: React.FC<{ children: ReactNode }> = (
   );
 };
 
-export const AutoScrollStateProvider: React.FC<{ children: ReactNode; paneId?: string }> = ({
+const ScopedAutoScrollStateProvider: React.FC<{ children: ReactNode; paneId: string }> = ({
   children,
   paneId,
 }) => {
-  const [state, setState] = useState<AutoScrollState>(INITIAL);
   const setPaneStates = useContext(SetPaneStatesContext);
   useEffect(() => {
-    if (!paneId || !setPaneStates) return;
-    setPaneStates((previous) => ({ ...previous, [paneId]: state }));
-  }, [paneId, setPaneStates, state]);
-  useEffect(() => {
-    if (!paneId || !setPaneStates) return;
+    if (!setPaneStates) return;
     return () =>
       setPaneStates((previous) => {
         const next = { ...previous };
@@ -58,27 +52,51 @@ export const AutoScrollStateProvider: React.FC<{ children: ReactNode; paneId?: s
         return next;
       });
   }, [paneId, setPaneStates]);
-  const write = useMemo(() => setState, []);
-  return (
-    <WriteContext.Provider value={write}>
-      <ReadContext.Provider value={state}>{children}</ReadContext.Provider>
-    </WriteContext.Provider>
-  );
+  return <PaneIdContext.Provider value={paneId}>{children}</PaneIdContext.Provider>;
 };
 
-/** 自動スクロール状態を読む */
-export function useAutoScrollState(): AutoScrollState {
-  return useContext(ReadContext);
-}
+export const AutoScrollStateProvider: React.FC<{ children: ReactNode; paneId?: string }> = ({
+  children,
+  paneId,
+}) => {
+  const setPaneStates = useContext(SetPaneStatesContext);
+  // 切り離し窓や Storybook は共通タブバーを持たないため、独立した状態領域を用意する。
+  if (!setPaneStates) {
+    return (
+      <AutoScrollPaneStatesProvider>
+        <ScopedAutoScrollStateProvider paneId={paneId ?? "standalone"}>
+          {children}
+        </ScopedAutoScrollStateProvider>
+      </AutoScrollPaneStatesProvider>
+    );
+  }
+  if (!paneId) throw new Error("共有された自動スクロール状態にはペインIDが必要です");
+  return <ScopedAutoScrollStateProvider paneId={paneId}>{children}</ScopedAutoScrollStateProvider>;
+};
 
-/** 共通タブバーはペイン内の Context の外にあるため、ペインIDで状態を読む。 */
+/** 共通タブバーはペインIDで状態を読む。 */
 export function usePaneAutoScrollState(paneId: string): AutoScrollState {
   const states = useContext(PaneStatesContext);
-  const local = useAutoScrollState();
-  return states[paneId] ?? local;
+  if (!states) throw new Error("自動スクロール状態のプロバイダーがありません");
+  return states[paneId] ?? INITIAL;
 }
 
-/** 自動スクロール状態を書き込む（useThreadAutoRefresh 内部から呼ぶ） */
+/** ペイン内の自動スクロール状態を読む。 */
+export function useAutoScrollState(): AutoScrollState {
+  const paneId = useContext(PaneIdContext);
+  if (!paneId) throw new Error("自動スクロール状態のペインがありません");
+  return usePaneAutoScrollState(paneId);
+}
+
+/** 自動スクロール状態を書き込む（useThreadAutoRefresh 内部から呼ぶ）。 */
 export function useSetAutoScrollState(): (state: AutoScrollState) => void {
-  return useContext(WriteContext);
+  const paneId = useContext(PaneIdContext);
+  const setPaneStates = useContext(SetPaneStatesContext);
+  if (!paneId || !setPaneStates) throw new Error("自動スクロール状態のペインがありません");
+  return useCallback(
+    (state: AutoScrollState) => {
+      setPaneStates((previous) => ({ ...previous, [paneId]: state }));
+    },
+    [paneId, setPaneStates],
+  );
 }
