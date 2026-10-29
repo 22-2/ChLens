@@ -1,9 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, renderHook, screen } from "@testing-library/react";
 import { useRef, useState } from "react";
 import { resolveThreadAutoRefreshStop } from "src/features/auto-refresh/browser/auto-refresh-stop";
 import { useAutoRefresh } from "src/features/auto-refresh/browser/use-auto-refresh";
+import { useLiveChatResponses } from "src/features/live-chat/browser/use-live-chat-responses";
 import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
 import { useThreadRefreshController } from "src/features/thread/browser/use-thread-refresh-controller";
 import { container } from "src/service-container/index";
@@ -158,4 +159,37 @@ describe("dat落ちから次スレ待機と停止までの連携", () => {
     expect(container.board.getThreads).not.toHaveBeenCalled();
     expect(onStop).toHaveBeenCalledOnce();
   });
+
+  it.each(["expired", "missingFromSubject", "stopped"] as const)(
+    "次スレ探索中も%sの判定で表示待ちを一括表示する",
+    (reason) => {
+      const responses = [{ num: 1 }, { num: 2 }, { num: 3 }];
+      const usePlayback = (props: { responses: typeof responses; dropped: boolean }) => {
+        const state = resolveThreadAutoRefreshStop({
+          autoNextThreadEnabled: true,
+          responseCount: props.responses.length,
+          expired: props.dropped && reason === "expired",
+          missingFromSubject: props.dropped && reason === "missingFromSubject",
+          stopped: props.dropped && reason === "stopped",
+        });
+        return useLiveChatResponses({
+          responses: props.responses,
+          scopeKey: "thread",
+          enabled: !state.autoRefreshExpired,
+          isActive: true,
+          isAutoRefreshEnabled: true,
+          isFetching: false,
+          intervalMs: 20000,
+        });
+      };
+      const { result, rerender } = renderHook(usePlayback, {
+        initialProps: { responses: responses.slice(0, 1), dropped: false },
+      });
+      rerender({ responses, dropped: false });
+      expect(result.current.pendingCount).toBe(2);
+      rerender({ responses, dropped: true });
+      expect(result.current.responses).toEqual(responses);
+      expect(result.current.pendingCount).toBe(0);
+    },
+  );
 });

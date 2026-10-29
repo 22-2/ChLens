@@ -501,8 +501,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const liveChat = useLiveChatResponses({
     responses: filteredResponses,
     scopeKey: `${tabId}\u0000${page.threadUrl}`,
-    // 検索・絞り込み中は結果をすぐ見せ、保留中の新着が検索結果から欠落するのを防ぐ。
-    enabled: isLiveChat && !isFilterEnabled,
+    // 次スレ探索中は自動更新がONのままでも、dat落ち後の残りは待たずに表示する。
+    // 検索・絞り込み中も保留せず、結果から新着が欠落するのを防ぐ。
+    enabled: isLiveChat && !isFilterEnabled && !autoRefreshExpired,
     isActive,
     isAutoRefreshEnabled,
     isFetching: loading,
