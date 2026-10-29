@@ -152,7 +152,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       });
       result.push({
         id: "delete-thread-log",
-        label: "スレログを削除してタブを閉じる",
+        label: "スレログと閲覧履歴を削除してタブを閉じる",
         icon: <Trash2 />,
         danger: true,
         disabled: tab.pinned,

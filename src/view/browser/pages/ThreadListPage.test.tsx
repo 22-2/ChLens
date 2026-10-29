@@ -455,7 +455,7 @@ describe("ThreadListPage", () => {
     vi.restoreAllMocks();
   });
 
-  it("スレ一覧の右クリックメニューから選択したスレのログと閲覧履歴を削除する", async () => {
+  it("スレ一覧の右クリックメニューから選択したスレのログと閲覧履歴を一括削除する", async () => {
     vi.useRealTimers();
     cacheGetMock.mockImplementation(async (boardUrl: string) =>
       boardUrl === "https://egg.5ch.net/software/" ? THREADS : null,
@@ -478,8 +478,10 @@ describe("ThreadListPage", () => {
     if (!row) throw new Error("thread row was not rendered");
 
     fireEvent.contextMenu(row, { clientX: 40, clientY: 50 });
-    const deleteLog = await screen.findByRole("button", { name: "スレログを削除" });
-    fireEvent.click(deleteLog);
+    const deleteRecords = await screen.findByRole("button", {
+      name: "スレログと閲覧履歴を削除",
+    });
+    fireEvent.click(deleteRecords);
 
     await waitFor(() =>
       expect(deleteLogMock).toHaveBeenCalledWith("https://egg.5ch.net/test/read.cgi/software/1/"),
@@ -499,25 +501,17 @@ describe("ThreadListPage", () => {
         }),
       ]),
     );
-    await waitFor(() => {
-      expect(row).not.toHaveClass("thread-list__row--visited");
-      expect(row.querySelector(".thread-list__unread-badge")).toBeNull();
-    });
-    expect(toastSuccessMock).toHaveBeenCalledWith("スレログを削除しました", {
-      targetWindow: window,
-    });
-
-    fireEvent.contextMenu(row, { clientX: 40, clientY: 50 });
-    const deleteHistory = await screen.findByRole("button", { name: "閲覧履歴を削除" });
-    fireEvent.click(deleteHistory);
-
     await waitFor(() =>
       expect(removeHistoryMock).toHaveBeenCalledWith(
         "https://egg.5ch.net/test/read.cgi/software/1/",
         null,
       ),
     );
-    expect(toastSuccessMock).toHaveBeenCalledWith("閲覧履歴を削除しました", {
+    await waitFor(() => {
+      expect(row).not.toHaveClass("thread-list__row--visited");
+      expect(row.querySelector(".thread-list__unread-badge")).toBeNull();
+    });
+    expect(toastSuccessMock).toHaveBeenCalledWith("スレログと閲覧履歴を削除しました", {
       targetWindow: window,
     });
   });

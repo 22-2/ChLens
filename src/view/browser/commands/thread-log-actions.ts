@@ -12,7 +12,7 @@ interface DeleteThreadLogAndCloseTabOptions {
 }
 
 /** ログ削除後も残る既読状態を、既読DBとブックマークの両方から消す。 */
-export async function deleteThreadLogAndClearReadState(
+async function deleteThreadLogAndClearReadState(
   threadUrl: string,
   clearCachedReadState: (threadUrl: string) => Promise<void>,
 ): Promise<number> {
@@ -26,6 +26,20 @@ export async function deleteThreadLogAndClearReadState(
   return deletedCount;
 }
 
+/** スレログ、閲覧履歴、ログ削除後に残る既読状態をまとめて削除する。 */
+export async function deleteThreadLogAndHistory(
+  threadUrl: string,
+  clearCachedReadState: (threadUrl: string) => Promise<void>,
+): Promise<number> {
+  // 変更理由: ログと閲覧履歴を別々の操作で残さないよう、全てのログ削除入口で一緒に整理する。
+  const deletedCount = await deleteThreadLogAndClearReadState(threadUrl, clearCachedReadState);
+  const historyResult = await container.history.remove(threadUrl, null);
+  if (historyResult instanceof Error) {
+    throw historyResult;
+  }
+  return deletedCount;
+}
+
 /** 保存済みログを削除し、対象のスレタブを閉じる。 */
 export async function deleteThreadLogAndCloseTab({
   threadUrl,
@@ -34,21 +48,25 @@ export async function deleteThreadLogAndCloseTab({
   toast,
 }: DeleteThreadLogAndCloseTabOptions): Promise<void> {
   try {
-    const deletedCount = await deleteThreadLogAndClearReadState(threadUrl, clearCachedReadState);
+    const deletedCount = await deleteThreadLogAndHistory(threadUrl, clearCachedReadState);
     const didCloseTab = closeTab();
 
     if (deletedCount === 0) {
       toast.info(
         didCloseTab
-          ? "このスレのログは保存されていません。タブを閉じました"
-          : "このスレのログは保存されておらず、タブも閉じられませんでした",
+          ? "このスレのログは保存されていません。閲覧履歴を削除してタブを閉じました"
+          : "このスレのログは保存されておらず、閲覧履歴を削除しました。タブは閉じられませんでした",
       );
       return;
     }
 
-    toast.success(didCloseTab ? "スレログを削除してタブを閉じました" : "スレログを削除しました");
+    toast.success(
+      didCloseTab
+        ? "スレログと閲覧履歴を削除してタブを閉じました"
+        : "スレログと閲覧履歴を削除しました",
+    );
   } catch (error: unknown) {
-    logger.error("スレログの削除に失敗しました", { url: threadUrl, error });
-    toast.error("スレログを削除できませんでした");
+    logger.error("スレログと閲覧履歴の削除に失敗しました", { url: threadUrl, error });
+    toast.error("スレログと閲覧履歴を削除できませんでした");
   }
 }

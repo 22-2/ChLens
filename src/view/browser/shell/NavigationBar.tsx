@@ -365,7 +365,10 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         },
         {
           id: "delete-thread-log",
-          label: openThreadTabIds.length > 0 ? "スレログを削除してタブを閉じる" : "スレログを削除",
+          label:
+            openThreadTabIds.length > 0
+              ? "スレログと閲覧履歴を削除してタブを閉じる"
+              : "スレログと閲覧履歴を削除",
           danger: true,
           onSelect: () => {
             void deleteThreadLogAndCloseTab({

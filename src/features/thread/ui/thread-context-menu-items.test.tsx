@@ -61,25 +61,19 @@ describe("thread-context-menu-items", () => {
     });
   });
 
-  it("一覧メニューに指定されたスレログ・閲覧履歴の削除操作を追加する", () => {
-    const onDeleteLog = vi.fn();
-    const onDeleteHistory = vi.fn();
+  it("一覧メニューにスレログと閲覧履歴の一括削除操作を追加する", () => {
+    const onDeleteThreadRecords = vi.fn();
     const items = createThreadContextMenuItems({
       target,
       isBookmarked: false,
       onRegisterTitleNg: vi.fn(),
       runCommand: vi.fn(),
-      onDeleteLog,
-      onDeleteHistory,
+      onDeleteThreadRecords,
     });
-    const deleteLogItem = items.find((item) => item.id === "delete-thread-log");
-    const deleteHistoryItem = items.find((item) => item.id === "delete-thread-history");
+    const deleteRecordsItem = items.find((item) => item.id === "delete-thread-records");
 
-    expect(deleteLogItem?.label).toBe("スレログを削除");
-    expect(deleteHistoryItem?.label).toBe("閲覧履歴を削除");
-    deleteLogItem?.onSelect?.();
-    deleteHistoryItem?.onSelect?.();
-    expect(onDeleteLog).toHaveBeenCalledOnce();
-    expect(onDeleteHistory).toHaveBeenCalledOnce();
+    expect(deleteRecordsItem?.label).toBe("スレログと閲覧履歴を削除");
+    deleteRecordsItem?.onSelect?.();
+    expect(onDeleteThreadRecords).toHaveBeenCalledOnce();
   });
 });

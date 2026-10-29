@@ -53,7 +53,7 @@ import type { IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
 import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import { deleteThreadLogAndClearReadState } from "src/view/browser/commands/thread-log-actions";
+import { deleteThreadLogAndHistory } from "src/view/browser/commands/thread-log-actions";
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { SearchBar } from "src/view/browser/components/SearchBar";
@@ -583,37 +583,23 @@ export const ThreadListPage: React.FC<Props> = ({
     [handleSort],
   );
 
-  const deleteThreadLog = useCallback(
+  const deleteThreadRecords = useCallback(
     async (thread: IThread) => {
       try {
-        const deletedCount = await deleteThreadLogAndClearReadState(
+        const deletedCount = await deleteThreadLogAndHistory(
           thread.url,
           clearCachedThreadReadState,
         );
         if (deletedCount === 0) {
-          toast.info("このスレのログは保存されていません", { targetWindow: viewWindow });
+          toast.info("このスレのログは保存されていません。閲覧履歴を削除しました", {
+            targetWindow: viewWindow,
+          });
           return;
         }
-        toast.success("スレログを削除しました", { targetWindow: viewWindow });
+        toast.success("スレログと閲覧履歴を削除しました", { targetWindow: viewWindow });
       } catch (error) {
-        logger.error("スレログの削除に失敗しました", { url: thread.url, error });
-        toast.error("スレログを削除できませんでした", { targetWindow: viewWindow });
-      }
-    },
-    [toast, viewWindow],
-  );
-
-  const deleteThreadHistory = useCallback(
-    async (thread: IThread) => {
-      try {
-        const result = await container.history.remove(thread.url, null);
-        if (result instanceof Error) {
-          throw result;
-        }
-        toast.success("閲覧履歴を削除しました", { targetWindow: viewWindow });
-      } catch (error) {
-        logger.error("閲覧履歴の削除に失敗しました", { url: thread.url, error });
-        toast.error("閲覧履歴を削除できませんでした", { targetWindow: viewWindow });
+        logger.error("スレログと閲覧履歴の削除に失敗しました", { url: thread.url, error });
+        toast.error("スレログと閲覧履歴を削除できませんでした", { targetWindow: viewWindow });
       }
     },
     [toast, viewWindow],
@@ -629,18 +615,14 @@ export const ThreadListPage: React.FC<Props> = ({
       isBookmarked: readBookmarkStatus(thread.url),
       onRegisterTitleNg: () => openThreadTitleNgDialog(thread),
       runCommand: runTargetCommand,
-      onDeleteLog: () => {
-        void deleteThreadLog(thread);
-      },
-      onDeleteHistory: () => {
-        void deleteThreadHistory(thread);
+      onDeleteThreadRecords: () => {
+        void deleteThreadRecords(thread);
       },
     });
   }, [
     bookmarkRevision,
     contextMenuState,
-    deleteThreadHistory,
-    deleteThreadLog,
+    deleteThreadRecords,
     openThreadTitleNgDialog,
     runTargetCommand,
   ]);

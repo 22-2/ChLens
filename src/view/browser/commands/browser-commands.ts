@@ -789,9 +789,9 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
   },
   {
     id: "page.delete-thread-log",
-    label: "現在のスレログを削除してタブを閉じる",
-    englishLabel: "Delete Current Thread Log and Close Tab",
-    description: "現在のスレの保存済みログを削除して、このタブを閉じます",
+    label: "現在のスレログと閲覧履歴を削除してタブを閉じる",
+    englishLabel: "Delete Current Thread Log and History and Close Tab",
+    description: "現在のスレの保存済みログと閲覧履歴を削除して、このタブを閉じます",
     keywords: ["スレログ", "ログ削除", "過去ログ", "delete log"],
     group: "page",
     icon: Trash2,
