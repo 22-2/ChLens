@@ -1152,6 +1152,15 @@ export function ResMediaGallery({
                       onError={markImageUnavailable}
                     />
                   )}
+                  {onToggleImage && expandedImageUrls?.has(item.rawUrl) && (
+                    <span
+                      className="res__inline-image-loading"
+                      role="status"
+                      aria-label="画像を展開中"
+                    >
+                      <Spinner size="sm" aria-hidden="true" />
+                    </span>
+                  )}
                 </ConfirmableLink>
                 {onToggleImage && expandedImageUrls?.has(item.rawUrl) && (
                   <InlineExpandedImage

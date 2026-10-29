@@ -62,6 +62,7 @@ describe("レス内の画像展開", () => {
     const expanded = document.querySelector(".res__inline-image")!;
     expect(expanded).toHaveClass("res__inline-image--loading");
     expect(thumbnail).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "画像を展開中" })).toBeInTheDocument();
     fireEvent.load(expanded.querySelector("img")!);
     expect(expanded).not.toHaveClass("res__inline-image--loading");
     expect(screen.getByRole("button", { name: "画像を折りたたむ" })).toContainElement(
@@ -69,6 +70,7 @@ describe("レス内の画像展開", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "画像を折りたたむ" }));
     expect(screen.getByRole("link", { name: image1 })).toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "画像を展開中" })).not.toBeInTheDocument();
   });
   it("展開画像の操作からビューアを開き、画像を縮小できる", () => {
     const onUrlClick = vi.fn();

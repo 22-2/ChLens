@@ -387,6 +387,19 @@
   position: absolute;
   visibility: hidden;
 }
+/* 展開を受け付けたことを示しつつ、読み込み中も元のサムネイルを見せる。 */
+.res__inline-image-loading {
+  display: none;
+  position: absolute;
+  inset: 0;
+  place-items: center;
+  background: var(--sys-color-overlay-media-bg);
+  color: var(--sys-color-accent-fg);
+  pointer-events: none;
+}
+.res__thumb:has(+ .res__inline-image--loading) .res__inline-image-loading {
+  display: grid;
+}
 .res__thumb:has(+ .res__inline-image:not(.res__inline-image--loading)) {
   display: none;
 }
