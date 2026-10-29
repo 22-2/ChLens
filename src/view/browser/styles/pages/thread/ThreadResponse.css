@@ -440,22 +440,24 @@
 .res__inline-image-resize {
   position: absolute;
   right: 0;
-  bottom: 0;
+  top: 50%;
+  transform: translateY(-50%);
   z-index: var(--sys-z-local-raised);
   width: min(var(--sys-space-10), 25%);
   height: min(var(--sys-space-10), 25%);
   padding: 0;
   border: 0;
   background: transparent;
-  cursor: nwse-resize;
+  cursor: ew-resize;
   touch-action: none;
 }
 /* 小さな四角を見せつつ、周囲もドラッグできるよう操作領域を広く取る。 */
 .res__inline-image-resize::after {
   content: "";
   position: absolute;
-  right: var(--sys-space-1);
-  bottom: var(--sys-space-1);
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: var(--sys-space-7);
   height: var(--sys-space-7);
   box-sizing: border-box;

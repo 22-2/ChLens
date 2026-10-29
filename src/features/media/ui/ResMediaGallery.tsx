@@ -149,9 +149,7 @@ function InlineExpandedImage({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     x: number;
-    y: number;
     width: number;
-    ratio: number;
     min: number;
     max: number;
     current: number;
@@ -179,14 +177,12 @@ function InlineExpandedImage({
   };
   const clampWidth = (value: number, min: number, max: number) =>
     Math.round(Math.max(min, Math.min(max, value)));
+  // 右辺のハンドルは横方向だけで幅を変え、画像の縦横比はCSSで維持する。
   // ドラッグ中は局所的に描画し、確定時だけ親へ渡して仮想化後も幅を保つ。
   const updateDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
     if (!drag) return;
-    const inverseRatio = 1 / drag.ratio;
-    const delta =
-      (event.clientX - drag.x + (event.clientY - drag.y) * inverseRatio) /
-      (1 + inverseRatio * inverseRatio);
+    const delta = event.clientX - drag.x;
     drag.current = clampWidth(drag.width + delta, drag.min, drag.max);
     setPreviewWidth(drag.current);
   };
@@ -264,7 +260,6 @@ function InlineExpandedImage({
             dragRef.current = {
               ...bounds,
               x: event.clientX,
-              y: event.clientY,
               current: bounds.width,
             };
             event.currentTarget.setPointerCapture(event.pointerId);
