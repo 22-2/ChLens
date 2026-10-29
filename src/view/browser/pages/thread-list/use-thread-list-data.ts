@@ -40,13 +40,17 @@ export function useThreadListData({
   resolvedBoardTitlesRef,
 }: UseThreadListDataOptions) {
   const previousRefreshKeyRef = useRef(refreshKey);
+  const requestIdRef = useRef(0);
+  const initialFetchFinishedRef = useRef(false);
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [showRefreshOverlay, setShowRefreshOverlay] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchThreads = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     const startedAt = Date.now();
     const isRefresh = previousRefreshKeyRef.current !== refreshKey;
     const wasManual = isRefresh && consumeManualRefresh(manualRefreshScopeKey);
@@ -60,12 +64,15 @@ export function useThreadListData({
     autoRefreshRequestRef.current = null;
     previousRefreshKeyRef.current = refreshKey;
     setLoading(true);
+    setIsInitialLoading(!isRefresh);
     setIsAutoRefreshing(isAutoRefresh);
     setShowRefreshOverlay(isRefresh && !isAutoRefresh);
     setError(null);
     try {
       // container経由でBoardサービスにアクセス
       const result = await container.board.getThreads(boardUrl);
+      if (requestId !== requestIdRef.current) return;
+      initialFetchFinishedRef.current = true;
       setThreads(result.threads);
       if (!result.message && result.threads.length > 0) {
         // 実際にスレ一覧を取得・解析できた板だけを確認し、ホストの固定リストを不要にする。
@@ -92,6 +99,7 @@ export function useThreadListData({
       // 一覧を描画できる件数がある間はエラー文言を出さずUIの連続性を優先する。
       if (result.message && result.threads.length === 0) {
         const cached = await getThreadListCache(boardUrl);
+        if (requestId !== requestIdRef.current) return;
         if (cached && cached.length > 0) {
           // 変更理由: 初回起動後に履歴からスレ一覧へ戻る際、サービスの注意メッセージと
           // IDBキャッシュ復元が競合しても、表示可能な一覧があるなら誤警告を出さない。
@@ -101,11 +109,14 @@ export function useThreadListData({
         }
       }
     } catch (e) {
+      if (requestId !== requestIdRef.current) return;
       logger.error("スレッド一覧の取得に失敗しました:", {
         boardUrl: boardUrl,
         error: e,
       });
       const cached = await getThreadListCache(boardUrl);
+      if (requestId !== requestIdRef.current) return;
+      initialFetchFinishedRef.current = true;
       if (cached && cached.length > 0) {
         // 変更理由: 一時的な通信失敗でもキャッシュから一覧を復元できる場合は、画面上部を
         // エラーで塞がず、利用可能な直前データを優先する。詳細な失敗はログに残す。
@@ -114,6 +125,8 @@ export function useThreadListData({
         setError(e instanceof Error ? e.message : "スレッド一覧の取得に失敗しました");
       }
     } finally {
+      if (requestId !== requestIdRef.current) return;
+      initialFetchFinishedRef.current = true;
       setLoading(false);
       setIsAutoRefreshing(false);
       // 変更理由: 完了後のフェード用にスピナーを残すとロード時間より長く見えるため、
@@ -131,18 +144,26 @@ export function useThreadListData({
     resolvedBoardTitlesRef,
   ]);
 
-  // 変更理由: IDBキャッシュから前回のスレ一覧を復元し、新しいデータの取得中は古い結果を表示し続ける。
+  // 変更理由: 通信が先に完了した場合、遅れて届くキャッシュで最新結果を上書きしない。
   useEffect(() => {
+    let cancelled = false;
+    initialFetchFinishedRef.current = false;
     void (async () => {
       const cached = await getThreadListCache(boardUrl);
-      if (cached && cached.length > 0) {
+      if (!cancelled && !initialFetchFinishedRef.current && cached && cached.length > 0) {
         setThreads(cached);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [boardUrl]);
 
   useEffect(() => {
     void fetchThreads();
+    return () => {
+      requestIdRef.current += 1;
+    };
   }, [fetchThreads]);
 
   useEffect(() => {
@@ -178,6 +199,7 @@ export function useThreadListData({
     threads,
     setThreads,
     loading,
+    isInitialLoading,
     isAutoRefreshing,
     showRefreshOverlay,
     error,

@@ -53,6 +53,11 @@ import {
   getBoardUrlFromThreadUrl,
   resolveBoardUrlForBrowser,
 } from "src/view/browser/utils/link-routing";
+import {
+  getManualRefreshScopeKey,
+  runManualRefresh,
+  useManualRefreshCooldown,
+} from "src/view/browser/utils/manual-refresh";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
 import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
 import { createBoardPage } from "src/view/browser/utils/tab-pages";
@@ -192,6 +197,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
   );
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [isSearchOpen, setIsSearchOpen] = useState(() => Boolean(persistedViewState.searchQuery));
@@ -217,57 +223,68 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
   });
   const { open: openThreadTitleNgDialog } = threadTitleNgDialog;
   const requestIdRef = useRef(0);
+  const initialFetchFinishedRef = useRef(false);
+  const manualRefreshScopeKey = getManualRefreshScopeKey(viewTab.id, boardPage);
+  const refreshCoolingDown = useManualRefreshCooldown(manualRefreshScopeKey);
   const previousBoardUrlRef = useRef(descriptor.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     viewDocument.visibilityState === "visible",
   );
 
-  const fetchThreads = useCallback(async () => {
-    const requestId = ++requestIdRef.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await container.board.getThreads(descriptor.boardUrl);
-      if (requestId !== requestIdRef.current) {
-        return;
+  const fetchThreads = useCallback(
+    async (initial = false) => {
+      const requestId = ++requestIdRef.current;
+      setLoading(true);
+      setIsInitialLoading(initial);
+      setError(null);
+      try {
+        const result = await container.board.getThreads(descriptor.boardUrl);
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        initialFetchFinishedRef.current = true;
+        setThreads(result.threads);
+        void setThreadListCache(descriptor.boardUrl, result.threads);
+        if (result.threads.length > 0 || !result.message) {
+          // 下部パネルからの更新も同じ板の履歴に残す。
+          void saveThreadListSnapshot(descriptor.boardUrl, result.threads);
+        }
+        if (result.message && result.threads.length === 0) {
+          setError(result.message);
+        }
+      } catch (fetchError) {
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        initialFetchFinishedRef.current = true;
+        const message =
+          fetchError instanceof Error ? fetchError.message : "スレッド一覧の取得に失敗しました";
+        logger.error("thread list fetch failed:", fetchError);
+        setError(message);
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
-      setThreads(result.threads);
-      void setThreadListCache(descriptor.boardUrl, result.threads);
-      if (result.threads.length > 0 || !result.message) {
-        // 下部パネルからの更新も同じ板の履歴に残す。
-        void saveThreadListSnapshot(descriptor.boardUrl, result.threads);
-      }
-      if (result.message && result.threads.length === 0) {
-        setError(result.message);
-      }
-    } catch (fetchError) {
-      if (requestId !== requestIdRef.current) {
-        return;
-      }
-      const message =
-        fetchError instanceof Error ? fetchError.message : "スレッド一覧の取得に失敗しました";
-      logger.error("thread list fetch failed:", fetchError);
-      setError(message);
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [descriptor.boardUrl]);
+    },
+    [descriptor.boardUrl],
+  );
 
   useEffect(() => {
     let cancelled = false;
     setThreads([]);
     setLoading(true);
+    setIsInitialLoading(true);
     setError(null);
+    initialFetchFinishedRef.current = false;
 
     void getThreadListCache(descriptor.boardUrl).then((cached) => {
-      if (!cancelled && cached && cached.length > 0) {
+      if (!cancelled && !initialFetchFinishedRef.current && cached && cached.length > 0) {
         setThreads(cached);
       }
     });
-    void fetchThreads();
+    void fetchThreads(true);
 
     return () => {
       cancelled = true;
@@ -547,7 +564,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
     <ContextMenuNavigationActions
       canGoBack={viewTab.currentIndex > 0}
       canGoForward={viewTab.currentIndex < viewTab.history.length - 1}
-      canRefresh={!loading}
+      canRefresh={!loading && !refreshCoolingDown}
       onBack={() => {
         runTabCommand(TAB_COMMAND_IDS.BACK);
         closeContextMenu();
@@ -559,7 +576,9 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       onRefresh={() => {
         // 変更理由: 下部パネルは現在タブのページ再マウントではなく、パネル自身の板URLで
         // 取得しているため、RELOADではなく一覧取得を直接実行する。
-        void fetchThreads();
+        runManualRefresh(manualRefreshScopeKey, () => {
+          void fetchThreads();
+        });
         closeContextMenu();
       }}
     />
@@ -615,20 +634,29 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
             <Search size={14} />
           </button>
           {/* 変更理由: メイン側の更新操作とアイコン・寸法・状態表示を揃え、一覧間の見た目の差をなくす。 */}
-          <button
-            type="button"
-            className={`thread-list-panel__toolbar-btn nav-bar__menu-action icon-button${threadListAutoRefreshEnabled ? " nav-bar__menu-action--active" : ""}`}
-            title={`一覧を更新（左クリック: 今すぐ更新、右クリック: 自動更新設定${threadListAutoRefreshEnabled ? `・現在 ${threadListAutoRefreshIntervalSec}秒` : ""}）`}
-            aria-label="スレ一覧を更新"
-            data-active={threadListAutoRefreshEnabled}
-            onClick={() => void fetchThreads()}
+          <span
+            className="thread-list-panel__refresh-target"
             onContextMenu={(event) => {
               event.preventDefault();
               setRefreshMenuPosition({ x: event.clientX, y: event.clientY });
             }}
           >
-            <RotateCw size={17} className={loading ? "icon--spinning" : undefined} />
-          </button>
+            <button
+              type="button"
+              className={`thread-list-panel__toolbar-btn nav-bar__menu-action icon-button${threadListAutoRefreshEnabled ? " nav-bar__menu-action--active" : ""}`}
+              title={`一覧を更新（左クリック: 今すぐ更新、右クリック: 自動更新設定${threadListAutoRefreshEnabled ? `・現在 ${threadListAutoRefreshIntervalSec}秒` : ""}）`}
+              aria-label="スレ一覧を更新"
+              data-active={threadListAutoRefreshEnabled}
+              disabled={loading || refreshCoolingDown}
+              onClick={() =>
+                runManualRefresh(manualRefreshScopeKey, () => {
+                  void fetchThreads();
+                })
+              }
+            >
+              <RotateCw size={17} className={loading ? "icon--spinning" : undefined} />
+            </button>
+          </span>
         </div>
       </div>
       {isSearchOpen && (
@@ -646,7 +674,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       )}
       <div className="thread-list-panel__table-scroller">
         {error && threads.length > 0 && <div className="thread-list-page__notice">{error}</div>}
-        {loading && threads.length === 0 ? (
+        {loading && (isInitialLoading || threads.length === 0) ? (
           <div className="thread-list-panel__status">読み込み中...</div>
         ) : error && threads.length === 0 ? (
           <div className="thread-list-panel__status thread-list-panel__status--error" role="alert">

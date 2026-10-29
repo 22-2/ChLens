@@ -22,6 +22,15 @@
 }
 
 /* 変更理由: タブバーの向きに関係なく履歴移動と更新をタイトルバー左端へまとめる。 */
+.title-bar__refresh-target {
+  display: inline-flex;
+}
+
+/* 無効なボタン上でも親要素から一覧履歴の右クリックを受け取る。 */
+.title-bar__refresh:disabled {
+  pointer-events: none;
+}
+
 .title-bar__navigation,
 .title-bar__refresh {
   display: flex;

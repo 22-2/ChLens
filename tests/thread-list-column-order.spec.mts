@@ -48,4 +48,13 @@ test("スレ一覧の列順をドラッグで変え、再読み込み後も保�
     label.trim().replace(/[▲▼]/gu, ""),
   );
   expect(panelLabels).toEqual(labelsAfterReload);
+
+  // 更新を連打できない間も、右クリックから自動更新設定を開ける。
+  const refresh = page.getByRole("button", { name: "スレ一覧を更新" });
+  await expect(refresh).toBeEnabled();
+  await refresh.click();
+  await expect(refresh).toBeDisabled();
+  await page.locator(".thread-list-panel__refresh-target").click({ button: "right" });
+  await expect(page.getByText("自動更新しない")).toBeVisible();
+  await expect(refresh).toBeEnabled();
 });

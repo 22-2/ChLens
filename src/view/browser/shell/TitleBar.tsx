@@ -63,8 +63,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   const [threadListSnapshots, setThreadListSnapshots] = useState<ThreadListSnapshot[]>([]);
   const boardUrl = viewPage.type === "threadList" ? viewPage.boardUrl : null;
   const selectedSnapshot = useSelectedThreadListSnapshot(viewTab.id);
-  // 変更理由: 板一覧は更新クールダウン中も右クリックで履歴を開けるようにする。
-  const refreshDisabled = !canRefresh || (refreshCoolingDown && !boardUrl);
+  const refreshDisabled = !canRefresh || refreshCoolingDown;
 
   useEffect(() => {
     if (!refreshMenuPosition || !boardUrl) return;
@@ -94,7 +93,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   const handleRefreshContextMenu = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       const target = event.target as Element | null;
-      if (!target?.closest(".title-bar__refresh")) return;
+      if (!target?.closest(".title-bar__refresh-target")) return;
 
       // 変更理由: 更新ボタンの既定コンテキストメニューを抑止し、履歴メニューへ置き換える。
       event.preventDefault();
@@ -165,20 +164,22 @@ export const TitleBar: React.FC<TitleBarProps> = ({
               </button>
             )}
             {refreshEnabled && (
-              <button
-                type="button"
-                className="title-bar__refresh icon-button"
-                disabled={refreshDisabled}
-                onClick={() =>
-                  runManualRefresh(manualRefreshScopeKey, () =>
-                    runTabCommand(TAB_COMMAND_IDS.RELOAD),
-                  )
-                }
-                title="更新"
-                aria-label="更新"
-              >
-                <RotateCw size={14} />
-              </button>
+              <span className="title-bar__refresh-target">
+                <button
+                  type="button"
+                  className="title-bar__refresh icon-button"
+                  disabled={refreshDisabled}
+                  onClick={() =>
+                    runManualRefresh(manualRefreshScopeKey, () =>
+                      runTabCommand(TAB_COMMAND_IDS.RELOAD),
+                    )
+                  }
+                  title="更新"
+                  aria-label="更新"
+                >
+                  <RotateCw size={14} />
+                </button>
+              </span>
             )}
           </>
         )}

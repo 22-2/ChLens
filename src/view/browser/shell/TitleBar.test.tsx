@@ -78,6 +78,11 @@ vi.mock("src/features/tabs/ui/TabContextMenu", () => ({
   ),
 }));
 
+vi.mock("src/features/thread-list/ui/thread-list-snapshots", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("src/features/thread-list/ui/thread-list-snapshots")>()),
+  getThreadListSnapshots: vi.fn(async () => []),
+}));
+
 const { titleBarButtonSettingsHolder } = vi.hoisted(() => ({
   titleBarButtonSettingsHolder: {
     value: {
@@ -160,6 +165,24 @@ describe("TitleBar", () => {
 
     expect(dispatchMock).toHaveBeenCalledWith({ type: "RELOAD", tabId: "tab-1" });
     expect(refreshButton).toBeDisabled();
+  });
+
+  it("スレ一覧の更新ボタンはクールダウン中に無効になり、履歴は開ける", () => {
+    mocks.viewPage = {
+      type: "threadList",
+      title: "板",
+      boardUrl: "https://example.com/board/",
+      boardTitle: "板",
+    };
+    mocks.viewTab.history = [mocks.viewPage];
+    render(<TitleBar />);
+    const button = screen.getByRole("button", { name: "更新" });
+    fireEvent.click(button);
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(dispatchMock).toHaveBeenCalledTimes(1);
+    fireEvent.contextMenu(button.parentElement!);
+    expect(screen.getByText("一覧の履歴")).toBeInTheDocument();
   });
 
   it("水平モードでも更新ボタンの左側に戻る・進むを表示する", () => {

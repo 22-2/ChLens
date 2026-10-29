@@ -364,6 +364,57 @@ describe("ThreadListPage", () => {
     vi.useRealTimers();
   });
 
+  it("キャッシュが先に届いても最新の一覧を適用するまで読み込み画面を表示する", async () => {
+    vi.useRealTimers();
+    cacheGetMock.mockResolvedValue(THREADS);
+    let finishFetch: (result: { threads: IThread[]; message: null }) => void = () => {};
+    getThreadsMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishFetch = resolve;
+        }),
+    );
+    const page = {
+      type: "threadList" as const,
+      title: "テスト板",
+      boardUrl: "https://example.com/loading/",
+      boardTitle: "テスト板",
+    };
+    render(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive />);
+    await act(flushAsyncRender);
+    expect(screen.getByLabelText("スレ一覧を読み込み中")).toBeVisible();
+    expect(getRenderedThreadTitles()).toHaveLength(0);
+    await act(async () => {
+      finishFetch({ threads: THREADS, message: null });
+    });
+    await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
+    expect(screen.queryByLabelText("スレ一覧を読み込み中")).toBeNull();
+  });
+
+  it("最新の取得後にキャッシュが届いても一覧を古い内容へ戻さない", async () => {
+    vi.useRealTimers();
+    let finishCache: (threads: IThread[]) => void = () => {};
+    cacheGetMock.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishCache = resolve;
+        }),
+    );
+    const page = {
+      type: "threadList" as const,
+      title: "テスト板",
+      boardUrl: "https://example.com/cache-race/",
+      boardTitle: "テスト板",
+    };
+    render(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive />);
+    await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
+    await act(async () => {
+      finishCache([{ ...THREADS[0], title: "古い一覧" }]);
+    });
+    expect(screen.queryByText("古い一覧")).toBeNull();
+    expect(getRenderedThreadTitles()).toHaveLength(3);
+  });
+
   it("板だけを開いた日時を保存し、板名更新では日時を維持し、再選択で更新する", async () => {
     vi.useRealTimers();
     let saved = "[]";

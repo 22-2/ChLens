@@ -185,6 +185,7 @@ export const ThreadListPage: React.FC<Props> = ({
     threads: liveThreads,
     setThreads,
     loading,
+    isInitialLoading,
     isAutoRefreshing,
     showRefreshOverlay,
     error,
@@ -760,7 +761,7 @@ export const ThreadListPage: React.FC<Props> = ({
 
   // 条件付きで早期返却するとhooksの呼び出し数が変わってReactエラーになるため、
   // JSXレベルで条件分岐をして、すべてのhooksをレンダーパスの上部で呼び出す
-  if (loading && threads.length === 0 && !isAutoRefreshing) {
+  if (loading && (isInitialLoading || threads.length === 0) && !isAutoRefreshing) {
     return (
       <div className="page-status">
         <Spinner size="sm" aria-label="スレ一覧を読み込み中" />

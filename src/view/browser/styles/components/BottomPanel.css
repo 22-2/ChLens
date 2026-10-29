@@ -158,6 +158,15 @@
   gap: var(--sys-space-1);
 }
 
+.thread-list-panel__refresh-target {
+  display: inline-flex;
+}
+
+/* 無効な更新ボタン上でも親要素から自動更新設定を開ける。 */
+.thread-list-panel__refresh-target button:disabled {
+  pointer-events: none;
+}
+
 .thread-list-panel__toolbar-btn {
   display: inline-flex;
   align-items: center;
