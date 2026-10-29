@@ -3,7 +3,10 @@ import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { useArchiveReplayMainThreadSync } from "src/features/archive-replay/browser/use-main-thread-sync";
 import { openArchiveReplayWindow as openArchiveReplayNativeWindow } from "src/features/archive-replay/platform";
-import { AutoScrollStateProvider } from "src/features/auto-refresh/browser/use-auto-scroll-state";
+import {
+  AutoScrollPaneStatesProvider,
+  AutoScrollStateProvider,
+} from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import { AutoRefreshStatusItem } from "src/features/auto-refresh/ui/AutoRefreshStatusItem";
 import { BookmarkRootSelectorDialog } from "src/features/bookmark/ui/BookmarkRootSelectorDialog";
 import { CommentOverlayJumpBridge } from "src/features/comment-overlay/ui/CommentOverlayJumpBridge";
@@ -199,7 +202,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
                 })
               }
             >
-              <AutoScrollStateProvider>
+              <AutoScrollStateProvider paneId={paneId}>
                 {hasSharedTabBar ? (
                   // 変更理由: タブバーはシェル側の共通バーにあるため、ペインは操作欄と本体だけを持つ。
                   <>
@@ -319,7 +322,9 @@ export const BrowserApp: React.FC = () => {
                 これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
                 垂直モードでも操作対象をアクティブペインに揃え、タイトルバーを共有する。
               */}
-                <ShellFrame />
+                <AutoScrollPaneStatesProvider>
+                  <ShellFrame />
+                </AutoScrollPaneStatesProvider>
                 <BookmarkRootSelectorDialog />
               </div>
             </TabWindowHost>

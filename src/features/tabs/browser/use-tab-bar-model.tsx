@@ -5,7 +5,7 @@ import {
   isArchiveReplayThread as matchesArchiveReplayThread,
   useArchiveReplayPositionStore,
 } from "src/features/archive-replay/browser/position-store";
-import { useAutoScrollState } from "src/features/auto-refresh/browser/use-auto-scroll-state";
+import { usePaneAutoScrollState } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import type { TabBarItem } from "src/features/tabs/browser/tab-bar-layout";
 import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import {
@@ -114,7 +114,7 @@ export function useTabBarModel(isVertical: boolean): TabBarModel {
     () => state.tabs.filter((tab) => !isDetachedTab(tab.id)),
     [isDetachedTab, state.tabs],
   );
-  const { canAutoScroll, isAutoScrolling, isPaused } = useAutoScrollState();
+  const { canAutoScroll, isAutoScrolling, isPaused } = usePaneAutoScrollState(paneId);
   const archiveReplayPosition = useArchiveReplayPositionStore((state) => state.position);
   const { collapsed, width, setCollapsed, setWidth } = useVerticalTabBarLayout();
 

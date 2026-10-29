@@ -96,7 +96,7 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
 }));
 
 vi.mock("src/features/auto-refresh/browser/use-auto-scroll-state", () => ({
-  useAutoScrollState: () => mocks.autoScrollState,
+  usePaneAutoScrollState: () => mocks.autoScrollState,
 }));
 
 vi.mock("src/features/tabs/browser/use-detached-tab-controller", () => ({
@@ -995,6 +995,34 @@ describe("TabBar tab interactions", () => {
     );
 
     expect(indicator).not.toBeNull();
+  });
+
+  it("スレッドの追従開始と待機に応じてインジケーターを切り替える", () => {
+    const page = {
+      type: "thread",
+      title: "スレッド",
+      threadUrl: "https://example.com/test/read.cgi/board/1/",
+    };
+    mocks.tabStore.state.tabs[0] = {
+      id: "tab-1",
+      history: [page],
+      currentIndex: 0,
+      pinned: false,
+      reloadKey: 0,
+      autoRefreshEnabled: true,
+      autoRefreshPageKey: "thread:https://example.com/test/read.cgi/board/1/",
+    } as (typeof mocks.tabStore.state.tabs)[0];
+    const { container: rendered, rerender } = render(<TabBar />);
+    expect(rendered.querySelector(".tab__auto-refresh-indicator--inactive")).toBeInTheDocument();
+    mocks.autoScrollState.canAutoScroll = true;
+    rerender(<TabBar />);
+    expect(rendered.querySelector(".tab__auto-refresh-indicator")).toHaveAttribute(
+      "title",
+      "自動更新: 動作中",
+    );
+    expect(
+      rendered.querySelector(".tab__auto-refresh-indicator--inactive"),
+    ).not.toBeInTheDocument();
   });
 });
 
