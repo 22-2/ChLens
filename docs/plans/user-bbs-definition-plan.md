@@ -45,6 +45,8 @@
 | 別経路の利用者 | `src/mcp/worker-runtime.ts` も `parseThread` と `getThreadXhrInfo` を使う |
 | 通信の権限 | 拡張機能は `src/manifest.json` の `host_permissions` で全ホストを許可済み。Tauri は `src-tauri/src/http_transport.rs` の reqwest 経由で、ホストの制限はない。新しい権限の要求は不要 |
 | 検証ライブラリ | 未導入。`monaco-editor` は導入済み（NG ルールのエディタ） |
+| CSP | `src/manifest.json` の `extension_pages` は `script-src 'self'` だけで、`'unsafe-eval'`・`'wasm-unsafe-eval'` がない。`new Function` で関数を作るライブラリと wasm は拡張機能で動かない |
+| 対応する最小版 | `src/manifest.json` で Chrome 103・Firefox 103（`strict_min_version`）。Tauri は WebView2（Chromium） |
 | 拡張の方針 | `docs/plans/extension-points-plan.md` は「まず内部の機能で登録制を使い、外部への公開は後の段階」としている。本計画の段階0も同じ考え方を取る |
 
 ## 3. 調査した掲示板の形
@@ -116,10 +118,13 @@
 - **差分の取り方は3種類。** `full`（条件付き取得で取り直す）、`since`（最後の `postKey` などを URL に入れる）、`page`（最後に読んだレス番号から取り直すページを計算する）。
 - **エンジンの責任と定義の責任を分ける。** 重複の除去、並べ直し、取得の間隔、条件付き取得、キャッシュはエンジンが行う。定義には、そのサイトに固有のことだけを書く。
 - **本文の安全性は既存の入口に任せる。** 解析結果の本文は、表示の直前に既存の `sanitizeMessageHtml` を必ず通る。定義の側で安全性を確保する前提にしない。
+- **危ない部品は自前で書かず、規格と実績のある実装に任せる。** 正規表現は re2js、JSON のパスは RFC 9535、URL の判定は URLPattern、取得元の URL は RFC 6570 に従う。式を評価する言語（JSONata など）は入れず、値の加工は `pipe` の固定の種類だけにする。選んだ理由と見送ったパッケージは §12。
 
 ## 5. スキーマ
 
 型は `packages/chlib/src/definition/schema.ts` に置く。検証は zod（v4）で書き、`z.toJSONSchema()` で JSON Schema を作って Monaco の補完と検証に使う（§11 の判断事項）。
+
+zod v4 は、`new Function` が使えるかを試してから検証関数を生成する。拡張機能の CSP（§2）では使えないうえ、この試し自体が `securitypolicyviolation` として報告されるため、起動時に `z.config({ jitless: true })` を指定する。スキーマには `.transform()` を使わない（`z.toJSONSchema()` で JSON Schema にできなくなるため）。
 
 ### 最上位
 
@@ -141,29 +146,44 @@ export interface BbsDefinition {
 
 ```ts
 export interface MatchSpec {
-  /** ホスト名の正規表現。名前付きキャプチャはテンプレートの変数になる */
-  hosts: string[];
-  thread: UrlPattern[];
-  board?: UrlPattern[];
+  thread: UrlPatternSpec[];
+  board?: UrlPatternSpec[];
   /** 同じスレの別表記を1つに揃える。履歴・お気に入りの同一性に使う */
   canonical: { thread: Template; board?: Template };
 }
 
-export interface UrlPattern {
-  path: string;                  // 正規表現。名前付きキャプチャ（board・key など）を取り出す
-  query?: Record<string, string>;
+/**
+ * URLPattern に渡す入力（URLPatternInit の一部）。
+ * `:board` のような名前付きグループと `(\\d+)` のような正規表現のグループが、テンプレートの変数になる。
+ * 書かなかった部分は何にでも一致する。
+ */
+export interface UrlPatternSpec {
+  protocol?: string;             // 省略時は "http{s}?"。http・https 以外は検証で拒否する
+  hostname: string;              // 例: ":server.2chan.net"
+  pathname: string;              // 例: "/:board/res/:key(\\d+).htm"
+  search?: string;
 }
 
 export type Template = string;
 ```
 
-キャプチャした値は、パーセントエンコードを戻して NFC に正規化してから使い、`canonical` を作るときにエンコードし直す。日本語の記事名をキーにする掲示板（ニコニコ大百科）で、表記ゆれが別のスレとして扱われるのを防ぐ。
+URL の判定は、Web 標準の `URLPattern` で行う。ホスト・パス・クエリを別々の正規表現で判定するより、利用者が書きやすく、判定の抜けも起きにくい。
+
+- `URLPattern` に対応するのは Chrome 95・Firefox 142・Safari 26 から（MDN の互換性データ、2026-10-29 時点）。Firefox 版の最小版は 103 なので、`urlpattern-polyfill` で補う（最小版を上げるかは §11 の判断事項）。
+- 正規表現のグループ（`(\\d+)` など）は、ブラウザ標準の `RegExp` で動くため、re2js の線形時間の保証（§7）の外にある。入力が長さを制限した URL だけであることと、パターンの長さの制限で抑える。
+
+§8 の例のパターンは、Node 26 の `URLPattern` で意図どおりに一致することを確かめた（2026-10-29）。グループの値はパーセントエンコードされたまま返る。そのため、グループの値は、パーセントエンコードを戻して NFC に正規化してから使い、`canonical` を作るときにエンコードし直す。日本語の記事名をキーにする掲示板（ニコニコ大百科）で、表記ゆれが別のスレとして扱われるのを防ぐ。
+
+テンプレートは2種類ある。
+
+- **取得元の `url`、`canonical`、`sorts` の `url`** は RFC 6570（URI Template）で展開する（url-template を使う）。値はパーセントエンコードされるので、URL を丸ごと入れる変数は `{+canonical}` のように予約文字を残す書き方にする。
+- **項目のテンプレート**（`{$.path}`・`{@selector}` を含むもの）は、RFC 6570 の変数名に `$`・`@` を使えないため自前で展開する。URL を組み立てる項目では、値を `encodeURIComponent` してから埋め込む。
 
 テンプレートで使える変数:
 
 | 変数 | 使える場所 | 内容 |
 |---|---|---|
-| `{origin}`・`{host}`・キャプチャ名 | すべて | URL から取り出した値 |
+| `{origin}`・`{host}`・グループ名 | すべて | URL から取り出した値 |
 | `{canonical}` | 取得元 | 正規化したスレや板の URL |
 | `{page}`・`{offset}` | ページ送り | ページ番号、開始番号 |
 | `{lastKey}`・`{lastNumber}` | 差分の取得元 | 最後に取得したレスの `postKey`・`number` |
@@ -174,11 +194,11 @@ export type Template = string;
 
 ```ts
 export interface NetworkSpec {
-  /** match.hosts 以外に通信するホスト。設定画面で利用者に示す */
+  /** match の hostname 以外に通信するホスト。設定画面で利用者に示す */
   hosts?: string[];
   charset?: "UTF-8" | "Shift_JIS" | "EUC-JP";
   headers?: Record<string, string>;     // User-Agent・Cookie・Authorization は指定できない
-  /** 通信先が network.hosts と match.hosts のときだけ送る。設定画面で必ず示す */
+  /** 通信先が network.hosts と match の hostname のときだけ送る。設定画面で必ず示す */
   cookies?: Record<string, string>;
   minIntervalMs?: number;
   conditional?: boolean;                // If-Modified-Since / If-None-Match を送る
@@ -321,7 +341,10 @@ export type HtmlExtractor = ExtractorBase & { selector?: string }; // 省略時�
 export type Extractor = LinesExtractor | JsonExtractor | HtmlExtractor;
 ```
 
-JSON のパスは `$.a.b`、`[*]`、`[0]`、`.*`、`@key`、`$root`、`$root.x[@key]` だけの部分集合にする。フィルタ式は持たない。
+JSON のパスは RFC 9535（JSONPath）に従い、評価は json-p3 に任せる。
+
+- 使えるのは名前・添字・ワイルドカード（`$.a.b`、`[0]`、`[*]`、`.*`）とスライスまで。フィルタ式（`[?…]`）と関数の拡張は検証の段階で拒否する。こうすると、json-p3 がフィルタ式をどう評価するかに安全性が左右されない。
+- 項目のパスでは `$` を1件分の値として評価する。`$root`（取得した JSON 全体）と `@key`（オブジェクトのキー。`$root.x[@key]` のように使う）は RFC 9535 にない独自の書き方なので、json-p3 に渡す前にエンジンが置き換える。
 
 ### 値の加工
 
@@ -343,6 +366,8 @@ export type Transform =
   | { type: "unix_time"; unit?: "s" | "ms" }
   | { type: "map"; values: Record<string, string> };
 ```
+
+`regex`・`replace` の `pattern` は re2js（RE2 の構文）で動かす。先読み・後読み・後方参照は使えない。`flags` は `i`・`m`・`s` だけを受け付け、re2js の後読みのオプション（`LOOKBEHINDS`）は有効にしない（理由は §12）。
 
 ### 出力する項目
 
@@ -415,8 +440,10 @@ export interface BoardMenuSpec {
 |---|---|
 | `packages/chlib/src/adapter/` | `BbsAdapter` の型と登録の仕組み。既存の4系統を組み込みのアダプタとして登録する（段階0） |
 | `packages/chlib/src/definition/schema.ts` | §5 の型と zod のスキーマ |
-| `packages/chlib/src/definition/template.ts` | テンプレートの展開 |
-| `packages/chlib/src/definition/json-path.ts` | JSON のパスの部分集合 |
+| `packages/chlib/src/definition/template.ts` | テンプレートの展開。取得元の URL は url-template、項目のテンプレートは自前 |
+| `packages/chlib/src/definition/url-match.ts` | `URLPattern`（Firefox では polyfill）による URL の判定と、グループの値の正規化 |
+| `packages/chlib/src/definition/json-path.ts` | json-p3 を包み、フィルタ式の拒否と `$root`・`@key` の置き換えを行う |
+| `packages/chlib/src/definition/regex.ts` | re2js を包み、パターンの長さとフラグを検査する。定義の正規表現はすべてここを通す |
 | `packages/chlib/src/definition/transforms.ts` | 値の加工 |
 | `packages/chlib/src/definition/formats/` | `lines`・`json`・`html` の解析と `unwrap` |
 | `packages/chlib/src/definition/engine.ts` | 取得計画、ページ送り、重複の除去、並べ直し、`ParsedThread` への変換 |
@@ -473,7 +500,9 @@ export interface ParsedThread {
 
 ### HTML の解析と実行場所
 
-利用者の正規表現は、極端に遅くなるパターン（ReDoS）を書けてしまう。同じスレッドで動く正規表現は途中で止められないので、定義アダプタの解析は Worker で行い、時間を超えたら Worker を終了する。
+利用者の正規表現は、ブラウザ標準の `RegExp` では極端に遅くなるパターン（ReDoS）を書けてしまう。そのため定義の正規表現は re2js で動かし、入力の長さに対して線形の時間で終わるようにする（URL の判定だけは例外。§5）。
+
+それでも、大きな HTML の解析やセレクタの組み合わせで時間がかかることはある。同じスレッドで動く処理は途中で止められないので、定義アダプタの解析は Worker で行い、時間を超えたら Worker を終了する。この時間制限は、正規表現の対策ではなく、想定外に重い定義から画面を守る保険として扱う。
 
 Worker には `DOMParser` がない。そのため `html` 形式には、軽量な HTML パーサ（htmlparser2 と css-select など）を chlib に入れる。MCP の Worker（`src/mcp/worker-runtime.ts`）でも同じ解析器が動くようになり、`ThreadParser.ts` の「サービスワーカーでも同じ解析器を使う」という方針とも合う。パーサの選び方は §11 の判断事項。
 
@@ -486,7 +515,8 @@ Worker には `DOMParser` がない。そのため `html` 形式には、軽量�
 ## 7. 安全性と運用の方針
 
 - **コードを実行しない。** `unwrap` の `script` は、文字列から `{…}` を切り出して JSON として読むだけにする。
-- **正規表現の制限。** パターンの長さ、入力の長さ、Worker の時間制限を設ける。超えたら詳しいログを出し、その定義の取得を失敗にする。
+- **正規表現の制限。** 定義の正規表現は re2js で動かし、後読みのオプションは有効にしない。そのうえでパターンの長さ、入力の長さ、Worker の時間制限を設ける。超えたら詳しいログを出し、その定義の取得を失敗にする。
+- **式を評価しない。** JSON のパスのフィルタ式は拒否し、JSONata や CEL のような式言語も入れない。値の加工は `pipe` の固定の種類だけにする。
 - **送るヘッダーの制限。** `User-Agent`・`Cookie`・`Authorization` は `headers` では指定できない。`cookies` は定義のホストにだけ送り、設定画面に必ず表示する。
 - **通信先の制限。** `http:`・`https:` だけ。他人が書いた定義を読み込んで、ローカルネットワークへ通信させられるのを防ぐため、プライベートアドレスへの通信は既定で拒否する（§11 の判断事項）。
 - **取得の間隔。** `minIntervalMs` と `Cache-Control: max-age` の長いほうを下限にし、自動更新もこれを守る。
@@ -505,9 +535,8 @@ Worker には `DOMParser` がない。そのため `html` 形式には、軽量�
   "id": "futaba",
   "name": "ふたば☆ちゃんねる",
   "match": {
-    "hosts": ["^(?<server>\\w+)\\.2chan\\.net$"],
-    "thread": [{ "path": "^/(?<board>\\w+)/res/(?<key>\\d+)\\.htm$" }],
-    "board": [{ "path": "^/(?<board>\\w+)/(?:futaba\\.htm)?$" }],
+    "thread": [{ "hostname": ":server.2chan.net", "pathname": "/:board/res/:key(\\d+).htm" }],
+    "board": [{ "hostname": ":server.2chan.net", "pathname": "/:board/{futaba.htm}?" }],
     "canonical": {
       "thread": "https://{server}.2chan.net/{board}/res/{key}.htm",
       "board": "https://{server}.2chan.net/{board}/"
@@ -517,7 +546,7 @@ Worker には `DOMParser` がない。そのため `html` 形式には、軽量�
   "thread": {
     "sources": {
       "initial": {
-        "fetch": { "url": "{canonical}", "charset": "Shift_JIS" },
+        "fetch": { "url": "{+canonical}", "charset": "Shift_JIS" },
         "parse": {
           "format": "html",
           "items": [
@@ -634,8 +663,7 @@ Worker には `DOMParser` がない。そのため `html` 形式には、軽量�
   "id": "nicopedia",
   "name": "ニコニコ大百科",
   "match": {
-    "hosts": ["^dic\\.nicovideo\\.jp$"],
-    "thread": [{ "path": "^/b/(?<kind>[a-z])/(?<key>[^/]+)/(?:\\d+-)?$" }],
+    "thread": [{ "hostname": "dic.nicovideo.jp", "pathname": "/b/:kind([a-z])/:key/{:start(\\d+)-}?" }],
     "canonical": { "thread": "https://dic.nicovideo.jp/b/{kind}/{key}/" }
   },
   "network": { "conditional": true, "minIntervalMs": 10000 },
@@ -709,7 +737,8 @@ Worker には `DOMParser` がない。そのため `html` 形式には、軽量�
 
 ### 段階2: スキーマ・検証・エンジン（`lines`・`json`）
 
-- §5 の型、zod のスキーマ、JSON Schema の出力。
+- §5 の型、zod のスキーマ（`jitless: true`）、JSON Schema の出力。
+- chlib に re2js・json-p3・url-template・urlpattern-polyfill を入れ、§6 の `regex.ts`・`json-path.ts`・`template.ts`・`url-match.ts` で包む。定義の処理からこれらを直接 import しない（制限の検査を必ず通すため）。
 - テンプレート、JSON のパス、値の加工、`unwrap`（`json` だけ）、ページ送り、重複の除去、並べ直し、`ParsedThread` への変換。
 - 完了条件: ふたばの JSON、ふたポ、4chan の catalog・threads・スレの JSON をテスト用データにして、期待する結果になる単体テストが通る。テスト用データの URL・名前・本文は架空のものに置き換える。
 
@@ -747,8 +776,40 @@ Worker には `DOMParser` がない。そのため `html` 形式には、軽量�
 | 項目 | 選択肢 | 推奨 |
 |---|---|---|
 | HTML パーサ | htmlparser2 + css-select / linkedom / Worker を使わず `DOMParser` | htmlparser2 + css-select。Worker と MCP で動き、依存が軽い |
-| 検証ライブラリ | zod v4 / valibot / 手書き | zod v4。`toJSONSchema` で Monaco の補完まで1か所から作れる |
+| 検証ライブラリ | zod v4 / valibot / 手書き | zod v4。`toJSONSchema` で Monaco の補完まで1か所から作れる。CSP のため `jitless: true` で使う（§5） |
+| 正規表現 | re2js / 標準の `RegExp` と Worker の時間制限だけ | re2js。ReDoS が構造上起きない。先読み・後方参照が使えないのは、定義の用途なら困らない |
+| JSON のパス | json-p3 / jsonpath-rfc9535 / 自前の部分集合 | json-p3。RFC 9535 準拠で更新が続いている。jsonpath-rfc9535 は 2025-04 から更新がない |
+| URLPattern を Firefox で使う方法 | `urlpattern-polyfill` / Firefox の最小版を 142 に上げる | polyfill。最小版を上げる判断は、ほかの理由と合わせて別にする |
+| 式言語（`pipe` で足りなくなったとき） | 入れない / CEL（`@marcbachmann/cel-js`） | 入れない。必要になったら、CEL を構文の深さとASTの大きさを制限して使う案から検討する |
 | 第三者のサービス（ふたポ） | 組み込みの定義の取得元に入れる / 利用者が追加する | 利用者が追加する。運営元の利用条件と負荷を確かめられないため |
 | プライベートアドレスへの通信 | 既定で拒否 / 確認して許可 / 制限なし | 既定で拒否し、定義ごとに許可できるようにする |
 | 定義の保存と同期 | 設定と同じ保存先 / IndexedDB | 設定と同じ保存先。書き出し・読み込みで共有する |
 | 途中が抜けたスレ | 段階5で対応 / 対応せず全件を取る | 段階5で対応。ニコニコ大百科のような長いスレでは全件の取得が現実的でない |
+
+## 12. 使うパッケージと見送ったパッケージ
+
+2026-10-29 に npm レジストリ、OSV（脆弱性データベース）、各リポジトリの README とソース、MDN の互換性データで確かめた。採用する前に、版と脆弱性をもう一度確かめる。
+
+### 使う
+
+| パッケージ | 確かめた版 | 用途 | 確かめたこと |
+|---|---|---|---|
+| re2js | 2.9.1 | 正規表現 | 純 JS（wasm でない）で、入力の長さに対して線形の時間で終わる。後読みの処理で入力の長さの2乗に比例して遅くなる不具合（GHSA-gg6h-894w-4m9c）が 2.8.7 で直っている。後読みは `LOOKBEHINDS` のオプションを付けたときだけ有効になるので、付けない |
+| json-p3 | 3.0.1 | JSON のパス | RFC 9535 の適合テストで検証している。OSV の脆弱性は0件。フィルタ式の評価方法は README に書かれていないが、本計画ではフィルタ式を拒否するので影響しない |
+| url-template | 3.1.1 | 取得元の URL | RFC 6570 のすべての段階に対応する。最後の更新は 2023-12 で、規格が固まっているため更新が少ないと見ている |
+| urlpattern-polyfill | 10.1.0 | Firefox 142 未満の `URLPattern` | — |
+| zod | 4.6.7 | 定義の検証と JSON Schema | `new Function` が使えるかを試す処理は、`jitless: true` のときは行わない（ソースのコメントで確認） |
+| htmlparser2・css-select | 12.0.0・7.0.0 | `html` 形式 | OSV の脆弱性は0件 |
+| date-fns・@date-fns/tz | — | `parse_date` | §8 の書式（`yy/MM/dd(EEE)HH:mm:ss`）は date-fns の書式そのまま。`EEE` が漢字の曜日なので ja のロケールが要る |
+
+### 見送った
+
+| パッケージ | 理由 |
+|---|---|
+| jsonpath-plus | フィルタ式の評価が原因の RCE が2件ある（CVE-2024-21534 は 10.2.0 で修正、CVE-2025-1302 は 10.3.0 で修正）。今も、フィルタ式を独自の小さなスクリプト処理系で評価する作り |
+| JSONata | 細工した式で任意のコードを実行できる脆弱性が 2026 年に3件（2.2.1 で修正）、資源を使い尽くす脆弱性が1件ある。利用者が書いた式を評価させる用途には向かない |
+| re2-wasm などの wasm 版 | 拡張機能の CSP に `'wasm-unsafe-eval'` がない |
+| scrape-it | 宣言的に書けるが、値の変換を JS の関数で書く。利用者が書いた JSON だけで完結しない |
+| x-ray | 2019 年から更新がない |
+
+宣言的な定義で掲示板やサイトを読む仕組み全体を、そのまま使えるパッケージは見つからなかった。近い設計の例として、Huginn の WebsiteAgent（Ruby）と RSS-Bridge の CSS セレクタ系のブリッジ（PHP）がある。スキーマの項目を比べる材料にする。
