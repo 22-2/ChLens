@@ -369,7 +369,7 @@
 }
 
 /* 展開画像は列を横断し、狭いペインでも元の比率を保って収める。 */
-.res__thumbs:has(.res__inline-image) {
+.res__thumbs:has(.res__inline-image:not(.res__inline-image--loading)) {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   max-width: 100%;
   box-sizing: border-box;
@@ -381,6 +381,14 @@
   /* 操作を画像の端に置くため、元画像の幅ではなく表示上の最大幅で枠を制限する。 */
   width: max-content;
   max-width: min(100%, var(--sys-thread-inline-image-max-width));
+}
+/* 元画像の読み込み中もサムネイルを残し、表示できてから切り替える。 */
+.res__inline-image--loading {
+  position: absolute;
+  visibility: hidden;
+}
+.res__thumb:has(+ .res__inline-image:not(.res__inline-image--loading)) {
+  display: none;
 }
 .res__inline-image--resized {
   max-width: 100%;

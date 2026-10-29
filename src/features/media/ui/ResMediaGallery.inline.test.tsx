@@ -2,13 +2,14 @@ import "@testing-library/jest-dom/vitest";
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { cleanup } from "@testing-library/react";
+import type React from "react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import { ResMediaGallery } from "./ResMediaGallery";
 
 vi.mock("./ExternalImage", () => ({
-  ExternalImage: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />,
+  ExternalImage: (props: React.ComponentProps<"img">) => <img {...props} />,
 }));
 
 const mocks = vi.hoisted(() => ({ save: vi.fn(), success: vi.fn(), error: vi.fn() }));
@@ -56,9 +57,15 @@ afterEach(() => {
 describe("レス内の画像展開", () => {
   it("画像が1枚のレスではクリックで展開して畳める", () => {
     render(<Gallery urls={[image1]} />);
+    const thumbnail = screen.getByRole("img", { name: image1 });
     fireEvent.click(screen.getByRole("link", { name: image1 }));
+    const expanded = document.querySelector(".res__inline-image")!;
+    expect(expanded).toHaveClass("res__inline-image--loading");
+    expect(thumbnail).toBeInTheDocument();
+    fireEvent.load(expanded.querySelector("img")!);
+    expect(expanded).not.toHaveClass("res__inline-image--loading");
     expect(screen.getByRole("button", { name: "画像を折りたたむ" })).toContainElement(
-      screen.getByRole("img", { name: image1 }),
+      expanded.querySelector("img"),
     );
     fireEvent.click(screen.getByRole("button", { name: "画像を折りたたむ" }));
     expect(screen.getByRole("link", { name: image1 })).toBeInTheDocument();
@@ -67,6 +74,7 @@ describe("レス内の画像展開", () => {
     const onUrlClick = vi.fn();
     render(<Gallery onUrlClick={onUrlClick} urls={[image1]} />);
     fireEvent.click(screen.getByRole("link", { name: image1 }));
+    fireEvent.load(document.querySelector(".res__inline-image img")!);
     fireEvent.click(screen.getByRole("button", { name: "ビューアで開く" }));
     expect(onUrlClick).toHaveBeenCalledWith(image1, [image1], 0, undefined, [image1]);
     expect(screen.getByRole("button", { name: "画像を折りたたむ" })).toBeInTheDocument();

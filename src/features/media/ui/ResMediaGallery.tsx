@@ -193,7 +193,7 @@ function InlineExpandedImage({
   return (
     <div
       ref={wrapperRef}
-      className={`res__inline-image${displayedWidth != null ? " res__inline-image--resized" : ""}${isBlurred ? " res__thumb--blurred" : ""}`}
+      className={`res__inline-image${status === "loading" ? " res__inline-image--loading" : ""}${displayedWidth != null ? " res__inline-image--resized" : ""}${isBlurred ? " res__thumb--blurred" : ""}`}
       style={{ ...(isBlurred ? blurStyle : undefined), width: displayedWidth }}
       onContextMenu={onContextMenu}
     >
@@ -1100,80 +1100,80 @@ export function ResMediaGallery({
             const markImageUnavailable = () => {
               useImageHashStore.getState().markImageUnavailable(item.rawUrl);
             };
-            if (onToggleImage && expandedImageUrls?.has(item.rawUrl)) {
-              const fullSrc = toOriginalImageUrl(item.src) ?? item.src;
-              return (
-                <InlineExpandedImage
-                  key={`image:${item.rawUrl}`}
-                  src={fullSrc}
-                  imageKey={item.rawUrl}
-                  isBlurred={isBlurred || isHashPending}
-                  blurStyle={blurStyle}
-                  width={inlineImageWidths?.get(item.rawUrl)}
-                  onResize={
-                    onResizeImage ? (width) => onResizeImage(item.rawUrl, width) : undefined
-                  }
-                  onClose={() => onToggleImage(item.rawUrl)}
-                  onOpenViewer={() =>
-                    onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls)
-                  }
-                  onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
-                  onLoad={requestImageHash}
-                  onError={markImageUnavailable}
-                />
-              );
-            }
             return (
-              <ConfirmableLink
-                key={`image:${item.rawUrl}`}
-                href={item.rawUrl}
-                className={`res__thumb res__thumb--image${isBlurred || isHashPending ? " res__thumb--blurred" : ""}${isHashPending ? " res__thumb--hash-pending" : ""}`}
-                style={isBlurred || isHashPending ? blurStyle : undefined}
-                onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  if (isImgurVideoResolutionCandidate(item.rawUrl)) {
-                    // 共有URLは静止画か動画かAPIでしか確定できないため、クリックされるまで照会しない。
-                    void imgurVideoResolver.resolve(item.rawUrl).then((videoUrl) => {
-                      if (videoUrl) {
-                        setImgurVideoUrls((current) => new Map(current).set(item.rawUrl, videoUrl));
-                        setExpandedVideoUrl(item.rawUrl);
-                        return;
-                      }
-                      openImage(item.rawUrl);
-                    });
-                    return;
-                  }
-                  openImage(item.rawUrl);
-                }}
-                onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
-                onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
-                title={item.rawUrl}
-              >
-                {manualImageLoading ? (
-                  <ManualLoadExternalImage
-                    src={item.src}
-                    data-image-key={item.rawUrl}
-                    alt={item.rawUrl}
-                    loading="lazy"
-                    insideControl
-                    onLoad={requestImageHash}
-                    onError={markImageUnavailable}
-                  />
-                ) : (
-                  <ExternalImage
-                    src={item.src}
-                    data-image-key={item.rawUrl}
-                    alt={item.rawUrl}
-                    loading="lazy"
-                    manualLoad={false}
-                    insideControl
+              <React.Fragment key={`image:${item.rawUrl}`}>
+                <ConfirmableLink
+                  href={item.rawUrl}
+                  className={`res__thumb res__thumb--image${isBlurred || isHashPending ? " res__thumb--blurred" : ""}${isHashPending ? " res__thumb--hash-pending" : ""}`}
+                  style={isBlurred || isHashPending ? blurStyle : undefined}
+                  onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (isImgurVideoResolutionCandidate(item.rawUrl)) {
+                      // 共有URLは静止画か動画かAPIでしか確定できないため、クリックされるまで照会しない。
+                      void imgurVideoResolver.resolve(item.rawUrl).then((videoUrl) => {
+                        if (videoUrl) {
+                          setImgurVideoUrls((current) =>
+                            new Map(current).set(item.rawUrl, videoUrl),
+                          );
+                          setExpandedVideoUrl(item.rawUrl);
+                          return;
+                        }
+                        openImage(item.rawUrl);
+                      });
+                      return;
+                    }
+                    openImage(item.rawUrl);
+                  }}
+                  onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
+                  onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
+                  title={item.rawUrl}
+                >
+                  {manualImageLoading ? (
+                    <ManualLoadExternalImage
+                      src={item.src}
+                      data-image-key={item.rawUrl}
+                      alt={item.rawUrl}
+                      loading="lazy"
+                      insideControl
+                      onLoad={requestImageHash}
+                      onError={markImageUnavailable}
+                    />
+                  ) : (
+                    <ExternalImage
+                      src={item.src}
+                      data-image-key={item.rawUrl}
+                      alt={item.rawUrl}
+                      loading="lazy"
+                      manualLoad={false}
+                      insideControl
+                      onLoad={requestImageHash}
+                      onError={markImageUnavailable}
+                    />
+                  )}
+                </ConfirmableLink>
+                {onToggleImage && expandedImageUrls?.has(item.rawUrl) && (
+                  <InlineExpandedImage
+                    key={`image:${item.rawUrl}`}
+                    src={toOriginalImageUrl(item.src) ?? item.src}
+                    imageKey={item.rawUrl}
+                    isBlurred={isBlurred || isHashPending}
+                    blurStyle={blurStyle}
+                    width={inlineImageWidths?.get(item.rawUrl)}
+                    onResize={
+                      onResizeImage ? (width) => onResizeImage(item.rawUrl, width) : undefined
+                    }
+                    onClose={() => onToggleImage(item.rawUrl)}
+                    onOpenViewer={() =>
+                      onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls)
+                    }
+                    onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
                     onLoad={requestImageHash}
                     onError={markImageUnavailable}
                   />
                 )}
-              </ConfirmableLink>
+              </React.Fragment>
             );
           }
 
