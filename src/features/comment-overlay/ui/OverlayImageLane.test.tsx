@@ -1,12 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { CommentCandidate } from "../domain/comment-types";
 import {
   COMMENT_OVERLAY_IMAGE_BOTTOM_PADDING,
   COMMENT_OVERLAY_IMAGE_HEIGHT,
+  COMMENT_OVERLAY_IMAGE_LOAD_TIMEOUT_MILLISECONDS,
   COMMENT_OVERLAY_IMAGE_TRAVEL_SECONDS,
   OverlayImageLane,
   removeCompletedOverlayImage,
@@ -27,7 +28,10 @@ vi.mock("src/service-container/index", () => ({
 }));
 
 describe("OverlayImageLane", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
 
   it("画像を下部に配置し、右から左へ流れる寸法と速度を設定する", () => {
     const comment: CommentCandidate = {
@@ -58,7 +62,9 @@ describe("OverlayImageLane", () => {
       width: `${COMMENT_OVERLAY_IMAGE_HEIGHT * 0.3}px`,
       height: `${COMMENT_OVERLAY_IMAGE_HEIGHT * 0.3}px`,
       animationDuration: `${COMMENT_OVERLAY_IMAGE_TRAVEL_SECONDS}s`,
-      animationPlayState: "running",
+      // 取得完了までは流さず、読み込み中の枠も見せない。
+      animationPlayState: "paused",
+      visibility: "hidden",
       opacity: "0.65",
     });
     expect(image.style.getPropertyValue("--comment-overlay-image-exit-translate")).toBe(
@@ -70,7 +76,12 @@ describe("OverlayImageLane", () => {
       naturalHeight: { configurable: true, value: 1080 },
     });
     fireEvent.load(image);
-    expect(image).toHaveStyle({ width: "160px", height: "90px" });
+    expect(image).toHaveStyle({
+      width: "160px",
+      height: "90px",
+      animationPlayState: "running",
+      visibility: "visible",
+    });
     expect(image.style.getPropertyValue("--comment-overlay-image-exit-translate")).toBe("-960px");
   });
 
@@ -125,6 +136,59 @@ describe("OverlayImageLane", () => {
     const nextQueue = removeCompletedOverlayImage(queue);
     expect(nextQueue[0]?.url).toBe("https://example.test/second.png");
     expect(removeCompletedOverlayImage(nextQueue)).toEqual([]);
+  });
+
+  it("取得に失敗した画像は流さず、次の画像へ進む", () => {
+    render(
+      <OverlayImageLane
+        comments={[
+          {
+            responseNumber: 5,
+            text: "画像",
+            author: "名無し",
+            imageUrls: ["https://example.test/broken.png", "https://example.test/next.png"],
+          },
+        ]}
+        stageWidth={800}
+        imageScale={0.3}
+        imageOpacity={1}
+        playing
+      />,
+    );
+
+    fireEvent.error(screen.getByTestId("comment-overlay-image"));
+    expect(screen.getByTestId("comment-overlay-image")).toHaveAttribute(
+      "src",
+      "https://example.test/next.png",
+    );
+  });
+
+  it("取得が終わらない画像は一定時間後に飛ばし、レーンを止めない", () => {
+    vi.useFakeTimers();
+    render(
+      <OverlayImageLane
+        comments={[
+          {
+            responseNumber: 6,
+            text: "画像",
+            author: "名無し",
+            imageUrls: ["https://example.test/slow.png", "https://example.test/next.png"],
+          },
+        ]}
+        stageWidth={800}
+        imageScale={0.3}
+        imageOpacity={1}
+        playing
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(COMMENT_OVERLAY_IMAGE_LOAD_TIMEOUT_MILLISECONDS);
+    });
+    expect(screen.getByTestId("comment-overlay-image")).toHaveAttribute(
+      "src",
+      "https://example.test/next.png",
+    );
   });
 
   it("AA画像を空白と改行を含む代替テキスト付きで読み込み、失敗時に本文へ戻す", () => {

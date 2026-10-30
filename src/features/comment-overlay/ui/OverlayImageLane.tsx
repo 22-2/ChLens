@@ -16,6 +16,8 @@ export const COMMENT_OVERLAY_IMAGE_HEIGHT = 300;
 export const COMMENT_OVERLAY_IMAGE_BOTTOM_PADDING = 10;
 export const COMMENT_OVERLAY_IMAGE_TRAVEL_SECONDS = 6;
 const MAX_IMAGE_QUEUE_SIZE = 64;
+/** 取得が終わらない画像でレーン全体を止めないよう、この時間を過ぎたら次の画像へ進む。 */
+export const COMMENT_OVERLAY_IMAGE_LOAD_TIMEOUT_MILLISECONDS = 15_000;
 const logger = createLogger("comment-overlay");
 
 interface OverlayImage {
@@ -93,10 +95,24 @@ export function OverlayImageLane({
   }, [comments]);
 
   const activeImage = queue[0];
+  const activeKey = activeImage?.key;
+  const isLoadedImage = activeKey != null && naturalDimensions?.key === activeKey;
+  const isFailedAsciiArt = failedKey === activeKey && activeImage?.asciiArtText != null;
+  // 変更理由: 取得前から流すと、読み込み中の枠や途中までの画像が画面を横切ってしまう。
+  // 取得が完了した画像（AAは本文への切り替え後）だけを流し始める。
+  const isReady = isLoadedImage || isFailedAsciiArt;
+
+  useEffect(() => {
+    if (activeKey == null || isReady) return;
+    const timer = setTimeout(() => {
+      logger.error("コメントOverlayの画像取得が終わらないため、次の画像へ進みます:", activeKey);
+      setQueue((current) => (current[0]?.key === activeKey ? current.slice(1) : current));
+    }, COMMENT_OVERLAY_IMAGE_LOAD_TIMEOUT_MILLISECONDS);
+    return () => clearTimeout(timer);
+  }, [activeKey, isReady]);
+
   if (!activeImage) return null;
   const imageHeight = Math.max(1, Math.round(COMMENT_OVERLAY_IMAGE_HEIGHT * imageScale));
-  const isLoadedImage = naturalDimensions?.key === activeImage.key;
-  const isFailedAsciiArt = failedKey === activeImage.key && activeImage.asciiArtText != null;
   const aspectRatio = isLoadedImage
     ? naturalDimensions.width / Math.max(1, naturalDimensions.height)
     : 1;
@@ -108,7 +124,8 @@ export function OverlayImageLane({
     height: `${imageHeight}px`,
     "--comment-overlay-image-exit-translate": `-${stageWidth + imageWidth}px`,
     animationDuration: `${COMMENT_OVERLAY_IMAGE_TRAVEL_SECONDS}s`,
-    animationPlayState: playing ? "running" : "paused",
+    animationPlayState: playing && isReady ? "running" : "paused",
+    visibility: isReady ? "visible" : "hidden",
     opacity: imageOpacity,
   } as CSSProperties;
 
@@ -166,7 +183,15 @@ export function OverlayImageLane({
                 }
           }
           onError={() => {
-            if (activeImage.asciiArtText != null) setFailedKey(activeImage.key);
+            if (activeImage.asciiArtText != null) {
+              setFailedKey(activeImage.key);
+              return;
+            }
+            // 取得できなかった画像は流さず、待っている次の画像へ進める。
+            logger.error("コメントOverlayの画像を取得できませんでした:", activeImage.url);
+            setQueue((current) =>
+              current[0]?.key === activeImage.key ? current.slice(1) : current,
+            );
           }}
           onLoad={(event) => {
             const { naturalWidth, naturalHeight } = event.currentTarget;
