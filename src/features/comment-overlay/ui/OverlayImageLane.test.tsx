@@ -74,6 +74,30 @@ describe("OverlayImageLane", () => {
     expect(image.style.getPropertyValue("--comment-overlay-image-exit-translate")).toBe("-960px");
   });
 
+  it("手動取得の設定にかかわらず、実況の画像は自動で取得する", () => {
+    render(
+      <OverlayImageLane
+        comments={[
+          {
+            responseNumber: 1,
+            text: "画像つきコメント",
+            author: "名無し",
+            imageUrls: ["https://example.test/image.png"],
+          },
+        ]}
+        stageWidth={800}
+        imageScale={0.3}
+        imageOpacity={0.65}
+        playing
+      />,
+    );
+
+    expect(screen.getByTestId("comment-overlay-image")).toHaveAttribute(
+      "data-manual-load",
+      "false",
+    );
+  });
+
   it("同じコメントの複数画像を順番に表示し、退出時に次の画像へ進む", () => {
     const comment: CommentCandidate = {
       responseNumber: 2,
@@ -173,5 +197,10 @@ vi.mock("src/app/platform", () => ({ platform: { http: { fetch: vi.fn() } } }));
 
 // このテストはレーンの配置と切替を対象とし、画像取得の事前確認は別のテストで検証する。
 vi.mock("src/features/media/ui/ExternalImage", () => ({
-  ExternalImage: (props: import("react").ComponentProps<"img">) => <img {...props} />,
+  ExternalImage: ({
+    manualLoad,
+    ...props
+  }: import("react").ComponentProps<"img"> & { manualLoad?: boolean }) => (
+    <img {...props} data-manual-load={String(manualLoad)} />
+  ),
 }));

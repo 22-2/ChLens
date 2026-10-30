@@ -149,6 +149,9 @@ export function OverlayImageLane({
           title={activeImage.asciiArtText != null ? "右クリックでAA本文をコピー" : undefined}
           width={imageWidth}
           height={imageHeight}
+          // 変更理由: Overlayはクリックを透過するため手動取得の「クリックして取得」が押せず、
+          // 手動取得設定のままだと実況中の画像が出なかった。実況表示では常に自動取得する。
+          manualLoad={false}
           loading="eager"
           decoding="async"
           style={imageStyle}
