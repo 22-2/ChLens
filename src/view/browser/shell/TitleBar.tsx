@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, PanelRight, RotateCw, Search } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createLogger } from "src/app/logger";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { TabContextMenu } from "src/features/tabs/ui/TabContextMenu";
@@ -63,6 +63,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   const [threadListSnapshots, setThreadListSnapshots] = useState<ThreadListSnapshot[]>([]);
   const boardUrl = viewPage.type === "threadList" ? viewPage.boardUrl : null;
   const selectedSnapshot = useSelectedThreadListSnapshot(viewTab.id);
+  // 変更理由: 相対時刻の基準をメニューを開いた時点に固定し、開くたびに経過時間を計算し直す。
+  const refreshMenuOpenedAt = useMemo(() => Date.now(), [refreshMenuPosition]);
   const refreshDisabled = !canRefresh || refreshCoolingDown;
 
   useEffect(() => {
@@ -123,6 +125,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           id: snapshot.url,
           label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${formatRelativeTime(
             snapshot.last_updated,
+            refreshMenuOpenedAt,
           )}（${snapshot.threads.length}件）`,
           onSelect: () => selectThreadListSnapshot(viewTab.id, snapshot),
         })),

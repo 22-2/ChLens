@@ -153,6 +153,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const [snapshots, setSnapshots] = useState<ThreadListSnapshot[]>([]);
   const selectedSnapshot = useSelectedThreadListSnapshot(viewTab.id);
   const boardUrl = viewPage.type === "threadList" ? viewPage.boardUrl : null;
+  // 変更理由: 相対時刻の基準を開いた時点で取り直さないと、メモ化した項目が古い「たった今」のまま残る。
+  const refreshMenuOpenedAt = useMemo(() => Date.now(), [refreshMenuPosition]);
   useEffect(() => {
     if (!refreshMenuPosition || !boardUrl) return;
     let cancelled = false;
@@ -791,7 +793,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         },
         ...snapshots.map((snapshot) => ({
           id: snapshot.url,
-          label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${formatRelativeTime(snapshot.last_updated)}（${snapshot.threads.length}件）`,
+          label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${formatRelativeTime(snapshot.last_updated, refreshMenuOpenedAt)}（${snapshot.threads.length}件）`,
           onSelect: () => selectThreadListSnapshot(viewTab.id, snapshot),
         })),
       );
@@ -802,6 +804,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     currentAutoRefreshPageKey,
     dispatch,
     isCurrentPageAutoRefreshEnabled,
+    refreshMenuOpenedAt,
     selectedSnapshot,
     snapshots,
     viewTab.id,
