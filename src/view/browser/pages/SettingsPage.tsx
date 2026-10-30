@@ -311,6 +311,35 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
         );
       }
 
+      if (field.kind === "number" && field.widget === "slider") {
+        // 変更理由: 透明度のように連続した値は、数値入力よりスライダーのほうが加減を見ながら調整しやすい。
+        const sliderValue = toNumberValue(value);
+        return (
+          <SettingRow
+            key={field.key}
+            htmlFor={id}
+            label={field.title}
+            description={field.description}
+          >
+            <div className="settings-page__slider">
+              <input
+                id={id}
+                className="settings-page__slider-input"
+                type="range"
+                value={sliderValue}
+                min={field.minimum}
+                max={field.maximum}
+                step={field.step}
+                onChange={(event) =>
+                  updateFieldValue(sectionId, field.key, Number(event.currentTarget.value))
+                }
+              />
+              <span className="settings-page__slider-value">{sliderValue}%</span>
+            </div>
+          </SettingRow>
+        );
+      }
+
       if (field.kind === "number") {
         return (
           <SettingRow

@@ -1,22 +1,26 @@
 export interface CommentOverlaySettings {
   /** コメントがステージへ入ってから出るまでの基準時間。単位は秒。 */
   durationSeconds: number;
-  /** コメントの不透明度。0から1の範囲。 */
-  opacity: number;
+  /** コメント文字の不透明度。0.1から1の範囲。 */
+  commentOpacity: number;
+  /** 流れる画像の不透明度。0.1から1の範囲。 */
+  imageOpacity: number;
   /** strict/queue時に待機させるコメント数の上限。 */
   maxQueueSize: number;
   /** コメント実況だけで候補スレを並行取得し、本流確定後に非本流を除外する。 */
   fetchAllCandidateThreads?: boolean;
 }
 
+export const MIN_COMMENT_OVERLAY_OPACITY = 0.1;
 export const MIN_COMMENT_OVERLAY_DURATION_SECONDS = 2;
 export const MAX_COMMENT_OVERLAY_DURATION_SECONDS = 15;
 
-// 変更理由: 通過時間・不透明度・待機queue上限は設定画面から外し、常にこの既定値で動かす。
-// 保存済みの値は読まないため、以前に変更した利用者も既定の見た目へ戻る。
+// 変更理由: 通過時間・待機queue上限は設定画面から外し、常にこの既定値で動かす。
+// 不透明度だけはコメントと画像を別々に設定画面から調整できる。
 export const DEFAULT_COMMENT_OVERLAY_SETTINGS: Readonly<CommentOverlaySettings> = {
   durationSeconds: 6,
-  opacity: 0.95,
+  commentOpacity: 0.95,
+  imageOpacity: 0.95,
   maxQueueSize: 64,
   fetchAllCandidateThreads: false,
 };
@@ -32,7 +36,18 @@ export function normalizeCommentOverlaySettings(
       MAX_COMMENT_OVERLAY_DURATION_SECONDS,
       DEFAULT_COMMENT_OVERLAY_SETTINGS.durationSeconds,
     ),
-    opacity: clampFinite(input?.opacity, 0.1, 1, DEFAULT_COMMENT_OVERLAY_SETTINGS.opacity),
+    commentOpacity: clampFinite(
+      input?.commentOpacity,
+      MIN_COMMENT_OVERLAY_OPACITY,
+      1,
+      DEFAULT_COMMENT_OVERLAY_SETTINGS.commentOpacity,
+    ),
+    imageOpacity: clampFinite(
+      input?.imageOpacity,
+      MIN_COMMENT_OVERLAY_OPACITY,
+      1,
+      DEFAULT_COMMENT_OVERLAY_SETTINGS.imageOpacity,
+    ),
     maxQueueSize: clampInteger(
       input?.maxQueueSize,
       0,

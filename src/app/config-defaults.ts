@@ -71,6 +71,9 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   // speedキーは既存設定との互換性のため残し、新規値はコメントの通過時間（秒）として保存する。
   // 文字サイズは表示倍率を含む描画側の共通コード定数で管理し、保存値による実機差を作らない。
   comment_overlay_fetch_all_threads: "off",
+  // コメント文字と流れる画像の不透明度（%）。設定画面のスライダーで別々に調整する。
+  comment_overlay_comment_opacity: "95",
+  comment_overlay_image_opacity: "95",
   // 表示領域は自由な縦横比を既定とし、16:9への固定は実況パネルから明示的に選ぶ。
   comment_overlay_lock_aspect_ratio: "off",
   // 最前面への固定は利用者が選んだときだけ有効にする。

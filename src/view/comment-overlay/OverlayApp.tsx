@@ -399,7 +399,6 @@ export function OverlayApp({
       ref={overlayRootRef}
       className="comment-overlay-window"
       data-testid="comment-overlay-window"
-      style={{ opacity: settings.opacity }}
     >
       {placementGuideActive && (
         <div
@@ -417,8 +416,9 @@ export function OverlayApp({
         containerHeight={overlayGeometry.height}
         bottomPadding={imageLaneBottomPadding}
         durationSeconds={settings.durationSeconds}
-        // EdgeLiveViewerと同様に透過度はOverlay全体へ適用し、文字・画像で差が出ないようにする。
-        commentOpacity={1}
+        // 変更理由: コメントと画像の透明度を別々に調整できるよう、Overlay全体ではなく各要素へ適用する。
+        commentOpacity={settings.commentOpacity}
+        imageOpacity={settings.imageOpacity}
         maxQueueSize={settings.maxQueueSize}
         // 過去実況は投稿時刻に合わせて流すため、laneが埋まってもqueueへ積み残さない。
         // 通常実況は重なりより衝突防止を優先し、空きlaneができるまで待たせる。

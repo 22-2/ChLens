@@ -444,7 +444,8 @@ describe("OverlayApp", () => {
         type: "reset",
         settings: {
           durationSeconds: 4,
-          opacity: 0.5,
+          commentOpacity: 0.5,
+          imageOpacity: 0.7,
           maxQueueSize: 0,
         },
         batch: {
@@ -470,10 +471,11 @@ describe("OverlayApp", () => {
     const renderedComment = screen.getByText("前回の実況");
     expect(renderedComment).toHaveStyle({
       fontSize: `${COMMENT_OVERLAY_FONT_SIZE}px`,
-      opacity: "1",
+      opacity: "0.5",
       animationDuration: "4s",
     });
-    expect(screen.getByTestId("comment-overlay-window")).toHaveStyle({ opacity: "0.5" });
+    // 変更理由: 透明度はOverlay全体ではなくコメントと画像へ別々に適用する。
+    expect(screen.getByTestId("comment-overlay-window")).not.toHaveStyle({ opacity: "0.5" });
     // native geometryを明示する実機Overlayでは、DOM測定を使わず保存geometryを倍率へ使う。
     expect(resizeObserverConstructed).toBe(false);
 
@@ -483,7 +485,8 @@ describe("OverlayApp", () => {
         type: "settings",
         settings: {
           durationSeconds: 4,
-          opacity: 0.4,
+          commentOpacity: 0.4,
+          imageOpacity: 0.6,
           maxQueueSize: 0,
         },
       });
@@ -491,9 +494,8 @@ describe("OverlayApp", () => {
 
     expect(screen.getByText("前回の実況")).toHaveStyle({
       fontSize: `${COMMENT_OVERLAY_FONT_SIZE}px`,
-      opacity: "1",
+      opacity: "0.4",
     });
-    expect(screen.getByTestId("comment-overlay-window")).toHaveStyle({ opacity: "0.4" });
   });
 
   it("本流確定時は未表示の候補コメントだけをqueueから除外する", async () => {

@@ -79,7 +79,8 @@ function OverlayAppPreview() {
       type: "settings",
       settings: {
         durationSeconds: compact ? 4 : 6,
-        opacity: compact ? 0.65 : 0.95,
+        commentOpacity: compact ? 0.65 : 0.95,
+        imageOpacity: compact ? 0.65 : 0.95,
         maxQueueSize: compact ? 16 : 64,
       },
     });
