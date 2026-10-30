@@ -35,7 +35,8 @@ test("ナビゲーション候補の右クリックからスレと板の操作�
   await expect(threadSuggestion).toBeVisible();
   await threadSuggestion.click({ button: "right" });
   await expect(page.getByRole("button", { name: "URLをコピー", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "スレログを削除してタブを閉じる" }).click();
+  // スレログと閲覧履歴の削除が統合された後の操作名を使う。
+  await page.getByRole("button", { name: "スレログと閲覧履歴を削除してタブを閉じる" }).click();
 
   await page.getByTestId("title-bar-title").click();
   await page.getByPlaceholder("URLを入力").fill("ローカルテスト板");

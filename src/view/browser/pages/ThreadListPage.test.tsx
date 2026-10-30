@@ -1483,8 +1483,8 @@ describe("ThreadListPage", () => {
       expect(menu?.querySelector('[aria-label="進む"]')).not.toBeNull();
       expect(menu?.querySelector('[aria-label="更新"]')).not.toBeNull();
       expect(menu?.querySelector(".context-menu__header-actions")).not.toBeNull();
-      // NG・ブックマーク・ログ/履歴削除・タイトル・URL・タイトルとURLの7項目を表示する。
-      expect(menu?.querySelectorAll(".context-menu__item .context-menu__icon")).toHaveLength(7);
+      // NG・ブックマーク・ログ/履歴削除と3種類のコピーにアイコンを表示する。
+      expect(menu?.querySelectorAll(".context-menu__item .context-menu__icon")).toHaveLength(6);
     });
   });
 

@@ -109,10 +109,13 @@ export async function verifySimilarImageNgRegistration(
   // 同じ画像をもう一度登録しようとしても、ルールは増えない。
   await thumb(1).click({ button: "right" });
   await page.getByRole("menuitem", { name: "類似画像NGに登録", exact: true }).click();
-  await expect(page.getByText("この画像は類似画像NGに登録済みです")).toBeVisible();
+  // 読み上げ用の通知にも同じ文言が入るため、表示中の通知タイトルを選ぶ。
+  await expect(page.getByText("この画像は類似画像NGに登録済みです", { exact: true })).toBeVisible();
 
   // ビューアの右クリックからも登録できる。
-  await thumb(3).click();
+  // 画像が1枚のレスではクリックがインライン展開になるため、メニューからビューアを開く。
+  await thumb(3).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "ビューアで開く", exact: true }).click();
   const viewerImage = page.locator(".media-viewer .media-viewer__image");
   await expect
     .poll(() => viewerImage.evaluate((image) => (image as HTMLImageElement).naturalWidth))
