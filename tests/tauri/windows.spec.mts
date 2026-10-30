@@ -111,17 +111,67 @@ test("ウィンドウ追従中も更新ごとのコメントを続けて流す",
       .locator(".status-bar")
       .getByRole("button", { name: /コメントOverlay制御/u });
     await control.click();
-    const placementPromise = page.context().waitForEvent("page");
     await page.getByRole("button", { name: "表示位置を調整…" }).click();
-    const placement = await placementPromise;
-    await placement.getByRole("radio", { name: "ウィンドウに追従" }).check();
-    const selection = placement.getByLabel("追従先ウィンドウ");
-    await expect(selection.getByRole("option", { name: "ChLens E2E Follow Target" })).toBeAttached({
-      timeout: 15_000,
+    // WebView2は一時的なabout:blankのCDPページを先に出すため、名前付き窓のDOMを親窓から操作する。
+    await page.evaluate(() => {
+      const popup = window.open("", "chlens-comment-overlay-placement");
+      if (!popup) throw new Error("配置窓を取得できませんでした");
+      (window as typeof window & { followTestPopup?: Window }).followTestPopup = popup;
     });
-    await selection.selectOption({ label: "ChLens E2E Follow Target" });
-    await expect(selection).not.toBeDisabled();
-    await placement.close();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const popup = (window as typeof window & { followTestPopup?: Window }).followTestPopup;
+          return (
+            popup?.document.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1] != null
+          );
+        }),
+      )
+      .toBe(true);
+    await page.evaluate(() => {
+      const popup = (window as typeof window & { followTestPopup: Window }).followTestPopup;
+      popup.document.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1]!.click();
+    });
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const popup = (window as typeof window & { followTestPopup: Window }).followTestPopup;
+            const select = popup.document.querySelector<HTMLSelectElement>(
+              "#overlay-attachment-target",
+            );
+            return Array.from(select?.options ?? []).some(
+              (option) => option.text === "ChLens E2E Follow Target",
+            );
+          }),
+        { timeout: 15_000 },
+      )
+      .toBe(true);
+    await page.evaluate(() => {
+      const popup = (window as typeof window & { followTestPopup: Window }).followTestPopup;
+      const select = popup.document.querySelector<HTMLSelectElement>("#overlay-attachment-target")!;
+      select.value = Array.from(select.options).find(
+        (option) => option.text === "ChLens E2E Follow Target",
+      )!.value;
+      const change = popup.document.createEvent("Event");
+      change.initEvent("change", true, false);
+      select.dispatchEvent(change);
+    });
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const popup = (window as typeof window & { followTestPopup: Window }).followTestPopup;
+          const select = popup.document.querySelector<HTMLSelectElement>(
+            "#overlay-attachment-target",
+          );
+          return (
+            select != null &&
+            !select.disabled &&
+            select.selectedOptions[0]?.text === "ChLens E2E Follow Target"
+          );
+        }),
+      )
+      .toBe(true);
 
     await control.click();
     const toggle = page
