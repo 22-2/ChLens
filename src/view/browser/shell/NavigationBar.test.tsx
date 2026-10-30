@@ -666,6 +666,33 @@ describe("NavigationBar", () => {
     getSnapshots.mockRestore();
   });
 
+  it("更新の右クリックメニューは開くたびに履歴の経過時間を計算し直す", async () => {
+    viewTab.currentIndex = 0;
+    const now = Date.now();
+    const getSnapshots = vi.spyOn(snapshots, "getThreadListSnapshots").mockResolvedValue([
+      {
+        url: "snapshot:test",
+        last_modified: "https://example.com/board/",
+        last_updated: now - 1000,
+        threads: [],
+      },
+    ]);
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now);
+    render(<NavigationBar />);
+    fireEvent.click(screen.getByTitle("メニュー"));
+
+    fireEvent.contextMenu(screen.getByTitle("更新"));
+    expect(await screen.findByText("たった今（0件）")).toBeInTheDocument();
+
+    // 履歴の中身が同じでも、時間が進んだ後に開き直せば表示が変わる。
+    nowSpy.mockReturnValue(now + 5 * 60_000);
+    fireEvent.click(screen.getByTitle("メニュー"));
+    fireEvent.contextMenu(screen.getByTitle("更新"));
+    expect(await screen.findByText("5 分前（0件）")).toBeInTheDocument();
+    nowSpy.mockRestore();
+    getSnapshots.mockRestore();
+  });
+
   it("戻る履歴メニューのタイトルを複数行表示にする", () => {
     render(<NavigationBar />);
 

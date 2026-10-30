@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { getThreadListSnapshots } from "src/features/thread-list/ui/thread-list-snapshots";
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import {
   commandPalette,
@@ -183,6 +184,34 @@ describe("TitleBar", () => {
     expect(dispatchMock).toHaveBeenCalledTimes(1);
     fireEvent.contextMenu(button.parentElement!);
     expect(screen.getByText("一覧の履歴")).toBeInTheDocument();
+  });
+
+  it("更新ボタンの履歴メニューは開くたびに経過時間を計算し直す", async () => {
+    mocks.viewPage = {
+      type: "threadList",
+      title: "板",
+      boardUrl: "https://example.com/board/",
+      boardTitle: "板",
+    };
+    mocks.viewTab.history = [mocks.viewPage];
+    vi.mocked(getThreadListSnapshots).mockResolvedValue([
+      {
+        url: "snapshot:1",
+        last_modified: "https://example.com/board/",
+        last_updated: refreshClock - 1000,
+        threads: [],
+      },
+    ]);
+    render(<TitleBar />);
+    const target = screen.getByRole("button", { name: "更新" }).parentElement!;
+
+    fireEvent.contextMenu(target);
+    expect(await screen.findByText("たった今（0件）")).toBeInTheDocument();
+
+    // メニューを開いたまま時間が進み、同じ位置で右クリックし直しても表示が古いままにならない。
+    vi.spyOn(Date, "now").mockReturnValue(refreshClock + 5 * 60_000);
+    fireEvent.contextMenu(target);
+    expect(await screen.findByText("5 分前（0件）")).toBeInTheDocument();
   });
 
   it("水平モードでも更新ボタンの左側に戻る・進むを表示する", () => {
