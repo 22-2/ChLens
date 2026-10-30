@@ -197,8 +197,9 @@ export function OverlayApp({
       if (queueWasEmpty && commentQueue.length > 0) {
         // 変更理由: 最初の新着だけは即時に反映し、残りは取得バッチを人為的な
         // 等間隔に見せない揺らぎ付きで投入して実況らしい流れを保つ。
+        const firstComments = commentQueue.splice(0, 1);
         setComments((current) => {
-          const next = [...current, ...commentQueue.splice(0, 1)];
+          const next = [...current, ...firstComments];
           return next.length > MAX_COMMENT_HISTORY ? next.slice(-MAX_COMMENT_HISTORY) : next;
         });
       }
@@ -221,8 +222,10 @@ export function OverlayApp({
             return;
           }
           const count = calculateNaturalCommentFlowCount(commentQueue.length);
+          // Reactはstate更新関数を再実行できるため、待機列の消費はその外で一度だけ行う。
+          const nextComments = commentQueue.splice(0, count);
           setComments((current) => {
-            const next = [...current, ...commentQueue.splice(0, count)];
+            const next = [...current, ...nextComments];
             return next.length > MAX_COMMENT_HISTORY ? next.slice(-MAX_COMMENT_HISTORY) : next;
           });
           scheduleNextComment();

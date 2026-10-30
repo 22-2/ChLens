@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
 import { MemoryArchiveReplayOverlayEventBus } from "src/features/archive-replay/platform";
 import type { CommentCandidate } from "src/features/comment-overlay/domain";
 import { MemoryCommentOverlayEventBus } from "src/features/comment-overlay/domain";
@@ -64,6 +65,37 @@ describe("OverlayApp", () => {
     cleanup();
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("描画更新が繰り返されても同じバッチのコメントを順に流す", async () => {
+    vi.useFakeTimers({ toNotFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
+    const eventBus = new MemoryCommentOverlayEventBus();
+    const platform = createBrowserCommentOverlayPlatform();
+    render(
+      <StrictMode>
+        <OverlayApp eventBus={eventBus} platform={platform} />
+      </StrictMode>,
+    );
+    const comments = [1, 2, 3].map((responseNumber) => ({
+      responseNumber,
+      text: `実況コメント${responseNumber}`,
+      author: "名無し",
+    }));
+    await act(async () => {
+      await Promise.resolve();
+      await eventBus.publish({
+        version: 1,
+        type: "batch",
+        batch: { threadUrl: THREAD_URL, comments, latestResponseNumber: 3 },
+      });
+    });
+    act(() => scheduledFrame?.(0));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    act(() => scheduledFrame?.(1_000));
+    for (const comment of comments)
+      expect(screen.getAllByText(comment.text).length).toBeGreaterThan(0);
   });
 
   it("表示専用の窓から配置を復元・保存せず、追従先の範囲で手動設定を上書きしない", async () => {
