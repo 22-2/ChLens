@@ -12,12 +12,14 @@ describe("コメントOverlay設定", () => {
     expect(
       normalizeCommentOverlaySettings({
         durationSeconds: 1,
-        opacity: -1,
+        commentOpacity: -1,
+        imageOpacity: 5,
         maxQueueSize: 12.6,
       }),
     ).toEqual({
       durationSeconds: 2,
-      opacity: 0.1,
+      commentOpacity: 0.1,
+      imageOpacity: 1,
       maxQueueSize: 13,
       fetchAllCandidateThreads: false,
     });
@@ -36,7 +38,8 @@ describe("コメントOverlay設定", () => {
     expect(
       normalizeCommentOverlaySettings({
         durationSeconds: Number.NaN,
-        opacity: Number.NEGATIVE_INFINITY,
+        commentOpacity: Number.NEGATIVE_INFINITY,
+        imageOpacity: Number.NaN,
         maxQueueSize: Number.NaN,
       }),
     ).toEqual(DEFAULT_COMMENT_OVERLAY_SETTINGS);

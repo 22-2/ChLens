@@ -35,7 +35,8 @@ const settingsEvent: CommentOverlayEvent = {
   type: "settings",
   settings: {
     durationSeconds: 6,
-    opacity: 0.5,
+    commentOpacity: 0.5,
+    imageOpacity: 0.5,
     maxQueueSize: 32,
   },
 };

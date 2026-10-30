@@ -193,7 +193,8 @@ describe("CommentOverlayController", () => {
       platform: createBrowserCommentOverlayPlatform(),
       getSettings: () => ({
         durationSeconds: 1,
-        opacity: -1,
+        commentOpacity: -1,
+        imageOpacity: 5,
         maxQueueSize: 12.6,
       }),
     });
@@ -204,7 +205,8 @@ describe("CommentOverlayController", () => {
       type: "reset",
       settings: {
         durationSeconds: 2,
-        opacity: 0.1,
+        commentOpacity: 0.1,
+        imageOpacity: 1,
         maxQueueSize: 13,
       },
     });
@@ -247,7 +249,8 @@ describe("CommentOverlayController", () => {
     });
     let settings = {
       durationSeconds: 6,
-      opacity: 0.95,
+      commentOpacity: 0.95,
+      imageOpacity: 0.95,
       maxQueueSize: 64,
     };
     const controller = new CommentOverlayController({
@@ -264,7 +267,8 @@ describe("CommentOverlayController", () => {
     await controller.start(threadUrl, [response(1, "既存レス")]);
     settings = {
       durationSeconds: 4,
-      opacity: 0.5,
+      commentOpacity: 0.5,
+      imageOpacity: 0.5,
       maxQueueSize: 12,
     };
     settingsListenerRef.current?.();
@@ -361,7 +365,8 @@ describe("CommentOverlayController", () => {
       multiThreadSource: source,
       getSettings: () => ({
         durationSeconds: 6,
-        opacity: 0.95,
+        commentOpacity: 0.95,
+        imageOpacity: 0.95,
         maxQueueSize: 64,
         fetchAllCandidateThreads: true,
       }),

@@ -42,11 +42,10 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
     runtimeMock.isTauri = false;
   });
 
-  it("通過時間・不透明度・待機queue上限は保存値を読まず既定値を使う", () => {
+  it("通過時間・待機queue上限は保存値を読まず既定値を使う", () => {
     configMock.get.mockImplementation((key: string) => {
       const values: Record<string, string> = {
         comment_overlay_speed: "15",
-        comment_overlay_opacity: "0.6",
         comment_overlay_max_queue: "120",
       };
       return values[key] ?? null;
@@ -54,9 +53,36 @@ describe("ConfigからのコメントOverlay設定読み出し", () => {
 
     expect(readCommentOverlaySettings()).toEqual({
       durationSeconds: DEFAULT_COMMENT_OVERLAY_SETTINGS.durationSeconds,
-      opacity: DEFAULT_COMMENT_OVERLAY_SETTINGS.opacity,
+      commentOpacity: DEFAULT_COMMENT_OVERLAY_SETTINGS.commentOpacity,
+      imageOpacity: DEFAULT_COMMENT_OVERLAY_SETTINGS.imageOpacity,
       maxQueueSize: DEFAULT_COMMENT_OVERLAY_SETTINGS.maxQueueSize,
       fetchAllCandidateThreads: false,
+    });
+  });
+
+  it("コメントと画像の不透明度をパーセントの保存値から別々に読む", () => {
+    configMock.get.mockImplementation((key: string) => {
+      const values: Record<string, string> = {
+        comment_overlay_comment_opacity: "60",
+        comment_overlay_image_opacity: "30",
+      };
+      return values[key] ?? null;
+    });
+
+    expect(readCommentOverlaySettings()).toMatchObject({
+      commentOpacity: 0.6,
+      imageOpacity: 0.3,
+    });
+  });
+
+  it("不透明度の保存値が不正なら既定値へ戻す", () => {
+    configMock.get.mockImplementation((key: string) =>
+      key === "comment_overlay_comment_opacity" ? "abc" : null,
+    );
+
+    expect(readCommentOverlaySettings()).toMatchObject({
+      commentOpacity: DEFAULT_COMMENT_OVERLAY_SETTINGS.commentOpacity,
+      imageOpacity: DEFAULT_COMMENT_OVERLAY_SETTINGS.imageOpacity,
     });
   });
 

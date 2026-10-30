@@ -78,6 +78,8 @@ export interface OverlayStageProps {
   shadowColor?: string;
   shadowDirections?: readonly ("top-left" | "top-right" | "bottom-left" | "bottom-right")[];
   commentOpacity?: number;
+  /** 画像laneの不透明度。省略時はコメントと同じ値にする。 */
+  imageOpacity?: number;
   backgroundColor?: string;
   playing?: boolean;
   fitToContainer?: boolean;
@@ -131,6 +133,7 @@ export function OverlayStage({
   shadowColor = "#07101d",
   shadowDirections = ["top-left", "top-right", "bottom-left", "bottom-right"],
   commentOpacity = DEFAULT_COMMENT_OPACITY,
+  imageOpacity = commentOpacity,
   backgroundColor = "#172235",
   playing = true,
   fitToContainer = false,
@@ -535,7 +538,7 @@ export function OverlayStage({
       <OverlayImageLane
         comments={comments}
         stageWidth={effectiveStageWidth}
-        imageOpacity={commentOpacity}
+        imageOpacity={imageOpacity}
         imageScale={calculateOverlayDisplayScale(
           effectiveStageWidth,
           effectiveStageHeight,
