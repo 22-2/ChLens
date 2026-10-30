@@ -313,6 +313,8 @@ export type MediaUrlClickHandler = (
 interface ResMediaGalleryProps {
   urls: string[];
   onUrlClick: MediaUrlClickHandler;
+  /** この表示に限り、手動取得設定より自動取得を優先する。 */
+  autoLoadImages?: boolean;
   onMiddleClickStart?: () => void;
   openOnMiddleMouseDown?: boolean;
   isBlurred?: boolean;
@@ -823,6 +825,7 @@ function NativeVideoThumb({
 export function ResMediaGallery({
   urls,
   onUrlClick,
+  autoLoadImages = false,
   onMiddleClickStart,
   openOnMiddleMouseDown = false,
   isBlurred = false,
@@ -834,7 +837,11 @@ export function ResMediaGallery({
   onOpenDetachedImage,
 }: ResMediaGalleryProps): React.ReactElement | null {
   const { value: confirmExternal } = useConfigBooleanSetting(EXTERNAL_LINK_CONFIRM_CONFIG_KEY);
-  const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
+  const { value: manualImageLoadingSetting } = useConfigBooleanSetting(
+    MANUAL_IMAGE_LOADING_CONFIG_KEY,
+  );
+  // 実況表示では新着を操作なしで追えるよう、このギャラリーだけ自動取得にする。
+  const manualImageLoading = manualImageLoadingSetting && !autoLoadImages;
   const { menu, openMenu } = useExternalLinkMenu();
   const { save, saving } = useImageSave();
   const imageStates = useMediaImageStore((state) => state.images);

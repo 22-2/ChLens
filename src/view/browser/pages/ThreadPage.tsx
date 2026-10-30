@@ -1026,6 +1026,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         }
         onEntryDisplayed={liveChatReplies.onEntryDisplayed}
         res={res}
+        // ライブチャット風表示とコメントOverlay実況のどちらでも、新着画像を手動操作なしで表示する。
+        autoLoadImages={isLiveChat || isCommentOverlayFlowing}
         expandedImageUrls={expandedImages?.get(res.num)}
         inlineImageWidths={
           imageWidths.threadUrl === page.threadUrl ? imageWidths.responses.get(res.num) : undefined

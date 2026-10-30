@@ -40,6 +40,34 @@ async function startLiveChat(page: Page) {
   await page.keyboard.press("Escape");
 }
 
+test("実況表示は手動取得設定でも画像を自動で読み込む", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const imageUrl = `${localBoard.origin}/img/1.png`;
+  localBoard.setDat(
+    `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local001<>画像 ${imageUrl}<>ローカルテストスレッド`,
+  );
+  await page.addInitScript(() => {
+    localStorage.setItem("config_thread_display_mode", "live-chat");
+    localStorage.setItem("config_manual_image_loading", "on");
+  });
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+
+  const response = page.locator('[data-res-num="1"]');
+  const image = response.locator(".res__thumb--image img");
+  await expect(image).toBeVisible();
+  await expect
+    .poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+  // 表示モードだけの変更なので、利用者の手動取得設定は書き換えない。
+  expect(await page.evaluate(() => localStorage.getItem("config_manual_image_loading"))).toBe("on");
+});
+
 test("大量の新着をまとめて飛ばさず、取得ペースに合わせて流す", async ({
   page,
   extensionId,

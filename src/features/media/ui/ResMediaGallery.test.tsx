@@ -77,6 +77,24 @@ describe("ResMediaGallery", () => {
     expect(onUrlClick).toHaveBeenCalledWith(imageUrl, [imageUrl], 0, undefined, [imageUrl]);
   });
 
+  it("自動取得を指定した表示では手動設定を上書きし、解除すると手動取得に戻る", () => {
+    manualImageLoadingMock.value = true;
+    const imageUrl = "https://example.com/live-image.jpg";
+    const { rerender } = render(
+      <ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} autoLoadImages />,
+    );
+
+    expect(screen.getByRole("img", { name: imageUrl })).toHaveAttribute("src", imageUrl);
+    expect(screen.queryByRole("button", { name: "画像を読み込む" })).toBeNull();
+    expect(manualImageLoadingMock.value).toBe(true);
+
+    // 自動取得済みの画像は共有状態に残るため、未取得の画像で通常表示を確認する。
+    rerender(
+      <ResMediaGallery urls={["https://example.com/another-image.jpg"]} onUrlClick={() => {}} />,
+    );
+    expect(screen.getByRole("button", { name: "画像を読み込む" })).toBeInTheDocument();
+  });
+
   it("別のギャラリーでも取得済み状態を共有する", async () => {
     manualImageLoadingMock.value = true;
     const imageUrl = "https://images.example.com/shared-photo.jpg";
