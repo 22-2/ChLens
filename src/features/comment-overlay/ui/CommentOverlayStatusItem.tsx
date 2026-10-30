@@ -37,10 +37,8 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
   const openOverlayPlacementWindow = useOpenOverlayPlacementWindow();
   const [isFlowChanging, setIsFlowChanging] = useState(false);
   const flowChangingRef = useRef(false);
-  const { value: commentOpacityPercent, setValue: setCommentOpacityPercent } =
-    useConfigNumberSetting("comment_overlay_comment_opacity");
-  const { value: imageOpacityPercent, setValue: setImageOpacityPercent } =
-    useConfigNumberSetting("comment_overlay_image_opacity");
+  const commentOpacity = useConfigNumberSetting("comment_overlay_comment_opacity");
+  const imageOpacity = useConfigNumberSetting("comment_overlay_image_opacity");
   const isTauri = isTauriRuntime();
   const threadUrl = viewPage.type === "thread" ? viewPage.threadUrl : null;
   const threadCapabilities =
@@ -155,18 +153,18 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
               min={10}
               max={100}
               step={5}
-              value={commentOpacityPercent}
-              valueLabel={`${commentOpacityPercent}%`}
-              onChange={setCommentOpacityPercent}
+              value={commentOpacity.value}
+              valueLabel={`${commentOpacity.value}%`}
+              onChange={commentOpacity.setValue}
             />
             <MiniWindowSlider
               label="画像の不透明度"
               min={10}
               max={100}
               step={5}
-              value={imageOpacityPercent}
-              valueLabel={`${imageOpacityPercent}%`}
-              onChange={setImageOpacityPercent}
+              value={imageOpacity.value}
+              valueLabel={`${imageOpacity.value}%`}
+              onChange={imageOpacity.setValue}
             />
           </MiniWindowSection>
 
