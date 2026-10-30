@@ -134,7 +134,16 @@ fn raise_above_target(app: &tauri::AppHandle, id: &str) -> Result<(), String> {
     if above_target == overlay {
       return Ok(());
     }
-    let insert_after = if above_target.is_null() { HWND_TOP } else { above_target };
+    // 変更理由: 追従先が通常ウィンドウの最上位にあると、直前のウィンドウはタスクバーなどの
+    // 最前面ウィンドウになる。その直後へ挿入するとZ順が最前面の帯と食い違い、毎周期の並べ直しが
+    // 収まらなくなるため、その場合は通常ウィンドウの帯の先頭（＝追従先の直上）へ置く。
+    let above_is_topmost = !above_target.is_null()
+      && GetWindowLongPtrW(above_target, GWL_EXSTYLE) & WS_EX_TOPMOST as isize != 0;
+    let insert_after = if above_target.is_null() || above_is_topmost {
+      HWND_TOP
+    } else {
+      above_target
+    };
     if SetWindowPos(
       overlay,
       insert_after,
