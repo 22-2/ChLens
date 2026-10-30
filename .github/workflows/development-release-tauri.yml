@@ -44,9 +44,10 @@ jobs:
           workspaces: src-tauri -> target
           shared-key: release
 
-      # 開発版では WebView の検証メニューを有効にし、インストーラーは作らない。
+      # DevTools は tauri 依存の機能として有効済みなので、アプリ側の機能には指定しない。
+      # インストーラーは作らず、開発版の実行ファイルだけを生成する。
       - name: Build development exe
-        run: pnpm exec tauri build --no-bundle --features devtools
+        run: pnpm exec tauri build --no-bundle
 
       - name: Update development release
         shell: bash
