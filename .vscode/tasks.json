@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "ChLens: Update dev build and restart",
+      "type": "process",
+      "command": "pwsh.exe",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}\\scripts\\update-dev-build.ps1",
+        "-Repo",
+        "22-2/chlens",
+        "-Workflow",
+        "development-release-tauri.yml",
+        "-Asset",
+        "ChLens_dev_x64.exe",
+        "-Executable",
+        "C:\\Applications\\bins\\ChLens.exe"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "clear": true, "panel": "shared" },
+      "problemMatcher": []
+    }
+  ]
+}

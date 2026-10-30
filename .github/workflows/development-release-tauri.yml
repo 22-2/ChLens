@@ -1,0 +1,91 @@
+name: Development release Tauri
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [develop]
+    types: [completed]
+
+permissions:
+  contents: read
+
+# 公開中の実行をキャンセルせず、古いコミットの成果物は公開直前に除外する。
+concurrency:
+  group: development-release-tauri
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: 開発版 Tauri exe をビルド・更新
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: v0.0.0-dev
+      BUILD_SHA: ${{ github.event.workflow_run.head_sha }}
+      CI_URL: ${{ github.event.workflow_run.html_url }}
+    steps:
+      # workflow_run の GITHUB_SHA は既定ブランチを指すため、CI 成功 SHA を使う。
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Node.js and install dependencies
+        uses: ./.github/actions/setup-node-pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          shared-key: release
+
+      # 開発版では WebView の検証メニューを有効にし、インストーラーは作らない。
+      - name: Build development exe
+        run: pnpm exec tauri build --no-bundle --features devtools
+
+      - name: Update development release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          current_sha="$(git ls-remote origin refs/heads/develop | cut -f1)"
+          if [[ "$current_sha" != "$BUILD_SHA" ]]; then
+            echo "develop has advanced; skip publishing this older build."
+            exit 0
+          fi
+
+          asset="ChLens_dev_x64.exe"
+          cp src-tauri/target/release/chlens.exe "$asset"
+          notes="$RUNNER_TEMP/development-release-notes.md"
+          cat > "$notes" <<EOF
+          develop の更新後、CI がすべて成功した版を自動公開しています。
+          このページと実行ファイルは次回の公開時に更新されます。
+
+          - コミット: [$BUILD_SHA](https://github.com/$GITHUB_REPOSITORY/commit/$BUILD_SHA)
+          - CI: $CI_URL
+          - ビルド: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          - 更新日時: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          EOF
+
+          if gh release view "$VERSION" > /dev/null 2>&1; then
+            git tag -f "$VERSION" "$BUILD_SHA"
+            git push --force origin "refs/tags/$VERSION"
+            gh release upload "$VERSION" "$asset" --clobber
+            gh release edit "$VERSION" \
+              --target "$BUILD_SHA" \
+              --title "ChLens 開発版" \
+              --notes-file "$notes" \
+              --prerelease --latest=false
+          else
+            gh release create "$VERSION" "$asset" \
+              --target "$BUILD_SHA" \
+              --title "ChLens 開発版" \
+              --notes-file "$notes" \
+              --prerelease --latest=false
+          fi
