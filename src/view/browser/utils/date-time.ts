@@ -31,12 +31,19 @@ export function formatCompactDateTime(timestamp: number): string {
 const relativeTimeFormatter = new Intl.RelativeTimeFormat("ja-JP", { numeric: "auto" });
 
 /** スレ一覧の作成日時と履歴の時刻を同じ相対表示にする。 */
-export function formatRelativeTime(timestamp: number, now = Date.now()): string {
+export function formatRelativeTime(
+  timestamp: number,
+  now = Date.now(),
+  { showSeconds = false }: { showSeconds?: boolean } = {},
+): string {
   if (!Number.isFinite(timestamp) || timestamp <= 0) return "-";
 
   const difference = timestamp - now;
   const absoluteDifference = Math.abs(difference);
   if (absoluteDifference < 60_000) {
+    // 経過時間を秒単位で刻む表示では、過去の1秒未満だけを「たった今」にする。
+    const seconds = Math.floor(absoluteDifference / 1000);
+    if (showSeconds && difference < 0 && seconds >= 1) return `${seconds}秒前`;
     return difference < 0 ? "たった今" : "まもなく";
   }
 
