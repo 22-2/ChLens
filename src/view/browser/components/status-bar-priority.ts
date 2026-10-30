@@ -10,6 +10,7 @@ export const STATUS_BAR_PRIORITY = {
   },
   right: {
     writePanelToggle: 0,
+    threadListLoaded: 2,
     threadListPanelToggle: 5,
     operation: 10,
   },

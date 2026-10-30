@@ -22,6 +22,7 @@ import { TabBar } from "src/features/tabs/ui/TabBar";
 import { WindowNavigationBridge } from "src/features/tabs/ui/WindowNavigationBridge";
 import { IkioiStatusItem } from "src/features/thread/ui/IkioiStatusItem";
 import { PopularFilterStatusItem } from "src/features/thread/ui/PopularFilterStatusItem";
+import { ThreadListLoadedStatusItem } from "src/features/thread-list/ui/ThreadListLoadedStatusItem";
 import { ThreadListPanelToggleItem } from "src/features/thread-list/ui/ThreadListPanelToggleItem";
 import { WriteSessionProvider } from "src/features/write/browser/use-write-session";
 import { WritePanelToggleItem } from "src/features/write/ui/WritePanelToggleItem";
@@ -162,6 +163,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
       <AutoRefreshStatusItem />
       <CommentOverlayStatusItem isActive={isActive} />
       <PageCountStatusItem />
+      <ThreadListLoadedStatusItem />
       <ThreadListPanelToggleItem />
       <WritePanelToggleItem />
       <StatusBar />

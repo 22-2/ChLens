@@ -23,6 +23,7 @@ import {
 import { createThreadContextMenuItems } from "src/features/thread/ui/thread-context-menu-items";
 import { WheelScrollIndicator } from "src/features/thread/ui/WheelScrollIndicator";
 import { clearCachedThreadReadState } from "src/features/thread-list/ui/thread-list-cache";
+import { setThreadListLoadedAt } from "src/features/thread-list/ui/thread-list-loaded-at";
 import {
   calcHeat,
   createHighlightDividerStyle,
@@ -190,6 +191,7 @@ export const ThreadListPage: React.FC<Props> = ({
     showRefreshOverlay,
     error,
     fetchThreads,
+    lastLoadedAt,
   } = useThreadListData({
     boardUrl: page.boardUrl,
     refreshKey,
@@ -200,6 +202,13 @@ export const ThreadListPage: React.FC<Props> = ({
     resolvedBoardTitlesRef,
   });
   const threads = selectedSnapshot?.threads ?? liveThreads;
+  // 過去の履歴を表示中は、その一覧を読み込んだ時刻を出す。
+  const loadedAt = selectedSnapshot?.last_updated ?? lastLoadedAt;
+  useEffect(() => {
+    // ステータスバーの最終読み込み表示へ渡し、ページを離れたら消す。
+    setThreadListLoadedAt(tabId, loadedAt);
+    return () => setThreadListLoadedAt(tabId, null);
+  }, [loadedAt, tabId]);
   useEffect(() => {
     let cancelled = false;
     void getThreadListSnapshots(page.boardUrl)

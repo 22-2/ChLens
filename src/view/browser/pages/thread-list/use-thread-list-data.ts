@@ -48,6 +48,9 @@ export function useThreadListData({
   const [showRefreshOverlay, setShowRefreshOverlay] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // ステータスバーに出す最終読み込み時刻。キャッシュ表示は実際の読み込みではないため含めない。
+  // 板を添えて持ち、板が変わった直後に前の板の時刻を出さないようにする。
+  const [loadedState, setLoadedState] = useState<{ boardUrl: string; at: number } | null>(null);
 
   const fetchThreads = useCallback(async () => {
     const requestId = ++requestIdRef.current;
@@ -94,6 +97,7 @@ export function useThreadListData({
         void setThreadListCache(boardUrl, result.threads);
         // 取得できた一覧だけを履歴に残し、警告付きの空結果は保存しない。
         void saveThreadListSnapshot(boardUrl, result.threads).then(onSnapshotSaved);
+        setLoadedState({ boardUrl, at: Date.now() });
       }
       // 戻る操作直後は「取得成功 + 注意メッセージ」が返る場合があるため、
       // 一覧を描画できる件数がある間はエラー文言を出さずUIの連続性を優先する。
@@ -195,6 +199,9 @@ export function useThreadListData({
     };
   }, [boardUrl]);
 
+  // 板が変わった直後は前の板の時刻を出さず、新しい取得が成功するまで未読み込みとして扱う。
+  const lastLoadedAt = loadedState?.boardUrl === boardUrl ? loadedState.at : null;
+
   return {
     threads,
     setThreads,
@@ -204,5 +211,6 @@ export function useThreadListData({
     showRefreshOverlay,
     error,
     fetchThreads,
+    lastLoadedAt,
   };
 }

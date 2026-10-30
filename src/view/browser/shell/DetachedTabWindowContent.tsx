@@ -7,6 +7,7 @@ import { NgStatusItem } from "src/features/ng/ui/NgStatusItem";
 import { WindowNavigationBridge } from "src/features/tabs/ui/WindowNavigationBridge";
 import { IkioiStatusItem } from "src/features/thread/ui/IkioiStatusItem";
 import { PopularFilterStatusItem } from "src/features/thread/ui/PopularFilterStatusItem";
+import { ThreadListLoadedStatusItem } from "src/features/thread-list/ui/ThreadListLoadedStatusItem";
 import { ThreadListPanelToggleItem } from "src/features/thread-list/ui/ThreadListPanelToggleItem";
 import { WritePanelToggleItem } from "src/features/write/ui/WritePanelToggleItem";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
@@ -59,6 +60,7 @@ export const DetachedTabWindowContent: React.FC<{
                   <AutoRefreshStatusItem />
                   <CommentOverlayStatusItem isActive />
                   <PageCountStatusItem />
+                  <ThreadListLoadedStatusItem />
                   <ThreadListPanelToggleItem />
                   <WritePanelToggleItem />
                   <StatusBar />
