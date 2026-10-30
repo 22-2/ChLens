@@ -251,4 +251,17 @@ describe("CommentOverlayStatusItem", () => {
     expect(mocks.openPlacementWindow).toHaveBeenCalledExactlyOnceWith(window);
     expect(screen.queryByText("コメントを画面に流す")).toBeNull();
   });
+
+  it("小窓でコメントと画像の不透明度を別々のスライダーで調整できる", () => {
+    renderItem();
+
+    fireEvent.click(screen.getByRole("button", { name: /コメントOverlay制御/ }));
+    const commentSlider = screen.getByRole("slider", { name: "コメントの不透明度" });
+    const imageSlider = screen.getByRole("slider", { name: "画像の不透明度" });
+    fireEvent.change(commentSlider, { target: { value: "40" } });
+
+    expect(commentSlider).toHaveValue("40");
+    expect(imageSlider).toHaveValue("95");
+    expect(screen.getByText("40%")).toBeInTheDocument();
+  });
 });

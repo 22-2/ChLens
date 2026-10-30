@@ -609,24 +609,3 @@
   outline: var(--sys-space-1) solid var(--sys-color-accent);
   outline-offset: var(--sys-space-1);
 }
-
-.settings-page__slider {
-  display: flex;
-  align-items: center;
-  gap: var(--sys-space-5);
-  min-width: calc(var(--sys-space-16) * 4);
-}
-
-.settings-page__slider-input {
-  flex: 1;
-  accent-color: var(--sys-color-accent);
-  cursor: pointer;
-}
-
-.settings-page__slider-value {
-  min-width: 4ch;
-  text-align: right;
-  font-size: var(--sys-font-size-sm);
-  font-variant-numeric: tabular-nums;
-  color: var(--sys-color-text);
-}

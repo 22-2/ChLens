@@ -13,7 +13,7 @@ export type SettingsSupplementaryPanelId =
   | "dataManagement"
   | "siteBoardSettings";
 
-export type SettingsFormWidget = "textarea" | "ng_editor" | "replacement_editor" | "slider";
+export type SettingsFormWidget = "textarea" | "ng_editor" | "replacement_editor";
 export type SettingsFormValue = boolean | number | string | undefined;
 export type SettingsSectionFormData = Record<string, SettingsFormValue>;
 export type SettingsFormState = Record<SettingsSectionId, SettingsSectionFormData>;

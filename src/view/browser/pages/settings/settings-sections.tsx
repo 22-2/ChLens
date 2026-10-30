@@ -487,7 +487,7 @@ const ALL_SETTINGS_SECTIONS = [
   defineSection(
     "overlay",
     "実況",
-    "Tauri版のコメント流し表示を調整します。最前面表示・不透明度・分裂スレ取得は変更時に反映します。",
+    "Tauri版のコメント流し表示を調整します。最前面表示と分裂スレ取得は変更時に反映します。",
     <CommentOverlayIcon size={20} />,
     [
       {
@@ -500,26 +500,6 @@ const ALL_SETTINGS_SECTIONS = [
         key: "comment_overlay_always_on_top",
         title: "常に最前面に表示する",
         description: "ほかのアプリより手前にコメントOverlayを表示します。",
-      },
-      {
-        kind: "number",
-        key: "comment_overlay_comment_opacity",
-        title: "コメントの不透明度",
-        description: "コメント文字の濃さです。小さいほど背景が透けます。",
-        widget: "slider",
-        minimum: 10,
-        maximum: 100,
-        step: 5,
-      },
-      {
-        kind: "number",
-        key: "comment_overlay_image_opacity",
-        title: "画像の不透明度",
-        description: "流れる画像の濃さです。コメントとは別に調整できます。",
-        widget: "slider",
-        minimum: 10,
-        maximum: 100,
-        step: 5,
       },
       {
         kind: "boolean",

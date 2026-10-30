@@ -158,7 +158,7 @@ describe("設定セクションの実行環境フィルター", () => {
     expect(sections.some((section) => section.id === "overlay")).toBe(false);
   });
 
-  it("Tauri版では最前面表示・コメントと画像の不透明度・分裂スレ取得だけを表示する", () => {
+  it("Tauri版では最前面表示と分裂スレ取得だけを表示する", () => {
     const sections = getSettingsSections(true);
     const overlay = sections.find((section) => section.id === "overlay");
 
@@ -166,8 +166,6 @@ describe("設定セクションの実行環境フィルター", () => {
     expect(overlay?.fields.map((field) => ("key" in field ? field.key : field.id))).toEqual([
       "display",
       "comment_overlay_always_on_top",
-      "comment_overlay_comment_opacity",
-      "comment_overlay_image_opacity",
       "comment_overlay_fetch_all_threads",
     ]);
   });

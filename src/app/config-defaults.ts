@@ -158,6 +158,9 @@ export const CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM = [
   "thread_display_mode",
   // 実況の表示領域パネルで縦横比の固定を切り替えるため、通常の設定フォームには置かない。
   "comment_overlay_lock_aspect_ratio",
+  // 実況ミニウィンドウのスライダーでコメントと画像の不透明度を調整するため、通常の設定フォームには置かない。
+  "comment_overlay_comment_opacity",
+  "comment_overlay_image_opacity",
   // 書き込み設定とドメイン・板設定から名前とメール欄を編集できる。
   "default_name",
   "default_mail",

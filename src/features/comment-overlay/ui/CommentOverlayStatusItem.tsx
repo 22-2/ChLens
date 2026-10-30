@@ -14,10 +14,12 @@ import {
   MiniWindowNote,
   MiniWindowSection,
   MiniWindowSeparator,
+  MiniWindowSlider,
   MiniWindowToggle,
 } from "src/view/browser/components/MiniWindowControls";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
+import { useConfigNumberSetting } from "src/view/browser/hooks/use-config-number-setting";
 import { useMiniWindowTrigger } from "src/view/browser/hooks/use-mini-window-trigger";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 
@@ -35,6 +37,10 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
   const openOverlayPlacementWindow = useOpenOverlayPlacementWindow();
   const [isFlowChanging, setIsFlowChanging] = useState(false);
   const flowChangingRef = useRef(false);
+  const { value: commentOpacityPercent, setValue: setCommentOpacityPercent } =
+    useConfigNumberSetting("comment_overlay_comment_opacity");
+  const { value: imageOpacityPercent, setValue: setImageOpacityPercent } =
+    useConfigNumberSetting("comment_overlay_image_opacity");
   const isTauri = isTauriRuntime();
   const threadUrl = viewPage.type === "thread" ? viewPage.threadUrl : null;
   const threadCapabilities =
@@ -138,6 +144,30 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
               buttonLabel={flowLabel}
             />
             <MiniWindowNote>表示中のスレッドの新着レスをOverlayへ流します</MiniWindowNote>
+          </MiniWindowSection>
+
+          <MiniWindowSeparator />
+
+          {/* 変更理由: 流れる様子を見ながら加減できるよう、透明度は設定画面ではなくこの小窓で調整する。 */}
+          <MiniWindowSection>
+            <MiniWindowSlider
+              label="コメントの不透明度"
+              min={10}
+              max={100}
+              step={5}
+              value={commentOpacityPercent}
+              valueLabel={`${commentOpacityPercent}%`}
+              onChange={setCommentOpacityPercent}
+            />
+            <MiniWindowSlider
+              label="画像の不透明度"
+              min={10}
+              max={100}
+              step={5}
+              value={imageOpacityPercent}
+              valueLabel={`${imageOpacityPercent}%`}
+              onChange={setImageOpacityPercent}
+            />
           </MiniWindowSection>
 
           <MiniWindowSeparator />
