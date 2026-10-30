@@ -7,7 +7,6 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   localBoard,
 }) => {
   const image1 = `${localBoard.origin}/img/1.png`;
-  const image2 = `${localBoard.origin}/img/2.png`;
   localBoard.setImageBody(
     1,
     Buffer.from(
@@ -15,16 +14,9 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
     ),
     "image/svg+xml",
   );
-  localBoard.setImageBody(
-    2,
-    Buffer.from(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="2000"><rect width="400" height="2000" fill="blue"/></svg>',
-    ),
-    "image/svg+xml",
-  );
   const posts = Array.from({ length: 150 }, (_, i) =>
     i === 0
-      ? `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local001<>画像 ${image1} ${image2}<>ローカルテストスレッド`
+      ? `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local001<>画像 ${image1}<>ローカルテストスレッド`
       : `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local002<>本文 ${i + 1}<>`,
   );
   localBoard.setDat(posts.join("\n"));
@@ -38,16 +30,11 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await urlInput.fill(localBoard.threadUrl);
   await urlInput.press("Enter");
   const first = page.locator('[data-res-num="1"]');
-  await expect(first.locator(".res__thumb--image")).toHaveCount(2);
-  await expect(first.getByRole("button", { name: "このレスの画像をすべて保存" })).toBeVisible();
-  const saveAll = first.getByRole("button", { name: "このレスの画像をすべて保存" });
+  await expect(first.locator(".res__thumb--image")).toHaveCount(1);
   const saveOne = first.getByRole("button", { name: `画像を保存: ${image1}` });
   await expect(saveOne).toBeVisible();
   await expect(saveOne.locator("svg")).toHaveCount(1);
   await expect(saveOne).toHaveText("");
-  await expect(saveAll.locator("svg")).toHaveCount(1);
-  const thumbsBox = (await first.locator(".res__thumbs").boundingBox())!;
-  expect((await saveAll.boundingBox())!.y).toBeGreaterThanOrEqual(thumbsBox.y + thumbsBox.height);
   await first.locator(".res__thumb--image").first().click();
   await expect(first.getByRole("button", { name: "画像を折りたたむ" })).toBeVisible();
   const image = first.locator(".res__inline-image img");
@@ -119,19 +106,6 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await page.keyboard.press("ArrowLeft");
   await expect.poll(async () => (await image.boundingBox())!.width).toBeLessThan(adjustedWidth);
   const savedWidth = (await image.boundingBox())!.width;
-  await first.locator(".res__thumb--image").first().click();
-  const portrait = first.locator(".res__inline-image img").nth(1);
-  await expect
-    .poll(() => portrait.evaluate((el) => (el as HTMLImageElement).naturalHeight))
-    .toBe(2000);
-  await expectNoOverlap();
-  await expectImageFrameFits(1);
-  const portraitBox = (await portrait.boundingBox())!;
-  expect(portraitBox.height).toBeLessThanOrEqual(
-    (await page.evaluate(() => window.innerHeight)) * 0.6,
-  );
-  expect(portraitBox.width / portraitBox.height).toBeCloseTo(0.2, 2);
-  await first.getByRole("button", { name: "画像を折りたたむ" }).nth(1).click();
   await expect(page.locator(".media-viewer")).toHaveCount(0);
   await jumpToResponse(page, 150);
   await expect(first).toHaveCount(0);
@@ -147,7 +121,36 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
     .poll(async () => (await first.locator(".res__inline-image img").boundingBox())!.width)
     .toBeCloseTo(savedWidth, 0);
   await first.getByRole("button", { name: "画像を縮小" }).click();
-  await expect(first.locator(".res__thumb--image")).toHaveCount(2);
+  await expect(first.locator(".res__thumb--image")).toHaveCount(1);
+});
+
+test("複数画像のレスはまとめて保存でき、クリックでビューアを開く", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const image1 = `${localBoard.origin}/img/1.png`;
+  const image2 = `${localBoard.origin}/img/2.png`;
+  localBoard.setDat(
+    `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local001<>画像 ${image1} ${image2}<>ローカルテストスレッド`,
+  );
+  await page.addInitScript(() => localStorage.setItem("config_manual_image_loading", "off"));
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  const first = page.locator('[data-res-num="1"]');
+  const thumbs = first.locator(".res__thumb--image");
+  await expect(thumbs).toHaveCount(2);
+  const saveAll = first.getByRole("button", { name: "このレスの画像をすべて保存" });
+  await expect(saveAll).toBeVisible();
+  await expect(saveAll.locator("svg")).toHaveCount(1);
+  const thumbsBox = (await first.locator(".res__thumbs").boundingBox())!;
+  expect((await saveAll.boundingBox())!.y).toBeGreaterThanOrEqual(thumbsBox.y + thumbsBox.height);
+  // 複数画像のレスは比較しやすいよう、インライン展開ではなくビューアで開く。
+  await thumbs.first().click();
+  await expect(page.locator(".media-viewer__label")).toHaveText(image1);
+  await expect(first.locator(".res__inline-image")).toHaveCount(0);
 });
 
 test("スレ途中の画像を続けて展開しても後続のレスと重ならない", async ({

@@ -51,7 +51,19 @@ export function VirtualResList({
   }, [highlightKey, onHighlightApplied, virtualItems]);
 
   return (
-    <div ref={setListRef} className="virtual-res-list">
+    <div
+      ref={setListRef}
+      className="virtual-res-list"
+      onLoadCapture={(event) => {
+        // 別窓の要素は異なるWindowに属するため、instanceofで判定しない。
+        const target = event.target as HTMLElement;
+        if (target.tagName !== "IMG") return;
+        const item = target.closest<HTMLElement>(".virtual-res-list__item");
+        if (!item) return;
+        // キャッシュ済み画像の復元はResizeObserverより先に描画されるため、その場で高さを反映する。
+        virtualizer.resizeItem(virtualizer.indexFromElement(item), item.offsetHeight);
+      }}
+    >
       {virtualItems.map((item) => (
         <div
           key={String(item.key)}
