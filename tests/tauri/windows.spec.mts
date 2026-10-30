@@ -106,6 +106,21 @@ test("ウィンドウ追従中も更新ごとのコメントを続けて流す",
       '.content-area__tab-panel[data-active="true"] .thread-page__responses',
     );
     await expect(responses.locator('[data-res-num="2"]')).toBeVisible();
+    // 一覧は追従モードの表示時に取得するため、別プロセスの窓が現れてから開く。
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            const windows = (await (
+              window as typeof window & { __TAURI_INTERNALS__: TauriInternals }
+            ).__TAURI_INTERNALS__.invoke("list_comment_overlay_windows", {})) as Array<{
+              title: string;
+            }>;
+            return windows.some((item) => item.title === "ChLens E2E Follow Target");
+          }),
+        { timeout: 15_000 },
+      )
+      .toBe(true);
 
     const control = page
       .locator(".status-bar")
