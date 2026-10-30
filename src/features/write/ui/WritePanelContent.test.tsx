@@ -451,6 +451,21 @@ describe("WritePanelContent", () => {
     expect(mocks.clearWritePanelInsertRequest).toHaveBeenCalledWith(1);
   });
 
+  it("同じ返信要求が消費前に再描画されても二重に追記しない", () => {
+    mocks.writePanelInsertRequest = { id: 1, text: ">>10\n" };
+    const { rerender } = renderWritePanel();
+    expect(mocks.setMessage).toHaveBeenCalledTimes(1);
+
+    mocks.message = "本文\n>>10\n";
+    rerender(
+      <StatusBarProvider>
+        <WritePanelContent />
+        <StatusBar />
+      </StatusBarProvider>,
+    );
+    expect(mocks.setMessage).toHaveBeenCalledTimes(1);
+  });
+
   it("書き込みエラーをステータスバーへ表示し、再入力できる", async () => {
     const errorMessage = "書き込み失敗: " + "サーバーから返された長いエラー内容。".repeat(12);
     mocks.status = "error";

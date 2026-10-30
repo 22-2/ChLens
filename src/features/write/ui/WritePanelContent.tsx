@@ -93,7 +93,9 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   const toast = useToast();
   const { window: viewWindow, document: viewDocument } = viewSurface;
   const bottomPanel = useOptionalBottomPanel();
-  const writePanelInsertRequest = isWindow ? null : bottomPanel?.writePanelInsertRequest;
+  // 下部パネルの要求をサイドの編集欄も同時に処理すると、返信が二重に追記される。
+  const writePanelInsertRequest =
+    surface === "bottom" ? bottomPanel?.writePanelInsertRequest : null;
   const clearWritePanelInsertRequest = bottomPanel?.clearWritePanelInsertRequest ?? noop;
   const closePanel = isWindow ? (onClose ?? noop) : (bottomPanel?.closePanel ?? onClose ?? noop);
   const {
@@ -114,6 +116,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     [setDraft, threadUrl],
   );
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const appliedInsertRequestIdRef = useRef<number | null>(null);
   const writePanelFocusRequestId = bottomPanel?.writePanelFocusRequestId ?? null;
   const imgurFileInputRef = useRef<HTMLInputElement | null>(null);
   const errorDialogDescriptionId = useId();
@@ -399,7 +402,10 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   }, [authCodeUrl, status]);
 
   useEffect(() => {
-    if (!writePanelInsertRequest) {
+    if (
+      !writePanelInsertRequest ||
+      appliedInsertRequestIdRef.current === writePanelInsertRequest.id
+    ) {
       return;
     }
 
@@ -419,6 +425,8 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     // 変更理由: 右クリックからの返信文は現在の下書きへ自然に追記し、
     // 毎回置き換えるより「開いて貼り付けた」感覚に近い挙動へ揃える。
     const nextMessage = `${message}${separator}${writePanelInsertRequest.text}`;
+    // 下書きの更新と要求の消費は別々に再描画されるため、同じ要求の再実行を防ぐ。
+    appliedInsertRequestIdRef.current = writePanelInsertRequest.id;
     setMessage(nextMessage);
     clearWritePanelInsertRequest(writePanelInsertRequest.id);
 

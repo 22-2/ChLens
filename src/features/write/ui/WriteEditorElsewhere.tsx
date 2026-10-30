@@ -29,6 +29,8 @@ export function WriteEditorElsewhere({ place }: { place: WriteEditorPlace }) {
   } = useWriteSessionControls();
 
   useEffect(() => {
+    // 要求は下部パネルが受け持ち、サイドにも案内がある場合の二重追記を防ぐ。
+    if (place !== "bottom") return;
     const request = bottomPanel?.writePanelInsertRequest;
     if (!request) {
       return;
@@ -44,7 +46,7 @@ export function WriteEditorElsewhere({ place }: { place: WriteEditorPlace }) {
     selectThread(targetThreadUrl);
     appendDraft(targetThreadUrl, request.text);
     bottomPanel.clearWritePanelInsertRequest(request.id);
-  }, [appendDraft, bottomPanel, selectThread, selectedThreadUrl]);
+  }, [appendDraft, bottomPanel, place, selectThread, selectedThreadUrl]);
 
   const moveHere = () => {
     if (!moveEditor(place)) return;
