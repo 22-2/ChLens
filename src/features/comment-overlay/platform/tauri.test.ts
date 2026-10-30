@@ -253,6 +253,30 @@ describe("TauriコメントOverlay window platform", () => {
     expect(tauriMocks.invoke).not.toHaveBeenCalled();
   });
 
+  it("Z順の調整に失敗しても追従と表示を続け、同じ失敗は一度だけ記録する", async () => {
+    vi.useFakeTimers();
+    loggerMock.error.mockClear();
+    tauriMocks.window.show.mockClear();
+    tauriMocks.window.hide.mockClear();
+    tauriMocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "list_comment_overlay_windows") {
+        return [{ id: "10:20", title: "追従先", processPath: "C:\\player.exe" }];
+      }
+      if (command === "raise_comment_overlay_above_target") {
+        throw new Error("アクセスが拒否されました");
+      }
+      return { x: 0, y: 0, width: 800, height: 600 };
+    });
+    const platform = createTauriCommentOverlayPlatform();
+    await platform.attachment!.setTarget("10:20");
+    await platform.show();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(tauriMocks.window.hide).not.toHaveBeenCalled();
+    expect(platform.attachment!.getState()).toMatchObject({ targetId: "10:20", error: null });
+    expect(loggerMock.error).toHaveBeenCalledTimes(1);
+    await platform.attachment!.setTarget(null);
+  });
+
   it("最小化中に実況を止めて追従を解除しても、次回は手動領域を表示できる", async () => {
     vi.useFakeTimers();
     tauriMocks.window.show.mockClear();

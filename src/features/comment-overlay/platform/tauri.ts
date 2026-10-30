@@ -162,6 +162,7 @@ export function createTauriCommentOverlayPlatform({
   let targetHidden = false;
   // 調整中の枠のためだけに一時表示している間はtrue。実況の表示状態（wantedVisible）とは分ける。
   let guideShown = false;
+  let raiseError: string | null = null;
   const followTarget = async (expectedRevision: number): Promise<void> => {
     if ((!targetId && !processTarget) || expectedRevision !== revision) return;
     try {
@@ -201,7 +202,20 @@ export function createTauriCommentOverlayPlatform({
         // 変更理由: 追従先を操作するとOverlayがその背面へ回って見えなくなるため、
         // 表示中は毎周期、追従先の直上へZ順を揃える（直上ならnative側で何もしない）。
         if (wantedVisible && targetId) {
-          await invoke("raise_comment_overlay_above_target", { id: targetId });
+          // 変更理由: Z順の調整は見た目の補助にすぎないのに、失敗を追従先の終了と同じ
+          // catchへ流すと、プロセス追従ではOverlayを隠して1秒後に再表示する往復を繰り返し、
+          // 追従中だけコメントが一度流れて消えたり遅れたりした。失敗しても追従と表示は続ける。
+          try {
+            await invoke("raise_comment_overlay_above_target", { id: targetId });
+            raiseError = null;
+          } catch (error: unknown) {
+            const message = String(error);
+            // 100msごとに同じ失敗をログへ積まないよう、内容が変わったときだけ記録する。
+            if (message !== raiseError) {
+              logger.error("追従先の直上へのOverlay配置に失敗しました:", error);
+            }
+            raiseError = message;
+          }
         }
       } else {
         if (!targetHidden) await overlay.hide();
