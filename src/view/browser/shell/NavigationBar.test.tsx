@@ -682,7 +682,7 @@ describe("NavigationBar", () => {
     fireEvent.click(screen.getByTitle("メニュー"));
 
     fireEvent.contextMenu(screen.getByTitle("更新"));
-    expect(await screen.findByText("たった今（0件）")).toBeInTheDocument();
+    expect(await screen.findByText("1秒前（0件）")).toBeInTheDocument();
 
     // 履歴の中身が同じでも、時間が進んだ後に開き直せば表示が変わる。
     nowSpy.mockReturnValue(now + 5 * 60_000);

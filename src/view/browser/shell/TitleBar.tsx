@@ -126,6 +126,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${formatRelativeTime(
             snapshot.last_updated,
             refreshMenuOpenedAt,
+            { showSeconds: true },
           )}（${snapshot.threads.length}件）`,
           onSelect: () => selectThreadListSnapshot(viewTab.id, snapshot),
         })),

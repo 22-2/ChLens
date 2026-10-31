@@ -793,7 +793,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         },
         ...snapshots.map((snapshot) => ({
           id: snapshot.url,
-          label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${formatRelativeTime(snapshot.last_updated, refreshMenuOpenedAt)}（${snapshot.threads.length}件）`,
+          label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${formatRelativeTime(snapshot.last_updated, refreshMenuOpenedAt, { showSeconds: true })}（${snapshot.threads.length}件）`,
           onSelect: () => selectThreadListSnapshot(viewTab.id, snapshot),
         })),
       );

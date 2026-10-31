@@ -206,7 +206,7 @@ describe("TitleBar", () => {
     const target = screen.getByRole("button", { name: "更新" }).parentElement!;
 
     fireEvent.contextMenu(target);
-    expect(await screen.findByText("たった今（0件）")).toBeInTheDocument();
+    expect(await screen.findByText("1秒前（0件）")).toBeInTheDocument();
 
     // メニューを開いたまま時間が進み、同じ位置で右クリックし直しても表示が古いままにならない。
     vi.spyOn(Date, "now").mockReturnValue(refreshClock + 5 * 60_000);
