@@ -36,7 +36,7 @@ interface BoardResponse {
 /**
  * 板（スレ一覧）を取得・解析するクラス
  */
-/** 板の取得・解析に必要なサービス。省略時は登録済みのサービスを使う（window.app.Board の互換）。 */
+/** 板の取得・解析に必要なサービス。 */
 export type BoardDeps = Pick<
   CorePorts,
   "bbsMenu" | "bookmark" | "cache" | "message" | "ng" | "util"
