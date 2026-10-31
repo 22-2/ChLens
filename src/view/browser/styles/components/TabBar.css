@@ -222,6 +222,15 @@
     color var(--sys-duration-fast);
 }
 
+/* 変更理由: お気に入り済みを★の塗りつぶしで示す。Lucideの既定はfill="none"のため、CSSで塗りを上書きする。 */
+.tab-bar__bookmark--active {
+  color: var(--sys-color-bookmark-star);
+}
+
+.tab-bar__bookmark--active svg {
+  fill: currentColor;
+}
+
 .tab--pinned {
   flex: 0 0 36px;
   min-width: 36px;

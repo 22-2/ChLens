@@ -85,11 +85,32 @@ describe("MediaViewer", () => {
     expect(onCopy).toHaveBeenCalledOnce();
   });
 
+  it("右クリックメニューは、画像URLを開く項目を先頭にし、破棄を末尾に並べる", () => {
+    useMediaImageStore.setState({
+      images: new Map([
+        ["https://example.com/image.jpg", { status: "loaded", version: 1, fallbackSrc: null }],
+      ]),
+    });
+    const { container } = renderMediaViewer();
+
+    fireEvent.contextMenu(container.querySelector(".media-viewer")!);
+
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
+      "画像URLを開く",
+      "新しいタブで開く",
+      "新しいウィンドウで開く",
+      "URLをコピー",
+      "追跡情報を除いてURLをコピー",
+      "画像をコピー",
+      "画像を破棄",
+    ]);
+  });
+
   it("読込中でも右クリックメニューを開け、画像のコピーは無効になる", () => {
     const { container } = renderMediaViewer({ isLoading: true });
     fireEvent.contextMenu(container.querySelector(".media-viewer")!);
     expect(screen.getByRole("menuitem", { name: "画像をコピー" })).toBeDisabled();
-    expect(screen.getByRole("menuitem", { name: "ブラウザで開く" })).toBeEnabled();
+    expect(screen.getByRole("menuitem", { name: "画像URLを開く" })).toBeEnabled();
   });
 
   it("このアプリから投稿した画像では削除ボタンから onDeleteImage を呼ぶ", () => {

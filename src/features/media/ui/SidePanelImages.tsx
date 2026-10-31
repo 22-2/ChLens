@@ -1,6 +1,8 @@
-import { Trash2, Undo2 } from "lucide-react";
+import { Copy, ExternalLink, Trash2, Undo2 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
+import { joinImageMenuGroups } from "src/features/media/browser/image-menu-contributions";
+import { copyMediaImageWithNotice } from "src/features/media/browser/media-viewer-copy";
 import { useMediaImageStore } from "src/features/media/browser/use-media-image-store";
 import {
   getThreadMediaViewerScopeId,
@@ -11,9 +13,10 @@ import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
 import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
+import { useToast } from "src/view/browser/hooks/use-toast";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
-import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 type TileStyle = CSSProperties & { "--res-thumb-blur-radius"?: string };
@@ -30,6 +33,8 @@ function ThreadImageGrid({
   const imageStates = useMediaImageStore((store) => store.images);
   const { openMenu, menu } = useExternalLinkMenu();
   const openMedia = useMediaViewerStore((store) => store.openMediaFromUrl);
+  const surface = useViewSurface();
+  const toast = useToast();
   const items = useMemo(
     () => collectThreadImages(data.visibleResponses, data.messageProtocol),
     [data],
@@ -59,22 +64,35 @@ function ThreadImageGrid({
               manualLoad
             />
           );
-          const contextMenuItems: ContextMenuItem[] = [
-            {
-              id: "open-viewer",
-              label: "ビューアで開く",
-              onSelect: () =>
-                openMedia(item.rawUrl, rawUrls, getThreadMediaViewerScopeId(tabId, threadUrl)),
-            },
-            {
-              id: "jump-to-response",
-              label: "レスにジャンプ",
-              icon: <Undo2 size={14} />,
-              onSelect: () => requestThreadResJump(threadUrl, item.resNum, tabId, true),
-            },
-            ...(status === "loaded"
+          const isLoaded = status === "loaded";
+          const contextMenuItems = joinImageMenuGroups([
+            [
+              {
+                id: "open-viewer",
+                label: "ビューアで開く",
+                icon: <ExternalLink size={14} />,
+                onSelect: () =>
+                  openMedia(item.rawUrl, rawUrls, getThreadMediaViewerScopeId(tabId, threadUrl)),
+              },
+              ...(isLoaded
+                ? [
+                    {
+                      id: "copy-image",
+                      label: "画像をコピー",
+                      icon: <Copy size={14} />,
+                      onSelect: () => void copyMediaImageWithNotice(item.rawUrl, surface, toast),
+                    },
+                  ]
+                : []),
+              {
+                id: "jump-to-response",
+                label: "レスにジャンプ",
+                icon: <Undo2 size={14} />,
+                onSelect: () => requestThreadResJump(threadUrl, item.resNum, tabId, true),
+              },
+            ],
+            isLoaded
               ? [
-                  { id: "gallery-image-separator", separator: true },
                   {
                     id: "discard-image",
                     label: "画像を破棄",
@@ -83,14 +101,16 @@ function ThreadImageGrid({
                     onSelect: () => useMediaImageStore.getState().discardImage(item.rawUrl),
                   },
                 ]
-              : []),
-          ];
+              : [],
+          ]);
           return (
             <li
               key={item.rawUrl}
               className={`side-panel__image${isBlurred ? " side-panel__image--blurred" : ""}`}
               title={`>>${item.resNum} ${item.text}`}
-              onContextMenu={(event) => openMenu(item.rawUrl, event, contextMenuItems)}
+              onContextMenu={(event) =>
+                openMenu(item.rawUrl, event, contextMenuItems, { openLabel: "画像URLを開く" })
+              }
             >
               {isLoadStarted ? (
                 <button

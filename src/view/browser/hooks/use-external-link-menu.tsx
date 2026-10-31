@@ -12,18 +12,36 @@ import { analyzeExternalLink } from "src/view/browser/utils/external-link-analys
 
 const logger = createLogger("url");
 
+export interface ExternalLinkMenuOptions {
+  /**
+   * 先頭の「開く」の表示名。画像の右クリックでは対象が画像のURLなので「画像URLを開く」にする。
+   * 変更理由: 「開く」だけだと、画像メニューの中で何を開くのか分かりにくかったため。
+   */
+  openLabel?: string;
+}
+
+interface ExternalLinkMenuState {
+  url: string;
+  x: number;
+  y: number;
+  trigger: HTMLElement;
+  additionalItems: ContextMenuItem[];
+  openLabel: string;
+}
+
+const DEFAULT_OPEN_LABEL = "開く";
+
 export function useExternalLinkMenu() {
   const surface = useViewSurface();
   const toast = useToast();
-  const [state, setState] = useState<{
-    url: string;
-    x: number;
-    y: number;
-    trigger: HTMLElement;
-    additionalItems: ContextMenuItem[];
-  } | null>(null);
+  const [state, setState] = useState<ExternalLinkMenuState | null>(null);
   const openMenu = useCallback(
-    (url: string, event: MouseEvent<HTMLElement>, additionalItems: ContextMenuItem[] = []) => {
+    (
+      url: string,
+      event: MouseEvent<HTMLElement>,
+      additionalItems: ContextMenuItem[] = [],
+      options: ExternalLinkMenuOptions = {},
+    ) => {
       event.preventDefault();
       event.stopPropagation();
       const rect = event.currentTarget.getBoundingClientRect();
@@ -36,6 +54,7 @@ export function useExternalLinkMenu() {
         y: event.clientY || rect.bottom,
         trigger,
         additionalItems,
+        openLabel: options.openLabel ?? DEFAULT_OPEN_LABEL,
       });
     },
     [surface.window],
@@ -59,7 +78,7 @@ export function useExternalLinkMenu() {
     const items: ContextMenuItem[] = [
       {
         id: "open",
-        label: "開く",
+        label: state.openLabel,
         icon: <ExternalLink size={14} />,
         onSelect: () => open(true),
       },

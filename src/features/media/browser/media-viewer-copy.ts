@@ -1,5 +1,7 @@
 import { platform } from "src/app/platform";
-import type { ClipboardSurface } from "src/view/browser/utils/clipboard";
+import { toOriginalMediaImageUrl } from "src/core/util/url-media";
+import type { IToastService } from "src/service-container/interfaces";
+import { type ClipboardSurface, copyPngImageWithNotice } from "src/view/browser/utils/clipboard";
 
 const IMAGE_COPY_TIMEOUT_MS = 30_000;
 
@@ -57,4 +59,21 @@ export async function createViewerClipboardPng(
   } finally {
     bitmap.close();
   }
+}
+
+/**
+ * レスの画像やサイドパネルの右クリックから、ビューアと同じ元画像をPNGとしてコピーする。
+ * 変更理由: サムネイルは縮小版で表示されるため、コピー元は本文のURLから元画像を求め直す。
+ */
+export function copyMediaImageWithNotice(
+  rawUrl: string,
+  surface: ClipboardSurface,
+  toast: IToastService,
+): Promise<void> {
+  return copyPngImageWithNotice(
+    () => createViewerClipboardPng(toOriginalMediaImageUrl(rawUrl), surface),
+    surface,
+    toast,
+    "画像",
+  );
 }

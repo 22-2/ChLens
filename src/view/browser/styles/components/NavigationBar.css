@@ -126,6 +126,13 @@
     background 0.12s,
     color 0.12s;
 }
+/* 変更理由: お気に入り済みを★の塗りつぶしで示す。Lucideの既定はfill="none"のため、CSSで塗りを上書きする。 */
+.nav-bar__url-action-btn--active {
+  color: var(--sys-color-bookmark-star);
+}
+.nav-bar__url-action-btn--active svg {
+  fill: currentColor;
+}
 .nav-bar__url-input {
   width: 100%;
   height: 100%;
@@ -166,6 +173,12 @@
   transition:
     background 0.1s,
     color 0.1s;
+}
+.nav-bar__menu-action--active {
+  color: var(--sys-color-bookmark-star);
+}
+.nav-bar__menu-action--active svg {
+  fill: currentColor;
 }
 .nav-bar__omnibar {
   position: absolute;

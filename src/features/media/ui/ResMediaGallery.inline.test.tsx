@@ -14,6 +14,7 @@ vi.mock("./ExternalImage", () => ({
 
 const mocks = vi.hoisted(() => ({ save: vi.fn(), success: vi.fn(), error: vi.fn() }));
 vi.mock("../browser/image-save", () => ({ saveMediaImage: mocks.save }));
+vi.mock("../browser/media-viewer-copy", () => ({ copyMediaImageWithNotice: vi.fn() }));
 vi.mock("src/view/browser/hooks/use-toast", () => ({
   useToast: () => ({ success: mocks.success, error: mocks.error }),
 }));

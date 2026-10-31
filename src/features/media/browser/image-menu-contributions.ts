@@ -31,6 +31,18 @@ export function addImageMenuProvider(provider: ImageMenuProvider): () => void {
   };
 }
 
+/**
+ * 画像メニューの項目を意味のまとまり（グループ）ごとに並べ、グループの間へ区切り線を入れる。
+ * 空のグループは飛ばすため、条件で項目が消えても区切り線が二重に残らない。
+ */
+export function joinImageMenuGroups(groups: ContextMenuItem[][]): ContextMenuItem[] {
+  return groups
+    .filter((group) => group.length > 0)
+    .flatMap((group, index) =>
+      index === 0 ? group : [{ id: `image-menu-separator-${index}`, separator: true }, ...group],
+    );
+}
+
 /** 登録された関数から、メニューに足す項目を集める。1つが失敗しても、ほかの項目とメニューは出す。 */
 export function collectImageMenuItems(context: ImageMenuContext): ContextMenuItem[] {
   return [...providers].flatMap((provider) => {

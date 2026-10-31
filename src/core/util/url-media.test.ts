@@ -3,7 +3,12 @@ import "@testing-library/jest-dom/vitest";
 import MessageProcessor from "src/core/thread/MessageProcessor";
 import { describe, expect, it } from "vite-plus/test";
 
-import { extractUrlsFromMessage, toOriginalImageUrl, toViewerImageUrl } from "./url-media";
+import {
+  extractUrlsFromMessage,
+  toOriginalImageUrl,
+  toOriginalMediaImageUrl,
+  toViewerImageUrl,
+} from "./url-media";
 
 describe("url-media", () => {
   it("HTML化した3件の画像URLを文字参照の違いで重複させない", () => {
@@ -163,5 +168,15 @@ describe("url-media", () => {
       "https://i.imgur.com/TestImage.jpg",
     );
     expect(toOriginalImageUrl("https://i.imgur.com/TestImage.jpg")).toBeNull();
+  });
+
+  it("本文のURLから、ビューアと同じ元画像のURLを求める", () => {
+    // 変更理由: 保存とコピーで同じ元画像を使うため、サムネイル用の変換を通した結果を返す。
+    expect(toOriginalMediaImageUrl("https://imgur.com/TestImage")).toBe(
+      "https://i.imgur.com/TestImage.jpg",
+    );
+    expect(toOriginalMediaImageUrl("https://example.com/photo.png")).toBe(
+      "https://example.com/photo.png",
+    );
   });
 });

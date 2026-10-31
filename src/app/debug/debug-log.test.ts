@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 
 import { collectDebugState, registerDebugStateProvider } from "./debug-api";
 import {
@@ -89,23 +89,67 @@ describe("デバッグ状態", () => {
 });
 
 describe("未捕捉の例外の記録", () => {
-  it("未捕捉の例外と未処理のPromise拒否を runtime として記録する", () => {
-    const target = new EventTarget();
-    installRuntimeErrorCapture(target as unknown as Pick<Window, "addEventListener">);
+  // installRuntimeErrorCapture は一度だけ登録するため、このブロックのテストは同じ window を使う。
+  // 操作の記録は要素のイベントを捕捉段階で受けるので、要素を含む実際の window で検証する。
+  const NOTICE = "ResizeObserver loop completed with undelivered notifications.";
+  beforeAll(() => {
+    installRuntimeErrorCapture(window);
+  });
 
-    target.dispatchEvent(
+  it("未捕捉の例外と未処理のPromise拒否を runtime として記録する", () => {
+    window.dispatchEvent(
       new ErrorEvent("error", {
         error: new Error("描画に失敗"),
         filename: "browser.js",
         lineno: 12,
       }),
     );
-    target.dispatchEvent(Object.assign(new Event("unhandledrejection"), { reason: "拒否理由" }));
+    window.dispatchEvent(Object.assign(new Event("unhandledrejection"), { reason: "拒否理由" }));
 
     const errors = queryDebugLogs({ level: "error", category: "runtime" });
     expect(errors).toHaveLength(2);
     expect(errors[0]).toMatchObject({ message: "未捕捉の例外 (browser.js:12): 描画に失敗" });
     expect(errors[0].stack).toContain("描画に失敗");
     expect(errors[1]).toMatchObject({ message: "未処理のPromise拒否: 拒否理由" });
+  });
+
+  it("ResizeObserverの通知は例外ではなく警告として記録し、文言は元のまま残す", () => {
+    window.dispatchEvent(new ErrorEvent("error", { message: NOTICE }));
+
+    expect(queryDebugLogs({ level: "error", category: "runtime" })).toHaveLength(0);
+    expect(queryDebugLogs({ level: "warn", category: "runtime" })).toEqual([
+      expect.objectContaining({ message: NOTICE }),
+    ]);
+  });
+
+  it("ResizeObserverの警告には、直前の操作・スクロール・出来事を添える", () => {
+    const button = document.createElement("button");
+    button.setAttribute("aria-label", "更新");
+    document.body.append(button);
+    recordDebugEvent("auto-refresh", "自動更新状態が変わりました", undefined, { withStack: false });
+
+    button.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    window.dispatchEvent(new Event("scroll"));
+    window.dispatchEvent(new ErrorEvent("error", { message: NOTICE }));
+    button.remove();
+
+    const [warning] = queryDebugLogs({ level: "warn", category: "runtime" });
+    expect(warning.data).toMatchObject({
+      lastInput: { target: "更新", agoMs: expect.any(Number) },
+      lastScrollAgoMs: expect.any(Number),
+      lastEvent: { category: "auto-refresh", message: "自動更新状態が変わりました" },
+    });
+  });
+
+  it("キーの入力は文字そのものを残さず、Enterなどのキー名だけを残す", () => {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+    window.dispatchEvent(new ErrorEvent("error", { message: NOTICE }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    window.dispatchEvent(new ErrorEvent("error", { message: NOTICE }));
+
+    const [first, second] = queryDebugLogs({ level: "warn", category: "runtime" });
+    expect(first.data).toMatchObject({ lastInput: { target: "文字入力" } });
+    expect(second.data).toMatchObject({ lastInput: { target: "Enter" } });
+    expect(JSON.stringify(first.data)).not.toContain('"a"');
   });
 });

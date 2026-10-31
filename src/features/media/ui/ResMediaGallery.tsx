@@ -1,4 +1,4 @@
-import { Download, Trash2 } from "lucide-react";
+import { AppWindow, Copy, Download, ExternalLink, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -9,14 +9,18 @@ import {
 import { toOriginalImageUrl } from "src/core/util/url-media";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
+import { useToast } from "src/view/browser/hooks/use-toast";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { ConfirmableLink } from "src/view/browser/ui/ConfirmableLink";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
 import { EXTERNAL_LINK_CONFIRM_CONFIG_KEY } from "src/view/browser/utils/external-link-analysis";
 
 import { imgurVideoResolver, isImgurVideoResolutionCandidate } from "../application/imgur-album";
 import { type TwitterPost, twitterPostResolver } from "../application/twitter-post";
-import { collectImageMenuItems } from "../browser/image-menu-contributions";
+import { collectImageMenuItems, joinImageMenuGroups } from "../browser/image-menu-contributions";
+import { copyMediaImageWithNotice } from "../browser/media-viewer-copy";
 import { isImageHashPending, useImageHashStore } from "../browser/use-image-hash-store";
 import { useImageSave } from "../browser/use-image-save";
 import { useMediaImageStore } from "../browser/use-media-image-store";
@@ -82,6 +86,8 @@ export function ResMediaGallery({
   const manualImageLoading = manualImageLoadingSetting && !autoLoadImages;
   const { menu, openMenu } = useExternalLinkMenu();
   const { save, saving } = useImageSave();
+  const surface = useViewSurface();
+  const toast = useToast();
   const imageStates = useMediaImageStore((state) => state.images);
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
@@ -100,39 +106,70 @@ export function ResMediaGallery({
     const targetWindow = event.currentTarget.ownerDocument.defaultView;
 
     const viewerImages = imageUrls.includes(url) ? imageUrls : saveImageUrls;
-    openMenu(url, event, [
+    // 並びは「見る → 持ち出す → 登録 → 破棄」。破棄は取り消せないので末尾にまとめる。
+    const viewerItems: ContextMenuItem[] = [
       {
         id: "open-viewer",
         label: "ビューアで開く",
+        // インライン展開の「ビューアで開く」と同じアイコンにして、同じ操作だと分かるようにする。
+        icon: <ExternalLink size={14} />,
         onSelect: () => onUrlClick(url, viewerImages, 0, undefined, saveImageUrls),
       },
-      ...(onToggleImage
-        ? [{ id: "save-image", label: "画像を保存", onSelect: () => void save([url]) }]
-        : []),
       ...(onOpenDetachedImage
         ? [
             {
               id: "open-detached-viewer",
               label: "ビューアを別窓で開く",
+              icon: <AppWindow size={14} />,
               onSelect: () => onOpenDetachedImage(url, viewerImages, saveImageUrls),
             },
           ]
         : []),
+    ];
+    const copySaveItems: ContextMenuItem[] = [
       ...(imageIsLoaded
         ? [
             {
-              id: "discard-image",
-              label: "画像を破棄",
-              icon: <Trash2 size={14} />,
-              danger: true,
-              onSelect: () => useMediaImageStore.getState().discardImage(url),
+              id: "copy-image",
+              label: "画像をコピー",
+              icon: <Copy size={14} />,
+              onSelect: () => void copyMediaImageWithNotice(url, surface, toast),
             },
-            ...(image && targetWindow
-              ? collectImageMenuItems({ imageKey: url, image, targetWindow })
-              : []),
           ]
         : []),
-    ]);
+      ...(onToggleImage
+        ? [
+            {
+              id: "save-image",
+              label: "画像を保存",
+              icon: <Download size={14} />,
+              onSelect: () => void save([url]),
+            },
+          ]
+        : []),
+    ];
+    const ngItems =
+      imageIsLoaded && image && targetWindow
+        ? collectImageMenuItems({ imageKey: url, image, targetWindow })
+        : [];
+    const discardItems: ContextMenuItem[] = imageIsLoaded
+      ? [
+          {
+            id: "discard-image",
+            label: "画像を破棄",
+            icon: <Trash2 size={14} />,
+            danger: true,
+            onSelect: () => useMediaImageStore.getState().discardImage(url),
+          },
+        ]
+      : [];
+    openMenu(
+      url,
+      event,
+      joinImageMenuGroups([viewerItems, [...copySaveItems, ...ngItems], discardItems]),
+      // 画像のメニューでは対象が画像のURLなので、リンクの「開く」を「画像URLを開く」と表示する。
+      { openLabel: "画像URLを開く" },
+    );
   };
   // 複数画像のレスはインライン展開だと縦に長くなり比較しづらいため、クリックでビューアを開く。
   const openImage = (url: string) => {

@@ -194,6 +194,65 @@ export function installConsoleCapture(target: Console = console): void {
 
 let runtimeErrorCaptureInstalled = false;
 
+// 変更理由: ResizeObserver の通知がフレーム内に収まらないと、ブラウザは下記の文言を error イベントとして配る。
+// アプリのコードが投げた例外ではなく、描画も次のフレームで続くため、エラーではなく警告として残す。
+const RESIZE_OBSERVER_LOOP_NOTICE =
+  /^ResizeObserver loop (?:completed with undelivered notifications|limit exceeded)/;
+
+function isResizeObserverLoopNotice(message: string): boolean {
+  return RESIZE_OBSERVER_LOOP_NOTICE.test(message);
+}
+
+// 変更理由: 警告の時刻だけでは、どの操作の後に出たのかが分からず原因を絞れなかった。
+// 直前の操作・スクロール・出来事を警告と一緒に残す。文字入力の中身は残さない（検索語や投稿文が入るため）。
+const CONTROL_SELECTOR =
+  "button, a, input, select, textarea, [role='button'], [role='menuitem'], [role='tab'], [aria-label], [title]";
+const MAX_CONTROL_TEXT_LENGTH = 30;
+
+interface RecentInput {
+  target: string;
+  time: number;
+}
+
+let lastInput: RecentInput | null = null;
+let lastScrollTime: number | null = null;
+
+function describePointerTarget(target: EventTarget | null): string {
+  if (!(target instanceof Element)) return "要素以外";
+  const control = target.closest(CONTROL_SELECTOR) ?? target;
+  const label = control.getAttribute("aria-label") ?? control.getAttribute("title");
+  if (label) return label;
+  // ボタンの文言だけを残す。リンクや本文の文字は、ログに残さない。
+  if (control.tagName === "BUTTON") {
+    const text = control.textContent?.trim().slice(0, MAX_CONTROL_TEXT_LENGTH) ?? "";
+    return `button「${text}」`;
+  }
+  return control.tagName.toLowerCase();
+}
+
+function describeKey(key: string): string {
+  // 1文字はキー入力の内容そのものなので残さず、Enter や ArrowDown などのキー名だけを残す。
+  return key.length === 1 ? "文字入力" : key;
+}
+
+function findLastDebugEvent(): DebugLogEntry | undefined {
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    if (entries[index].level === "event") return entries[index];
+  }
+  return undefined;
+}
+
+function describeRecentActivity(now: number): Record<string, unknown> {
+  const lastEvent = findLastDebugEvent();
+  return {
+    lastInput: lastInput ? { target: lastInput.target, agoMs: now - lastInput.time } : null,
+    lastScrollAgoMs: lastScrollTime == null ? null : now - lastScrollTime,
+    lastEvent: lastEvent
+      ? { category: lastEvent.category, message: lastEvent.message, agoMs: now - lastEvent.time }
+      : null,
+  };
+}
+
 /**
  * 未捕捉の例外と未処理のPromise拒否を記録する。
  *
@@ -207,12 +266,45 @@ export function installRuntimeErrorCapture(
   runtimeErrorCaptureInstalled = true;
 
   target.addEventListener("error", (event: ErrorEvent) => {
+    if (isResizeObserverLoopNotice(event.message)) {
+      pushEntry({
+        level: "warn",
+        category: "runtime",
+        message: event.message,
+        data: describeRecentActivity(Date.now()),
+      });
+      return;
+    }
     const detail = event.filename ? `${event.filename}:${event.lineno}` : "不明な位置";
     recordRuntimeError(`未捕捉の例外 (${detail})`, event.error ?? event.message);
   });
   target.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
     recordRuntimeError("未処理のPromise拒否", event.reason);
   });
+
+  // 操作とスクロールは時刻だけを覚え、ログには残さない（件数が多く、ログを押し流すため）。
+  // 捕捉段階で受けるのは、要素の中のイベントも window まで届くようにするため。
+  target.addEventListener(
+    "pointerdown",
+    (event: PointerEvent) => {
+      lastInput = { target: describePointerTarget(event.target), time: Date.now() };
+    },
+    true,
+  );
+  target.addEventListener(
+    "keydown",
+    (event: KeyboardEvent) => {
+      lastInput = { target: describeKey(event.key), time: Date.now() };
+    },
+    true,
+  );
+  target.addEventListener(
+    "scroll",
+    () => {
+      lastScrollTime = Date.now();
+    },
+    true,
+  );
 }
 
 function recordRuntimeError(message: string, error: unknown): void {
@@ -229,4 +321,6 @@ export function resetDebugLogForTest(): void {
   entries.length = 0;
   listeners.clear();
   nextSeq = 1;
+  lastInput = null;
+  lastScrollTime = null;
 }

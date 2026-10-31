@@ -56,6 +56,15 @@ export function toOriginalImageUrl(thumbnailUrl: string): string | null {
 }
 
 /**
+ * 本文中の画像URLから、ビューアと同じ元画像のURLを求める（保存・コピーで共有する）。
+ * 変換できないURLは、そのまま返す。
+ */
+export function toOriginalMediaImageUrl(rawUrl: string): string {
+  const imageUrl = toViewerImageUrl(rawUrl) ?? rawUrl;
+  return toOriginalImageUrl(imageUrl) ?? imageUrl;
+}
+
+/**
  * 生のURLを、メディアビューアで表示可能な画像URLに変換する。
  *
  * Imgurについては、読み込み速度向上のためリサイズパラメータ(m: 320px)を付与してサムネイルURLに変換する。
