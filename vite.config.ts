@@ -1,8 +1,50 @@
 import react from "@vitejs/plugin-react";
+import { execFileSync } from "child_process";
 import { build as esbuildBuild } from "esbuild";
 import fs from "fs-extra";
 import path from "path";
 import { defineConfig, lazyPlugins, Plugin } from "vite-plus";
+
+import type { ChlensBuildInfo } from "./src/app/build-info";
+
+// ─── build info ─────────────────────────────────────────────────────────────
+
+interface PackageMetadata {
+  version: string;
+  author: string;
+  license: string;
+  repository: { url: string };
+}
+
+// 変更理由: 「ChLensについて」で、配布物がどの版・どのコミットから作られたかを示すため、ビルド時に読む。
+function readGitHash(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+      cwd: __dirname,
+      encoding: "utf8",
+    }).trim();
+  } catch (error) {
+    // 変更理由: 配布元のアーカイブなど git が無い環境でもビルドは止めず、理由をログに残して unknown とする。
+    console.warn(
+      "[build-info] git のコミットハッシュを取得できなかったため unknown にします",
+      error,
+    );
+    return "unknown";
+  }
+}
+
+function resolveBuildInfo(): ChlensBuildInfo {
+  const pkg = fs.readJsonSync(path.resolve(__dirname, "package.json")) as PackageMetadata;
+  return {
+    version: pkg.version,
+    buildTime: new Date().toISOString(),
+    gitHash: readGitHash(),
+    author: pkg.author,
+    license: pkg.license,
+    // package.json の repository.url は `.git` 付きのため、ブラウザで開ける形に直す。
+    repositoryUrl: pkg.repository.url.replace(/\.git$/, ""),
+  };
+}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -512,6 +554,8 @@ export default defineConfig(async ({ mode, command }) => {
         // 循環 import を作らない（計画: docs/plans/module-boundaries-plan.md §3 のルール 7、Phase E）。
         // 循環は読み込み順によって値が undefined になる不具合や、層の境界の崩れにつながるため。
         "import/no-cycle": "error",
+        // any を使うと型検査の恩恵が消えるため、明示的な any は禁止する（必要なら具体的な型か unknown で受ける）。
+        "typescript/no-explicit-any": "error",
       },
       // core は service-container に依存しない（計画: docs/plans/module-boundaries-plan.md Phase C-1）。
       // 依存は core/ports の型だけにする。実体は service-container の setup が引数で渡す。
@@ -536,6 +580,16 @@ export default defineConfig(async ({ mode, command }) => {
         {
           files: ["src/**"],
           rules: { "eslint/no-console": "error" },
+        },
+        // 1ファイルが長すぎると読み返しと変更の影響範囲の把握が難しくなるため、上限を置く。
+        // 超えたら、責務ごとに hook・小さなコンポーネント・純粋関数へ分ける。テストと stories は対象外。
+        {
+          files: ["src/**"],
+          rules: { "eslint/max-lines": ["error", { max: 1000 }] },
+        },
+        {
+          files: ["src/**/*.test.{ts,tsx}", "src/**/*.stories.{ts,tsx}"],
+          rules: { "eslint/max-lines": "off" },
         },
         // 例外: debug-log は console 出力を横取りして記録する仕組みそのもの、Log.ts は旧互換の薄い窓口、
         // mcp と background は consola を載せない別実行環境（ワーカー）、theme-init.js は
@@ -576,6 +630,8 @@ export default defineConfig(async ({ mode, command }) => {
       "process.env.NODE_ENV": JSON.stringify(mode),
       // 本番のChrome/FirefoxビルドではTauri専用の動的importを除去し、開発・テストでは実行時判定を保つ。
       __CHLENS_TAURI_BUILD__: JSON.stringify(command !== "build" || platform === "tauri"),
+      // 変更理由: ビルド時刻・ハッシュはビルドごとに決まるため、ソースではなく注入で渡す（src/app/build-info.ts）。
+      __CHLENS_BUILD_INFO__: JSON.stringify(resolveBuildInfo()),
     },
     plugins: lazyPlugins(() => [
       react(),

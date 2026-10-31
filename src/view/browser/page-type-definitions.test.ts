@@ -35,6 +35,7 @@ const SAMPLE_PAGES = {
   historyList: { type: "historyList", title: "閲覧履歴" },
   writeHistoryList: { type: "writeHistoryList", title: "書き込み履歴" },
   logList: { type: "logList", title: "ログ検索" },
+  about: { type: "about", title: "ChLensについて" },
 } as const satisfies { [T in PageType]: Extract<Page, { type: T }> };
 
 function describePage(page: Page) {
@@ -66,6 +67,19 @@ describe("ページ種別の定義", () => {
 
     expect(table).toMatchInlineSnapshot(`
       {
+        "about": {
+          "autoRefreshKey": null,
+          "displayUrl": "ChLensについて",
+          "filterable": false,
+          "hierarchy": [
+            "home",
+            "about",
+          ],
+          "identity": "about",
+          "refreshable": false,
+          "renderKey": "tab-1:2:about",
+          "viewStateKey": "about",
+        },
         "boardList": {
           "autoRefreshKey": null,
           "displayUrl": "板一覧",

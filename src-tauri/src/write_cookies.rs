@@ -120,24 +120,7 @@ impl WriteCookies {
     let Some(persistence) = &self.persistence else {
       return Ok(());
     };
-    let result = (|| -> Result<(), Box<dyn std::error::Error>> {
-      if let Some(parent) = persistence.path.parent() {
-        fs::create_dir_all(parent)?;
-      }
-      // CookieStoreのSerializeは期限付きかつ未失効のCookieだけを保存し、セッションCookieは再起動で破棄する。
-      // 平文を一時ファイルにも残さないよう、メモリ上で暗号化してから書き込む。
-      let sealed = persistence.cipher.seal(&serde_json::to_vec(stores)?)?;
-      // ロック中に一時ファイルを置換し、同時POSTや書き込み途中の終了で保存内容が混ざるのを防ぐ。
-      let temporary_path = persistence.path.with_extension("tmp");
-      let mut file = File::create(&temporary_path)?;
-      file.write_all(&sealed)?;
-      file.flush()?;
-      file.sync_all()?;
-      drop(file);
-      fs::rename(temporary_path, &persistence.path)?;
-      Ok(())
-    })();
-    result.map_err(|error| {
+    write_sealed_file(persistence, stores).map_err(|error| {
       let message = format!("Tauri版の投稿Cookieを保存できませんでした: {error}");
       log::error!("{message}");
       message
@@ -170,6 +153,28 @@ impl WriteCookies {
       site: site.to_string(),
     })
   }
+}
+
+/// 投稿Cookieを暗号化し、一時ファイルを経由して保存先を置き換える。
+fn write_sealed_file(
+  persistence: &Persistence,
+  stores: &HashMap<String, CookieStore>,
+) -> Result<(), Box<dyn std::error::Error>> {
+  if let Some(parent) = persistence.path.parent() {
+    fs::create_dir_all(parent)?;
+  }
+  // CookieStoreのSerializeは期限付きかつ未失効のCookieだけを保存し、セッションCookieは再起動で破棄する。
+  // 平文を一時ファイルにも残さないよう、メモリ上で暗号化してから書き込む。
+  let sealed = persistence.cipher.seal(&serde_json::to_vec(stores)?)?;
+  // ロック中に一時ファイルを置換し、同時POSTや書き込み途中の終了で保存内容が混ざるのを防ぐ。
+  let temporary_path = persistence.path.with_extension("tmp");
+  let mut file = File::create(&temporary_path)?;
+  file.write_all(&sealed)?;
+  file.flush()?;
+  file.sync_all()?;
+  drop(file);
+  fs::rename(temporary_path, &persistence.path)?;
+  Ok(())
 }
 
 pub struct SiteCookieJar {

@@ -39,7 +39,9 @@ test("ウィンドウを広い状態から狭くしても自動更新の追従�
   await page.waitForTimeout(600);
   await expect(statusButton).toHaveAccessibleName(/^スレッド自動更新: 追従中/);
   const atBottom = await page.evaluate(() => {
-    const panel = document.querySelector<HTMLElement>(".content-area__tab-panel[data-active='true']");
+    const panel = document.querySelector<HTMLElement>(
+      ".content-area__tab-panel[data-active='true']",
+    );
     return panel ? panel.scrollHeight - panel.clientHeight - panel.scrollTop : null;
   });
   expect(atBottom).not.toBeNull();

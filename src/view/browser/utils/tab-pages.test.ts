@@ -24,6 +24,10 @@ describe("共通ページ生成", () => {
       type: "logList",
       title: "ログ検索",
     });
+    expect(createQuickAccessPage("about")).toEqual({
+      type: "about",
+      title: "ChLensについて",
+    });
   });
 
   it("設定ページのセクションを任意で付与する", () => {

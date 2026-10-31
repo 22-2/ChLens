@@ -15,6 +15,7 @@ const ALL_PAGE_TYPES: readonly PageType[] = [
   "historyList",
   "writeHistoryList",
   "logList",
+  "about",
 ];
 
 describe("PageTypeIcon", () => {

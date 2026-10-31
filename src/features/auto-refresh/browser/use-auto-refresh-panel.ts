@@ -21,6 +21,7 @@ import {
 import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
+  isNextThreadWaitingForPage,
 } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
@@ -93,6 +94,8 @@ export interface UseAutoRefreshPanelResult {
   isOnThread: boolean;
   /** 現在のアクティブタブで自動更新が有効かどうか */
   isEnabled: boolean;
+  /** 次スレ探索の待機中かどうか。待機中は自動更新のONとは別の状態として扱う */
+  isNextThreadWaiting: boolean;
   /** 更新間隔（秒） */
   intervalSec: number;
   /** 現在の自動停止タイムアウト設定値 */
@@ -174,6 +177,8 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
     threadCapabilities?.canAutoRefresh === false ? null : getAutoRefreshPageKey(viewPage);
   const isOnThread = panelKind === "thread";
   const isEnabled = currentPageKey != null && isAutoRefreshEnabledForPage(viewTab, viewPage);
+  const isNextThreadWaiting =
+    currentPageKey != null && isNextThreadWaitingForPage(viewTab, viewPage);
   const intervalSec =
     panelKind === "thread" ? threadInterval.intervalSec : boardInterval.intervalSec;
   const setIntervalSec =
@@ -184,13 +189,16 @@ export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
       return;
     }
 
-    dispatch(tabActions.setAutoRefreshEnabled(!isEnabled, currentPageKey));
-  }, [currentPageKey, dispatch, isEnabled]);
+    // 待機中の操作は再開ではなく取り消しとして扱うため、ONへは切り替えず停止の要求にする。
+    const nextEnabled = !isEnabled && !isNextThreadWaiting;
+    dispatch(tabActions.setAutoRefreshEnabled(nextEnabled, currentPageKey));
+  }, [currentPageKey, dispatch, isEnabled, isNextThreadWaiting]);
 
   return {
     panelKind,
     isOnThread,
     isEnabled,
+    isNextThreadWaiting,
     intervalSec,
     idleStopTimeoutValue,
     idleStopTimeoutOption,

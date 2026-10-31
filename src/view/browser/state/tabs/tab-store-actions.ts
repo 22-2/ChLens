@@ -54,6 +54,7 @@ export interface TabActionCreators {
   setAutoRefreshStoppedPageKey(
     pageKey: string | null,
   ): ActionOf<"SET_AUTO_REFRESH_STOPPED_PAGE_KEY">;
+  startNextThreadWait(pageKey: string): ActionOf<"START_NEXT_THREAD_WAIT">;
   splitPane(): ActionOf<"SPLIT_PANE">;
   openInRightPane(tabId: string): ActionOf<"OPEN_IN_RIGHT_PANE">;
   closePane(): ActionOf<"CLOSE_PANE">;
@@ -126,6 +127,10 @@ export const tabActions: TabActionCreators = {
   }),
   setAutoRefreshStoppedPageKey: (pageKey) => ({
     type: TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY,
+    pageKey,
+  }),
+  startNextThreadWait: (pageKey) => ({
+    type: TAB_ACTION_TYPES.START_NEXT_THREAD_WAIT,
     pageKey,
   }),
   splitPane: () => ({ type: TAB_ACTION_TYPES.SPLIT_PANE }),

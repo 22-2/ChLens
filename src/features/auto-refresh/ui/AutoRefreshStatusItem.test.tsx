@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
     panelKind: "thread" as "thread" | "threadList" | null,
     isOnThread: true,
     isEnabled: false,
+    isNextThreadWaiting: false,
     intervalSec: 30,
     toggle: vi.fn(),
     setIntervalSec: vi.fn(),
@@ -103,6 +104,7 @@ describe("AutoRefreshStatusItem", () => {
       panelKind: "thread",
       isOnThread: true,
       isEnabled: false,
+      isNextThreadWaiting: false,
       intervalSec: 30,
       toggle: vi.fn(),
       setIntervalSec: vi.fn(),
@@ -191,6 +193,7 @@ describe("AutoRefreshStatusItem", () => {
       panelKind: "threadList",
       isOnThread: false,
       isEnabled: false,
+      isNextThreadWaiting: false,
       intervalSec: 40,
       toggle: vi.fn(),
       setIntervalSec: vi.fn(),
@@ -222,6 +225,7 @@ describe("AutoRefreshStatusItem", () => {
       panelKind: null,
       isOnThread: false,
       isEnabled: false,
+      isNextThreadWaiting: false,
       intervalSec: 30,
       toggle: vi.fn(),
       setIntervalSec: vi.fn(),
@@ -238,6 +242,7 @@ describe("AutoRefreshStatusItem", () => {
       panelKind: null,
       isOnThread: false,
       isEnabled: false,
+      isNextThreadWaiting: false,
     };
 
     renderItem();
@@ -251,6 +256,7 @@ describe("AutoRefreshStatusItem", () => {
       panelKind: "thread",
       isOnThread: true,
       isEnabled: true,
+      isNextThreadWaiting: false,
       intervalSec: 30,
       toggle: vi.fn(),
       setIntervalSec: vi.fn(),
@@ -271,6 +277,19 @@ describe("AutoRefreshStatusItem", () => {
     renderItem();
 
     expect(screen.getByText("30 s")).toBeInTheDocument();
+  });
+
+  it("次スレ待機中は自動更新のONとして示さず、待機の色と砂時計アイコンで表示する", () => {
+    mocks.autoRefreshPanel.isEnabled = false;
+    mocks.autoRefreshPanel.isNextThreadWaiting = true;
+    mocks.canAutoScroll = true;
+    const view = renderItem();
+    const statusBar = view.container.querySelector(".status-bar");
+
+    expect(statusBar).toHaveClass("status-bar--waiting");
+    expect(statusBar).not.toHaveClass("status-bar--active");
+    expect(screen.getByRole("button", { name: /次スレ待機中/ })).toBeInTheDocument();
+    expect(view.container.querySelector(".lucide-hourglass")).toBeInTheDocument();
   });
 
   it.each([false, true])(
@@ -325,6 +344,7 @@ describe("AutoRefreshStatusItem", () => {
       panelKind: "threadList",
       isOnThread: false,
       isEnabled: false,
+      isNextThreadWaiting: false,
       intervalSec: 40,
       toggle: vi.fn(),
       setIntervalSec: vi.fn(),
@@ -433,6 +453,7 @@ describe("AutoRefreshStatusItem", () => {
       panelKind: "threadList",
       isOnThread: false,
       isEnabled: true,
+      isNextThreadWaiting: false,
       intervalSec: 40,
       toggle: vi.fn(),
       setIntervalSec: vi.fn(),
@@ -455,6 +476,7 @@ describe("AutoRefreshStatusItem", () => {
       panelKind: "threadList",
       isOnThread: false,
       isEnabled: false,
+      isNextThreadWaiting: false,
       intervalSec: 40,
       toggle: vi.fn(),
       setIntervalSec: vi.fn(),

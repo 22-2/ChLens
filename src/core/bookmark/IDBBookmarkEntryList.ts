@@ -72,21 +72,21 @@ export default class IDBBookmarkEntryList extends SyncableEntryList {
     }
   }
 
-  async add(entry: Entry): Promise<boolean> {
+  override async add(entry: Entry): Promise<boolean> {
     entry = deepCopy(entry);
     if (!(await super.add(entry))) return false;
     await this._persist(entry);
     return true;
   }
 
-  async update(entry: Entry): Promise<boolean> {
+  override async update(entry: Entry): Promise<boolean> {
     entry = deepCopy(entry);
     if (!(await super.update(entry))) return false;
     await this._persist(entry);
     return true;
   }
 
-  async remove(url: string): Promise<boolean> {
+  override async remove(url: string): Promise<boolean> {
     if (!(await super.remove(url))) return false;
     await this._delete(url);
     return true;

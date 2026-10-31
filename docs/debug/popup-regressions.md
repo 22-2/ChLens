@@ -24,8 +24,10 @@
 
 回帰テスト:
 
-- [use-auto-refresh.test.tsx](../../src/features/auto-refresh/browser/use-auto-refresh.test.tsx):
-  通常表示・ライブチャットでの待機と再開、取得中の開閉、OFF後の再開防止。
+- [use-auto-refresh.follow.test.tsx](../../src/features/auto-refresh/browser/use-auto-refresh.follow.test.tsx):
+  通常表示・ライブチャットでのポップアップ中の待機と、閉じてからの間隔の数え直し。
+- [use-auto-refresh.popup.test.tsx](../../src/features/auto-refresh/browser/use-auto-refresh.popup.test.tsx):
+  取得中の開閉、OFF後の再開防止。
 - [popup-auto-refresh.spec.mts](../../tests/tauri/popup-auto-refresh.spec.mts):
   実TauriでOverlay実況中の固定アンカーポップアップ、子ツリーの開閉、
   最後のポップアップを閉じた後の取得と表示、別タブに移った後の取得継続。

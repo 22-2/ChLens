@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import { recordDebugEvent } from "src/app/debug/debug-log";
-import { createLogger } from "src/app/logger";
 import {
   getArchiveReplayThreadCapabilities,
   useArchiveReplayPositionStore,
@@ -29,17 +28,11 @@ import { useCommentOverlay } from "src/features/comment-overlay/application/use-
 import { useLiveChatReplyIndex } from "src/features/live-chat/browser/use-live-chat-reply-index";
 import { useLiveChatResponses } from "src/features/live-chat/browser/use-live-chat-responses";
 import { useThreadDisplayModeSetting } from "src/features/live-chat/browser/use-thread-display-mode-setting";
-import {
-  getThreadMediaViewerScopeId,
-  openDetachedMediaViewer,
-  useMediaViewerStore,
-} from "src/features/media/browser/use-media-viewer-store";
+import { openDetachedMediaViewer } from "src/features/media/browser/use-media-viewer-store";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/features/next-thread/browser/use-auto-next-thread-setting";
 import { NextThreadSearchDialog } from "src/features/next-thread/ui/NextThreadSearchDialog";
-import { useSimilarImageNg } from "src/features/ng/browser/use-similar-image-ng";
-import type { ContextMenuPopupItem } from "src/features/popup/browser/popup-types";
 import { useThreadPopupManager } from "src/features/popup/browser/use-popup-manager";
 import { PopupRenderer } from "src/features/popup/ui/PopupRenderer";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
@@ -65,22 +58,32 @@ import { ThreadMinimap } from "src/features/thread/ui/ThreadMinimap";
 import { ThreadScrollFloatingActions } from "src/features/thread/ui/ThreadScrollFloatingActions";
 import { VirtualResList } from "src/features/thread/ui/VirtualResList";
 import { WheelScrollIndicator } from "src/features/thread/ui/WheelScrollIndicator";
-import { container } from "src/service-container/index";
-import type { IThread } from "src/service-container/interfaces";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
+import { ThreadAutoScrollThreshold } from "src/view/browser/pages/thread/ThreadAutoScrollThreshold";
+import { ThreadPageNotices } from "src/view/browser/pages/thread/ThreadPageNotices";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
+import { useBlankAreaDoubleClickRefresh } from "src/view/browser/pages/thread/use-blank-area-double-click-refresh";
+import { useCommentOverlayHandoff } from "src/view/browser/pages/thread/use-comment-overlay-handoff";
 import { useCommentOverlaySync } from "src/view/browser/pages/thread/use-comment-overlay-sync";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
 import { useOwnResTracking } from "src/view/browser/pages/thread/use-own-res-tracking";
 import { useResInteractionHandlers } from "src/view/browser/pages/thread/use-res-interaction-handlers";
+import { useThreadAutoRefreshActions } from "src/view/browser/pages/thread/use-thread-auto-refresh-actions";
+import { useThreadBlurredResNums } from "src/view/browser/pages/thread/use-thread-blurred-res-nums";
+import { useThreadContextMenuHeader } from "src/view/browser/pages/thread/use-thread-context-menu-header";
+import { useThreadExpiryStopHandlers } from "src/view/browser/pages/thread/use-thread-expiry-stop-handlers";
 import { useThreadFilterDefaultOpenSetting } from "src/view/browser/pages/thread/use-thread-filter-default-open-setting";
 import { useThreadFilterModeToggle } from "src/view/browser/pages/thread/use-thread-filter-mode-toggle";
+import { useThreadFilterReset } from "src/view/browser/pages/thread/use-thread-filter-reset";
+import { useThreadImageExpansion } from "src/view/browser/pages/thread/use-thread-image-expansion";
+import { useThreadMediaViewerScope } from "src/view/browser/pages/thread/use-thread-media-viewer-scope";
+import { useThreadMoveToBottomOnEnable } from "src/view/browser/pages/thread/use-thread-move-to-bottom-on-enable";
 import { useThreadReadPositionMode } from "src/view/browser/pages/thread/use-thread-read-position-mode";
 import { useThreadReadState } from "src/view/browser/pages/thread/use-thread-read-state";
+import { useThreadReplyNotification } from "src/view/browser/pages/thread/use-thread-reply-notification";
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 import { useThreadStatusSync } from "src/view/browser/pages/thread/use-thread-status-sync";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
@@ -89,27 +92,15 @@ import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
 import {
   getAutoRefreshPageKey,
   isAutoRefreshStoppedForPage,
+  isNextThreadWaitingForPage,
 } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { registerThreadResInteractions } from "src/view/browser/state/thread-res-interactions";
-import {
-  canGoBack,
-  canGoForward,
-  type Tab,
-  type ThreadPage as ThreadPageType,
-} from "src/view/browser/types";
+import { type Tab, type ThreadPage as ThreadPageType } from "src/view/browser/types";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
-import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
-import {
-  buildBlurredResSet,
-  buildReplyToWrittenResSet,
-  countNewRepliesToWrittenResponses,
-} from "src/view/browser/utils/thread-emphasis";
-import { subscribeThreadResJump } from "src/view/browser/utils/thread-read-state";
-
-const logger = createLogger("view/browser");
+import { buildReplyToWrittenResSet } from "src/view/browser/utils/thread-emphasis";
 interface ThreadPageProps {
   tabId: string;
   // ContentAreaから描画対象を明示して受け取り、別の表示ホストでもペインのactiveTabに依存しない。
@@ -183,37 +174,11 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
   } = useThreadData(tabId, page, rootRef, refreshController);
-  useEffect(() => {
-    if (page.initialResNum == null) return;
-    // URLで選んだレスが保存済みの絞り込みに隠れないよう、初期表示前に解除する。
-    setFilter("all");
-    setSearchQuery("");
-  }, [page.threadUrl, page.initialResNum, setFilter, setSearchQuery]);
+  const clearFilter = useThreadFilterReset({ tabId, page, setFilter, setSearchQuery });
   const requestManualRefresh = useCallback(() => {
     if (!threadCapabilities.canRefresh) return;
     runManualRefresh(manualRefreshScopeKey, () => runTabCommand(TAB_COMMAND_IDS.RELOAD));
   }, [manualRefreshScopeKey, runTabCommand, threadCapabilities.canRefresh]);
-  useEffect(
-    () =>
-      subscribeThreadResJump((jump) => {
-        if (
-          !jump.clearFilter ||
-          jump.threadUrl !== page.threadUrl ||
-          (jump.targetTabId && jump.targetTabId !== tabId)
-        )
-          return;
-        // 変更理由: Overlayから選んだレスが絞り込みでDOMから消えていると、
-        // タブだけ移っても目的のレスを表示できないため、移動時に絞り込みを解除する。
-        setFilter("all");
-        setSearchQuery("");
-      }),
-    [page.threadUrl, setFilter, setSearchQuery, tabId],
-  );
-  const clearFilter = useCallback(() => {
-    // 変更理由: フィルタバーを閉じた後に再表示したとき、前回の絞り込みだけが
-    // 残っている状態を避け、本文と操作欄の状態を一致させる。
-    setFilter("all");
-  }, [setFilter]);
   const { controller: commentOverlayController, snapshot: commentOverlaySnapshot } =
     useCommentOverlay();
   const { ownResNums, handleWriteHistoryAdded, handleWriteHistoryRemoved } = useOwnResTracking({
@@ -249,48 +214,18 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     ownResponseNumbers: ownResNums,
   });
 
-  useEffect(() => {
-    if (
-      !isOverlayTarget ||
-      !isAutoRefreshEnabled ||
-      !isCommentOverlayVisible ||
-      loading ||
-      responses.length === 0
-    ) {
-      return;
-    }
-    const previousPage = navigationTab.history[navigationTab.currentIndex - 1];
-    if (
-      previousPage?.type !== "thread" ||
-      previousPage.threadUrl !== commentOverlaySnapshot.state.targetThreadUrl ||
-      page.threadUrl === commentOverlaySnapshot.state.targetThreadUrl
-    ) {
-      return;
-    }
-
-    // 変更理由: 次スレ移動では同じタブの直前スレッドをOverlay対象としているため、
-    // 新スレッドの初回取得完了後にbaselineごと切り替え、旧レスを流さず表示を継続する。
-    void commentOverlayController
-      .start(page.threadUrl, responses, {
-        preserveVisibleComments: true,
-        ownResponseNumbers: ownResNums,
-      })
-      .catch((error: unknown) => {
-        logger.error("次スレ移動後のコメント実況引き継ぎに失敗しました:", error);
-      });
-  }, [
-    navigationTab.currentIndex,
-    navigationTab.history,
-    commentOverlayController,
-    commentOverlaySnapshot.state.targetThreadUrl,
+  useCommentOverlayHandoff({
+    page,
+    responses,
+    loading,
+    isOverlayTarget,
     isAutoRefreshEnabled,
     isCommentOverlayVisible,
-    isOverlayTarget,
-    loading,
+    commentOverlaySnapshot,
+    navigationTab,
+    commentOverlayController,
     ownResNums,
-    page.threadUrl,
-    responses,
-  ]);
+  });
   // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
   // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。RELOADへ集約することで、
   // ホイール更新も自動更新・更新ボタンと同じsubject.txt再確認の対象にする。
@@ -302,20 +237,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     edge: "bottom",
     onRefresh: requestManualRefresh,
   });
-  const mediaViewerScopeId = getThreadMediaViewerScopeId(tabId, page.threadUrl);
-  const openMedia = useMediaViewerStore((state) => state.openMediaFromUrl);
-  const openMediaFromUrl = useCallback(
-    (url: string, resImages?: string[], resSaveImages?: string[]) => {
-      // 変更理由: 画像ビューアーのストアは画面全体で共有されるため、
-      // 開いたスレッドを識別して、別スレッドの破棄処理が表示中の画像へ影響しないようにする。
-      if (resSaveImages) {
-        openMedia(url, resImages, mediaViewerScopeId, resSaveImages);
-      } else {
-        openMedia(url, resImages, mediaViewerScopeId);
-      }
-    },
-    [mediaViewerScopeId, openMedia],
-  );
+  const { mediaViewerScopeId, openMediaFromUrl } = useThreadMediaViewerScope(tabId, page.threadUrl);
   const {
     enabled: isAutoNextThreadEnabled,
     mode: autoNextThreadMode,
@@ -327,44 +249,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   );
 
   const isFilterDefaultOpen = useThreadFilterDefaultOpenSetting();
-  // 仮想化でレスが外れても、展開状態はスレ表示の間保持する。
-  const [imageExpansion, setImageExpansion] = useState<{
-    threadUrl: string;
-    responses: ReadonlyMap<number, ReadonlySet<string>>;
-  }>(() => ({ threadUrl: page.threadUrl, responses: new Map() }));
-  const expandedImages =
-    imageExpansion.threadUrl === page.threadUrl ? imageExpansion.responses : null;
-  // レスの再描画や折りたたみを挟んでも、画像ごとの調整幅を保持する。
-  const [imageWidths, setImageWidths] = useState<{
-    threadUrl: string;
-    responses: ReadonlyMap<number, ReadonlyMap<string, number>>;
-  }>(() => ({ threadUrl: page.threadUrl, responses: new Map() }));
-  const resizeImage = useCallback(
-    (resNum: number, url: string, width: number) => {
-      setImageWidths((current) => {
-        const responses = new Map(current.threadUrl === page.threadUrl ? current.responses : []);
-        const widths = new Map(responses.get(resNum));
-        widths.set(url, width);
-        responses.set(resNum, widths);
-        return { threadUrl: page.threadUrl, responses };
-      });
-    },
-    [page.threadUrl],
-  );
-  const toggleImage = useCallback(
-    (resNum: number, url: string) => {
-      setImageExpansion((current) => {
-        // 同じタブで別スレに移ったとき、前のスレのレス番号を引き継がない。
-        const next = new Map(current.threadUrl === page.threadUrl ? current.responses : []);
-        const urls = new Set(next.get(resNum));
-        if (urls.has(url)) urls.delete(url);
-        else urls.add(url);
-        if (urls.size) next.set(resNum, urls);
-        else next.delete(resNum);
-        return { threadUrl: page.threadUrl, responses: next };
-      });
-    },
-    [page.threadUrl],
+  const { expandedImages, imageWidths, resizeImage, toggleImage } = useThreadImageExpansion(
+    page.threadUrl,
   );
   const [miniAaResNums, setMiniAaResNums] = useState<Set<number>>(new Set());
   // 範囲外へ外れたレスを描画し直しても、ソフトNGを「表示」した状態を保つ。
@@ -444,6 +330,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 変更理由: Overlayへ流しているスレッドはタブを切り替えても取得を止めず、
   // 表示中の実況と自動次スレ探索をバックグラウンドで継続する。
   const isActiveAutoRefreshEnabled = (isActive || isCommentOverlayFlowing) && isAutoRefreshEnabled;
+  // 次スレ待機中も、追従位置の計測と次スレ探索の経路（トラッキング）は止めない。
+  const isNextThreadWaiting = tab ? isNextThreadWaitingForPage(tab, page) : false;
+  const isActiveAutoRefreshTracking =
+    (isActive || isCommentOverlayFlowing) && (isAutoRefreshEnabled || isNextThreadWaiting);
   // 変更理由: 画面上はいずれも dat 落ち案内を表示する状態であり、
   // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
   const autoRefreshPageKey = getAutoRefreshPageKey(page);
@@ -469,35 +359,18 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     missingFromSubject,
     stopped: isAutoRefreshStopped,
   });
+  const isNextThreadFeatureEnabled = isAutoNextThreadEnabled && threadCapabilities.canAutoAdvance;
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
   // ポップアップを読む間は取得・追従・キュー再生を一緒に待機する。
   // タブを離れた後のポップアップ状態で、非表示タブのOverlay実況を止めない。
   const isThreadDisplayPaused = isActive && pauseAutoScrollOnPopup && popups.length > 0;
   // 自動追従の結果は自動更新と再生の循環依存を避けて描画後に同期する。
   const [liveChatFollowing, setLiveChatFollowing] = useState(false);
-  const [activation, setActivation] = useState({
+  const moveToBottomOnEnable = useThreadMoveToBottomOnEnable({
     isActive,
     isAutoRefreshEnabled,
-    followedBeforeLeaving: false,
-    moveToBottom: false,
+    liveChatFollowing,
   });
-  let currentActivation = activation;
-  if (
-    activation.isActive !== isActive ||
-    activation.isAutoRefreshEnabled !== isAutoRefreshEnabled
-  ) {
-    // 別タブに移る直前の追従状態を覚え、復帰時はその位置を引き継ぐ。
-    currentActivation = {
-      isActive,
-      isAutoRefreshEnabled,
-      followedBeforeLeaving: !isActive ? liveChatFollowing : activation.followedBeforeLeaving,
-      moveToBottom:
-        (isAutoRefreshEnabled && !activation.isAutoRefreshEnabled) ||
-        (isActive && !activation.isActive && activation.followedBeforeLeaving),
-    };
-    setActivation(currentActivation);
-  }
-  const moveToBottomOnEnable = currentActivation.moveToBottom;
   const liveChat = useLiveChatResponses({
     responses: filteredResponses,
     scopeKey: `${tabId}\u0000${page.threadUrl}`,
@@ -521,81 +394,53 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     repIndex: indexes.repIndex,
   });
 
-  // 変更理由: 停止理由が増えても、タブ状態の解除と利用者への通知を同じ経路で行い、
-  // 一方だけ実行される不整合を防ぐ。
-  const handleAutoRefreshStop = useCallback(
-    (message: string) => {
-      const pageKey = getAutoRefreshPageKey(page);
-      if (pageKey == null) {
-        return;
-      }
-      dispatch(tabActions.setAutoRefreshEnabled(false, pageKey));
-      toast.info(message);
-    },
-    [dispatch, page, toast],
-  );
+  const {
+    handleAutoRefreshStop,
+    handleEnableAutoRefresh,
+    handleNextThreadSearchExhausted,
+    handleFollowNextThread,
+  } = useThreadAutoRefreshActions({
+    page,
+    autoRefreshPageKey,
+    canAutoRefresh: threadCapabilities.canAutoRefresh,
+    isAutoRefreshEnabled,
+    isNextThreadWaiting,
+    dispatch,
+    toast,
+    commentOverlayController,
+  });
 
-  const handleEnableAutoRefresh = useCallback(() => {
-    const pageKey = getAutoRefreshPageKey(page);
-    if (!threadCapabilities.canAutoRefresh || pageKey == null) {
-      return;
-    }
+  const handleNewResponses = useThreadReplyNotification({
+    page,
+    responses,
+    ownResNums,
+    replyToOwnResNums,
+    viewWindow,
+  });
 
-    // 既存の自動更新トグルと同じ状態経路を使い、フローティングボタンだけが
-    // 別の更新条件を持たないようにする。ON直後の再取得と最下部同期はhookへ委譲する。
-    dispatch(tabActions.setAutoRefreshEnabled(true, pageKey));
-  }, [dispatch, page, threadCapabilities.canAutoRefresh]);
-
-  const handleNextThreadSearchExhausted = useCallback(() => {
-    if (autoRefreshPageKey == null) {
-      return;
-    }
-    // 実況中も期限で終了し、開始連打や別窓への移動で同じ満了スレの探索を再開させない。
-    dispatch(tabActions.setAutoRefreshStoppedPageKey(autoRefreshPageKey));
-    toast.info("次スレが見つからなかったため自動更新を停止しました");
-  }, [autoRefreshPageKey, dispatch, toast]);
-
-  const handleNewResponses = useCallback(
-    (count: number, previousLastResponseNum: number | null) => {
-      const replyCount = countNewRepliesToWrittenResponses(
-        responses,
-        ownResNums,
-        replyToOwnResNums,
-        previousLastResponseNum,
-        count,
-      );
-
-      // 自動更新の共通hookは新着数だけを扱い、通知対象である「自分への返信」は
-      // スレッド固有の履歴・返信インデックスを持つ画面側で絞り込む。
-      if (replyCount === 0) {
-        return;
-      }
-
-      if (!container.notification.isSupported(viewWindow)) {
-        return;
-      }
-
-      void container.notification
-        .notify(`自分のレスへの返信: ${page.title}`, {
-          message: `${replyCount}件の返信があります`,
-          url: page.threadUrl,
-          tag: `thread-reply-to-own:${page.threadUrl}`,
-          targetWindow: viewWindow,
-        })
-        .catch((error: unknown) => {
-          logger.error("新着レス通知の表示に失敗しました:", error);
-        });
-    },
-    [ownResNums, page.threadUrl, page.title, replyToOwnResNums, responses, viewWindow],
-  );
+  const { onThreadExpired, onThreadExpiredDetected } = useThreadExpiryStopHandlers({
+    tabId,
+    tab,
+    autoRefreshPageKey,
+    expired,
+    missingFromSubject,
+    responseCount: responses.length,
+    isAutoRefreshEnabled,
+    isCommentOverlayFlowing,
+    stopMessage,
+    canEnterNextThreadWait: isNextThreadFeatureEnabled && shouldDeferNextThreadStop,
+    handleAutoRefreshStop,
+    dispatch,
+  });
 
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
-    enabled: isActiveAutoRefreshEnabled,
+    enabled: isActiveAutoRefreshTracking,
     startAtBottom: startAutoRefreshAtBottom,
     moveToBottomOnEnable,
     threadUrl: page.threadUrl,
     refreshController,
-    expired: shouldStopFetching,
+    // 待機中は取得を止めたままにする。dat落ちの表示が一時的に外れても、タイマーを再開させないため。
+    expired: shouldStopFetching || isNextThreadWaiting,
     loading,
     pauseAutoScroll: isThreadDisplayPaused,
     pauseRefresh: isThreadDisplayPaused,
@@ -610,30 +455,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       : () => handleAutoRefreshStop("新着が止まったため自動更新を停止しました"),
     // dat落ち・満了後は候補が板一覧へ現れるまで探索を続け、自動更新の停止を保留する。
     deferAutoStop: shouldDeferNextThreadStop,
-    // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
-    // 次スレ移動がONならレス数にかかわらず探索期限まで待ち、OFFなら即座に停止する。
-    onThreadExpired: () => {
-      // 別窓再マウント時の同じ失効通知は繰り返さない。
-      if (tab?.autoRefreshStoppedPageKey === autoRefreshPageKey && !tab.autoRefreshEnabled) {
-        return;
-      }
-      handleAutoRefreshStop(stopMessage);
-    },
-    onThreadExpiredDetected: () => {
-      if (autoRefreshPageKey != null && tab?.autoRefreshStoppedPageKey !== autoRefreshPageKey) {
-        // 停止記録は通知なしで付き、以後の開始操作を拒否するため、付けた根拠を残す。
-        recordDebugEvent("auto-refresh", "スレッドの停止記録を付けます", {
-          tabId,
-          pageKey: autoRefreshPageKey,
-          expired,
-          missingFromSubject,
-          responseCount: responses.length,
-          isAutoRefreshEnabled,
-          isCommentOverlayFlowing,
-        });
-        dispatch(tabActions.setAutoRefreshStoppedPageKey(autoRefreshPageKey));
-      }
-    },
+    onThreadExpired,
+    onThreadExpiredDetected,
     deferExpiredStop: shouldDeferExpiredAutoRefreshStop({
       shouldDeferNextThreadStop,
       expired: autoRefreshExpired,
@@ -649,36 +472,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setLiveChatFollowing(canAutoScroll);
   }, [canAutoScroll]);
 
-  const handleFollowNextThread = useCallback(
-    (nextThread: Pick<IThread, "title" | "url">) => {
-      // 変更理由: 次スレへの切り替えは本文の再描画だけでは分かりにくく、
-      // Overlay上へ通知を流すことで画面を見続けている利用者にも接続先を伝える。
-      void commentOverlayController
-        .publishSystemMessage(page.threadUrl, `スレ「${nextThread.title}」へ移動します。`)
-        .catch((error: unknown) => {
-          logger.error("次スレ移動の通知コメント送信に失敗しました:", error);
-        });
-      dispatch(
-        tabActions.followNextThread(
-          {
-            type: "thread",
-            title: nextThread.title,
-            threadUrl: nextThread.url,
-          },
-          { keepAutoRefresh: isAutoRefreshEnabled },
-        ),
-      );
-    },
-    [commentOverlayController, dispatch, isAutoRefreshEnabled, page.threadUrl],
-  );
-
   const {
     pendingMove: pendingAutoNextThreadMove,
     cancelPendingMove,
     selectPendingCandidate,
   } = useAutoNextThread({
-    autoRefreshEnabled: isActiveAutoRefreshEnabled,
-    featureEnabled: isAutoNextThreadEnabled && threadCapabilities.canAutoAdvance,
+    autoRefreshEnabled: isActiveAutoRefreshTracking,
+    featureEnabled: isNextThreadFeatureEnabled,
     threadUrl: page.threadUrl,
     threadTitle: page.title,
     responseCount: responses.length,
@@ -720,6 +520,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     missingFromSubject,
     isAutoRefreshEnabled,
     isActiveAutoRefreshEnabled,
+    isNextThreadWaiting,
     isAutoRefreshStopped,
     autoRefreshExpired,
     hasReachedThreadLimit,
@@ -770,7 +571,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     scrollContainerRef: effectiveScrollContainerRef,
     // 自動更新で追従している間は、新着の実測で高さが変わっても最下部に留める。
     stickToEnd:
-      isActiveAutoRefreshEnabled && !isFilterEnabled && canAutoScroll && !isThreadDisplayPaused,
+      isActiveAutoRefreshTracking && !isFilterEnabled && canAutoScroll && !isThreadDisplayPaused,
     debugKey: `virtual-list:${tabId}`,
     isActive,
   });
@@ -877,21 +678,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     replyToOwnResNums,
   });
 
-  const wordBlurredResNums = useMemo(() => {
-    if (!imageBlurConfig.enabled) return new Set<number>();
-    return buildBlurredResSet(responses, indexes.repIndex, imageBlurConfig.harmfulWordPattern);
-  }, [imageBlurConfig, indexes.repIndex, responses]);
-  // 類似画像NGはNGの一部なので、語句によるぼかしの有効・無効（image_blur）には従わない。
-  const similarImageBlurredResNums = useSimilarImageNg({
+  const blurredResNums = useThreadBlurredResNums({
+    page,
     responses,
-    threadTitle: page.title,
-    threadUrl: page.threadUrl,
+    indexes,
+    imageBlurConfig,
     messageProtocol,
   });
-  const blurredResNums = useMemo(() => {
-    if (similarImageBlurredResNums.size === 0) return wordBlurredResNums;
-    return new Set([...wordBlurredResNums, ...similarImageBlurredResNums]);
-  }, [similarImageBlurredResNums, wordBlurredResNums]);
   // 画像一覧も本文と同じぼかし判定にするため、判定結果を含めて公開する。
   useThreadSnapshotPublisher({
     tabId,
@@ -934,58 +727,20 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         : undefined,
   });
 
-  const contextMenuHeader = useCallback(
-    (menu: ContextMenuPopupItem) => (
-      // 変更理由: ポップアップのレスメニューはそれぞれ独立したpopupとして管理されるため、
-      // 操作後に対象メニューだけを閉じて、他の固定ポップアップを維持する。
-      <ContextMenuNavigationActions
-        canGoBack={canGoBack(navigationTab)}
-        canGoForward={canGoForward(navigationTab)}
-        canRefresh={threadCapabilities.canRefresh && isPageRefreshable(page)}
-        onBack={() => {
-          runTabCommand(TAB_COMMAND_IDS.BACK);
-          closePopupById(menu.id);
-        }}
-        onForward={() => {
-          runTabCommand(TAB_COMMAND_IDS.FORWARD);
-          closePopupById(menu.id);
-        }}
-        onRefresh={() => {
-          requestManualRefresh();
-          closePopupById(menu.id);
-        }}
-      />
-    ),
-    [
-      closePopupById,
-      navigationTab,
-      page,
-      requestManualRefresh,
-      runTabCommand,
-      threadCapabilities.canRefresh,
-    ],
-  );
+  const contextMenuHeader = useThreadContextMenuHeader({
+    navigationTab,
+    page,
+    canRefresh: threadCapabilities.canRefresh,
+    requestManualRefresh,
+    runTabCommand,
+    closePopupById,
+  });
 
-  // 空白部分のダブルクリックによる更新。
-  // 設定項目は持たず常に有効にする。誤操作防止のためリンクや画像、テキスト選択中などは除外する。
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
-      const target = e.target as HTMLElement;
-
-      // リンク、画像、入力系要素、ボタンなどは除外
-      if (
-        target.closest("a, button, input, textarea, .res__thumb, .res__media-embed, .res__link")
-      ) {
-        return;
-      }
-
-      // テキスト選択中はリロードしない
-      if (!threadCapabilities.canRefresh || viewWindow.getSelection()?.toString()) return;
-
-      requestManualRefresh();
-    },
-    [requestManualRefresh, threadCapabilities.canRefresh, viewWindow],
-  );
+  const handleDoubleClick = useBlankAreaDoubleClickRefresh({
+    canRefresh: threadCapabilities.canRefresh,
+    viewWindow,
+    requestManualRefresh,
+  });
 
   const replayLine =
     replayBoundary >= 0 ? (
@@ -1145,21 +900,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
               searchTarget={searchTarget}
             />
 
-            {(expired || missingFromSubject) && (
-              <div className="thread-page__notice thread-page__notice--expired" role="status">
-                <span>このスレッドはdat落ちしています</span>
-                {onSearchRelatedThreads ? (
-                  <button
-                    type="button"
-                    className="browser-button"
-                    onClick={() => void onSearchRelatedThreads()}
-                  >
-                    関連スレを探す
-                  </button>
-                ) : null}
-              </div>
-            )}
-            {error && <div className="thread-page__notice">{error}</div>}
+            <ThreadPageNotices
+              expired={expired}
+              missingFromSubject={missingFromSubject}
+              error={error}
+              onSearchRelatedThreads={onSearchRelatedThreads}
+            />
           </div>
 
           <div className="thread-page__responses">
@@ -1176,27 +922,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             ) : null}
           </div>
 
-          {isActiveAutoRefreshEnabled &&
+          {isActiveAutoRefreshTracking &&
             /* 自動更新はフィルターが有効な場合は無効化 */
             !isFilterEnabled && (
-              <div
-                className={`thread-page__auto-scroll-threshold${
-                  canAutoScroll ? " thread-page__auto-scroll-threshold--armed" : ""
-                }${isAutoScrolling ? " thread-page__auto-scroll-threshold--scrolling" : ""}`}
-              >
-                {/* 変更理由: 親要素の末尾は破線より16px下にあるため、親へrefを置くと
-                    見た目では線を越えていても追従判定がfalseになる。判定点を実際の破線へ揃える。 */}
-                <div
-                  ref={autoScrollBoundaryRef}
-                  className="thread-page__auto-scroll-threshold-line"
-                  aria-hidden="true"
-                />
-                <span className="thread-page__auto-scroll-threshold-label">
-                  {canAutoScroll
-                    ? "この線より下なので新着に追従します"
-                    : "この線より下にいる時だけ新着に追従します"}
-                </span>
-              </div>
+              <ThreadAutoScrollThreshold
+                canAutoScroll={canAutoScroll}
+                isAutoScrolling={isAutoScrolling}
+                boundaryRef={autoScrollBoundaryRef}
+              />
             )}
 
           <PopupRenderer
@@ -1250,7 +983,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           <ThreadScrollFloatingActions
             rootRef={rootRef}
             isActive={isActive}
-            isAutoRefreshEnabled={isAutoRefreshEnabled}
+            isAutoRefreshEnabled={isAutoRefreshEnabled || isNextThreadWaiting}
             canAutoScroll={canAutoScroll}
             canAutoRefresh={threadCapabilities.canAutoRefresh}
             isFilterEnabled={isFilterEnabled}

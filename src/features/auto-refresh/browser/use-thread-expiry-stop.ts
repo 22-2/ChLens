@@ -70,10 +70,12 @@ export function useThreadExpiryStop({
     threadExpiredHandledRef.current = true;
     onThreadExpiredRef.current?.();
     // onThreadExpired は ref で読むが、未設定から設定に変わったときに再判定するため依存に含める。
+    // scopeUrl は、スレッドが変わったときに処理済みの印を戻す契機なので、依存に含めて必ず再判定する。
   }, [
     deferExpiredStop,
     enabled,
     expired,
+    scopeUrl,
     onDiscardPendingRefreshRef,
     onThreadExpired,
     onThreadExpiredDetectedRef,

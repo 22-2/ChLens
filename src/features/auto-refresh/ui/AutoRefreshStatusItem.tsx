@@ -1,4 +1,4 @@
-import { Clock3, Pause, RefreshCw } from "lucide-react";
+import { Clock3, Hourglass, Pause, RefreshCw } from "lucide-react";
 import React, { useState } from "react";
 import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/features/auto-refresh/browser/auto-refresh-config";
 import {
@@ -212,6 +212,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
     panelKind,
     isOnThread,
     isEnabled,
+    isNextThreadWaiting,
     intervalSec,
     idleStopTimeoutValue,
     toggle,
@@ -248,6 +249,9 @@ export const AutoRefreshStatusItem: React.FC = () => {
       : panelKind === "threadList"
         ? isEnabled
         : false;
+  // 変更理由: 次スレ待機は自動更新のONではないため、ONの表示より優先して待機として見せる。
+  const isStatusWaiting = panelKind === "thread" && isNextThreadWaiting;
+  const statusAppearance = isStatusWaiting ? "waiting" : isStatusActive ? "active" : null;
   const intervalLabel = `${intervalSec} s`;
 
   // panelKindがnullの場合はこのコンポーネント全体を表示しない
@@ -255,8 +259,9 @@ export const AutoRefreshStatusItem: React.FC = () => {
     return null;
   }
 
-  const itemTitle =
-    panelKind === "thread"
+  const itemTitle = isStatusWaiting
+    ? "スレッド自動更新: 次スレ待機中（次スレを探しています）"
+    : panelKind === "thread"
       ? !isEnabled
         ? "スレッド自動更新: OFF"
         : isPaused
@@ -269,6 +274,9 @@ export const AutoRefreshStatusItem: React.FC = () => {
         : `スレ一覧自動更新: ON（${intervalSec}秒間隔）`;
 
   const renderStatusIcon = () => {
+    if (isStatusWaiting) {
+      return <Hourglass size={13} aria-hidden="true" />;
+    }
     if (panelKind === "thread") {
       if (!isEnabled) {
         return <RefreshCw size={13} aria-hidden="true" />;
@@ -293,7 +301,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
 
   return (
     <>
-      <StatusBarMode id="auto-refresh-status-mode" appearance={isStatusActive ? "active" : null} />
+      <StatusBarMode id="auto-refresh-status-mode" appearance={statusAppearance} />
 
       <StatusBarItem
         id="auto-refresh-status"

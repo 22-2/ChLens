@@ -41,6 +41,10 @@ export interface PendingAutoNextThreadMove {
 }
 
 interface UseAutoNextThreadOptions {
+  /**
+   * 自動更新の追従状態。次スレ待機中は自動更新のONを外すが、探索を続けるため true を渡す。
+   * 変更理由: 待機とONを分けて表示する一方で、探索の開始・移動の条件は従来どおり追従状態に従わせる。
+   */
   autoRefreshEnabled: boolean;
   featureEnabled: boolean;
   threadUrl: string;

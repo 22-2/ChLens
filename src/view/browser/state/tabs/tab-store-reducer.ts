@@ -37,6 +37,18 @@ import {
 import { createHomeTab, getCurrentPage, type Pane, type Tab } from "src/view/browser/types";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
 
+// 停止記録は、自動更新と次スレ待機の両方を終えたことを一緒に表す。
+// 変更理由: 停止記録とON表示を同時に更新し、本文だけ止まってステータスバーが回り続ける状態を防ぐ。
+function applyAutoRefreshStopRecord(tab: Tab, pageKey: string | null): Tab {
+  return {
+    ...tab,
+    autoRefreshStoppedPageKey: pageKey,
+    autoRefreshEnabled: false,
+    autoRefreshPageKey: null,
+    nextThreadWaitPageKey: null,
+  };
+}
+
 // タブストア全体の reducer。
 export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreState {
   switch (action.type) {
@@ -574,6 +586,7 @@ export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabSt
             : nextTab.autoRefreshPageKey,
           // 変更理由: dat落ち確認は旧スレ固有なので、次スレへ自動更新を引き継ぐ時は解除する。
           autoRefreshStoppedPageKey: null,
+          nextThreadWaitPageKey: null,
         };
       });
     }
@@ -583,6 +596,11 @@ export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabSt
       return updateTargetTab(state, paneId, action.tabId, (tab) => {
         const pageKey =
           action.pageKey ?? tab.autoRefreshPageKey ?? getAutoRefreshPageKey(getCurrentPage(tab));
+        if (pageKey != null && pageKey === tab.nextThreadWaitPageKey) {
+          // 待機中のONは次スレ探索を開き直す操作になるため無視する。
+          // 待機中のOFFは待機の取り消しなので、同じスレで再開しないよう停止記録を付ける。
+          return action.enabled ? tab : applyAutoRefreshStopRecord(tab, pageKey);
+        }
         // dat落ちや探索期限の終了を開始操作で解除すると、同じスレのsubject取得が連発する。
         const enabled =
           action.enabled && (pageKey == null || pageKey !== tab.autoRefreshStoppedPageKey);
@@ -596,13 +614,28 @@ export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabSt
 
     case TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY: {
       const paneId = resolvePaneId(state, action.paneId);
-      return updateTargetTab(state, paneId, action.tabId, (tab) => ({
-        ...tab,
-        autoRefreshStoppedPageKey: action.pageKey,
-        // 停止記録とON表示を同時に更新し、本文だけ止まってステータスバーが回り続ける状態を防ぐ。
-        autoRefreshEnabled: false,
-        autoRefreshPageKey: null,
-      }));
+      return updateTargetTab(state, paneId, action.tabId, (tab) =>
+        applyAutoRefreshStopRecord(tab, action.pageKey),
+      );
+    }
+
+    case TAB_ACTION_TYPES.START_NEXT_THREAD_WAIT: {
+      const paneId = resolvePaneId(state, action.paneId);
+      return updateTargetTab(state, paneId, action.tabId, (tab) => {
+        // 待機へ移せるのは、そのページで自動更新がONの間だけにする。
+        // 別ページへ移った後や既にOFFになった後に届いた通知で、待機を作らないため。
+        if (!tab.autoRefreshEnabled || tab.autoRefreshPageKey !== action.pageKey) {
+          return tab;
+        }
+        // 変更理由: 待機中もONにすると、ステータスバーが自動更新中と区別できなくなるため、
+        // 自動更新のONは外し、次スレ探索に必要な追従状態は呼び出し側で別に維持する。
+        return {
+          ...tab,
+          autoRefreshEnabled: false,
+          autoRefreshPageKey: null,
+          nextThreadWaitPageKey: action.pageKey,
+        };
+      });
     }
 
     // --- ペイン操作 ---
@@ -610,7 +643,7 @@ export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabSt
     case TAB_ACTION_TYPES.SPLIT_PANE: {
       // 最大ペイン数に達していれば分割しない（2ペイン固定運用）。
       if (state.panes.length >= MAX_PANES) return state;
-      // 操作元ペインの右隣に、現在ページを引き継いだ新規ペインを作成してフォーカスする。
+      // 操作元ペインの右隣に、新規タブの設定（new_tab_page_mode）に従ったページのペインを作成してフォーカスする。
       const sourcePaneId = resolvePaneId(state, action.paneId);
       const sourceIndex = state.panes.findIndex((p) => p.id === sourcePaneId);
       const sourcePane = state.panes[sourceIndex];
@@ -652,7 +685,7 @@ export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabSt
       const sourcePaneId = resolvePaneId(state, action.paneId);
       const sourceIndex = state.panes.findIndex((pane) => pane.id === sourcePaneId);
       const sourcePane = state.panes[sourceIndex];
-      const targetPane = state.panes.find((pane, index) => index !== sourceIndex);
+      const targetPane = state.panes.find((_pane, index) => index !== sourceIndex);
       if (!sourcePane || !targetPane) return state;
 
       const sourceTab = sourcePane.tabs.find((tab) => tab.id === sourcePane.activeTabId);

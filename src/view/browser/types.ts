@@ -10,7 +10,8 @@ export type PageType =
   | "bookmarkList"
   | "historyList"
   | "writeHistoryList"
-  | "logList";
+  | "logList"
+  | "about";
 
 // スレッドの絞り込みはタブのviewStatesへ保存されるため、
 // スレッド画面だけでなくタブ状態モデルからも参照できる共通型としてここに置く。
@@ -76,6 +77,11 @@ export interface LogListPage {
   title: string;
 }
 
+export interface AboutPage {
+  type: "about";
+  title: string;
+}
+
 export type Page =
   | HomePage
   | NewTabPage
@@ -86,7 +92,8 @@ export type Page =
   | BookmarkListPage
   | HistoryListPage
   | WriteHistoryListPage
-  | LogListPage;
+  | LogListPage
+  | AboutPage;
 
 // 設定画面のセクションの種類。タブの表示状態に保存されるため、設定画面ではなくここに置く。
 export type SettingsSectionId =
@@ -161,6 +168,9 @@ export interface TabRuntimeState {
   autoRefreshPageKey: string | null;
   // dat落ち・満了・次スレ探索の期限終了を記録し、同じページの開始連打による再開を防ぐ。
   autoRefreshStoppedPageKey?: string | null;
+  // 次スレ探索の待機中を、自動更新のONとは別の状態として記録する。
+  // 待機中は autoRefreshEnabled を false にし、ステータスバーに待機として表示する。
+  nextThreadWaitPageKey?: string | null;
 }
 
 export interface Tab extends PersistedTab, TabRuntimeState {}
@@ -171,6 +181,7 @@ export function createTabRuntimeState(): TabRuntimeState {
     autoRefreshEnabled: false,
     autoRefreshPageKey: null,
     autoRefreshStoppedPageKey: null,
+    nextThreadWaitPageKey: null,
   };
 }
 

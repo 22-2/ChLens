@@ -6,6 +6,7 @@ import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/brow
 interface ThreadScrollFloatingActionsProps {
   rootRef: RefObject<HTMLDivElement | null>;
   isActive: boolean;
+  /** 自動更新が動いている間（次スレ待機を含む）は、開始ボタンを出さない。 */
   isAutoRefreshEnabled: boolean;
   canAutoScroll?: boolean;
   canAutoRefresh?: boolean;

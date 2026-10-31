@@ -26,6 +26,16 @@ import {
   IMAGE_AUTO_DOWNLOAD_LIMIT_CONFIG_KEY,
   MANUAL_IMAGE_LOADING_CONFIG_KEY,
 } from "../domain/media-settings";
+import {
+  decideImageError,
+  decidePreflight,
+  type FallbackStatus,
+  getExternalImagePlaceholderText,
+  isHttpUrl,
+  isStaleImageRequest,
+  resolveRenderedSrc,
+  shouldMarkImageLoaded,
+} from "./external-image-state";
 
 const logger = createLogger("media");
 
@@ -43,15 +53,6 @@ export type ExternalImageProps = Omit<ImgHTMLAttributes<HTMLImageElement>, "src"
   "data-testid"?: string;
   "data-image-key"?: string;
 };
-
-function isHttpUrl(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 
 function getResponseHeader(headers: Record<string, string>, name: string): string | undefined {
   const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === name);
@@ -104,6 +105,7 @@ function fetchSharedTauriImage(key: string, url: string, version: number): Promi
 /**
  * Tauri WebViewで外部画像の読み込みに失敗した場合だけ、Rust側HTTP経由のblob URLへ切り替える。
  * 通常のimg読み込みを先に試すことで、ブラウザのlazy loadingと既存のキャッシュ挙動を維持する。
+ * 取得の判断は external-image-state の純粋な関数に任せ、ここではストア・通信・DOMへの作用だけを行う。
  */
 export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
   function ExternalImage({ src, onError, onLoad, manualLoad, insideControl, ...props }, ref) {
@@ -123,7 +125,7 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
         renderedSrc: src,
       }),
     );
-    const fallbackStatusRef = useRef<"idle" | "pending" | "loaded" | "failed">("idle");
+    const fallbackStatusRef = useRef<FallbackStatus>("idle");
     const requestVersionRef = useRef(0);
     const currentSrcRef = useRef(src);
     const placeholderRef = useRef<HTMLElement | null>(null);
@@ -131,16 +133,15 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
     currentSrcRef.current = src;
 
     useEffect(() => {
-      if (shouldLoadManually || imageState?.status === "discarded") return;
-      if (imageState?.status === "awaiting-confirmation") {
+      const decision = decidePreflight({
+        manualLoad: shouldLoadManually,
+        status: imageState?.status,
+        lazy: props.loading === "lazy",
+        canObserveVisibility: typeof IntersectionObserver !== "undefined",
+      });
+      if (decision === "none") return;
+      if (decision === "allow-within-limit") {
         allowImageWithinCurrentLimit(imageKey);
-        return;
-      }
-      if (
-        imageState?.status === "checking" ||
-        imageState?.status === "requested" ||
-        imageState?.status === "loaded"
-      ) {
         return;
       }
 
@@ -149,8 +150,7 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
           logger.error("画像サイズ確認の開始に失敗しました", { url: src, error });
         });
       };
-
-      if (props.loading !== "lazy" || typeof IntersectionObserver === "undefined") {
+      if (decision === "request-now") {
         beginPreflight();
         return;
       }
@@ -158,8 +158,7 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
       const placeholder = placeholderRef.current;
       if (!placeholder) return;
 
-      // 変更理由: `loading="lazy"` の画像をすべて先にHEAD確認すると、画面外にも通信が増える。
-      // ブラウザーのlazy loadingと同じく表示領域へ近づいてからサイズを確認する。
+      // 表示領域へ近づいてからサイズを確認する。ブラウザーのlazy loadingと同じ扱いにする。
       const observer = new IntersectionObserver(
         (entries) => {
           if (entries.some((entry) => entry.isIntersecting)) {
@@ -194,20 +193,20 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
     }, [imageState?.version, src]);
 
     const handleError = (event: SyntheticEvent<HTMLImageElement, Event>) => {
-      // src切替・フォールバック待機のために属性を外した際のエラーは、読込失敗ではない。
-      if (!event.currentTarget.getAttribute("src") || sourceState.rawSrc !== src) return;
-      if (fallbackStatusRef.current === "pending" || fallbackStatusRef.current === "failed") return;
-
+      const currentSrcAttr = event.currentTarget.getAttribute("src");
       const cachedFallbackSrc = useMediaImageStore.getState().images.get(imageKey)?.fallbackSrc;
-      const failedCachedFallback =
-        cachedFallbackSrc != null && event.currentTarget.getAttribute("src") === cachedFallbackSrc;
-      if (
-        !isTauriRuntime() ||
-        !isHttpUrl(src) ||
-        fallbackStatusRef.current === "loaded" ||
-        failedCachedFallback
-      ) {
-        if (fallbackStatusRef.current === "loaded" || failedCachedFallback) {
+      const decision = decideImageError({
+        currentSrcAttr,
+        isCurrentSource: sourceState.rawSrc === src,
+        fallbackStatus: fallbackStatusRef.current,
+        isTauri: isTauriRuntime(),
+        isHttp: isHttpUrl(src),
+        failedCachedFallback: cachedFallbackSrc != null && currentSrcAttr === cachedFallbackSrc,
+      });
+
+      if (decision.action === "ignore") return;
+      if (decision.action === "fail") {
+        if (decision.reportCachedFailure) {
           logger.error("取得済みの外部画像を表示できませんでした", { url: src });
         }
         fallbackStatusRef.current = "failed";
@@ -220,25 +219,23 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
       const imageRequestVersion = requestVersion;
       setSourceState({ rawSrc: src, renderedSrc: null });
 
+      const isStale = () =>
+        isStaleImageRequest(
+          { src, componentRequestVersion, imageRequestVersion },
+          {
+            src: currentSrcRef.current,
+            componentRequestVersion: requestVersionRef.current,
+            imageVersion: useMediaImageStore.getState().images.get(imageKey)?.version ?? 0,
+          },
+        );
+
       void fetchSharedTauriImage(imageKey, src, imageRequestVersion)
         .then(() => {
-          if (
-            currentSrcRef.current !== src ||
-            requestVersionRef.current !== componentRequestVersion ||
-            (useMediaImageStore.getState().images.get(imageKey)?.version ?? 0) !==
-              imageRequestVersion
-          )
-            return;
+          if (isStale()) return;
           fallbackStatusRef.current = "loaded";
         })
         .catch((error: unknown) => {
-          if (
-            currentSrcRef.current !== src ||
-            requestVersionRef.current !== componentRequestVersion ||
-            (useMediaImageStore.getState().images.get(imageKey)?.version ?? 0) !==
-              imageRequestVersion
-          )
-            return;
+          if (isStale()) return;
           // WebView側とRust側の両方で失敗したURLを記録し、画像だけを黙って消さない。
           logger.error("Tauri経由の外部画像取得に失敗しました", {
             url: src,
@@ -254,18 +251,12 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
       imageState?.status === "requested" || imageState?.status === "loaded";
     if (imageState?.status === "discarded" || !isImageLoadStarted) {
       const alt = props.alt?.trim();
-      const placeholderText = (() => {
-        if (imageState?.status === "discarded") return "削除されました";
-        if (imageState?.status === "checking") return "画像サイズを確認中...";
-        if (imageState?.status === "awaiting-confirmation") {
-          if (imageState.contentLength == null)
-            return "画像サイズを確認できません。クリックして確認";
-          const imageSizeMb = (imageState.contentLength / 1_000_000).toFixed(2);
-          const maxSizeMb = ((imageState.maxBytes ?? 0) / 1_000_000).toFixed(2);
-          return `${imageSizeMb} MBの画像（上限 ${maxSizeMb} MB）。クリックして確認`;
-        }
-        return shouldLoadManually ? "クリックして画像を取得" : "画像サイズを確認中...";
-      })();
+      const placeholderText = getExternalImagePlaceholderText({
+        status: imageState?.status,
+        contentLength: imageState?.contentLength,
+        maxBytes: imageState?.maxBytes,
+        manualLoad: shouldLoadManually,
+      });
       const requestImage = () => {
         void requestMediaImageDownload(imageKey, src, viewWindow).catch((error: unknown) => {
           logger.error("画像取得の事前確認に失敗しました", { url: src, error });
@@ -338,8 +329,12 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
       );
     }
 
-    const renderedSrc =
-      imageState?.fallbackSrc ?? (sourceState.rawSrc === src ? sourceState.renderedSrc : null);
+    const isCurrentSource = sourceState.rawSrc === src;
+    const renderedSrc = resolveRenderedSrc({
+      fallbackSrc: imageState?.fallbackSrc,
+      isCurrentSource,
+      renderedSrc: sourceState.renderedSrc,
+    });
     return (
       <img
         {...props}
@@ -348,9 +343,11 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
         onError={handleError}
         onLoad={(event) => {
           if (
-            renderedSrc !== null &&
-            sourceState.rawSrc === src &&
-            event.currentTarget.getAttribute("src") === renderedSrc
+            shouldMarkImageLoaded({
+              renderedSrc,
+              isCurrentSource,
+              eventSrcAttr: event.currentTarget.getAttribute("src"),
+            })
           ) {
             useMediaImageStore.getState().markImageLoaded(imageKey, requestVersion);
             onLoad?.(event);

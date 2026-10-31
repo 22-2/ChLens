@@ -40,6 +40,7 @@ export function registerBuiltInPageTypes(getApi: (ownerId: string) => ExtensionA
   coreApi.registerPageType("settings", CORE_PAGE_TYPE_DEFINITIONS.settings);
   coreApi.registerPageType("historyList", CORE_PAGE_TYPE_DEFINITIONS.historyList);
   coreApi.registerPageType("logList", CORE_PAGE_TYPE_DEFINITIONS.logList);
+  coreApi.registerPageType("about", CORE_PAGE_TYPE_DEFINITIONS.about);
 
   registerBoardPageTypes(getApi("board"));
   registerThreadPageTypes(getApi("thread"));

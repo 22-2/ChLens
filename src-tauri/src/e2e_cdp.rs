@@ -11,18 +11,19 @@ fn debugging_args(port: Option<&str>) -> Option<String> {
   Some(format!("{DEFAULT_ARGS} --remote-debugging-port={port}"))
 }
 
-/// 設定上のすべての窓へリモートデバッグの引数を足す。
+/// 設定上のすべての窓へリモートデバッグの引数を足し、更新した Context を返す。
 ///
 /// 変更理由: 環境変数 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` はGitHub Actionsのrunner（WebView2 154）では
 /// ブラウザープロセスの引数に反映されず、ポートが開かなかった。そのため窓の設定として明示的に渡す。
 /// WebView2の環境は窓どうしで共有され、引数が食い違うと作れないため、すべての窓へ同じ引数を入れる。
-pub fn apply<R: tauri::Runtime>(context: &mut tauri::Context<R>) {
+pub fn apply<R: tauri::Runtime>(mut context: tauri::Context<R>) -> tauri::Context<R> {
   let Some(args) = debugging_args(std::env::var(PORT_ENV).ok().as_deref()) else {
-    return;
+    return context;
   };
   for window in context.config_mut().app.windows.iter_mut() {
     window.additional_browser_args = Some(args.clone());
   }
+  context
 }
 
 #[cfg(test)]

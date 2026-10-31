@@ -185,8 +185,10 @@ export class SyncableEntryList extends EntryList {
     };
   }
 
-  async add(entry: Entry): Promise<boolean> {
-    if (!super.add(entry)) return false;
+  override async add(entry: Entry): Promise<boolean> {
+    // 変更理由: super.add は Promise を返すため、await しないと重複追加も成功扱いになり、
+    // 存在しないはずの ADD を購読側へ流してしまう（同期先での重複追加や往復の原因になる）。
+    if (!(await super.add(entry))) return false;
 
     this.onChanged.call({
       type: "ADD",
@@ -195,14 +197,14 @@ export class SyncableEntryList extends EntryList {
     return true;
   }
 
-  async update(entry: Entry): Promise<boolean> {
+  override async update(entry: Entry): Promise<boolean> {
     const before = this.get(entry.url);
 
     // 存在しないエントリの更新は失敗として扱う。
     // (従来は before が null のまま下の比較へ進み実行時エラーになっていた)
     if (before == null) return false;
 
-    if (!super.update(entry)) return false;
+    if (!(await super.update(entry))) return false;
 
     if (before.title !== entry.title) {
       this.onChanged.call({
@@ -260,14 +262,14 @@ export class SyncableEntryList extends EntryList {
     return this.update(entry);
   }
 
-  async remove(url: string): Promise<boolean> {
+  override async remove(url: string): Promise<boolean> {
     const entry = this.get(url);
 
     // 存在しないエントリの削除は失敗として扱う。
     // (従来は entry: null のイベントが購読側へ流れ実行時エラーの原因になっていた)
     if (entry == null) return false;
 
-    if (!super.remove(url)) return false;
+    if (!(await super.remove(url))) return false;
 
     this.onChanged.call({
       type: "REMOVE",

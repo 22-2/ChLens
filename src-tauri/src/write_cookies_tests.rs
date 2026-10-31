@@ -8,7 +8,13 @@ struct TestCipher;
 const TEST_PREFIX: &[u8] = b"TEST";
 impl CookieCipher for TestCipher {
   fn seal(&self, plain: &[u8]) -> Result<Vec<u8>, String> {
-    Ok(TEST_PREFIX.iter().copied().chain(plain.iter().map(|byte| byte ^ 0x5a)).collect())
+    Ok(
+      TEST_PREFIX
+        .iter()
+        .copied()
+        .chain(plain.iter().map(|byte| byte ^ 0x5a))
+        .collect(),
+    )
   }
   fn open(&self, sealed: &[u8]) -> Result<Vec<u8>, String> {
     let body = sealed
@@ -177,7 +183,13 @@ fn 保存中に期限切れになったcookieは復元しない() {
   );
   let mut saved: serde_json::Value = serde_json::from_slice(&file.read_plain()).unwrap();
   saved["example.com"][0]["expires"]["AtUtc"] = "2000-01-01T00:00:00Z".into();
-  fs::write(&file.0, TestCipher.seal(&serde_json::to_vec(&saved).unwrap()).unwrap()).unwrap();
+  fs::write(
+    &file.0,
+    TestCipher
+      .seal(&serde_json::to_vec(&saved).unwrap())
+      .unwrap(),
+  )
+  .unwrap();
   assert!(!file.load().has_cookies(None).unwrap());
 }
 
@@ -259,7 +271,11 @@ fn 保存失敗を削除操作の呼び出し元へ返す() {
 #[test]
 fn cookieの値を平文で保存ファイルへ書かない() {
   let file = TestFile::new();
-  receive(&file.load(), "example.com", "auth=secret-value; Max-Age=3600; Path=/");
+  receive(
+    &file.load(),
+    "example.com",
+    "auth=secret-value; Max-Age=3600; Path=/",
+  );
   let sealed = fs::read(&file.0).unwrap();
   assert!(!contains(&sealed, b"secret-value"));
   assert!(contains(&file.read_plain(), b"secret-value"));
@@ -276,7 +292,11 @@ fn 復号できない保存ファイルから空の状態で起動する() {
 /// 暗号化に対応する前の形式で、期限付きCookieを平文ファイルへ書き出す。
 fn write_legacy_plain(file: &TestFile) {
   let source = TestFile::new();
-  receive(&source.load(), "example.com", "auth=legacy; Max-Age=3600; Path=/");
+  receive(
+    &source.load(),
+    "example.com",
+    "auth=legacy; Max-Age=3600; Path=/",
+  );
   fs::write(file.legacy(), source.read_plain()).unwrap();
 }
 
@@ -300,7 +320,11 @@ fn 平文の旧保存ファイルを暗号化して移行し削除する() {
 #[test]
 fn 暗号化保存ファイルがあれば旧保存ファイルを取り込まず削除する() {
   let file = TestFile::new();
-  receive(&file.load(), "example.org", "auth=current; Max-Age=3600; Path=/");
+  receive(
+    &file.load(),
+    "example.org",
+    "auth=current; Max-Age=3600; Path=/",
+  );
   write_legacy_plain(&file);
   let store = file.load();
   store.migrate_plain_file(&file.legacy());

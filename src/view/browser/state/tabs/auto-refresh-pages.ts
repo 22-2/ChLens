@@ -25,11 +25,17 @@ export function isAutoRefreshStoppedForPage(tab: Tab, page: Page): boolean {
   return pageKey != null && tab.autoRefreshStoppedPageKey === pageKey;
 }
 
+export function isNextThreadWaitingForPage(tab: Tab, page: Page): boolean {
+  const pageKey = getAutoRefreshPageKey(page);
+  return pageKey != null && tab.nextThreadWaitPageKey === pageKey;
+}
+
 export function resetAutoRefreshState<
   T extends {
     autoRefreshEnabled: boolean;
     autoRefreshPageKey: string | null;
     autoRefreshStoppedPageKey?: string | null;
+    nextThreadWaitPageKey?: string | null;
   },
 >(tab: T): T {
   return {
@@ -40,5 +46,7 @@ export function resetAutoRefreshState<
     autoRefreshPageKey: null,
     // 変更理由: 停止キーは今のページだけに属する一時状態なので、通常遷移へ持ち越さない。
     autoRefreshStoppedPageKey: null,
+    // 変更理由: 次スレ待機も今のページの探索待ちなので、別ページへ移ったら持ち越さない。
+    nextThreadWaitPageKey: null,
   };
 }

@@ -314,7 +314,7 @@ fn response_header_name(name: &str) -> String {
         let mut chars = part.chars();
         chars
           .next()
-          .map(|first| first.to_ascii_uppercase().to_string() + chars.as_str())
+          .map(|first| format!("{}{}", first.to_ascii_uppercase(), chars.as_str()))
           .unwrap_or_default()
       })
       .collect::<Vec<_>>()

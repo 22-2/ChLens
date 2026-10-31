@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from "react";
 import { createLogger } from "src/app/logger";
 import { isPageTypeRegistered, type PageOfType } from "src/view/browser/page-type-definitions";
+import { AboutPage } from "src/view/browser/pages/AboutPage";
 import { BoardListPage } from "src/view/browser/pages/BoardListPage";
 import { BookmarkListPage } from "src/view/browser/pages/BookmarkListPage";
 import { HistoryListPage } from "src/view/browser/pages/HistoryListPage";
@@ -100,6 +101,7 @@ const PAGE_RENDERERS: PageRenderers = {
       refreshKey={context.tab.reloadKey}
     />
   ),
+  about: () => <AboutPage />,
 };
 
 export function renderPage(page: Page, context: PageRenderContext): ReactNode {

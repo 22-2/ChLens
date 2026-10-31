@@ -54,6 +54,10 @@ windows-sys = { version = "0.61", features = [
 # E2E用ビルドだけが環境変数 CHLENS_DATA_DIR で保存先を差し替えられるようにする（src/data_dir.rs）。
 e2e = []
 
+# lintはここで一括管理する。unsafe関数の中のunsafe操作も個別のunsafeブロックに書き、SAFETYコメントの対象を明確にする。
+[lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+
 [[bin]]
 name = "chlens"
 path = "src/main.rs"

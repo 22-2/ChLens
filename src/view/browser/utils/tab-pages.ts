@@ -1,6 +1,11 @@
 import type { Page, ThreadListPage } from "src/view/browser/types";
 
-export type QuickAccessPageType = "bookmarkList" | "historyList" | "writeHistoryList" | "logList";
+export type QuickAccessPageType =
+  | "bookmarkList"
+  | "historyList"
+  | "writeHistoryList"
+  | "logList"
+  | "about";
 
 export type QuickAccessPage = Extract<Page, { type: QuickAccessPageType }>;
 export type SettingsPage = Extract<Page, { type: "settings" }>;
@@ -10,6 +15,7 @@ const QUICK_ACCESS_PAGE_TITLES: Record<QuickAccessPageType, string> = {
   historyList: "閲覧履歴",
   writeHistoryList: "書き込み履歴",
   logList: "ログ検索",
+  about: "ChLensについて",
 };
 
 /**
