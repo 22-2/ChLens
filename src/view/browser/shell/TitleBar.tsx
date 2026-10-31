@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createLogger } from "src/app/logger";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { TabContextMenu } from "src/features/tabs/ui/TabContextMenu";
+import { createSnapshotMenuItems } from "src/features/thread-list/ui/thread-list-snapshot-menu-items";
 import {
   getThreadListSnapshots,
   selectThreadListSnapshot,
@@ -17,7 +18,6 @@ import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { canGoBack, canGoForward } from "src/view/browser/types";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
-import { formatRelativeTime } from "src/view/browser/utils/date-time";
 import {
   getManualRefreshScopeKey,
   runManualRefresh,
@@ -116,20 +116,12 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           label: "一覧の履歴",
           disabled: true,
         },
-        {
-          id: "snapshot-latest",
-          label: `${selectedSnapshot ? "" : "✓ "}最新の一覧`,
-          onSelect: () => selectThreadListSnapshot(viewTab.id, null),
-        },
-        ...threadListSnapshots.map((snapshot) => ({
-          id: snapshot.url,
-          label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${formatRelativeTime(
-            snapshot.last_updated,
-            refreshMenuOpenedAt,
-            { showSeconds: true },
-          )}（${snapshot.threads.length}件）`,
-          onSelect: () => selectThreadListSnapshot(viewTab.id, snapshot),
-        })),
+        ...createSnapshotMenuItems({
+          snapshots: threadListSnapshots,
+          selectedSnapshot,
+          now: refreshMenuOpenedAt,
+          onSelect: (snapshot) => selectThreadListSnapshot(viewTab.id, snapshot),
+        }),
       ]
     : [];
 

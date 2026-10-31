@@ -27,6 +27,7 @@ import { useTabBarOrientation } from "src/features/tabs/browser/use-tab-bar-orie
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useResponseJumpDialog } from "src/features/thread/browser/use-response-jump-dialog";
 import { clearCachedThreadReadState } from "src/features/thread-list/ui/thread-list-cache";
+import { createSnapshotMenuItems } from "src/features/thread-list/ui/thread-list-snapshot-menu-items";
 import {
   getThreadListSnapshots,
   selectThreadListSnapshot,
@@ -68,7 +69,6 @@ import { canGoBack, canGoForward, getCurrentPage } from "src/view/browser/types"
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Dialog } from "src/view/browser/ui/Dialog";
-import { formatRelativeTime } from "src/view/browser/utils/date-time";
 import {
   useFilterToolbarOpen,
   useFilterToolbarPinned,
@@ -786,16 +786,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
           label: "一覧の履歴（過去の一覧では自動更新を一時停止）",
           disabled: true,
         },
-        {
-          id: "snapshot-latest",
-          label: `${selectedSnapshot ? "" : "✓ "}最新の一覧`,
-          onSelect: () => selectThreadListSnapshot(viewTab.id, null),
-        },
-        ...snapshots.map((snapshot) => ({
-          id: snapshot.url,
-          label: `${selectedSnapshot?.url === snapshot.url ? "✓ " : ""}${formatRelativeTime(snapshot.last_updated, refreshMenuOpenedAt, { showSeconds: true })}（${snapshot.threads.length}件）`,
-          onSelect: () => selectThreadListSnapshot(viewTab.id, snapshot),
-        })),
+        ...createSnapshotMenuItems({
+          snapshots,
+          selectedSnapshot,
+          now: refreshMenuOpenedAt,
+          onSelect: (snapshot) => selectThreadListSnapshot(viewTab.id, snapshot),
+        }),
       );
     }
     return items;
