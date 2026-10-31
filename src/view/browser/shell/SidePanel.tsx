@@ -1,4 +1,4 @@
-import { DragDropProvider } from "@dnd-kit/react";
+import { DragDropProvider, type DragEndEvent } from "@dnd-kit/react";
 import { BookOpen, Check, Image, Info, ListTree, Pencil, Search } from "lucide-react";
 import { type ReactNode, type RefObject, useRef, useState } from "react";
 import { SidePanelBoards } from "src/features/board/ui/SidePanelBoards";
@@ -154,8 +154,7 @@ export function SidePanel() {
     update({ views: items });
     return true;
   };
-  // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const sorted = readSortableMove(event);
     if (!sorted) return;
     if (move(sorted.id, sorted.toIndex)) wasDragging.current = true;

@@ -652,7 +652,7 @@ export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabSt
       const sourcePaneId = resolvePaneId(state, action.paneId);
       const sourceIndex = state.panes.findIndex((pane) => pane.id === sourcePaneId);
       const sourcePane = state.panes[sourceIndex];
-      const targetPane = state.panes.find((pane, index) => index !== sourceIndex);
+      const targetPane = state.panes.find((_pane, index) => index !== sourceIndex);
       if (!sourcePane || !targetPane) return state;
 
       const sourceTab = sourcePane.tabs.find((tab) => tab.id === sourcePane.activeTabId);

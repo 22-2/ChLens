@@ -434,6 +434,8 @@ export const add = async function ({
     return id;
   } catch (e) {
     reportError("WriteHistory.add: データの格納に失敗しました", e);
+    // 戻り値の型は number | undefined で、失敗時は undefined を返す。経路を明示して noImplicitReturns に従う。
+    return undefined;
   }
 };
 

@@ -123,7 +123,7 @@ browser.tabs.onCreated.addListener((tab) => {
 });
 
 // タブのURLが更新された瞬間（アドレスバーからの入力等に対応）
-browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+browser.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (changeInfo.url || changeInfo.status === "loading") {
     void enforceSingleInstance(tab);
   }

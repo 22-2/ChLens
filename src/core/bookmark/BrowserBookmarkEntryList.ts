@@ -361,7 +361,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     return true;
   }
 
-  async add(entry: Entry, createBrowserBookmark = true): Promise<boolean> {
+  override async add(entry: Entry, createBrowserBookmark = true): Promise<boolean> {
     entry = deepCopy(entry);
 
     if (!super.add(entry)) return false;
@@ -372,7 +372,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     return true;
   }
 
-  async update(entry: Entry, updateBrowserBookmark = true): Promise<boolean> {
+  override async update(entry: Entry, updateBrowserBookmark = true): Promise<boolean> {
     entry = deepCopy(entry);
 
     if (!super.update(entry)) return false;
@@ -383,7 +383,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
     return true;
   }
 
-  async remove(url: string, removeBrowserBookmark = true): Promise<boolean> {
+  override async remove(url: string, removeBrowserBookmark = true): Promise<boolean> {
     if (!super.remove(url)) return false;
 
     if (removeBrowserBookmark) {

@@ -1,4 +1,4 @@
-import { DragDropProvider } from "@dnd-kit/react";
+import { DragDropProvider, type DragEndEvent } from "@dnd-kit/react";
 import { PanelLeftClose, PanelLeftOpen, Pin, Play, Plus, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -489,8 +489,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   );
 
   const handleDragEnd = useCallback(
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-    (event: any) => {
+    (event: DragEndEvent) => {
       // 実際に位置が変わっていなければ、click 抑止も並べ替えも行わない。
       const move = readSortableMove(event);
       if (!move) return;

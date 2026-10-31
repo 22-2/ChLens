@@ -1,3 +1,4 @@
+import type { DragEndEvent } from "@dnd-kit/react";
 import { isSortableOperation, useSortable } from "@dnd-kit/react/sortable";
 
 // Material Design の Fast-out, Slow-in カーブで Chrome 風の吸い付く感を再現する。
@@ -27,8 +28,7 @@ interface SortableTabMove {
  * DragDropProvider の onDragEnd イベントから、実際に位置が変わった並べ替えだけを取り出す。
  * キャンセルされた場合や位置が変わっていない場合は null を返す。
  */
-// oxlint-disable-next-line @typescript-eslint/no-explicit-any
-export function readSortableMove(event: any): SortableTabMove | null {
+export function readSortableMove(event: DragEndEvent): SortableTabMove | null {
   // event.canceled はドラッグがキャンセル（Esc キーなど）された場合に true になる。
   if (event.canceled) return null;
   const { operation } = event;

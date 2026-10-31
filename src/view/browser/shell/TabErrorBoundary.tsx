@@ -23,17 +23,17 @@ interface TabErrorBoundaryState {
  * 失敗を記録したうえで、そのタブだけを閉じられる導線を出して他のタブの操作を残す。
  */
 export class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorBoundaryState> {
-  state: TabErrorBoundaryState = { failed: false };
+  override state: TabErrorBoundaryState = { failed: false };
 
   static getDerivedStateFromError(): TabErrorBoundaryState {
     return { failed: true };
   }
 
-  componentDidCatch(error: unknown, info: ErrorInfo): void {
+  override componentDidCatch(error: unknown, info: ErrorInfo): void {
     logger.error(`タブの描画に失敗しました (${this.props.pageKey}):`, error, info.componentStack);
   }
 
-  render(): ReactNode {
+  override render(): ReactNode {
     if (this.state.failed) {
       return <TabErrorFallback tabId={this.props.tabId} />;
     }

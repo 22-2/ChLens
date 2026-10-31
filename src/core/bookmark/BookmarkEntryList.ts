@@ -185,7 +185,7 @@ export class SyncableEntryList extends EntryList {
     };
   }
 
-  async add(entry: Entry): Promise<boolean> {
+  override async add(entry: Entry): Promise<boolean> {
     if (!super.add(entry)) return false;
 
     this.onChanged.call({
@@ -195,7 +195,7 @@ export class SyncableEntryList extends EntryList {
     return true;
   }
 
-  async update(entry: Entry): Promise<boolean> {
+  override async update(entry: Entry): Promise<boolean> {
     const before = this.get(entry.url);
 
     // 存在しないエントリの更新は失敗として扱う。
@@ -260,7 +260,7 @@ export class SyncableEntryList extends EntryList {
     return this.update(entry);
   }
 
-  async remove(url: string): Promise<boolean> {
+  override async remove(url: string): Promise<boolean> {
     const entry = this.get(url);
 
     // 存在しないエントリの削除は失敗として扱う。
