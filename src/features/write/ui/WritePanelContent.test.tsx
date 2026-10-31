@@ -393,6 +393,45 @@ describe("WritePanelContent", () => {
     expect(mocks.setEditorBusy).toHaveBeenLastCalledWith(false);
   });
 
+  it("送信が終わったら本文欄へフォーカスを戻す", () => {
+    mocks.status = "submitting";
+    const { rerender } = renderWritePanel();
+    const textarea = screen.getByRole("textbox", { name: "本文" });
+    // 送信中は本文欄がdisabledになり、フォーカスはどこにも無い。
+    expect(textarea).toBeDisabled();
+    expect(textarea).not.toHaveFocus();
+
+    mocks.status = "idle";
+    rerender(
+      <StatusBarProvider>
+        <WritePanelContent />
+        <StatusBar />
+      </StatusBarProvider>,
+    );
+
+    expect(textarea).toBeEnabled();
+    expect(textarea).toHaveFocus();
+  });
+
+  it("送信後に別の入力欄へ移していたらフォーカスを奪わない", () => {
+    mocks.status = "submitting";
+    const other = document.createElement("input");
+    document.body.append(other);
+    const { rerender } = renderWritePanel();
+    other.focus();
+
+    mocks.status = "idle";
+    rerender(
+      <StatusBarProvider>
+        <WritePanelContent />
+        <StatusBar />
+      </StatusBarProvider>,
+    );
+
+    expect(other).toHaveFocus();
+    other.remove();
+  });
+
   it("Ctrl+EnterオプションOFF時はCtrl+Enterしても投稿しない", () => {
     renderWritePanel();
 

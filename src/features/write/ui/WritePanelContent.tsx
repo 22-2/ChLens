@@ -243,6 +243,21 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     writePanelFocusRequestId,
     editorFocusRequestId,
   ]);
+  const wasSubmittingRef = useRef(false);
+  useEffect(() => {
+    const wasSubmitting = wasSubmittingRef.current;
+    wasSubmittingRef.current = isSubmitting;
+    if (!wasSubmitting || isSubmitting) return;
+
+    // 変更理由: 送信中は本文欄がdisabledになりフォーカスが外れるため、成功・失敗のどちらでも
+    // 送信後にそのまま続けて入力できるよう戻す。エラーダイアログが出るときはそちらを優先する。
+    const textarea = textareaRef.current;
+    if (!textarea || (status === "error" && authCodeUrl != null)) return;
+    const activeElement = viewDocument.activeElement;
+    // 送信ボタンの無効化でフォーカスが残る場合もあるため、別の入力欄へ移していたときだけ奪わない。
+    if (activeElement?.matches("input, textarea, select") && activeElement !== textarea) return;
+    textarea.focus({ preventScroll: true });
+  }, [authCodeUrl, isSubmitting, status, viewDocument]);
   const uploadStatusIsVisible =
     isImgurUploading ||
     imgurUploadStatus?.type === "success" ||
