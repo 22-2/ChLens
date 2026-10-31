@@ -25,16 +25,21 @@ function getPageKey(): string {
   return key;
 }
 
+// 呼び出し先のメソッドを式で参照すると、this の束縛を外して渡すものとして検査されるため、モックは変数で持つ。
+const toastInfo = vi.fn();
+const publishSystemMessage = vi.fn();
+
 function createOptions(overrides: Partial<Options> = {}) {
+  publishSystemMessage.mockResolvedValue(undefined);
   return {
     page,
     autoRefreshPageKey: getPageKey(),
     canAutoRefresh: true,
     isAutoRefreshEnabled: false,
     dispatch: vi.fn(),
-    toast: { info: vi.fn() } as unknown as Options["toast"],
+    toast: { info: toastInfo } as unknown as Options["toast"],
     commentOverlayController: {
-      publishSystemMessage: vi.fn().mockResolvedValue(undefined),
+      publishSystemMessage,
     } as unknown as Options["commentOverlayController"],
     ...overrides,
   };
@@ -63,7 +68,7 @@ describe("useThreadAutoRefreshActions", () => {
     result.current.handleAutoRefreshStop("接続が切れたため自動更新を停止しました");
 
     expect(options.dispatch).toHaveBeenCalledWith(tabActions.setAutoRefreshEnabled(false, pageKey));
-    expect(options.toast.info).toHaveBeenCalledWith("接続が切れたため自動更新を停止しました");
+    expect(toastInfo).toHaveBeenCalledWith("接続が切れたため自動更新を停止しました");
   });
 
   it("自動更新を開始できる状態なら、ページの自動更新をONにする", () => {
@@ -93,9 +98,7 @@ describe("useThreadAutoRefreshActions", () => {
     result.current.handleNextThreadSearchExhausted();
 
     expect(options.dispatch).toHaveBeenCalledWith(tabActions.setAutoRefreshStoppedPageKey(pageKey));
-    expect(options.toast.info).toHaveBeenCalledWith(
-      "次スレが見つからなかったため自動更新を停止しました",
-    );
+    expect(toastInfo).toHaveBeenCalledWith("次スレが見つからなかったため自動更新を停止しました");
   });
 
   it("次スレ探索の対象ページがなければ、何もしない", () => {
@@ -105,7 +108,7 @@ describe("useThreadAutoRefreshActions", () => {
     result.current.handleNextThreadSearchExhausted();
 
     expect(options.dispatch).not.toHaveBeenCalled();
-    expect(options.toast.info).not.toHaveBeenCalled();
+    expect(toastInfo).not.toHaveBeenCalled();
   });
 
   it("次スレへ移動すると、Overlayに通知を流してから、自動更新の状態を引き継いで移動する", () => {
@@ -114,10 +117,7 @@ describe("useThreadAutoRefreshActions", () => {
 
     result.current.handleFollowNextThread({ title: "次のスレ", url: NEXT_URL });
 
-    expect(options.commentOverlayController.publishSystemMessage).toHaveBeenCalledWith(
-      THREAD_URL,
-      "スレ「次のスレ」へ移動します。",
-    );
+    expect(publishSystemMessage).toHaveBeenCalledWith(THREAD_URL, "スレ「次のスレ」へ移動します。");
     expect(options.dispatch).toHaveBeenCalledWith(
       tabActions.followNextThread(
         { type: "thread", title: "次のスレ", threadUrl: NEXT_URL },
@@ -143,7 +143,7 @@ describe("useThreadAutoRefreshActions", () => {
   it("通知の送信に失敗しても、エラーをログに残して次スレへの移動は続ける", async () => {
     const error = new Error("送信できません");
     const options = createOptions();
-    vi.mocked(options.commentOverlayController.publishSystemMessage).mockRejectedValue(error);
+    vi.mocked(publishSystemMessage).mockRejectedValue(error);
     const { result } = renderActions(options);
 
     result.current.handleFollowNextThread({ title: "次のスレ", url: NEXT_URL });

@@ -31,9 +31,12 @@ function createNavigationTab(previousPage: Tab["history"][number]): Tab {
   } as Tab;
 }
 
+// 開始関数は、テストが呼び出しを検査できるよう、作成したオプションごとに保持する。
+const startByOptions = new WeakMap<Options, ReturnType<typeof vi.fn>>();
+
 function createOptions(overrides: Partial<Options> = {}): Options {
   const start = vi.fn().mockResolvedValue(undefined);
-  return {
+  const options: Options = {
     page: createThreadPage(NEXT_URL),
     responses: RESPONSES,
     loading: false,
@@ -48,10 +51,14 @@ function createOptions(overrides: Partial<Options> = {}): Options {
     ownResNums: OWN_RES_NUMS,
     ...overrides,
   };
+  startByOptions.set(options, start);
+  return options;
 }
 
-function getStart(options: Options) {
-  return options.commentOverlayController.start as unknown as ReturnType<typeof vi.fn>;
+function getStart(options: Options): ReturnType<typeof vi.fn> {
+  const start = startByOptions.get(options);
+  if (!start) throw new Error("コメント実況の開始関数が登録されていません");
+  return start;
 }
 
 describe("useCommentOverlayHandoff", () => {

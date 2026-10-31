@@ -28,8 +28,9 @@ const EXTERNAL_URL = "https://example.org/some/page";
 const toast = { info: vi.fn(), error: vi.fn(), success: vi.fn() } as unknown as Parameters<
   typeof useOmnibarSuggestionMenuItems
 >[0]["toast"];
+const windowOpen = vi.fn();
 const viewSurface = {
-  window: { open: vi.fn() },
+  window: { open: windowOpen },
   document,
 } as unknown as Parameters<typeof useOmnibarSuggestionMenuItems>[0]["viewSurface"];
 
@@ -222,11 +223,7 @@ describe("useOmnibarSuggestionMenuItems", () => {
 
     selectItem(result.current, "open-in-browser");
 
-    expect(viewSurface.window.open).toHaveBeenCalledWith(
-      THREAD_URL,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(windowOpen).toHaveBeenCalledWith(THREAD_URL, "_blank", "noopener,noreferrer");
   });
 
   it("開いているタブがあると、ログ削除の表示は閉じる操作を含め、削除時に該当タブだけを閉じる", () => {
