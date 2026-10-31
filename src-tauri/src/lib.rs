@@ -42,10 +42,8 @@ fn create_requested_window<R: Runtime>(
   // 別窓側からさらに書き込み窓やタブ窓を開けるよう、子窓にも同じハンドラを登録する。
   let child_app = app.clone();
   let child_next_label = Arc::clone(next_label);
-  let label = format!(
-    "chlens-popup-{}",
-    next_label.fetch_add(1, Ordering::Relaxed)
-  );
+  let index = next_label.fetch_add(1, Ordering::Relaxed);
+  let label = format!("chlens-popup-{index}");
 
   let builder = WebviewWindowBuilder::new(
     app,
@@ -86,10 +84,10 @@ pub fn run() {
   // WebView2の保存先は最初のWebViewを作る前に決まるため、Builderより先に差し替える。
   let data_override = data_dir::prepare_override().expect("E2E用の保存先を作成できませんでした");
 
-  #[cfg_attr(not(feature = "e2e"), allow(unused_mut))]
-  let mut context = tauri::generate_context!();
   #[cfg(feature = "e2e")]
-  e2e_cdp::apply(&mut context);
+  let context = e2e_cdp::apply(tauri::generate_context!());
+  #[cfg(not(feature = "e2e"))]
+  let context = tauri::generate_context!();
 
   // Overlayは起動直後から背後のMain操作を受け取れるよう、native側で常時クリック透過にする。
   tauri::Builder::default()

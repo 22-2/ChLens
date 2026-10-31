@@ -98,8 +98,11 @@ fn create_client(state: &WriteTransportState, site: &str) -> Result<Client, Stri
 }
 
 fn add_header(headers: &mut HeaderMap, name: reqwest::header::HeaderName, value: &str) {
-  if let Ok(header_value) = HeaderValue::from_str(value) {
-    headers.insert(name, header_value);
+  match HeaderValue::from_str(value) {
+    Ok(header_value) => {
+      headers.insert(name, header_value);
+    }
+    Err(error) => log::warn!("書き込み用ヘッダー {name} を設定できませんでした: {error}"),
   }
 }
 
@@ -127,18 +130,15 @@ fn build_headers(action: &Url, referer: &str, user_agent: Option<&str>) -> Heade
   } else {
     referer
   };
-  if HeaderValue::from_str(referer).is_ok() {
-    headers.insert(
-      REFERER,
-      HeaderValue::from_str(referer).expect("Refererを検証済みです"),
-    );
-  } else {
-    headers.insert(
-      REFERER,
-      HeaderValue::from_str(fallback_referer).expect("URL由来のRefererは有効です"),
-    );
-    log::warn!("書き込み用RefererにHTTPヘッダーとして使えない文字が含まれていました");
-  }
+  // 変更理由: 壊れたRefererでも投稿全体は止めず、URL由来の値で代える（User-Agentと同じ扱い）。
+  let referer_value = match HeaderValue::from_str(referer) {
+    Ok(value) => value,
+    Err(_) => {
+      log::warn!("書き込み用RefererにHTTPヘッダーとして使えない文字が含まれていました");
+      HeaderValue::from_str(fallback_referer).expect("URL由来のRefererは有効です")
+    }
+  };
+  headers.insert(REFERER, referer_value);
 
   headers
 }
@@ -247,7 +247,7 @@ async fn write_request_inner(
 ) -> Result<WriteResponse, String> {
   let action = parse_http_url(&request.action, "書き込み先URL")?;
   let site = site_key(&action, "書き込み先URL")?;
-  let client = get_or_create_client(&state, &site)?;
+  let client = get_or_create_client(state, &site)?;
 
   if let Some(bootstrap_url) = request.bootstrap_url.as_deref() {
     match parse_http_url(bootstrap_url, "書き込み前のCookie取得URL") {

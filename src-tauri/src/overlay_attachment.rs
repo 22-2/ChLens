@@ -40,9 +40,20 @@ pub struct AttachmentWindow {
   process_path: Option<String>,
 }
 
+/// 窓の拡張スタイルに指定した属性が付いているかを返す。
+#[cfg(windows)]
+fn has_extended_style(hwnd: windows_sys::Win32::Foundation::HWND, style: u32) -> bool {
+  use windows_sys::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, GWL_EXSTYLE};
+  // SAFETY: GetWindowLongPtrWは拡張スタイルを読むだけで、無効なHWNDでは0を返す。
+  let extended = unsafe { GetWindowLongPtrW(hwnd, GWL_EXSTYLE) };
+  (extended & style as isize) != 0
+}
+
 #[cfg(windows)]
 fn process_path(pid: u32) -> Option<String> {
   use windows_sys::Win32::{Foundation::CloseHandle, System::Threading::*};
+  // SAFETY: OpenProcessで得たハンドルは成功時だけ使い、どの経路でもCloseHandleで閉じる。
+  // pathは長さ分の領域を持ち、QueryFullProcessImageNameWには書き込み上限としてその長さを渡す。
   unsafe {
     let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
     if process.is_null() {
@@ -119,6 +130,8 @@ fn raise_above_target(app: &tauri::AppHandle, id: &str) -> Result<(), String> {
     .hwnd()
     .map_err(|error| error.to_string())?
     .0 as HWND;
+  // SAFETY: Win32のHWND引数は無効になっていても失敗を返すだけで、メモリを読み書きしない。
+  // pidは呼び出し中のローカル変数を指し、所有プロセスの照合は下の判定で行う。
   unsafe {
     let mut pid = 0;
     GetWindowThreadProcessId(target, &mut pid);
@@ -126,7 +139,7 @@ fn raise_above_target(app: &tauri::AppHandle, id: &str) -> Result<(), String> {
       return Err("追従先が閉じられました。ウィンドウを選び直してください。".into());
     }
     // 最前面指定のOverlayは常に追従先より上なので、通常ウィンドウの順序へ戻さない。
-    if GetWindowLongPtrW(overlay, GWL_EXSTYLE) & WS_EX_TOPMOST as isize != 0 {
+    if has_extended_style(overlay, WS_EX_TOPMOST) {
       return Ok(());
     }
     let above_target = GetWindow(target, GW_HWNDPREV);
@@ -137,8 +150,8 @@ fn raise_above_target(app: &tauri::AppHandle, id: &str) -> Result<(), String> {
     // 変更理由: 追従先が通常ウィンドウの最上位にあると、直前のウィンドウはタスクバーなどの
     // 最前面ウィンドウになる。その直後へ挿入するとZ順が最前面の帯と食い違い、毎周期の並べ直しが
     // 収まらなくなるため、その場合は通常ウィンドウの帯の先頭（＝追従先の直上）へ置く。
-    let above_is_topmost = !above_target.is_null()
-      && GetWindowLongPtrW(above_target, GWL_EXSTYLE) & WS_EX_TOPMOST as isize != 0;
+    let above_is_topmost =
+      !above_target.is_null() && has_extended_style(above_target, WS_EX_TOPMOST);
     let insert_after = if above_target.is_null() || above_is_topmost {
       HWND_TOP
     } else {
@@ -175,18 +188,23 @@ fn list_windows() -> Result<Vec<AttachmentWindow>, String> {
   use windows_sys::Win32::{Foundation::*, UI::WindowsAndMessaging::*};
   unsafe extern "system" fn collect(hwnd: HWND, data: LPARAM) -> i32 {
     let mut pid = 0;
-    GetWindowThreadProcessId(hwnd, &mut pid);
-    let visible = IsWindowVisible(hwnd) != 0;
-    let tool_window = GetWindowLongPtrW(hwnd, GWL_EXSTYLE) & WS_EX_TOOLWINDOW as isize != 0;
-    let length = GetWindowTextLengthW(hwnd);
+    // SAFETY: EnumWindowsが渡すHWNDは列挙中だけ有効で、pidは呼び出し中のローカル変数を指す。
+    unsafe { GetWindowThreadProcessId(hwnd, &mut pid) };
+    // SAFETY: EnumWindowsが渡すHWNDの表示状態を問い合わせるだけで、メモリへは書き込まない。
+    let visible = unsafe { IsWindowVisible(hwnd) } != 0;
+    let tool_window = has_extended_style(hwnd, WS_EX_TOOLWINDOW);
+    // SAFETY: EnumWindowsが渡すHWNDのタイトル長を問い合わせるだけで、メモリへは書き込まない。
+    let length = unsafe { GetWindowTextLengthW(hwnd) };
     // 自分自身やツール窓へ追従すると操作パネルと表示領域が干渉するため除外する。
     if !is_attachable_window(visible, pid, std::process::id(), tool_window, length) {
       return 1;
     }
     let mut title = vec![0u16; length as usize + 1];
-    let copied = GetWindowTextW(hwnd, title.as_mut_ptr(), title.len() as i32);
+    // SAFETY: titleは長さlength+1の領域で、書き込み上限としてその長さ（title.len()）を渡している。
+    let copied = unsafe { GetWindowTextW(hwnd, title.as_mut_ptr(), title.len() as i32) };
     if copied > 0 {
-      let windows = &mut *(data as *mut Vec<AttachmentWindow>);
+      // SAFETY: dataはlist_windowsが渡したVecへのポインタで、EnumWindowsが戻るまで他から借用されない。
+      let windows = unsafe { &mut *(data as *mut Vec<AttachmentWindow>) };
       windows.push(AttachmentWindow {
         id: format!("{}:{pid}", hwnd as usize),
         title: String::from_utf16_lossy(&title[..copied as usize]),
@@ -196,6 +214,7 @@ fn list_windows() -> Result<Vec<AttachmentWindow>, String> {
     1
   }
   let mut windows: Vec<AttachmentWindow> = Vec::new();
+  // SAFETY: collectは同期的なEnumWindowsの中でだけ呼ばれ、windowsはその間ほかから借用されない。
   if unsafe { EnumWindows(Some(collect), &mut windows as *mut _ as isize) } == 0 {
     return Err(std::io::Error::last_os_error().to_string());
   }
@@ -210,6 +229,8 @@ fn read_target(id: &str) -> Result<Option<TargetBounds>, String> {
   };
   let (handle, process) = parse_window_identity(id)?;
   let hwnd = handle as HWND;
+  // SAFETY: HWNDはIsWindowと所有プロセスの照合を通してから矩形を読む。GetClientRectとClientToScreenの
+  // 出力先は呼び出し中のローカル変数で、無効なHWNDでは失敗を返すだけになる。
   unsafe {
     let mut pid = 0;
     GetWindowThreadProcessId(hwnd, &mut pid);

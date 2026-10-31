@@ -12,21 +12,17 @@ pub async fn capture_comment_overlay_monitor_preview(
     let monitors = app
       .available_monitors()
       .map_err(|error| error.to_string())?;
+    let requested = ScreenRect {
+      x,
+      y,
+      width,
+      height,
+    };
     // フロントエンドの座標を任意領域の撮影へ流用せず、現在の実ディスプレイと照合する。
-    if !monitors.iter().any(|monitor| {
-      let position = monitor.position();
-      let size = monitor.size();
-      monitor_matches_bounds(
-        position.x,
-        position.y,
-        size.width,
-        size.height,
-        x,
-        y,
-        width,
-        height,
-      )
-    }) {
+    if !monitors
+      .iter()
+      .any(|monitor| monitor_matches_bounds(ScreenRect::from_monitor(monitor), requested))
+    {
       return Err("撮影対象のディスプレイが見つかりません。パネルを開き直してください。".into());
     }
     // GDIの撮影と変換をUIスレッドから外し、1回分の縮小フレームだけをIPCへ渡す。
@@ -74,6 +70,7 @@ fn set_capture_excluded(app: &tauri::AppHandle, excluded: bool) -> Result<(), St
   } else {
     WDA_NONE
   };
+  // SAFETY: HWNDは直前にTauriから取得したもので、無効になっていればWin32が失敗を返すだけでメモリは触らない。
   if unsafe { SetWindowDisplayAffinity(hwnd, affinity) } == 0 {
     return Err(std::io::Error::last_os_error().to_string());
   }
@@ -100,6 +97,8 @@ fn capture(x: i32, y: i32, width: u32, height: u32) -> Result<Vec<u8>, String> {
   impl Drop for CaptureResources {
     fn drop(&mut self) {
       // エラーによる早期returnでも選択を戻してGDIリソースを解放し、更新の繰り返しで枯渇させない。
+      // SAFETY: 各ハンドルは取得に成功したものだけが入り、ヌルのものは解放しない。
+      // ビットマップはメモリDCから外してから削除しないと解放できないため、順番を守る。
       unsafe {
         if !self.previous.is_null() {
           SelectObject(self.memory, self.previous);
@@ -119,6 +118,8 @@ fn capture(x: i32, y: i32, width: u32, height: u32) -> Result<Vec<u8>, String> {
 
   let (preview_width, preview_height) = preview_dimensions(width, height)?;
   // 長辺512pxへ直接縮小し、4K画面のフルサイズ画像を保持・転送しない。
+  // SAFETY: 画面DCとメモリDCは取得直後にCaptureResourcesが所有する。pixelsは幅・高さ・32bppで作った
+  // DIBの先頭で、選択中のビットマップが解放されない間だけ有効。長さはその画素数×4バイトに一致する。
   let frame = unsafe {
     let mut resources = CaptureResources {
       screen: GetDC(null_mut()),
@@ -209,20 +210,31 @@ fn capture(x: i32, y: i32, width: u32, height: u32) -> Result<Vec<u8>, String> {
   Ok(frame)
 }
 
-fn monitor_matches_bounds(
-  monitor_x: i32,
-  monitor_y: i32,
-  monitor_width: u32,
-  monitor_height: u32,
-  requested_x: i32,
-  requested_y: i32,
-  requested_width: u32,
-  requested_height: u32,
-) -> bool {
-  monitor_x == requested_x
-    && monitor_y == requested_y
-    && monitor_width == requested_width
-    && monitor_height == requested_height
+/// 画面上の矩形（物理ピクセル）。実ディスプレイと要求された撮影範囲を同じ型で比べる。
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ScreenRect {
+  x: i32,
+  y: i32,
+  width: u32,
+  height: u32,
+}
+
+impl ScreenRect {
+  fn from_monitor(monitor: &tauri::Monitor) -> Self {
+    let position = monitor.position();
+    let size = monitor.size();
+    Self {
+      x: position.x,
+      y: position.y,
+      width: size.width,
+      height: size.height,
+    }
+  }
+}
+
+/// 要求された撮影範囲が実ディスプレイと完全に一致するかを返す。許容誤差は設けない。
+fn monitor_matches_bounds(monitor: ScreenRect, requested: ScreenRect) -> bool {
+  monitor == requested
 }
 
 #[cfg(test)]

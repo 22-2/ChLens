@@ -1,0 +1,2 @@
+# 既存コードと .editorconfig（indent_size = 2）に合わせ、インデントは2スペースにする。
+tab_spaces = 2
