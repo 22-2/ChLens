@@ -2,7 +2,22 @@ import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vite-plus";
 
+import type { ChlensBuildInfo } from "./src/app/build-info";
+
+// 変更理由: 本番のビルド情報は vite.config.ts が注入する。テストではgitの状態や時刻に依らない固定値にする。
+const TEST_BUILD_INFO: ChlensBuildInfo = {
+  version: "0.0.0-test",
+  buildTime: "2026-01-02T03:04:05.000Z",
+  gitHash: "testhash",
+  author: "テスト作者",
+  license: "MIT",
+  repositoryUrl: "https://example.com/chlens",
+};
+
 export default defineConfig({
+  define: {
+    __CHLENS_BUILD_INFO__: JSON.stringify(TEST_BUILD_INFO),
+  },
   resolve: {
     alias: {
       // 本番と同じ内部ESMの解決先を使い、カバレッジ対象の遅延読込モジュールも解析する。

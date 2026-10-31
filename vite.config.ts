@@ -1,8 +1,50 @@
 import react from "@vitejs/plugin-react";
+import { execFileSync } from "child_process";
 import { build as esbuildBuild } from "esbuild";
 import fs from "fs-extra";
 import path from "path";
 import { defineConfig, lazyPlugins, Plugin } from "vite-plus";
+
+import type { ChlensBuildInfo } from "./src/app/build-info";
+
+// ─── build info ─────────────────────────────────────────────────────────────
+
+interface PackageMetadata {
+  version: string;
+  author: string;
+  license: string;
+  repository: { url: string };
+}
+
+// 変更理由: 「ChLensについて」で、配布物がどの版・どのコミットから作られたかを示すため、ビルド時に読む。
+function readGitHash(): string {
+  try {
+    return execFileSync("git", ["rev-parse", "--short", "HEAD"], {
+      cwd: __dirname,
+      encoding: "utf8",
+    }).trim();
+  } catch (error) {
+    // 変更理由: 配布元のアーカイブなど git が無い環境でもビルドは止めず、理由をログに残して unknown とする。
+    console.warn(
+      "[build-info] git のコミットハッシュを取得できなかったため unknown にします",
+      error,
+    );
+    return "unknown";
+  }
+}
+
+function resolveBuildInfo(): ChlensBuildInfo {
+  const pkg = fs.readJsonSync(path.resolve(__dirname, "package.json")) as PackageMetadata;
+  return {
+    version: pkg.version,
+    buildTime: new Date().toISOString(),
+    gitHash: readGitHash(),
+    author: pkg.author,
+    license: pkg.license,
+    // package.json の repository.url は `.git` 付きのため、ブラウザで開ける形に直す。
+    repositoryUrl: pkg.repository.url.replace(/\.git$/, ""),
+  };
+}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -588,6 +630,8 @@ export default defineConfig(async ({ mode, command }) => {
       "process.env.NODE_ENV": JSON.stringify(mode),
       // 本番のChrome/FirefoxビルドではTauri専用の動的importを除去し、開発・テストでは実行時判定を保つ。
       __CHLENS_TAURI_BUILD__: JSON.stringify(command !== "build" || platform === "tauri"),
+      // 変更理由: ビルド時刻・ハッシュはビルドごとに決まるため、ソースではなく注入で渡す（src/app/build-info.ts）。
+      __CHLENS_BUILD_INFO__: JSON.stringify(resolveBuildInfo()),
     },
     plugins: lazyPlugins(() => [
       react(),
