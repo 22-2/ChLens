@@ -140,9 +140,9 @@
   - 既定のインスタンス: `app.ts` だけが使っていた `ThreadService`・`BoardService`・`ImageReplaceDat` のものを削除し、委譲だけのファサードだった `BBSMenu.ts` はファイルごと削除した。`NG`・`ReplaceStrTxt`・`BoardTitleSolver` のものは、サービスコンテナのセットアップが使っているため残した。
 - Phase 3 の lint（`WINDOW_APP_OWNERS`）は、`window.app` を作り直さないための見張りとして残した。
 - 大きさ: Chrome の `browser.js` が約 25KB（2,244KB → 2,219KB）、Tauri の `browser.js` も約 25KB 減った。`overlay.js`・`replay.js` は変わらない。外れたモジュールに、読み込むだけで動く処理（リスナーの登録など）がないことを確かめた。
-- 範囲外として残したもの（提案。どこからも使われなくなった、またはもともと使われていなかったモジュール）:
-  - `app.ts` の再エクスポートだけが参照していたもの: `src/app/$Q.ts`・`src/app/BrowserDetect.ts`・`src/app/ImageExt.ts`・`src/core/thread/SikiGuard.ts`・`src/core/thread/ThreadSearch.ts`・`src/core/util/Util.ts`・`src/core/thread/ImageReplaceDat.ts`（画像置換の設定 `image_replace_dat` を読む処理も画面から呼ばれていない）。
-  - jsutil だけが参照していたもの: `src/core/board/next-thread-candidates.ts`、`src/core/thread/anchor.ts`、`src/core/util/date-convert.ts`・`string-normalize.ts`・`char-reference.ts`（`ThreadSearch` と `next-thread-candidates` からの参照を除く）。いずれもテストだけが使っている。
+- 範囲外として残していたもの（提案。どこからも使われなくなった、またはもともと使われていなかったモジュール）。2026-10-31 に、「window.app はいらない」という判断を受けて削除した（`2cf74331`）:
+  - `app.ts` の再エクスポートだけが参照していたもの: `src/app/$Q.ts`・`src/app/BrowserDetect.ts`・`src/app/ImageExt.ts`・`src/core/thread/SikiGuard.ts`・`src/core/util/Util.ts`・`src/core/thread/ImageReplaceDat.ts`（画像置換の設定 `image_replace_dat` を読む処理も画面から呼ばれていなかった）。`ThreadSearch.ts` は既に無かった。
+  - jsutil だけが参照していたもの: `src/core/board/next-thread-candidates.ts`、`src/core/thread/anchor.ts`、`src/core/util/date-convert.ts`・`string-normalize.ts`・`char-reference.ts`。いずれもテストだけが使っていた。
   - `OpenedBoards` の既定のインスタンス（画面はサービスコンテナの `openedBoards` へ移っており、テストだけが使っている）。
 
 ### Phase 5（任意）: サービスコンテナのグローバルを見直す
@@ -158,8 +158,8 @@
 ## 5. 判断が必要な点
 
 - Phase 2 の「準備完了を待つ」約束を、`container.bookmark` に足すか、別のサービスにするか。
-- Phase 4 で、リポジトリの外の利用者（ユーザースクリプトなど）をどう確かめるか。告知期間を設けるか。
-- `window.app` を残す場合、どの名前を正式な公開 API として扱うか。
+- 決定（2026-10-31）: Phase 4 の問いは、「`window.app` はいらない」というプロジェクトの判断で閉じた。外の利用者への告知期間は設けず、`window.app` は今後も作らない。
+- 決定（2026-10-31）: `window.app` を残さないので、正式な公開 API として扱う名前はない。
 
 ## 6. 検証
 
