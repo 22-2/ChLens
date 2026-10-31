@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { collectEnvironmentInfo, formatEnvironmentInfo } from "src/app/debug/environment-info";
 import {
   clearPersistedLogs,
   flushPersistedLogs,
@@ -56,10 +57,13 @@ export function DebugLogPanel() {
   }, [reload]);
 
   // コピーと保存は、画面の100件ではなく保存済みの全件を対象にする。
+  // 変更理由: 不具合報告では、ログと一緒に実行環境も取り出せるよう、末尾へ環境情報を付ける。
+  // 画面の表示には付けず、貼り付けに使うコピーと保存だけに含める。
   const readAllText = useCallback(async (): Promise<string> => {
     await flushPersistedLogs();
     const all = await readPersistedLogs({ limit: MAX_PERSISTED_ENTRIES });
-    return all.map(formatPersistedLog).join("\n");
+    const logText = all.map(formatPersistedLog).join("\n");
+    return [logText, formatEnvironmentInfo(collectEnvironmentInfo())].filter(Boolean).join("\n\n");
   }, []);
 
   const handleCopy = useCallback(async () => {
@@ -115,7 +119,7 @@ export function DebugLogPanel() {
       <SettingRow
         htmlFor="settings-debug-log-entries"
         label={`直近${VISIBLE_ENTRY_COUNT}件`}
-        description="コピーと保存では、保存済みのすべてのログを取り出します。"
+        description="コピーと保存では、保存済みのすべてのログと、末尾の実行環境の情報を取り出します。"
         layout="stacked"
       >
         <textarea

@@ -75,6 +75,21 @@ describe("DebugLogPanel", () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith("デバッグログをコピーしました");
   });
 
+  it("すべてコピーでは、ログの後ろに実行環境の情報を付ける", async () => {
+    render(<DebugLogPanel />);
+    await screen.findByLabelText("デバッグログ（直近）");
+
+    fireEvent.click(screen.getByRole("button", { name: "すべてコピー" }));
+
+    await waitFor(() => expect(mocks.copyText).toHaveBeenCalledOnce());
+    const [copied] = mocks.copyText.mock.calls[0] as [string];
+    expect(copied.indexOf("保存に失敗しました")).toBeLessThan(
+      copied.indexOf("--- ChLens 環境情報 ---"),
+    );
+    expect(copied).toContain("バージョン: ");
+    expect(copied.endsWith("---")).toBe(true);
+  });
+
   it("確認を承諾したときだけログを削除する", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false);
     render(<DebugLogPanel />);
