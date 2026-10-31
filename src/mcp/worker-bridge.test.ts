@@ -46,6 +46,8 @@ vi.mock("./worker-runtime", () => ({
 const REGISTER_PATH = "/v1/register";
 const POLL_PATH = "/v1/poll";
 const THREAD_URL = "https://example.com/test/read.cgi/board/1000000001/";
+/** Chrome のアラームの最短の周期（30秒）。テストでは、この周期で起床させる。 */
+const ALARM_PERIOD_MS = 30_000;
 
 const relay = { online: false };
 
@@ -107,13 +109,22 @@ function fireAlarm(): void {
   }
 }
 
+/** アラームの起床を、指定した回数だけ進める。 */
+async function passAlarmTicks(count: number): Promise<void> {
+  for (let tick = 0; tick < count; tick += 1) {
+    await vi.advanceTimersByTimeAsync(ALARM_PERIOD_MS);
+    fireAlarm();
+    await vi.advanceTimersByTimeAsync(0);
+  }
+}
+
 function sendWorkerState(): void {
   for (const listener of browserMock.messageListeners) {
     listener({ type: "mcp-state", activeThreadUrl: THREAD_URL, format2chnet: null });
   }
 }
 
-describe("MCP中継の再接続の上限", () => {
+describe("MCP中継への接続", () => {
   let bridge: Bridge;
 
   beforeEach(async () => {
@@ -129,7 +140,8 @@ describe("MCP中継の再接続の上限", () => {
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("WebSocket", FakeWebSocket);
     vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    vi.spyOn(console, "debug").mockImplementation(() => {});
     bridge = await import("./worker-bridge");
   });
 
@@ -139,47 +151,53 @@ describe("MCP中継の再接続の上限", () => {
     vi.restoreAllMocks();
   });
 
-  it("接続が3回続けて失敗すると、自動の再試行を止める", async () => {
+  it("接続が3回続けて失敗しても、エラーとしては記録せず、1分ごとの確認に切り替える", async () => {
     bridge.startMcpWorker();
 
-    await vi.advanceTimersByTimeAsync(0);
-    expect(registerCalls()).toBe(1);
-    await vi.advanceTimersByTimeAsync(2_000);
-    expect(registerCalls()).toBe(2);
-    await vi.advanceTimersByTimeAsync(4_000);
-    expect(registerCalls()).toBe(3);
+    await vi.advanceTimersByTimeAsync(6_000);
 
-    await vi.advanceTimersByTimeAsync(60 * 60_000);
     expect(registerCalls()).toBe(3);
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("3回続いた"));
+    expect(console.error).not.toHaveBeenCalled();
+    expect(console.info).toHaveBeenCalledTimes(1);
+    expect(console.info).toHaveBeenCalledWith(expect.stringContaining("1分ごと"));
   });
 
-  it("止めたあとは、アラームで起きても接続も取得も試みない", async () => {
+  it("1分経つまでは、アラームで起きても接続も取得も試みない", async () => {
     bridge.startMcpWorker();
     await vi.advanceTimersByTimeAsync(6_000);
     expect(registerCalls()).toBe(3);
 
-    fireAlarm();
-    await vi.advanceTimersByTimeAsync(0);
-
+    await passAlarmTicks(1);
     expect(registerCalls()).toBe(3);
     expect(pollCalls()).toBe(0);
+
+    await passAlarmTicks(1);
+    expect(registerCalls()).toBe(4);
   });
 
-  it("利用者がスレッドを開くと、止めていた再試行を再開し、再び3回で止まる", async () => {
+  it("中継が見つからない間は、1分ごとに確認を続け、エラーは記録しない", async () => {
+    bridge.startMcpWorker();
+    await vi.advanceTimersByTimeAsync(6_000);
+
+    // 6秒の時点から20回（10分）のアラーム起床で、1分ごとに確認する。
+    await passAlarmTicks(20);
+
+    expect(registerCalls()).toBe(13);
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  it("利用者がスレッドを開くと、1分を待たずにすぐ確認する", async () => {
     bridge.startMcpWorker();
     await vi.advanceTimersByTimeAsync(6_000);
     expect(registerCalls()).toBe(3);
 
     sendWorkerState();
     await vi.advanceTimersByTimeAsync(0);
-    expect(registerCalls()).toBe(4);
 
-    await vi.advanceTimersByTimeAsync(60 * 60_000);
-    expect(registerCalls()).toBe(6);
+    expect(registerCalls()).toBe(4);
   });
 
-  it("拡張機能の起動時は、止めていた再試行を最初からやり直す", async () => {
+  it("拡張機能の起動時は、待機中でも最初からやり直す", async () => {
     bridge.startMcpWorker();
     await vi.advanceTimersByTimeAsync(6_000);
     expect(registerCalls()).toBe(3);
@@ -188,6 +206,22 @@ describe("MCP中継の再接続の上限", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(registerCalls()).toBe(4);
+  });
+
+  it("中継が見つかると次の確認で接続し、接続したことを一度だけ知らせる", async () => {
+    bridge.startMcpWorker();
+    await vi.advanceTimersByTimeAsync(6_000);
+    expect(console.info).toHaveBeenCalledTimes(1);
+
+    // 中継を起動した後、次の確認（1分後）で接続が確立する。
+    relay.online = true;
+    await passAlarmTicks(2);
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    FakeWebSocket.instances[0]!.open();
+    expect(console.info).toHaveBeenCalledTimes(2);
+    expect(console.info).toHaveBeenLastCalledWith(expect.stringContaining("接続しました"));
+    expect(console.error).not.toHaveBeenCalled();
   });
 
   it("接続できたあとは、失敗の数を数え直す", async () => {
@@ -202,10 +236,13 @@ describe("MCP中継の再接続の上限", () => {
     expect(FakeWebSocket.instances).toHaveLength(1);
     FakeWebSocket.instances[0]!.open();
 
-    // 接続後に切れ、中継がまた落ちたら、失敗の数は0からなので、さらに3回は試みる。
+    // 接続後に切れ、中継がまた落ちたら、失敗の数は0からなので、数秒おきに3回は試みてから待機する。
     relay.online = false;
     FakeWebSocket.instances[0]!.drop();
-    await vi.advanceTimersByTimeAsync(60 * 60_000);
+    await vi.advanceTimersByTimeAsync(14_000);
+    expect(registerCalls()).toBe(6);
+
+    await vi.advanceTimersByTimeAsync(30_000);
     expect(registerCalls()).toBe(6);
   });
 

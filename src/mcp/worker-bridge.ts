@@ -16,9 +16,10 @@ const HTTP_TIMEOUT_MS = 25_000;
 const HTTP_RETRY_ALARM_MINUTES = 0.5;
 const INITIAL_RECONNECT_DELAY_MS = 2_000;
 const MAX_RECONNECT_DELAY_MS = 15_000;
-// 変更理由: MCPサーバーが起動していないと、再接続とアラームによる取得が止まらず、通信とログを
-// 使い続けてしまう。接続の試みが連続して3回失敗したら自動の再試行を止め、利用者の操作で再開する。
-const MAX_CONSECUTIVE_CONNECTION_FAILURES = 3;
+// 変更理由: MCPサーバーが起動していないのは想定どおりの状態なので、エラーとしては出さない。
+// 起動直後は数回だけ素早く繋ぎ、見つからない間は一分ごとに静かに確認する。
+const QUICK_CONNECTION_ATTEMPTS = 3;
+const WAITING_RECONNECT_INTERVAL_MS = 60_000;
 const KEEPALIVE_INTERVAL_MS = 20_000;
 const WS_CONNECT_TIMEOUT_MS = 10_000;
 const CONNECTION_LOG_INTERVAL_MS = 30_000;
@@ -47,15 +48,21 @@ let connectInFlight: Promise<void> | null = null;
 let lastConnectionErrorAt = 0;
 let reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
 let consecutiveConnectionFailures = 0;
-let retrySuspended = false;
+// 中継が見つからない間は、この時刻より前には接続も取得も試みない。
+let nextAttemptAt = 0;
+let waitingForServer = false;
 
 function logConnectionError(message: string, error: unknown): void {
   const now = Date.now();
-  // 変更理由: MCPサーバー未起動時はアラームと再接続が継続するため、毎回の接続失敗を
-  // errorログへ出すと通常利用のログを埋めてしまう。詳細は保持しつつ30秒に一度へ制限する。
+  // 変更理由: 想定外の失敗を記録する。詳細は保持しつつ30秒に一度へ制限する。
   if (now - lastConnectionErrorAt < CONNECTION_LOG_INTERVAL_MS) return;
   lastConnectionErrorAt = now;
   console.error(`[ChLens MCP] ${message}:`, error);
+}
+
+/** MCPサーバーが起動していない間の失敗は想定どおりなので、エラーではなく詳細ログとして残す。 */
+function logConnectionAttemptFailure(message: string, error: unknown): void {
+  console.debug(`[ChLens MCP] ${message}:`, error);
 }
 
 function isWorkerStateMessage(value: unknown): value is WorkerStateMessage {
@@ -71,7 +78,7 @@ function clearKeepalive(): void {
 }
 
 function scheduleReconnect(): void {
-  if (retrySuspended || reconnectTimer !== undefined) return;
+  if (reconnectTimer !== undefined) return;
   const delay = reconnectDelayMs;
   reconnectDelayMs = Math.min(MAX_RECONNECT_DELAY_MS, reconnectDelayMs * 2);
   reconnectTimer = setTimeout(() => {
@@ -84,28 +91,35 @@ function resetReconnectDelay(): void {
   reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
 }
 
-/** 接続の試みが失敗したことを数え、上限に達したら自動の再試行を止める。 */
+/**
+ * 接続の試みが失敗したことを数える。
+ * 最初の数回は数秒おきに試し、見つからなければ一分ごとの確認に切り替える。
+ */
 function recordConnectionFailure(): void {
   consecutiveConnectionFailures += 1;
-  if (consecutiveConnectionFailures < MAX_CONSECUTIVE_CONNECTION_FAILURES) {
+  if (consecutiveConnectionFailures < QUICK_CONNECTION_ATTEMPTS) {
     scheduleReconnect();
     return;
   }
-  retrySuspended = true;
+  // 数秒おきのタイマーは、休止したサービスワーカーでは止まる。一分ごとの確認は、
+  // 起床の合図になるアラームに任せる。
+  nextAttemptAt = Date.now() + WAITING_RECONNECT_INTERVAL_MS;
   if (reconnectTimer !== undefined) {
     clearTimeout(reconnectTimer);
     reconnectTimer = undefined;
   }
-  console.warn(
-    `[ChLens MCP] 接続の失敗が${MAX_CONSECUTIVE_CONNECTION_FAILURES}回続いたため、自動の再試行を止めました。` +
-      "MCPを使うスレッドを開くと再開します。",
-  );
+  if (!waitingForServer) {
+    waitingForServer = true;
+    console.info(
+      "[ChLens MCP] MCPサーバーが見つからないため、1分ごとに接続を確認します。MCPを使うスレッドを開くと、すぐに確認します。",
+    );
+  }
 }
 
 /** 接続できたら、失敗の数と再接続の間隔を初めからにする。 */
 function resetConnectionFailures(): void {
   consecutiveConnectionFailures = 0;
-  retrySuspended = false;
+  nextAttemptAt = 0;
   resetReconnectDelay();
 }
 
@@ -115,9 +129,9 @@ function resumeConnection(): void {
   void connectWebSocket();
 }
 
-/** 止めていた再試行を、利用者の操作（MCPを使うスレッドを開くなど）を合図に再開する。 */
-function resumeConnectionIfSuspended(): void {
-  if (!retrySuspended) return;
+/** 見つからない間に利用者の操作（MCPを使うスレッドを開くなど）があったら、待たずに確認する。 */
+function resumeConnectionIfWaiting(): void {
+  if (!waitingForServer) return;
   resumeConnection();
 }
 
@@ -213,7 +227,7 @@ async function connectWebSocketOnce(): Promise<void> {
   try {
     clientId = await registerClient();
   } catch (error: unknown) {
-    logConnectionError("MCP中継のクライアント登録に失敗しました", error);
+    logConnectionAttemptFailure("MCP中継のクライアント登録に失敗しました", error);
     recordConnectionFailure();
     return;
   }
@@ -223,7 +237,7 @@ async function connectWebSocketOnce(): Promise<void> {
     try {
       socket = new WebSocket(`${MCP_BRIDGE_WS_URL}?clientId=${encodeURIComponent(clientId)}`);
     } catch (error: unknown) {
-      logConnectionError("WebSocket接続の開始に失敗しました", error);
+      logConnectionAttemptFailure("WebSocket接続の開始に失敗しました", error);
       recordConnectionFailure();
       resolve();
       return;
@@ -255,6 +269,10 @@ async function connectWebSocketOnce(): Promise<void> {
     }, WS_CONNECT_TIMEOUT_MS);
     socket.onopen = () => {
       opened = true;
+      if (waitingForServer) {
+        waitingForServer = false;
+        console.info("[ChLens MCP] MCPサーバーに接続しました。");
+      }
       resetConnectionFailures();
       startKeepalive(socket);
       settle();
@@ -293,9 +311,9 @@ async function pollHttpOnce(): Promise<void> {
       response,
     });
   } catch (error: unknown) {
-    logConnectionError("MCP中継へのHTTP接続に失敗しました", error);
+    logConnectionAttemptFailure("MCP中継へのHTTP接続に失敗しました", error);
     recordConnectionFailure();
-    // アラームで再試行する。サーバー未起動時も処理を止めず、上限に達するまで次の起床で復旧を試みる。
+    // アラームで再試行する。サーバー未起動時も処理を止めず、次の確認で復旧を試みる。
   } finally {
     httpPollInFlight = false;
   }
@@ -314,11 +332,10 @@ async function ensureAlarm(): Promise<void> {
 
 async function onAlarm(alarm: browser.Alarms.Alarm): Promise<void> {
   if (alarm.name !== MCP_BRIDGE_ALARM_NAME) return;
-  // 再試行を止めている間は、アラームで起きても接続も取得も試みない。
-  if (retrySuspended) return;
+  // 見つからない間は、決めた間隔が過ぎるまで起床しても接続も取得も試みない。
+  if (Date.now() < nextAttemptAt) return;
   await connectWebSocket();
-  // 接続の試みで上限に達したら、同じ起床で取得を重ねて試みない。
-  if (!retrySuspended) await pollHttpOnce();
+  if (Date.now() >= nextAttemptAt) await pollHttpOnce();
 }
 
 export function startMcpWorker(): void {
@@ -339,8 +356,8 @@ export function startMcpWorker(): void {
   });
   browser.runtime.onMessage.addListener((message: unknown) => {
     if (!isWorkerStateMessage(message)) return;
-    // 利用者がMCPを使うスレッドを開いたときは、止めていた再試行を再開する。
-    resumeConnectionIfSuspended();
+    // 利用者がMCPを使うスレッドを開いたときは、見つからない間でも待たずに確認する。
+    resumeConnectionIfWaiting();
     void persistWorkerState(message.activeThreadUrl ?? null, message.format2chnet ?? null).catch(
       (error: unknown) => {
         console.error("[ChLens MCP] 現在スレッド情報の保存に失敗しました:", error);
