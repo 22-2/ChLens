@@ -1,11 +1,12 @@
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
+import { getAutoRefreshPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { createPane, createTabFromPage } from "src/view/browser/state/tabs/tab-store-new-tab";
 import { tabReducer } from "src/view/browser/state/tabs/tab-store-reducer";
 import type { TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
 import type { Page, Pane, Tab } from "src/view/browser/types";
 import { createBoardPage } from "src/view/browser/utils/tab-pages";
-import { describe, expect, it } from "vite-plus/test";
+import { beforeEach, describe, expect, it } from "vite-plus/test";
 
 const BOARD_URL = "https://mevius.5ch.io/livegalileo/";
 
@@ -390,6 +391,110 @@ describe("タブのペイン間移動", () => {
     expect(next.panes[1]!.tabs.map((tab) => tab.id)).toEqual([moving.id, target.id]);
     expect(next.panes[0]!.tabs.map((tab) => tab.id)).toEqual([stay.id]);
     expect(next.activePaneId).toBe(split.panes[1]!.id);
+  });
+});
+
+describe("次スレ待機の状態", () => {
+  let firstPageKey: string;
+  let secondPageKey: string;
+
+  beforeEach(() => {
+    // ページ種別はテストごとに登録されるため、自動更新のページキーは各テストの前に求める。
+    firstPageKey = getAutoRefreshPageKey(thread(1))!;
+    secondPageKey = getAutoRefreshPageKey(thread(2))!;
+    // キーが取れないと null同士の比較で誤って通るため、先に確かめる。
+    expect(firstPageKey).toEqual(expect.any(String));
+    expect(secondPageKey).toEqual(expect.any(String));
+  });
+
+  /** 自動更新がONのスレ1のタブを作る。 */
+  function createAutoRefreshingState(): TabStoreState {
+    const tab = createTabWithHistory([thread(1)]);
+    return createState([{ ...tab, autoRefreshEnabled: true, autoRefreshPageKey: firstPageKey }]);
+  }
+
+  /** 自動更新中のスレ1を、次スレ待機へ移した状態を作る。 */
+  function createWaitingState(): TabStoreState {
+    return tabReducer(createAutoRefreshingState(), tabActions.startNextThreadWait(firstPageKey));
+  }
+
+  it("自動更新中に待機を始めると、自動更新のONを外して待機として記録する", () => {
+    const next = tabReducer(
+      createAutoRefreshingState(),
+      tabActions.startNextThreadWait(firstPageKey),
+    );
+
+    expect(activeTabOf(next).autoRefreshEnabled).toBe(false);
+    expect(activeTabOf(next).autoRefreshPageKey).toBeNull();
+    expect(activeTabOf(next).nextThreadWaitPageKey).toBe(firstPageKey);
+  });
+
+  it("自動更新がOFFのタブでは、待機を始めない", () => {
+    const state = createState([createTabWithHistory([thread(1)])]);
+
+    const next = tabReducer(state, tabActions.startNextThreadWait(firstPageKey));
+
+    expect(activeTabOf(next).nextThreadWaitPageKey).toBeNull();
+  });
+
+  it("自動更新が別のページに結び付いているときは、待機を始めない", () => {
+    const next = tabReducer(
+      createAutoRefreshingState(),
+      tabActions.startNextThreadWait(secondPageKey),
+    );
+
+    expect(activeTabOf(next).autoRefreshEnabled).toBe(true);
+    expect(activeTabOf(next).nextThreadWaitPageKey).toBeNull();
+  });
+
+  it("待機中のONは無視し、待機の状態を保つ", () => {
+    const next = tabReducer(
+      createWaitingState(),
+      tabActions.setAutoRefreshEnabled(true, firstPageKey),
+    );
+
+    expect(activeTabOf(next).autoRefreshEnabled).toBe(false);
+    expect(activeTabOf(next).nextThreadWaitPageKey).toBe(firstPageKey);
+  });
+
+  it("待機中のOFFは待機を取り消し、同じスレでは自動更新を再開できない停止記録を付ける", () => {
+    const cancelled = tabReducer(
+      createWaitingState(),
+      tabActions.setAutoRefreshEnabled(false, firstPageKey),
+    );
+    const reopened = tabReducer(cancelled, tabActions.setAutoRefreshEnabled(true, firstPageKey));
+
+    expect(activeTabOf(cancelled).nextThreadWaitPageKey).toBeNull();
+    expect(activeTabOf(cancelled).autoRefreshStoppedPageKey).toBe(firstPageKey);
+    expect(activeTabOf(reopened).autoRefreshEnabled).toBe(false);
+  });
+
+  it("停止記録を付けると、待機も終わる", () => {
+    const next = tabReducer(
+      createWaitingState(),
+      tabActions.setAutoRefreshStoppedPageKey(firstPageKey),
+    );
+
+    expect(activeTabOf(next).nextThreadWaitPageKey).toBeNull();
+    expect(activeTabOf(next).autoRefreshStoppedPageKey).toBe(firstPageKey);
+  });
+
+  it("次スレへ移動すると待機を終え、自動更新を引き継いで次のスレを追う", () => {
+    const next = tabReducer(
+      createWaitingState(),
+      tabActions.followNextThread(thread(2), { keepAutoRefresh: true }),
+    );
+
+    expect(activeTabOf(next).nextThreadWaitPageKey).toBeNull();
+    expect(activeTabOf(next).autoRefreshEnabled).toBe(true);
+    expect(activeTabOf(next).autoRefreshPageKey).toBe(secondPageKey);
+  });
+
+  it("待機中に別のページへ移動すると、待機を持ち越さない", () => {
+    const next = tabReducer(createWaitingState(), tabActions.navigate(thread(2)));
+
+    expect(activeTabOf(next).nextThreadWaitPageKey).toBeNull();
+    expect(activeTabOf(next).autoRefreshEnabled).toBe(false);
   });
 });
 

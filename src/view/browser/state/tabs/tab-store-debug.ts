@@ -17,6 +17,7 @@ interface AutoRefreshFields {
   autoRefreshEnabled: boolean;
   autoRefreshPageKey: string | null;
   autoRefreshStoppedPageKey: string | null;
+  nextThreadWaitPageKey: string | null;
 }
 
 function pickAutoRefreshFields(tab: Tab): AutoRefreshFields {
@@ -24,6 +25,7 @@ function pickAutoRefreshFields(tab: Tab): AutoRefreshFields {
     autoRefreshEnabled: tab.autoRefreshEnabled,
     autoRefreshPageKey: tab.autoRefreshPageKey,
     autoRefreshStoppedPageKey: tab.autoRefreshStoppedPageKey ?? null,
+    nextThreadWaitPageKey: tab.nextThreadWaitPageKey ?? null,
   };
 }
 
@@ -31,7 +33,8 @@ function isSameAutoRefreshFields(a: AutoRefreshFields, b: AutoRefreshFields): bo
   return (
     a.autoRefreshEnabled === b.autoRefreshEnabled &&
     a.autoRefreshPageKey === b.autoRefreshPageKey &&
-    a.autoRefreshStoppedPageKey === b.autoRefreshStoppedPageKey
+    a.autoRefreshStoppedPageKey === b.autoRefreshStoppedPageKey &&
+    a.nextThreadWaitPageKey === b.nextThreadWaitPageKey
   );
 }
 
@@ -65,13 +68,17 @@ export function recordAutoRefreshTransitions(
       !after.autoRefreshEnabled &&
       targetTabId === nextTab.id;
     if (isRejectedEnable) {
-      recordDebugEvent("auto-refresh", "停止記録があるため自動更新の開始を拒否しました", {
-        tabId: nextTab.id,
-        pageKey,
-        requestedPageKey: action.pageKey ?? null,
-        before,
-        after,
-      });
+      recordDebugEvent(
+        "auto-refresh",
+        "停止記録または次スレ待機のため自動更新の開始を拒否しました",
+        {
+          tabId: nextTab.id,
+          pageKey,
+          requestedPageKey: action.pageKey ?? null,
+          before,
+          after,
+        },
+      );
       continue;
     }
 

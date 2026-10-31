@@ -38,7 +38,7 @@ describe("自動更新状態のデバッグ記録", () => {
 
     const [entry] = queryDebugLogs({ category: "auto-refresh" });
 
-    expect(entry.message).toBe("停止記録があるため自動更新の開始を拒否しました");
+    expect(entry.message).toBe("停止記録または次スレ待機のため自動更新の開始を拒否しました");
     expect(entry.data).toMatchObject({
       pageKey,
       after: { autoRefreshEnabled: false, autoRefreshStoppedPageKey: pageKey },

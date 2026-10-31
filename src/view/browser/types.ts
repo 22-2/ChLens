@@ -161,6 +161,9 @@ export interface TabRuntimeState {
   autoRefreshPageKey: string | null;
   // dat落ち・満了・次スレ探索の期限終了を記録し、同じページの開始連打による再開を防ぐ。
   autoRefreshStoppedPageKey?: string | null;
+  // 次スレ探索の待機中を、自動更新のONとは別の状態として記録する。
+  // 待機中は autoRefreshEnabled を false にし、ステータスバーに待機として表示する。
+  nextThreadWaitPageKey?: string | null;
 }
 
 export interface Tab extends PersistedTab, TabRuntimeState {}
@@ -171,6 +174,7 @@ export function createTabRuntimeState(): TabRuntimeState {
     autoRefreshEnabled: false,
     autoRefreshPageKey: null,
     autoRefreshStoppedPageKey: null,
+    nextThreadWaitPageKey: null,
   };
 }
 

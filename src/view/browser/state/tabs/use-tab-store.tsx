@@ -370,6 +370,7 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               autoRefreshEnabled: tab.autoRefreshEnabled,
               autoRefreshPageKey: tab.autoRefreshPageKey,
               autoRefreshStoppedPageKey: tab.autoRefreshStoppedPageKey ?? null,
+              nextThreadWaitPageKey: tab.nextThreadWaitPageKey ?? null,
             })),
           })),
         };
