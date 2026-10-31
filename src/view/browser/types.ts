@@ -10,7 +10,8 @@ export type PageType =
   | "bookmarkList"
   | "historyList"
   | "writeHistoryList"
-  | "logList";
+  | "logList"
+  | "about";
 
 // スレッドの絞り込みはタブのviewStatesへ保存されるため、
 // スレッド画面だけでなくタブ状態モデルからも参照できる共通型としてここに置く。
@@ -76,6 +77,11 @@ export interface LogListPage {
   title: string;
 }
 
+export interface AboutPage {
+  type: "about";
+  title: string;
+}
+
 export type Page =
   | HomePage
   | NewTabPage
@@ -86,7 +92,8 @@ export type Page =
   | BookmarkListPage
   | HistoryListPage
   | WriteHistoryListPage
-  | LogListPage;
+  | LogListPage
+  | AboutPage;
 
 // 設定画面のセクションの種類。タブの表示状態に保存されるため、設定画面ではなくここに置く。
 export type SettingsSectionId =

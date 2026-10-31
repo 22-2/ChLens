@@ -51,6 +51,8 @@ describe("buildNavigationMenuEntries", () => {
       "open-history-list",
       "open-write-history-list",
       "open-log-list",
+      "about-separator",
+      "open-about",
     ]);
   });
 

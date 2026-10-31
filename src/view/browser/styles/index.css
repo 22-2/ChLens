@@ -33,6 +33,7 @@
 @import "./components/WheelScrollIndicator.css";
 @import "./pages/PageStatus.css";
 @import "./pages/HomeTabPage.css";
+@import "./pages/AboutPage.css";
 @import "./pages/BoardListPage.css";
 @import "./pages/settings/NGEditor.css";
 @import "./pages/settings/BookmarkDialog.css";

@@ -4,6 +4,7 @@ import {
   Command,
   Filter,
   History,
+  Info,
   List as ListIcon,
   type LucideIcon,
   PenLine,
@@ -129,6 +130,9 @@ export function buildNavigationMenuEntries({
       createQuickAccessPage("writeHistoryList"),
     ),
     quickAccessEntry("open-log-list", "ログ検索", Archive, createQuickAccessPage("logList")),
+    // アプリの情報は履歴や検索とは別の用途なので、区切りを挟んでメニューの最下段に置く。
+    { id: "about-separator", separator: true },
+    quickAccessEntry("open-about", "ChLensについて", Info, createQuickAccessPage("about")),
   );
   return entries;
 }

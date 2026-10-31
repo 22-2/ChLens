@@ -5,6 +5,7 @@
   --sys-status-operation-max-width: var(--ref-status-operation-max-width);
   --sys-status-operation-icon-size: var(--ref-status-operation-icon-size);
   --sys-home-content-max-width: var(--ref-home-content-max-width);
+  --sys-about-content-max-width: var(--ref-about-content-max-width);
   --sys-home-board-font-size: var(--ref-home-board-font-size);
   --sys-board-start-title-font-size: var(--ref-board-start-title-font-size);
   --sys-debate-card-width: var(--ref-debate-card-width);

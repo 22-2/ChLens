@@ -1,5 +1,6 @@
 import type { PageOfType, PageTypeDefinitions } from "src/view/browser/page-type-definitions";
 import {
+  AboutIcon,
   GenericPageIcon,
   HistoryIcon,
   HomeIcon,
@@ -11,7 +12,7 @@ export function createHomePage(): PageOfType<"home"> {
   return { type: "home", title: "ホーム" };
 }
 
-type CorePageType = "home" | "newTab" | "settings" | "historyList" | "logList";
+type CorePageType = "home" | "newTab" | "settings" | "historyList" | "logList" | "about";
 type CorePageDefinitions = Pick<PageTypeDefinitions, CorePageType>;
 
 /** 機能に属さない基本ページが所有する共通メタデータ。 */
@@ -51,5 +52,12 @@ export const CORE_PAGE_TYPE_DEFINITIONS: CorePageDefinitions = {
     filterable: true,
     autoRefreshable: false,
     displayLabel: "ログ検索",
+  },
+  about: {
+    icon: AboutIcon,
+    refreshable: false,
+    filterable: false,
+    autoRefreshable: false,
+    displayLabel: "ChLensについて",
   },
 };

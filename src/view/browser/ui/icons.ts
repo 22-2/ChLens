@@ -3,6 +3,7 @@
  * タブバーと設定画面などで同じ意味のアイコンがずれないよう、ここで意味ごとに名前を付けて選ぶ。
  */
 export {
+  Info as AboutIcon,
   ListTree as BoardListIcon,
   Bookmark as BookmarkIcon,
   MessageCircle as CommentOverlayIcon,

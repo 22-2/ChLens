@@ -100,6 +100,8 @@ describe("useNavigationMenuItems", () => {
       "open-history-list",
       "open-write-history-list",
       "open-log-list",
+      "about-separator",
+      "open-about",
     ]);
   });
 
@@ -175,6 +177,7 @@ describe("useNavigationMenuItems", () => {
     ["open-history-list", "historyList"],
     ["open-write-history-list", "writeHistoryList"],
     ["open-log-list", "logList"],
+    ["open-about", "about"],
   ] as const)("項目 %s の中クリックでは、新しいタブに開く", (id, pageType) => {
     const { options, result } = renderMenu();
 

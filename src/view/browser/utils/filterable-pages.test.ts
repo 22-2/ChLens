@@ -15,9 +15,12 @@ describe("フィルター対象ページ", () => {
     expect(isPageFilterable(pageType)).toBe(true);
   });
 
-  it.each(["home", "newTab", "settings"] as const)("%sではフィルターを利用できない", (pageType) => {
-    expect(isPageFilterable(pageType)).toBe(false);
-  });
+  it.each(["home", "newTab", "settings", "about"] as const)(
+    "%sではフィルターを利用できない",
+    (pageType) => {
+      expect(isPageFilterable(pageType)).toBe(false);
+    },
+  );
 });
 
 setupTestPageTypes();

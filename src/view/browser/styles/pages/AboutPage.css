@@ -1,0 +1,43 @@
+/* About Page: 配布物の情報を本文より狭い幅で、項目名と値を対応させて並べる。 */
+.about-page {
+  width: 100%;
+  min-height: 100%;
+  max-width: var(--sys-about-content-max-width);
+  margin: 0 auto;
+  padding: var(--sys-space-10) var(--sys-space-10) var(--sys-space-16);
+  box-sizing: border-box;
+}
+.about-page__title {
+  margin: 0;
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-lg);
+  font-weight: 500;
+}
+.about-page__summary {
+  margin: var(--sys-space-2) 0 0;
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+.about-page__details {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--sys-space-4) var(--sys-space-8);
+  margin: var(--sys-space-10) 0 0;
+}
+.about-page__details dt {
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+.about-page__details dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--sys-color-text);
+  overflow-wrap: anywhere;
+}
+.about-page__hash {
+  font-family: var(--sys-font-family-mono);
+}
+.about-page__link:focus-visible {
+  outline: var(--sys-border-width-thin) solid var(--sys-color-focus-ring);
+  outline-offset: var(--sys-space-1);
+}
