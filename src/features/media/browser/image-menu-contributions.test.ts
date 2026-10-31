@@ -6,7 +6,11 @@ vi.mock("src/app/logger", () => ({
   createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: loggerError }),
 }));
 
-import { addImageMenuProvider, collectImageMenuItems } from "./image-menu-contributions";
+import {
+  addImageMenuProvider,
+  collectImageMenuItems,
+  joinImageMenuGroups,
+} from "./image-menu-contributions";
 
 const context = {
   imageKey: "https://images.example.com/a.jpg",
@@ -38,5 +42,29 @@ describe("画像の右クリックメニューへの項目の追加", () => {
       removeBroken();
       removeOk();
     }
+  });
+});
+
+describe("画像の右クリックメニューのグループ", () => {
+  it("空のグループを飛ばし、残ったグループの間だけに区切り線を入れる", () => {
+    const items = joinImageMenuGroups([
+      [{ id: "a", label: "A" }],
+      [],
+      [{ id: "b", label: "B" }],
+      [],
+      [{ id: "c", label: "C" }],
+    ]);
+
+    expect(items.map(({ id, separator }) => ({ id, separator }))).toEqual([
+      { id: "a", separator: undefined },
+      { id: "image-menu-separator-1", separator: true },
+      { id: "b", separator: undefined },
+      { id: "image-menu-separator-2", separator: true },
+      { id: "c", separator: undefined },
+    ]);
+  });
+
+  it("グループがすべて空なら、項目も区切り線も出さない", () => {
+    expect(joinImageMenuGroups([[], []])).toEqual([]);
   });
 });

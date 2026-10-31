@@ -1,5 +1,5 @@
 import { platformDownloadManager } from "src/app/platform/DownloadManager";
-import { toOriginalImageUrl, toViewerImageUrl } from "src/core/util/url-media";
+import { toOriginalMediaImageUrl } from "src/core/util/url-media";
 
 export function getImageDownloadFilename(url: string): string {
   try {
@@ -16,7 +16,6 @@ export function getImageDownloadFilename(url: string): string {
 
 /** ビューアと同じ元画像を保存する。 */
 export async function saveMediaImage(rawUrl: string): Promise<void> {
-  const imageUrl = toViewerImageUrl(rawUrl) ?? rawUrl;
-  const url = toOriginalImageUrl(imageUrl) ?? imageUrl;
+  const url = toOriginalMediaImageUrl(rawUrl);
   await platformDownloadManager.save(url, getImageDownloadFilename(url));
 }

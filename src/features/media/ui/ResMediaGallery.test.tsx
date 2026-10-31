@@ -7,6 +7,7 @@ const manualImageLoadingMock = vi.hoisted(() => ({ value: false }));
 const requestMediaImageDownloadMock = vi.hoisted(() =>
   vi.fn<(key: string, url: string) => Promise<void>>(),
 );
+const copyMediaImageMock = vi.hoisted(() => vi.fn<(rawUrl: string) => Promise<void>>());
 vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
   useConfigBooleanSetting: (key: string) => ({
     value: key === "manual_image_loading" && manualImageLoadingMock.value,
@@ -19,6 +20,9 @@ vi.mock("src/view/browser/hooks/use-config-number-setting", () => ({
 vi.mock("../browser/image-download-preflight", () => ({
   allowImageWithinCurrentLimit: vi.fn(),
   requestMediaImageDownload: requestMediaImageDownloadMock,
+}));
+vi.mock("../browser/media-viewer-copy", () => ({
+  copyMediaImageWithNotice: (rawUrl: string) => copyMediaImageMock(rawUrl),
 }));
 
 import { imgurVideoResolver } from "../application/imgur-album";
@@ -165,6 +169,39 @@ describe("ResMediaGallery", () => {
     } finally {
       remove();
     }
+  });
+
+  it("読み込み済み画像の右クリックメニューは、画像URLを開く・ビューア・コピー・保存・破棄の順に並べる", async () => {
+    const imageUrl = "https://images.example.com/ordered-photo.jpg";
+    render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} onToggleImage={() => {}} />);
+    fireEvent.load(screen.getByRole("img", { name: imageUrl }));
+
+    fireEvent.contextMenu(screen.getByRole("link", { name: imageUrl }));
+
+    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
+      "画像URLを開く",
+      "新しいタブで開く",
+      "新しいウィンドウで開く",
+      "URLをコピー",
+      "追跡情報を除いてURLをコピー",
+      "ビューアで開く",
+      "画像をコピー",
+      "画像を保存",
+      "画像を破棄",
+    ]);
+  });
+
+  it("画像をコピーを選ぶと、本文のURLを元画像としてコピーに渡す", async () => {
+    copyMediaImageMock.mockReset();
+    copyMediaImageMock.mockResolvedValue(undefined);
+    const imageUrl = "https://images.example.com/copy-photo.jpg";
+    render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />);
+    fireEvent.load(screen.getByRole("img", { name: imageUrl }));
+    fireEvent.contextMenu(screen.getByRole("link", { name: imageUrl }));
+
+    fireEvent.click(await screen.findByRole("menuitem", { name: "画像をコピー" }));
+
+    expect(copyMediaImageMock).toHaveBeenCalledWith(imageUrl);
   });
 
   it("YouTube サムネイルをクリックするとレス内 iframe を開く", () => {

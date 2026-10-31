@@ -1,10 +1,10 @@
 import { Copy, Download, ExternalLink, Trash2, Undo2 } from "lucide-react";
 import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
-import { requestExternalLink } from "src/view/browser/utils/external-link";
 
-import { collectImageMenuItems } from "../browser/image-menu-contributions";
+import { collectImageMenuItems, joinImageMenuGroups } from "../browser/image-menu-contributions";
 import { useMediaImageStore } from "../browser/use-media-image-store";
 import type { MediaViewerProps } from "../browser/use-media-viewer-controller";
 import { ExternalImage } from "./ExternalImage";
@@ -55,7 +55,8 @@ export function MediaViewer({
         }}
         onClick={onOverlayClick}
         onContextMenu={(event) => {
-          openMenu(viewer.label, event, [
+          // リンクの「画像URLを開く」（共通メニュー）と同じ操作になるため、ここでは開く項目を足さない。
+          const copyItems: ContextMenuItem[] = [
             {
               id: "copy-image",
               label: "画像をコピー",
@@ -63,38 +64,32 @@ export function MediaViewer({
               disabled: isLoading || !imageIsLoaded,
               onSelect: onCopy,
             },
-            {
-              id: "open-in-browser",
-              label: "ブラウザで開く",
-              icon: <ExternalLink size={14} />,
-              // 別窓からも操作元の窓で開き、外部リンク確認の設定を維持する。
-              onSelect: () =>
-                requestExternalLink(viewer.label, {
-                  sourceWindow: surface.window,
-                  open: (url) => {
-                    surface.window.open(url, "_blank", "noopener,noreferrer");
-                  },
-                }),
-            },
-            ...(imageIsLoaded
-              ? [
-                  {
-                    id: "discard-image",
-                    label: "画像を破棄",
-                    icon: <Trash2 size={14} />,
-                    danger: true,
-                    onSelect: () => useMediaImageStore.getState().discardImage(viewer.label),
-                  },
-                ]
-              : []),
-            ...(imageIsLoaded && !isLoading && viewerImageRef.current
+          ];
+          const ngItems =
+            imageIsLoaded && !isLoading && viewerImageRef.current
               ? collectImageMenuItems({
                   imageKey: viewer.label,
                   image: viewerImageRef.current,
                   targetWindow: surface.window,
                 })
-              : []),
-          ]);
+              : [];
+          const discardItems: ContextMenuItem[] = imageIsLoaded
+            ? [
+                {
+                  id: "discard-image",
+                  label: "画像を破棄",
+                  icon: <Trash2 size={14} />,
+                  danger: true,
+                  onSelect: () => useMediaImageStore.getState().discardImage(viewer.label),
+                },
+              ]
+            : [];
+          openMenu(
+            viewer.label,
+            event,
+            joinImageMenuGroups([[...copyItems, ...ngItems], discardItems]),
+            { openLabel: "画像URLを開く" },
+          );
         }}
       >
         <div className="media-viewer__chrome" onClick={onChromeClick}>

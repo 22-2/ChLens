@@ -37,6 +37,10 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
 }));
 // 書き込み欄は書き込み機能のテストで確かめ、枠の検証では投稿処理の依存を読み込まない。
 vi.mock("src/features/write/ui/SidePanelWrite", () => ({ SidePanelWrite: () => null }));
+// 画像コピーの実装は拡張APIを読み込むため、この画面のテストでは差し替える。
+vi.mock("src/features/media/browser/media-viewer-copy", () => ({
+  copyMediaImageWithNotice: vi.fn(),
+}));
 
 describe("サイドパネル", () => {
   afterEach(() => {

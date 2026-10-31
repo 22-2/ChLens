@@ -27,6 +27,9 @@ vi.mock("src/features/media/browser/image-download-preflight", () => ({
   requestMediaImageDownload: mocks.download,
 }));
 vi.mock("src/view/browser/utils/thread-read-state", () => ({ requestThreadResJump: mocks.jump }));
+vi.mock("src/features/media/browser/media-viewer-copy", () => ({
+  copyMediaImageWithNotice: vi.fn(),
+}));
 
 const page = { type: "thread" as const, title: "スレ", threadUrl: "https://example.com/thread" };
 const imageUrl = "https://images.example.com/a.jpg";
