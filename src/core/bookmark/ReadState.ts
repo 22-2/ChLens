@@ -148,7 +148,8 @@ export const get = async (url: string): Promise<ReadStateRecord | null> => {
       target: { result },
     } = await indexedDBRequestToPromise<ReadStateRecord | null>(req);
 
-    const data = deepCopy(result);
+    // IndexedDBは未登録のキーにundefinedを返すが、戻り値の契約と Tauri 版に合わせて null にそろえる。
+    const data = deepCopy(result) ?? null;
     if (data != null) {
       data.url = filteredUrl.original.href;
     }

@@ -364,7 +364,8 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   override async add(entry: Entry, createBrowserBookmark = true): Promise<boolean> {
     entry = deepCopy(entry);
 
-    if (!super.add(entry)) return false;
+    // 変更理由: super.add は Promise を返すため、await を付けて重複追加を失敗として扱う。
+    if (!(await super.add(entry))) return false;
 
     if (createBrowserBookmark) {
       return this.createBrowserBookmark(entry);
@@ -375,7 +376,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   override async update(entry: Entry, updateBrowserBookmark = true): Promise<boolean> {
     entry = deepCopy(entry);
 
-    if (!super.update(entry)) return false;
+    if (!(await super.update(entry))) return false;
 
     if (updateBrowserBookmark) {
       return this.updateBrowserBookmark(entry);
@@ -384,7 +385,7 @@ export default class BrowserBookmarkEntryList extends SyncableEntryList {
   }
 
   override async remove(url: string, removeBrowserBookmark = true): Promise<boolean> {
-    if (!super.remove(url)) return false;
+    if (!(await super.remove(url))) return false;
 
     if (removeBrowserBookmark) {
       return this.removeBrowserBookmark(url);
