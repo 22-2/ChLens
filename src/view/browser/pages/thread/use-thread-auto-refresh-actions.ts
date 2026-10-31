@@ -16,6 +16,7 @@ export function useThreadAutoRefreshActions({
   autoRefreshPageKey,
   canAutoRefresh,
   isAutoRefreshEnabled,
+  isNextThreadWaiting,
   dispatch,
   toast,
   commentOverlayController,
@@ -24,6 +25,8 @@ export function useThreadAutoRefreshActions({
   autoRefreshPageKey: ReturnType<typeof getAutoRefreshPageKey>;
   canAutoRefresh: boolean;
   isAutoRefreshEnabled: boolean;
+  /** 次スレ探索の待機中。待機の続きとして次スレへ移るため、自動更新の引き継ぎに含める。 */
+  isNextThreadWaiting: boolean;
   dispatch: ReturnType<typeof useTabStore>["dispatch"];
   toast: ReturnType<typeof useTabViewRuntime>["toast"];
   commentOverlayController: ReturnType<typeof useCommentOverlay>["controller"];
@@ -78,11 +81,12 @@ export function useThreadAutoRefreshActions({
             title: nextThread.title,
             threadUrl: nextThread.url,
           },
-          { keepAutoRefresh: isAutoRefreshEnabled },
+          // 待機中の移動も、待機前から続いていた自動更新の引き継ぎとして扱う。
+          { keepAutoRefresh: isAutoRefreshEnabled || isNextThreadWaiting },
         ),
       );
     },
-    [commentOverlayController, dispatch, isAutoRefreshEnabled, page.threadUrl],
+    [commentOverlayController, dispatch, isAutoRefreshEnabled, isNextThreadWaiting, page.threadUrl],
   );
 
   return {

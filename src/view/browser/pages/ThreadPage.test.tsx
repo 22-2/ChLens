@@ -19,7 +19,12 @@ const h = vi.hoisted(() => ({
     props: null as Record<string, unknown> | null,
     canAutoScroll: false,
   },
-  nextThread: { pendingMove: null as Record<string, unknown> | null },
+  nextThread: {
+    pendingMove: null as Record<string, unknown> | null,
+    options: null as Record<string, unknown> | null,
+  },
+  nextThreadSetting: { enabled: false },
+  floatingActions: { props: null as Record<string, unknown> | null },
   dispatch: vi.fn(),
   toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() },
   runTabCommand: vi.fn(() => true),
@@ -91,16 +96,19 @@ vi.mock("src/features/media/ui/MediaViewerContainer", () => ({
 }));
 
 vi.mock("src/features/next-thread/browser/use-auto-next-thread", () => ({
-  useAutoNextThread: () => ({
-    pendingMove: h.nextThread.pendingMove,
-    cancelPendingMove: vi.fn(),
-    selectPendingCandidate: vi.fn(),
-  }),
+  useAutoNextThread: (options: Record<string, unknown>) => {
+    h.nextThread.options = options;
+    return {
+      pendingMove: h.nextThread.pendingMove,
+      cancelPendingMove: vi.fn(),
+      selectPendingCandidate: vi.fn(),
+    };
+  },
 }));
 
 vi.mock("src/features/next-thread/browser/use-auto-next-thread-setting", () => ({
   useAutoNextThreadSetting: () => ({
-    enabled: false,
+    enabled: h.nextThreadSetting.enabled,
     mode: "auto",
     searchDurationSeconds: 30,
   }),
@@ -219,7 +227,10 @@ vi.mock("src/features/thread/ui/ResItem", async () => {
 vi.mock("src/features/thread/ui/ThreadFindBar", () => ({ ThreadFindBar: () => null }));
 vi.mock("src/features/thread/ui/ThreadMinimap", () => ({ ThreadMinimap: () => null }));
 vi.mock("src/features/thread/ui/ThreadScrollFloatingActions", () => ({
-  ThreadScrollFloatingActions: () => null,
+  ThreadScrollFloatingActions: (props: Record<string, unknown>) => {
+    h.floatingActions.props = props;
+    return null;
+  },
 }));
 vi.mock("src/features/thread/ui/WheelScrollIndicator", () => ({
   WheelScrollIndicator: () => null,
@@ -436,6 +447,7 @@ describe("ThreadPage の組み立て", () => {
     h.autoRefresh.props = null;
     h.autoRefresh.canAutoScroll = false;
     h.nextThread.pendingMove = null;
+    h.nextThreadSetting.enabled = false;
   });
 
   afterEach(() => {
@@ -579,6 +591,74 @@ describe("ThreadPage の組み立て", () => {
 
       expect(h.dispatch).not.toHaveBeenCalled();
       expect(h.toast.info).not.toHaveBeenCalled();
+    });
+
+    it("次スレ移動がONでdat落ちになると、停止を記録せず次スレ待機へ移す", () => {
+      h.nextThreadSetting.enabled = true;
+      h.threadData = createThreadData({ expired: true });
+
+      renderThreadPage({ isAutoRefreshEnabled: true });
+
+      expect(h.dispatch).toHaveBeenCalledWith(
+        tabActions.startNextThreadWait(getAutoRefreshPageKey(THREAD_PAGE)!),
+      );
+      expect(h.dispatch).not.toHaveBeenCalledWith(
+        tabActions.setAutoRefreshStoppedPageKey(getAutoRefreshPageKey(THREAD_PAGE)!),
+      );
+    });
+
+    it("次スレ移動がOFFのdat落ちでは、次スレ待機へ移さない", () => {
+      h.threadData = createThreadData({ expired: true });
+
+      renderThreadPage({ isAutoRefreshEnabled: true });
+
+      expect(h.dispatch).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: "START_NEXT_THREAD_WAIT" }),
+      );
+    });
+
+    it("次スレ待機中は自動更新をOFFとして示しつつ、追従と次スレ探索の経路は続ける", () => {
+      h.nextThreadSetting.enabled = true;
+      h.threadData = createThreadData({ expired: true });
+      const waitingTab = {
+        id: "tab-waiting",
+        history: [THREAD_PAGE],
+        currentIndex: 0,
+        pinned: false,
+        autoRefreshEnabled: false,
+        autoRefreshPageKey: null,
+        autoRefreshStoppedPageKey: null,
+        nextThreadWaitPageKey: getAutoRefreshPageKey(THREAD_PAGE),
+      } as unknown as Props["tab"];
+
+      renderThreadPage({ tab: waitingTab, isAutoRefreshEnabled: false });
+
+      // 待機中は取得を止めたまま、追従の計測と次スレ探索には自動更新中と同じ入力を渡す。
+      expect(h.autoRefresh.props).toMatchObject({ enabled: true, expired: true });
+      expect(h.nextThread.options).toMatchObject({
+        autoRefreshEnabled: true,
+        featureEnabled: true,
+      });
+      expect(h.dispatch).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: "START_NEXT_THREAD_WAIT" }),
+      );
+    });
+
+    it("次スレ待機中は、自動読み込みの開始ボタンを出さない", () => {
+      const waitingTab = {
+        id: "tab-waiting-button",
+        history: [THREAD_PAGE],
+        currentIndex: 0,
+        pinned: false,
+        autoRefreshEnabled: false,
+        autoRefreshPageKey: null,
+        autoRefreshStoppedPageKey: null,
+        nextThreadWaitPageKey: getAutoRefreshPageKey(THREAD_PAGE),
+      } as unknown as Props["tab"];
+
+      renderThreadPage({ tab: waitingTab, isAutoRefreshEnabled: false });
+
+      expect(h.floatingActions.props).toMatchObject({ isAutoRefreshEnabled: true });
     });
 
     it("新着の再取得は、タブの再読み込みコマンドとして実行する", () => {

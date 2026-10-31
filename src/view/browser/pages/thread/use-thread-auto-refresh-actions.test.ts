@@ -36,6 +36,7 @@ function createOptions(overrides: Partial<Options> = {}) {
     autoRefreshPageKey: getPageKey(),
     canAutoRefresh: true,
     isAutoRefreshEnabled: false,
+    isNextThreadWaiting: false,
     dispatch: vi.fn(),
     toast: { info: toastInfo } as unknown as Options["toast"],
     commentOverlayController: {
@@ -136,6 +137,21 @@ describe("useThreadAutoRefreshActions", () => {
       tabActions.followNextThread(
         { type: "thread", title: "次のスレ", threadUrl: NEXT_URL },
         { keepAutoRefresh: false },
+      ),
+    );
+  });
+
+  it("次スレ探索の待機中に移動しても、待機前の自動更新を引き継ぐ", () => {
+    // 待機中は自動更新のONを外しているため、引き継ぎの判定に待機の状態を含める必要がある。
+    const options = createOptions({ isAutoRefreshEnabled: false, isNextThreadWaiting: true });
+    const { result } = renderActions(options);
+
+    result.current.handleFollowNextThread({ title: "次のスレ", url: NEXT_URL });
+
+    expect(options.dispatch).toHaveBeenCalledWith(
+      tabActions.followNextThread(
+        { type: "thread", title: "次のスレ", threadUrl: NEXT_URL },
+        { keepAutoRefresh: true },
       ),
     );
   });

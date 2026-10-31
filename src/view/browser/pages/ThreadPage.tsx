@@ -74,6 +74,7 @@ import { useResInteractionHandlers } from "src/view/browser/pages/thread/use-res
 import { useThreadAutoRefreshActions } from "src/view/browser/pages/thread/use-thread-auto-refresh-actions";
 import { useThreadBlurredResNums } from "src/view/browser/pages/thread/use-thread-blurred-res-nums";
 import { useThreadContextMenuHeader } from "src/view/browser/pages/thread/use-thread-context-menu-header";
+import { useThreadExpiryStopHandlers } from "src/view/browser/pages/thread/use-thread-expiry-stop-handlers";
 import { useThreadFilterDefaultOpenSetting } from "src/view/browser/pages/thread/use-thread-filter-default-open-setting";
 import { useThreadFilterModeToggle } from "src/view/browser/pages/thread/use-thread-filter-mode-toggle";
 import { useThreadFilterReset } from "src/view/browser/pages/thread/use-thread-filter-reset";
@@ -91,6 +92,7 @@ import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
 import {
   getAutoRefreshPageKey,
   isAutoRefreshStoppedForPage,
+  isNextThreadWaitingForPage,
 } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
@@ -328,6 +330,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 変更理由: Overlayへ流しているスレッドはタブを切り替えても取得を止めず、
   // 表示中の実況と自動次スレ探索をバックグラウンドで継続する。
   const isActiveAutoRefreshEnabled = (isActive || isCommentOverlayFlowing) && isAutoRefreshEnabled;
+  // 次スレ待機中も、追従位置の計測と次スレ探索の経路（トラッキング）は止めない。
+  const isNextThreadWaiting = tab ? isNextThreadWaitingForPage(tab, page) : false;
+  const isActiveAutoRefreshTracking =
+    (isActive || isCommentOverlayFlowing) && (isAutoRefreshEnabled || isNextThreadWaiting);
   // 変更理由: 画面上はいずれも dat 落ち案内を表示する状態であり、
   // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
   const autoRefreshPageKey = getAutoRefreshPageKey(page);
@@ -353,6 +359,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     missingFromSubject,
     stopped: isAutoRefreshStopped,
   });
+  const isNextThreadFeatureEnabled = isAutoNextThreadEnabled && threadCapabilities.canAutoAdvance;
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
   // ポップアップを読む間は取得・追従・キュー再生を一緒に待機する。
   // タブを離れた後のポップアップ状態で、非表示タブのOverlay実況を止めない。
@@ -397,6 +404,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     autoRefreshPageKey,
     canAutoRefresh: threadCapabilities.canAutoRefresh,
     isAutoRefreshEnabled,
+    isNextThreadWaiting,
     dispatch,
     toast,
     commentOverlayController,
@@ -410,13 +418,29 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     viewWindow,
   });
 
+  const { onThreadExpired, onThreadExpiredDetected } = useThreadExpiryStopHandlers({
+    tabId,
+    tab,
+    autoRefreshPageKey,
+    expired,
+    missingFromSubject,
+    responseCount: responses.length,
+    isAutoRefreshEnabled,
+    isCommentOverlayFlowing,
+    stopMessage,
+    canEnterNextThreadWait: isNextThreadFeatureEnabled && shouldDeferNextThreadStop,
+    handleAutoRefreshStop,
+    dispatch,
+  });
+
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
-    enabled: isActiveAutoRefreshEnabled,
+    enabled: isActiveAutoRefreshTracking,
     startAtBottom: startAutoRefreshAtBottom,
     moveToBottomOnEnable,
     threadUrl: page.threadUrl,
     refreshController,
-    expired: shouldStopFetching,
+    // 待機中は取得を止めたままにする。dat落ちの表示が一時的に外れても、タイマーを再開させないため。
+    expired: shouldStopFetching || isNextThreadWaiting,
     loading,
     pauseAutoScroll: isThreadDisplayPaused,
     pauseRefresh: isThreadDisplayPaused,
@@ -431,30 +455,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       : () => handleAutoRefreshStop("新着が止まったため自動更新を停止しました"),
     // dat落ち・満了後は候補が板一覧へ現れるまで探索を続け、自動更新の停止を保留する。
     deferAutoStop: shouldDeferNextThreadStop,
-    // interval の停止だけではタブに自動更新状態が残るため、dat落ち時も明示的に解除する。
-    // 次スレ移動がONならレス数にかかわらず探索期限まで待ち、OFFなら即座に停止する。
-    onThreadExpired: () => {
-      // 別窓再マウント時の同じ失効通知は繰り返さない。
-      if (tab?.autoRefreshStoppedPageKey === autoRefreshPageKey && !tab.autoRefreshEnabled) {
-        return;
-      }
-      handleAutoRefreshStop(stopMessage);
-    },
-    onThreadExpiredDetected: () => {
-      if (autoRefreshPageKey != null && tab?.autoRefreshStoppedPageKey !== autoRefreshPageKey) {
-        // 停止記録は通知なしで付き、以後の開始操作を拒否するため、付けた根拠を残す。
-        recordDebugEvent("auto-refresh", "スレッドの停止記録を付けます", {
-          tabId,
-          pageKey: autoRefreshPageKey,
-          expired,
-          missingFromSubject,
-          responseCount: responses.length,
-          isAutoRefreshEnabled,
-          isCommentOverlayFlowing,
-        });
-        dispatch(tabActions.setAutoRefreshStoppedPageKey(autoRefreshPageKey));
-      }
-    },
+    onThreadExpired,
+    onThreadExpiredDetected,
     deferExpiredStop: shouldDeferExpiredAutoRefreshStop({
       shouldDeferNextThreadStop,
       expired: autoRefreshExpired,
@@ -475,8 +477,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     cancelPendingMove,
     selectPendingCandidate,
   } = useAutoNextThread({
-    autoRefreshEnabled: isActiveAutoRefreshEnabled,
-    featureEnabled: isAutoNextThreadEnabled && threadCapabilities.canAutoAdvance,
+    autoRefreshEnabled: isActiveAutoRefreshTracking,
+    featureEnabled: isNextThreadFeatureEnabled,
     threadUrl: page.threadUrl,
     threadTitle: page.title,
     responseCount: responses.length,
@@ -518,6 +520,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     missingFromSubject,
     isAutoRefreshEnabled,
     isActiveAutoRefreshEnabled,
+    isNextThreadWaiting,
     isAutoRefreshStopped,
     autoRefreshExpired,
     hasReachedThreadLimit,
@@ -568,7 +571,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     scrollContainerRef: effectiveScrollContainerRef,
     // 自動更新で追従している間は、新着の実測で高さが変わっても最下部に留める。
     stickToEnd:
-      isActiveAutoRefreshEnabled && !isFilterEnabled && canAutoScroll && !isThreadDisplayPaused,
+      isActiveAutoRefreshTracking && !isFilterEnabled && canAutoScroll && !isThreadDisplayPaused,
     debugKey: `virtual-list:${tabId}`,
     isActive,
   });
@@ -919,7 +922,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             ) : null}
           </div>
 
-          {isActiveAutoRefreshEnabled &&
+          {isActiveAutoRefreshTracking &&
             /* 自動更新はフィルターが有効な場合は無効化 */
             !isFilterEnabled && (
               <ThreadAutoScrollThreshold
@@ -980,7 +983,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           <ThreadScrollFloatingActions
             rootRef={rootRef}
             isActive={isActive}
-            isAutoRefreshEnabled={isAutoRefreshEnabled}
+            isAutoRefreshEnabled={isAutoRefreshEnabled || isNextThreadWaiting}
             canAutoScroll={canAutoScroll}
             canAutoRefresh={threadCapabilities.canAutoRefresh}
             isFilterEnabled={isFilterEnabled}
