@@ -1,4 +1,4 @@
-import { AppWindow, Copy, Download, Maximize2, Trash2 } from "lucide-react";
+import { AppWindow, Copy, Download, ExternalLink, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -111,7 +111,8 @@ export function ResMediaGallery({
       {
         id: "open-viewer",
         label: "ビューアで開く",
-        icon: <Maximize2 size={14} />,
+        // インライン展開の「ビューアで開く」と同じアイコンにして、同じ操作だと分かるようにする。
+        icon: <ExternalLink size={14} />,
         onSelect: () => onUrlClick(url, viewerImages, 0, undefined, saveImageUrls),
       },
       ...(onOpenDetachedImage

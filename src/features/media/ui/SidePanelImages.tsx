@@ -1,4 +1,4 @@
-import { Copy, Maximize2, Trash2, Undo2 } from "lucide-react";
+import { Copy, ExternalLink, Trash2, Undo2 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
 import { joinImageMenuGroups } from "src/features/media/browser/image-menu-contributions";
@@ -70,7 +70,7 @@ function ThreadImageGrid({
               {
                 id: "open-viewer",
                 label: "ビューアで開く",
-                icon: <Maximize2 size={14} />,
+                icon: <ExternalLink size={14} />,
                 onSelect: () =>
                   openMedia(item.rawUrl, rawUrls, getThreadMediaViewerScopeId(tabId, threadUrl)),
               },
