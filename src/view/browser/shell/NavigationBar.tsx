@@ -1,19 +1,4 @@
-import {
-  Archive,
-  ArrowLeft,
-  ArrowRight,
-  Bookmark,
-  Command,
-  Filter,
-  History,
-  List as ListIcon,
-  Menu,
-  Pause,
-  PenLine,
-  RotateCw,
-  Settings,
-  Star,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Filter, Menu, Pause, RotateCw, Settings, Star } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createLogger } from "src/app/logger";
@@ -37,23 +22,12 @@ import {
 import { resolveBrowserCommands } from "src/view/browser/commands/browser-commands";
 import type { BrowserCommandContext } from "src/view/browser/commands/command-definition";
 import { commandPalette } from "src/view/browser/commands/command-palette-store";
-import {
-  COMMAND_REQUEST_IDS,
-  type CommandRequest,
-  type CommandTarget,
-  runCommandRequest,
-} from "src/view/browser/commands/command-runtime";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import { deleteThreadLogAndCloseTab } from "src/view/browser/commands/thread-log-actions";
 import { useZenMode } from "src/view/browser/commands/zen-mode-store";
 import { Omnibar } from "src/view/browser/components/Omnibar";
 import { toggleFilter as toggleFilterForTab } from "src/view/browser/extension/page-actions";
 import { createBoundWorkspace } from "src/view/browser/extension/workspace-api";
-import {
-  BOTTOM_PANEL_THREAD_LIST_TAB_ID,
-  BOTTOM_PANEL_WRITE_TAB_ID,
-  useBottomPanel,
-} from "src/view/browser/hooks/use-bottom-panel";
+import { BOTTOM_PANEL_WRITE_TAB_ID, useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useBrowserCommandRunner } from "src/view/browser/hooks/use-browser-command-runner";
 import { useOmnibar } from "src/view/browser/hooks/use-omnibar";
 import { useToast } from "src/view/browser/hooks/use-toast";
@@ -75,35 +49,22 @@ import {
 } from "src/view/browser/utils/filter-toolbar-open-state";
 import { isPageFilterable } from "src/view/browser/utils/filterable-pages";
 import {
-  getBoardUrlFromThreadUrl,
-  parseInternalBrowserPage,
-} from "src/view/browser/utils/link-routing";
-import {
   getManualRefreshScopeKey,
   runManualRefresh,
   useManualRefreshCooldown,
 } from "src/view/browser/utils/manual-refresh";
-import type { OmnibarSuggestion } from "src/view/browser/utils/omnibar";
 import { loadOmnibarSources } from "src/view/browser/utils/omnibar-sources";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
-import {
-  createBoardPage,
-  createQuickAccessPage,
-  createSettingsPage,
-  type QuickAccessPage,
-} from "src/view/browser/utils/tab-pages";
+import { createSettingsPage, type QuickAccessPage } from "src/view/browser/utils/tab-pages";
 
 import { useCommandPaletteFocus } from "./use-command-palette-focus";
+import { useNavigationMenuItems } from "./use-navigation-menu-items";
 import { useOmnibarNavigation } from "./use-omnibar-navigation";
-
-interface MenuPosition {
-  x: number;
-  y: number;
-}
-
-interface SuggestionMenuState extends MenuPosition {
-  suggestion: OmnibarSuggestion;
-}
+import {
+  type MenuPosition,
+  type SuggestionMenuState,
+  useOmnibarSuggestionMenuItems,
+} from "./use-omnibar-suggestion-menu-items";
 
 const OMNIBAR_MAX_SUGGESTIONS = 8;
 const logger = createLogger("view/browser");
@@ -241,171 +202,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     urlInputRef,
   });
 
-  const runSuggestionCommand = useCallback(
-    (request: CommandRequest) => {
-      void runCommandRequest(request, { surface: viewSurface, toast });
-    },
-    [toast, viewSurface],
-  );
-  const suggestionContextMenuItems = useMemo<ContextMenuItem[]>(() => {
-    const state = suggestionMenuState;
-    if (!state) return [];
-
-    const { suggestion } = state;
-    const resolvedPage = parseInternalBrowserPage(suggestion.url);
-    const targetPage =
-      resolvedPage?.type === "thread"
-        ? { ...resolvedPage, title: suggestion.title }
-        : resolvedPage?.type === "threadList"
-          ? {
-              ...resolvedPage,
-              title: suggestion.title,
-              boardTitle: suggestion.boardTitle || suggestion.title,
-            }
-          : null;
-    const target: CommandTarget | null =
-      resolvedPage?.type === "thread"
-        ? { kind: "thread", title: suggestion.title, url: resolvedPage.threadUrl }
-        : resolvedPage?.type === "threadList"
-          ? {
-              kind: "board",
-              title: suggestion.boardTitle || suggestion.title,
-              url: resolvedPage.boardUrl,
-            }
-          : null;
-    const items: ContextMenuItem[] = [];
-
-    if (targetPage) {
-      items.push(
-        {
-          id: "open-current",
-          label: "このタブで開く",
-          onSelect: () => openSuggestion(suggestion),
-        },
-        {
-          id: "open-new-tab",
-          label: "新しいタブで開く",
-          onSelect: () => dispatch(tabActions.openInNewTabForce(targetPage, { focus: true })),
-        },
-      );
-    }
-
-    if (target) {
-      items.push({ id: "suggestion-actions-separator", separator: true });
-      items.push({
-        id: "bookmark-toggle",
-        label: "ブックマークを切り替え",
-        onSelect: () =>
-          runSuggestionCommand({
-            id: COMMAND_REQUEST_IDS.TARGET_BOOKMARK_TOGGLE,
-            args: { target },
-          }),
-      });
-      items.push(
-        {
-          id: "copy-title",
-          label: target.kind === "thread" ? "スレタイをコピー" : "板名をコピー",
-          onSelect: () =>
-            runSuggestionCommand({
-              id: COMMAND_REQUEST_IDS.TARGET_COPY,
-              args: { target, format: "title" },
-            }),
-        },
-        {
-          id: "copy-url",
-          label: "URLをコピー",
-          onSelect: () =>
-            runSuggestionCommand({
-              id: COMMAND_REQUEST_IDS.TARGET_COPY,
-              args: { target, format: "url" },
-            }),
-        },
-        {
-          id: "copy-title-url",
-          label: target.kind === "thread" ? "スレタイ＆URLをコピー" : "板名＆URLをコピー",
-          onSelect: () =>
-            runSuggestionCommand({
-              id: COMMAND_REQUEST_IDS.TARGET_COPY,
-              args: { target, format: "title-url" },
-            }),
-        },
-      );
-    } else {
-      items.push({
-        id: "copy-url",
-        label: "URLをコピー",
-        onSelect: () =>
-          runSuggestionCommand({
-            id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT,
-            args: { text: suggestion.url },
-          }),
-      });
-    }
-
-    if (resolvedPage?.type === "thread") {
-      const boardUrl = getBoardUrlFromThreadUrl(resolvedPage.threadUrl);
-      const threadUrl = resolvedPage.threadUrl;
-      const openThreadTabIds = panes
-        .flatMap((pane) => pane.tabs)
-        .filter((tab) => {
-          const page = getCurrentPage(tab);
-          return !tab.pinned && page.type === "thread" && page.threadUrl === threadUrl;
-        })
-        .map((tab) => tab.id);
-
-      items.push(
-        { id: "thread-actions-separator", separator: true },
-        {
-          id: "open-board",
-          label: "板を新しいタブで開く",
-          onSelect: () =>
-            dispatch(
-              tabActions.openInNewTabForce(createBoardPage(boardUrl, suggestion.boardTitle), {
-                focus: true,
-              }),
-            ),
-        },
-        {
-          id: "delete-thread-log",
-          label:
-            openThreadTabIds.length > 0
-              ? "スレログと閲覧履歴を削除してタブを閉じる"
-              : "スレログと閲覧履歴を削除",
-          danger: true,
-          onSelect: () => {
-            void deleteThreadLogAndCloseTab({
-              threadUrl,
-              closeTab: () => {
-                let didCloseTab = false;
-                for (const tabId of openThreadTabIds) {
-                  didCloseTab = runTabCommand(TAB_COMMAND_IDS.CLOSE, { tabId }) || didCloseTab;
-                }
-                return didCloseTab;
-              },
-              clearCachedReadState: clearCachedThreadReadState,
-              toast,
-            });
-          },
-        },
-      );
-    }
-
-    items.push({
-      id: "open-in-browser",
-      label: "ブラウザで開く",
-      onSelect: () => viewSurface.window.open(suggestion.url, "_blank", "noopener,noreferrer"),
-    });
-    return items;
-  }, [
-    dispatch,
-    openSuggestion,
-    panes,
-    runSuggestionCommand,
-    runTabCommand,
+  const suggestionContextMenuItems = useOmnibarSuggestionMenuItems({
     suggestionMenuState,
+    openSuggestion,
+    dispatch,
+    panes,
+    runTabCommand,
     toast,
     viewSurface,
-  ]);
+  });
 
   const context = useMemo<BrowserCommandContext>(
     () => ({
@@ -657,107 +462,17 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const { backHistoryItems, forwardHistoryItems } = useNavHistoryMenuItems(viewTab, dispatch);
 
-  const menuItems = useMemo(
-    () => [
-      {
-        id: "open-command-palette",
-        label: "コマンドパレット",
-        icon: <Command size={14} />,
-        onSelect: () => commandPalette.open("command"),
-      },
-      ...(canToggleFilter
-        ? [
-            {
-              id: "open-filter-toolbar",
-              label: "フィルター",
-              icon: <Filter size={14} />,
-              onSelect: toggleFilterFromMenu,
-            },
-          ]
-        : []),
-      ...(viewPage.type === "thread"
-        ? [
-            {
-              id: "open-thread-list-panel",
-              label:
-                isPanelOpen && activePanelTabId === BOTTOM_PANEL_THREAD_LIST_TAB_ID
-                  ? "スレ一覧パネルを閉じる"
-                  : "スレ一覧パネル",
-              icon: <ListIcon size={14} />,
-              onSelect: () => togglePanel(BOTTOM_PANEL_THREAD_LIST_TAB_ID),
-            },
-          ]
-        : []),
-      ...(viewPage.type === "thread" && threadCapabilities?.canWrite
-        ? [
-            {
-              id: "open-write-panel",
-              label:
-                isPanelOpen && activePanelTabId === BOTTOM_PANEL_WRITE_TAB_ID
-                  ? "書き込みパネルを閉じる"
-                  : "書き込みパネル",
-              icon: <PenLine size={14} />,
-              onSelect: () => togglePanel(BOTTOM_PANEL_WRITE_TAB_ID),
-            },
-          ]
-        : []),
-      {
-        id: "quick-access-separator",
-        separator: true,
-      },
-      {
-        id: "open-bookmark-list",
-        label: "ブックマークリスト",
-        icon: <Bookmark size={14} />,
-        onSelect: () => openQuickAccessPage(createQuickAccessPage("bookmarkList")),
-        onAuxSelect: (button: number) => {
-          if (button !== 1) return;
-          openQuickAccessPageInNewTab(createQuickAccessPage("bookmarkList"));
-        },
-      },
-      {
-        id: "open-history-list",
-        label: "閲覧履歴",
-        icon: <History size={14} />,
-        onSelect: () => openQuickAccessPage(createQuickAccessPage("historyList")),
-        onAuxSelect: (button: number) => {
-          if (button !== 1) return;
-          openQuickAccessPageInNewTab(createQuickAccessPage("historyList"));
-        },
-      },
-      {
-        id: "open-write-history-list",
-        label: "書き込み履歴",
-        icon: <PenLine size={14} />,
-        onSelect: () => openQuickAccessPage(createQuickAccessPage("writeHistoryList")),
-        onAuxSelect: (button: number) => {
-          if (button !== 1) return;
-          openQuickAccessPageInNewTab(createQuickAccessPage("writeHistoryList"));
-        },
-      },
-      {
-        id: "open-log-list",
-        label: "ログ検索",
-        icon: <Archive size={14} />,
-        onSelect: () => openQuickAccessPage(createQuickAccessPage("logList")),
-        onAuxSelect: (button: number) => {
-          if (button !== 1) return;
-          openQuickAccessPageInNewTab(createQuickAccessPage("logList"));
-        },
-      },
-    ],
-    [
-      viewPage.type,
-      threadCapabilities?.canWrite,
-      activePanelTabId,
-      canToggleFilter,
-      openQuickAccessPage,
-      openQuickAccessPageInNewTab,
-      toggleFilterFromMenu,
-      isPanelOpen,
-      togglePanel,
-    ],
-  );
+  const menuItems = useNavigationMenuItems({
+    viewPage,
+    canWrite: threadCapabilities?.canWrite ?? false,
+    canToggleFilter,
+    toggleFilterFromMenu,
+    isPanelOpen,
+    activePanelTabId,
+    togglePanel,
+    openQuickAccessPage,
+    openQuickAccessPageInNewTab,
+  });
 
   const refreshMenuItems = useMemo<ContextMenuItem[]>(() => {
     const items: ContextMenuItem[] =
