@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
@@ -34,6 +34,25 @@ interface UseOwnResTrackingResult {
   ownResNums: Set<number>;
   handleWriteHistoryAdded: (resNum: number) => void;
   handleWriteHistoryRemoved: (resNum: number) => void;
+}
+
+/** 送信後に末尾が進んだ時だけ、送信した本文と一致する自分のレスを探す。 */
+function matchPendingWriteRes(
+  pendingWrite: PendingWriteMatchState | null,
+  responses: IRes[],
+  ownResNums: ReadonlySet<number>,
+): IRes | null {
+  if (!pendingWrite || responses.length === 0) return null;
+
+  const currentLastResNum = responses.at(-1)?.num ?? null;
+  const hasAdvancedSinceSubmit =
+    responses.length > pendingWrite.baselineResponseCount ||
+    (pendingWrite.baselineLastResNum != null &&
+      currentLastResNum != null &&
+      currentLastResNum > pendingWrite.baselineLastResNum);
+  if (!hasAdvancedSinceSubmit) return null;
+
+  return findLatestWrittenRes(responses, pendingWrite.message, ownResNums);
 }
 
 export function useOwnResTracking({
@@ -153,19 +172,19 @@ export function useOwnResTracking({
   }, [threadUrl, threadTitle]);
 
   // 変更理由: 通常レスとして一度描画してから印を付けるちらつきを防ぐため、描画前に照合する。
+  // 照合は描画と同じrenderで行い、返す ownResNums にも含める。layout effectでstateを更新するだけだと、
+  // 同じコミットの useEffect（Overlayへの共有など）が更新前の判定を読み、自分のレスが通常レスとして送られる。
+  const matchedRes = useMemo(
+    () => matchPendingWriteRes(pendingWrite, responses, ownResNums),
+    [ownResNums, pendingWrite, responses],
+  );
+  const displayedOwnResNums = useMemo(() => {
+    if (!matchedRes || ownResNums.has(matchedRes.num)) return ownResNums;
+    return new Set([...ownResNums, matchedRes.num]);
+  }, [matchedRes, ownResNums]);
+
   useLayoutEffect(() => {
-    if (!pendingWrite || responses.length === 0) return;
-
-    const currentLastResNum = responses.at(-1)?.num ?? null;
-    const hasAdvancedSinceSubmit =
-      responses.length > pendingWrite.baselineResponseCount ||
-      (pendingWrite.baselineLastResNum != null &&
-        currentLastResNum != null &&
-        currentLastResNum > pendingWrite.baselineLastResNum);
-    if (!hasAdvancedSinceSubmit) return;
-
-    const matchedRes = findLatestWrittenRes(responses, pendingWrite.message, ownResNums);
-    if (!matchedRes) return;
+    if (!pendingWrite || !matchedRes) return;
 
     setPendingWrite(null);
 
@@ -217,7 +236,7 @@ export function useOwnResTracking({
         }
       }
     })();
-  }, [ownResNums, threadUrl, threadTitle, pendingWrite, responses]);
+  }, [matchedRes, pendingWrite, threadUrl, threadTitle]);
 
   const handleWriteHistoryAdded = useCallback((resNum: number) => {
     setOwnResNums((prev) => {
@@ -237,5 +256,9 @@ export function useOwnResTracking({
     });
   }, []);
 
-  return { ownResNums, handleWriteHistoryAdded, handleWriteHistoryRemoved };
+  return {
+    ownResNums: displayedOwnResNums,
+    handleWriteHistoryAdded,
+    handleWriteHistoryRemoved,
+  };
 }
