@@ -116,6 +116,9 @@
   --sys-color-res-id-cool: var(--ref-color-blue-600);
   --sys-color-status-active-bg: var(--ref-color-blue-800);
   --sys-color-status-active-fg: var(--ref-color-neutral-0);
+  /* 次スレ待機は新しい色を増やさず、通知（warning）と同じ色を別名で使う。 */
+  --sys-color-status-waiting-bg: var(--sys-color-warning-surface);
+  --sys-color-status-waiting-fg: var(--sys-color-warning-fg);
   --sys-color-list-hover-bg: var(--ref-color-neutral-100);
   --sys-color-divider-subtle: var(--ref-color-alpha-black-18);
   --sys-color-status-border: var(--ref-color-alpha-black-12);
@@ -250,6 +253,9 @@
   --sys-color-res-id-cool: var(--ref-color-dark-blue-300);
   --sys-color-status-active-bg: var(--ref-color-dark-blue-600);
   --sys-color-status-active-fg: var(--ref-color-neutral-0);
+  /* 次スレ待機は新しい色を増やさず、通知（warning）と同じ色を別名で使う。 */
+  --sys-color-status-waiting-bg: var(--sys-color-warning-surface);
+  --sys-color-status-waiting-fg: var(--sys-color-warning-fg);
   --sys-color-list-hover-bg: var(--ref-color-dark-neutral-300);
   --sys-color-divider-subtle: var(--ref-color-alpha-white-18);
   --sys-color-status-border: var(--ref-color-alpha-white-08);

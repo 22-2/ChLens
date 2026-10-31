@@ -10,7 +10,7 @@ import React, {
 import { createPortal } from "react-dom";
 
 export type StatusBarAlignment = "left" | "right";
-export type StatusBarAppearance = "default" | "active";
+export type StatusBarAppearance = "default" | "active" | "waiting";
 
 interface StatusBarEntry {
   id: string;
@@ -167,7 +167,12 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({ children }
   }, [itemsById]);
 
   const appearance = useMemo<StatusBarAppearance>(() => {
-    if (Object.values(appearanceById).includes("active")) {
+    const appearances = Object.values(appearanceById);
+    // 変更理由: 次スレ待機は自動更新中の表示と同時に出ないが、出ている時は待機を優先して見せる。
+    if (appearances.includes("waiting")) {
+      return "waiting";
+    }
+    if (appearances.includes("active")) {
       return "active";
     }
     return "default";

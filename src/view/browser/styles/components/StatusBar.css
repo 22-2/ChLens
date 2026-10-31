@@ -18,6 +18,12 @@
   color: var(--sys-color-status-active-fg);
 }
 
+/* 変更理由: 待機は通知と同じ色にして、自動更新中の青と取り違えないようにする。 */
+.status-bar--waiting {
+  background: var(--sys-color-status-waiting-bg);
+  color: var(--sys-color-status-waiting-fg);
+}
+
 .status-bar__group {
   display: flex;
   align-items: stretch;
