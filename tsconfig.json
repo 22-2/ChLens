@@ -22,6 +22,12 @@
     "strict": true,
     "skipLibCheck": true,
     "noUnusedLocals": true,
+    // 未使用の引数・継承の override 漏れ・戻り値の取りこぼし・switch の fallthrough を型検査で止める。
+    // 未使用の引数は _ で始めて意図的に無視する。
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "noEmit": true
   },
   // `**` は `.` で始まるディレクトリに入らないため、Storybook の設定は明示する。

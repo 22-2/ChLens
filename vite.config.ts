@@ -512,6 +512,8 @@ export default defineConfig(async ({ mode, command }) => {
         // 循環 import を作らない（計画: docs/plans/module-boundaries-plan.md §3 のルール 7、Phase E）。
         // 循環は読み込み順によって値が undefined になる不具合や、層の境界の崩れにつながるため。
         "import/no-cycle": "error",
+        // any を使うと型検査の恩恵が消えるため、明示的な any は禁止する（必要なら具体的な型か unknown で受ける）。
+        "typescript/no-explicit-any": "error",
       },
       // core は service-container に依存しない（計画: docs/plans/module-boundaries-plan.md Phase C-1）。
       // 依存は core/ports の型だけにする。実体は service-container の setup が引数で渡す。
@@ -536,6 +538,16 @@ export default defineConfig(async ({ mode, command }) => {
         {
           files: ["src/**"],
           rules: { "eslint/no-console": "error" },
+        },
+        // 1ファイルが長すぎると読み返しと変更の影響範囲の把握が難しくなるため、上限を置く。
+        // 超えたら、責務ごとに hook・小さなコンポーネント・純粋関数へ分ける。テストと stories は対象外。
+        {
+          files: ["src/**"],
+          rules: { "eslint/max-lines": ["error", { max: 1000 }] },
+        },
+        {
+          files: ["src/**/*.test.{ts,tsx}", "src/**/*.stories.{ts,tsx}"],
+          rules: { "eslint/max-lines": "off" },
         },
         // 例外: debug-log は console 出力を横取りして記録する仕組みそのもの、Log.ts は旧互換の薄い窓口、
         // mcp と background は consola を載せない別実行環境（ワーカー）、theme-init.js は

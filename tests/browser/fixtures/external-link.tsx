@@ -144,6 +144,8 @@ function Probe() {
           onZoomIn={noop}
           onSave={noop}
           onCopy={noop}
+          onSaveAllImages={noop}
+          isSavingAllImages={false}
           canDeleteImage={false}
           onDeleteImage={noop}
           onClose={() => setViewer(null)}
