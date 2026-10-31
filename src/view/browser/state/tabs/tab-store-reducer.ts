@@ -610,7 +610,7 @@ export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabSt
     case TAB_ACTION_TYPES.SPLIT_PANE: {
       // 最大ペイン数に達していれば分割しない（2ペイン固定運用）。
       if (state.panes.length >= MAX_PANES) return state;
-      // 操作元ペインの右隣に、現在ページを引き継いだ新規ペインを作成してフォーカスする。
+      // 操作元ペインの右隣に、新規タブの設定（new_tab_page_mode）に従ったページのペインを作成してフォーカスする。
       const sourcePaneId = resolvePaneId(state, action.paneId);
       const sourceIndex = state.panes.findIndex((p) => p.id === sourcePaneId);
       const sourcePane = state.panes[sourceIndex];
