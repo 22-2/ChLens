@@ -16,6 +16,9 @@ const HTTP_TIMEOUT_MS = 25_000;
 const HTTP_RETRY_ALARM_MINUTES = 0.5;
 const INITIAL_RECONNECT_DELAY_MS = 2_000;
 const MAX_RECONNECT_DELAY_MS = 15_000;
+// 変更理由: MCPサーバーが起動していないと、再接続とアラームによる取得が止まらず、通信とログを
+// 使い続けてしまう。接続の試みが連続して3回失敗したら自動の再試行を止め、利用者の操作で再開する。
+const MAX_CONSECUTIVE_CONNECTION_FAILURES = 3;
 const KEEPALIVE_INTERVAL_MS = 20_000;
 const WS_CONNECT_TIMEOUT_MS = 10_000;
 const CONNECTION_LOG_INTERVAL_MS = 30_000;
@@ -43,6 +46,8 @@ let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 let connectInFlight: Promise<void> | null = null;
 let lastConnectionErrorAt = 0;
 let reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
+let consecutiveConnectionFailures = 0;
+let retrySuspended = false;
 
 function logConnectionError(message: string, error: unknown): void {
   const now = Date.now();
@@ -66,7 +71,7 @@ function clearKeepalive(): void {
 }
 
 function scheduleReconnect(): void {
-  if (reconnectTimer !== undefined) return;
+  if (retrySuspended || reconnectTimer !== undefined) return;
   const delay = reconnectDelayMs;
   reconnectDelayMs = Math.min(MAX_RECONNECT_DELAY_MS, reconnectDelayMs * 2);
   reconnectTimer = setTimeout(() => {
@@ -77,6 +82,43 @@ function scheduleReconnect(): void {
 
 function resetReconnectDelay(): void {
   reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
+}
+
+/** 接続の試みが失敗したことを数え、上限に達したら自動の再試行を止める。 */
+function recordConnectionFailure(): void {
+  consecutiveConnectionFailures += 1;
+  if (consecutiveConnectionFailures < MAX_CONSECUTIVE_CONNECTION_FAILURES) {
+    scheduleReconnect();
+    return;
+  }
+  retrySuspended = true;
+  if (reconnectTimer !== undefined) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = undefined;
+  }
+  console.warn(
+    `[ChLens MCP] 接続の失敗が${MAX_CONSECUTIVE_CONNECTION_FAILURES}回続いたため、自動の再試行を止めました。` +
+      "MCPを使うスレッドを開くと再開します。",
+  );
+}
+
+/** 接続できたら、失敗の数と再接続の間隔を初めからにする。 */
+function resetConnectionFailures(): void {
+  consecutiveConnectionFailures = 0;
+  retrySuspended = false;
+  resetReconnectDelay();
+}
+
+/** 失敗の数を初めからにして、すぐに接続を試みる。拡張機能の起動・インストール時に使う。 */
+function resumeConnection(): void {
+  resetConnectionFailures();
+  void connectWebSocket();
+}
+
+/** 止めていた再試行を、利用者の操作（MCPを使うスレッドを開くなど）を合図に再開する。 */
+function resumeConnectionIfSuspended(): void {
+  if (!retrySuspended) return;
+  resumeConnection();
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
@@ -172,7 +214,7 @@ async function connectWebSocketOnce(): Promise<void> {
     clientId = await registerClient();
   } catch (error: unknown) {
     logConnectionError("MCP中継のクライアント登録に失敗しました", error);
-    scheduleReconnect();
+    recordConnectionFailure();
     return;
   }
 
@@ -182,12 +224,20 @@ async function connectWebSocketOnce(): Promise<void> {
       socket = new WebSocket(`${MCP_BRIDGE_WS_URL}?clientId=${encodeURIComponent(clientId)}`);
     } catch (error: unknown) {
       logConnectionError("WebSocket接続の開始に失敗しました", error);
-      scheduleReconnect();
+      recordConnectionFailure();
       resolve();
       return;
     }
     webSocket = socket;
     let settled = false;
+    let opened = false;
+    // 一つの接続の試みは、タイムアウトと切断のどちらか先に起きた方だけで失敗として数える。
+    let failureReported = false;
+    const reportFailure = () => {
+      if (failureReported) return;
+      failureReported = true;
+      recordConnectionFailure();
+    };
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const settle = () => {
       if (settled) return;
@@ -200,11 +250,12 @@ async function connectWebSocketOnce(): Promise<void> {
       // 変更理由: 接続先が停止しているとWebSocketのCONNECTINGが長時間残り、
       // アラームによるHTTPフォールバックまで塞いでしまうため、一定時間で解放する。
       socket.close();
-      scheduleReconnect();
+      reportFailure();
       settle();
     }, WS_CONNECT_TIMEOUT_MS);
     socket.onopen = () => {
-      resetReconnectDelay();
+      opened = true;
+      resetConnectionFailures();
       startKeepalive(socket);
       settle();
     };
@@ -217,7 +268,12 @@ async function connectWebSocketOnce(): Promise<void> {
     socket.onclose = () => {
       if (webSocket === socket) webSocket = null;
       clearKeepalive();
-      scheduleReconnect();
+      // 一度つながった後の切断は通常の再接続として扱い、接続できなかった試みだけを失敗として数える。
+      if (opened) {
+        scheduleReconnect();
+      } else {
+        reportFailure();
+      }
       settle();
     };
   });
@@ -238,7 +294,8 @@ async function pollHttpOnce(): Promise<void> {
     });
   } catch (error: unknown) {
     logConnectionError("MCP中継へのHTTP接続に失敗しました", error);
-    // アラームで再試行する。サーバー未起動時も処理を止めず、次の起床で復旧を試みる。
+    recordConnectionFailure();
+    // アラームで再試行する。サーバー未起動時も処理を止めず、上限に達するまで次の起床で復旧を試みる。
   } finally {
     httpPollInFlight = false;
   }
@@ -257,8 +314,11 @@ async function ensureAlarm(): Promise<void> {
 
 async function onAlarm(alarm: browser.Alarms.Alarm): Promise<void> {
   if (alarm.name !== MCP_BRIDGE_ALARM_NAME) return;
+  // 再試行を止めている間は、アラームで起きても接続も取得も試みない。
+  if (retrySuspended) return;
   await connectWebSocket();
-  await pollHttpOnce();
+  // 接続の試みで上限に達したら、同じ起床で取得を重ねて試みない。
+  if (!retrySuspended) await pollHttpOnce();
 }
 
 export function startMcpWorker(): void {
@@ -271,14 +331,16 @@ export function startMcpWorker(): void {
   });
   browser.runtime.onStartup.addListener(() => {
     void ensureAlarm();
-    void connectWebSocket();
+    resumeConnection();
   });
   browser.runtime.onInstalled.addListener(() => {
     void ensureAlarm();
-    void connectWebSocket();
+    resumeConnection();
   });
   browser.runtime.onMessage.addListener((message: unknown) => {
     if (!isWorkerStateMessage(message)) return;
+    // 利用者がMCPを使うスレッドを開いたときは、止めていた再試行を再開する。
+    resumeConnectionIfSuspended();
     void persistWorkerState(message.activeThreadUrl ?? null, message.format2chnet ?? null).catch(
       (error: unknown) => {
         console.error("[ChLens MCP] 現在スレッド情報の保存に失敗しました:", error);
