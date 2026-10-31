@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 
 import { collectDebugState, registerDebugStateProvider } from "./debug-api";
 import {
@@ -89,10 +89,13 @@ describe("デバッグ状態", () => {
 });
 
 describe("未捕捉の例外の記録", () => {
-  it("未捕捉の例外と未処理のPromise拒否を runtime として記録する", () => {
-    const target = new EventTarget();
+  // installRuntimeErrorCapture は一度だけ登録するため、このブロックのテストは同じ対象を使う。
+  const target = new EventTarget();
+  beforeAll(() => {
     installRuntimeErrorCapture(target as unknown as Pick<Window, "addEventListener">);
+  });
 
+  it("未捕捉の例外と未処理のPromise拒否を runtime として記録する", () => {
     target.dispatchEvent(
       new ErrorEvent("error", {
         error: new Error("描画に失敗"),
@@ -107,5 +110,15 @@ describe("未捕捉の例外の記録", () => {
     expect(errors[0]).toMatchObject({ message: "未捕捉の例外 (browser.js:12): 描画に失敗" });
     expect(errors[0].stack).toContain("描画に失敗");
     expect(errors[1]).toMatchObject({ message: "未処理のPromise拒否: 拒否理由" });
+  });
+
+  it("ResizeObserverの通知は例外ではなく警告として記録し、文言は元のまま残す", () => {
+    const notice = "ResizeObserver loop completed with undelivered notifications.";
+    target.dispatchEvent(new ErrorEvent("error", { message: notice }));
+
+    expect(queryDebugLogs({ level: "error", category: "runtime" })).toHaveLength(0);
+    expect(queryDebugLogs({ level: "warn", category: "runtime" })).toEqual([
+      expect.objectContaining({ message: notice }),
+    ]);
   });
 });

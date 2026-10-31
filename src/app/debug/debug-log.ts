@@ -194,6 +194,15 @@ export function installConsoleCapture(target: Console = console): void {
 
 let runtimeErrorCaptureInstalled = false;
 
+// 変更理由: ResizeObserver の通知がフレーム内に収まらないと、ブラウザは下記の文言を error イベントとして配る。
+// アプリのコードが投げた例外ではなく、描画も次のフレームで続くため、エラーではなく警告として残す。
+const RESIZE_OBSERVER_LOOP_NOTICE =
+  /^ResizeObserver loop (?:completed with undelivered notifications|limit exceeded)/;
+
+function isResizeObserverLoopNotice(message: string): boolean {
+  return RESIZE_OBSERVER_LOOP_NOTICE.test(message);
+}
+
 /**
  * 未捕捉の例外と未処理のPromise拒否を記録する。
  *
@@ -207,6 +216,10 @@ export function installRuntimeErrorCapture(
   runtimeErrorCaptureInstalled = true;
 
   target.addEventListener("error", (event: ErrorEvent) => {
+    if (isResizeObserverLoopNotice(event.message)) {
+      pushEntry({ level: "warn", category: "runtime", message: event.message });
+      return;
+    }
     const detail = event.filename ? `${event.filename}:${event.lineno}` : "不明な位置";
     recordRuntimeError(`未捕捉の例外 (${detail})`, event.error ?? event.message);
   });
