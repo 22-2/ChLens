@@ -3,9 +3,35 @@ import React, { useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 
 import { ExternalImage } from "./ExternalImage";
+import {
+  computeKeyboardResizeWidth,
+  computeResizeBounds,
+  getResizeKeyDirection,
+  moveResizeDrag,
+  type ResizeBounds,
+  type ResizeDrag,
+  startResizeDrag,
+} from "./inline-image-resize";
 import type { ThumbStyle } from "./res-media-items";
 
 const logger = createLogger("media");
+
+/** 画像と親要素の位置をDOMから読み取り、リサイズの範囲を求める。読み取れない状態では null を返す。 */
+function readResizeBounds(wrapper: HTMLDivElement | null): ResizeBounds | null {
+  const image = wrapper?.querySelector("img");
+  const parent = wrapper?.parentElement;
+  if (!wrapper || !image || !parent) return null;
+
+  const rect = image.getBoundingClientRect();
+  const paddingRight = parseFloat(getComputedStyle(parent).paddingRight) || 0;
+  return computeResizeBounds({
+    imageWidth: rect.width,
+    imageHeight: rect.height,
+    wrapperLeft: wrapper.getBoundingClientRect().left,
+    parentRight: parent.getBoundingClientRect().right,
+    parentPaddingRight: paddingRight,
+  });
+}
 
 /** 元画像の読み込み中と失敗を同じ展開位置に表示する。 */
 export function InlineExpandedImage({
@@ -36,44 +62,16 @@ export function InlineExpandedImage({
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
   const [previewWidth, setPreviewWidth] = useState<number>();
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{
-    x: number;
-    width: number;
-    min: number;
-    max: number;
-    current: number;
-  } | null>(null);
+  const dragRef = useRef<ResizeDrag | null>(null);
   const displayedWidth = previewWidth ?? width;
 
-  const getBounds = () => {
-    const wrapper = wrapperRef.current;
-    const image = wrapper?.querySelector("img");
-    const parent = wrapper?.parentElement;
-    if (!wrapper || !image || !parent) return null;
-    const rect = image.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
-    const paddingRight = parseFloat(getComputedStyle(parent).paddingRight) || 0;
-    const max = Math.max(
-      1,
-      parent.getBoundingClientRect().right - wrapper.getBoundingClientRect().left - paddingRight,
-    );
-    return {
-      width: rect.width,
-      ratio: rect.width / rect.height,
-      min: Math.min(96, rect.width, max),
-      max,
-    };
-  };
-  const clampWidth = (value: number, min: number, max: number) =>
-    Math.round(Math.max(min, Math.min(max, value)));
   // 右辺のハンドルは横方向だけで幅を変え、画像の縦横比はCSSで維持する。
   // ドラッグ中は局所的に描画し、確定時だけ親へ渡して仮想化後も幅を保つ。
   const updateDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
     if (!drag) return;
-    const delta = event.clientX - drag.x;
-    drag.current = clampWidth(drag.width + delta, drag.min, drag.max);
-    setPreviewWidth(drag.current);
+    dragRef.current = moveResizeDrag(drag, event.clientX);
+    setPreviewWidth(dragRef.current.current);
   };
   return (
     <div
@@ -142,22 +140,18 @@ export function InlineExpandedImage({
           title="ドラッグまたは矢印キーで画像のサイズを変更"
           onPointerDown={(event) => {
             if (event.button !== 0) return;
-            const bounds = getBounds();
+            const bounds = readResizeBounds(wrapperRef.current);
             if (!bounds) return;
             event.preventDefault();
             event.stopPropagation();
-            dragRef.current = {
-              ...bounds,
-              x: event.clientX,
-              current: bounds.width,
-            };
+            dragRef.current = startResizeDrag(bounds, event.clientX);
             event.currentTarget.setPointerCapture(event.pointerId);
           }}
           onPointerMove={(event) => updateDrag(event)}
           onPointerUp={(event) => {
-            if (!dragRef.current) return;
-            updateDrag(event);
-            const next = dragRef.current.current;
+            const drag = dragRef.current;
+            if (!drag) return;
+            const next = moveResizeDrag(drag, event.clientX).current;
             dragRef.current = null;
             setPreviewWidth(undefined);
             onResize(next);
@@ -171,18 +165,13 @@ export function InlineExpandedImage({
             setPreviewWidth(undefined);
           }}
           onKeyDown={(event) => {
-            const direction =
-              event.key === "ArrowRight" || event.key === "ArrowUp"
-                ? 1
-                : event.key === "ArrowLeft" || event.key === "ArrowDown"
-                  ? -1
-                  : 0;
+            const direction = getResizeKeyDirection(event.key);
             if (!direction) return;
-            const bounds = getBounds();
+            const bounds = readResizeBounds(wrapperRef.current);
             if (!bounds) return;
             event.preventDefault();
             event.stopPropagation();
-            onResize(clampWidth(bounds.width + direction * 20, bounds.min, bounds.max));
+            onResize(computeKeyboardResizeWidth(bounds, direction));
           }}
         />
       )}
