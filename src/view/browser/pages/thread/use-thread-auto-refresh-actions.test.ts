@@ -1,0 +1,164 @@
+import { cleanup, renderHook, waitFor } from "@testing-library/react";
+import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
+import { useThreadAutoRefreshActions } from "src/view/browser/pages/thread/use-thread-auto-refresh-actions";
+import { getAutoRefreshPageKey } from "src/view/browser/state/tabs/auto-refresh-pages";
+import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
+import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+
+const { loggerError } = vi.hoisted(() => ({ loggerError: vi.fn() }));
+vi.mock("src/app/logger", () => ({
+  createLogger: () => ({ error: loggerError, warn: vi.fn(), debug: vi.fn() }),
+}));
+
+const THREAD_URL = "https://example.com/test/read.cgi/board/1000000001/";
+const NEXT_URL = "https://example.com/test/read.cgi/board/1000000002/";
+
+const page: ThreadPageType = { type: "thread", title: "テストスレ", threadUrl: THREAD_URL };
+
+type Options = Parameters<typeof useThreadAutoRefreshActions>[0];
+
+/** ページキーは種別の登録後にだけ解決できるため、テストの本体で取得する。 */
+function getPageKey(): string {
+  const key = getAutoRefreshPageKey(page);
+  if (key == null) throw new Error("自動更新できるページキーを取得できませんでした");
+  return key;
+}
+
+function createOptions(overrides: Partial<Options> = {}) {
+  return {
+    page,
+    autoRefreshPageKey: getPageKey(),
+    canAutoRefresh: true,
+    isAutoRefreshEnabled: false,
+    dispatch: vi.fn(),
+    toast: { info: vi.fn() } as unknown as Options["toast"],
+    commentOverlayController: {
+      publishSystemMessage: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Options["commentOverlayController"],
+    ...overrides,
+  };
+}
+
+function renderActions(options: ReturnType<typeof createOptions>) {
+  return renderHook(() => useThreadAutoRefreshActions(options));
+}
+
+describe("useThreadAutoRefreshActions", () => {
+  setupTestPageTypes();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("自動更新を停止すると、ページの自動更新をOFFにして停止理由を通知する", () => {
+    const pageKey = getPageKey();
+    const options = createOptions({ isAutoRefreshEnabled: true });
+    const { result } = renderActions(options);
+
+    result.current.handleAutoRefreshStop("接続が切れたため自動更新を停止しました");
+
+    expect(options.dispatch).toHaveBeenCalledWith(tabActions.setAutoRefreshEnabled(false, pageKey));
+    expect(options.toast.info).toHaveBeenCalledWith("接続が切れたため自動更新を停止しました");
+  });
+
+  it("自動更新を開始できる状態なら、ページの自動更新をONにする", () => {
+    const pageKey = getPageKey();
+    const options = createOptions();
+    const { result } = renderActions(options);
+
+    result.current.handleEnableAutoRefresh();
+
+    expect(options.dispatch).toHaveBeenCalledWith(tabActions.setAutoRefreshEnabled(true, pageKey));
+  });
+
+  it("自動更新できない状態では、開始しない", () => {
+    const options = createOptions({ canAutoRefresh: false });
+    const { result } = renderActions(options);
+
+    result.current.handleEnableAutoRefresh();
+
+    expect(options.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("次スレが見つからなければ、停止したページを記録して通知する", () => {
+    const pageKey = getPageKey();
+    const options = createOptions({ isAutoRefreshEnabled: true });
+    const { result } = renderActions(options);
+
+    result.current.handleNextThreadSearchExhausted();
+
+    expect(options.dispatch).toHaveBeenCalledWith(tabActions.setAutoRefreshStoppedPageKey(pageKey));
+    expect(options.toast.info).toHaveBeenCalledWith(
+      "次スレが見つからなかったため自動更新を停止しました",
+    );
+  });
+
+  it("次スレ探索の対象ページがなければ、何もしない", () => {
+    const options = createOptions({ autoRefreshPageKey: null });
+    const { result } = renderActions(options);
+
+    result.current.handleNextThreadSearchExhausted();
+
+    expect(options.dispatch).not.toHaveBeenCalled();
+    expect(options.toast.info).not.toHaveBeenCalled();
+  });
+
+  it("次スレへ移動すると、Overlayに通知を流してから、自動更新の状態を引き継いで移動する", () => {
+    const options = createOptions({ isAutoRefreshEnabled: true });
+    const { result } = renderActions(options);
+
+    result.current.handleFollowNextThread({ title: "次のスレ", url: NEXT_URL });
+
+    expect(options.commentOverlayController.publishSystemMessage).toHaveBeenCalledWith(
+      THREAD_URL,
+      "スレ「次のスレ」へ移動します。",
+    );
+    expect(options.dispatch).toHaveBeenCalledWith(
+      tabActions.followNextThread(
+        { type: "thread", title: "次のスレ", threadUrl: NEXT_URL },
+        { keepAutoRefresh: true },
+      ),
+    );
+  });
+
+  it("自動更新が止まっている状態で次スレへ移動すると、自動更新を引き継がない", () => {
+    const options = createOptions({ isAutoRefreshEnabled: false });
+    const { result } = renderActions(options);
+
+    result.current.handleFollowNextThread({ title: "次のスレ", url: NEXT_URL });
+
+    expect(options.dispatch).toHaveBeenCalledWith(
+      tabActions.followNextThread(
+        { type: "thread", title: "次のスレ", threadUrl: NEXT_URL },
+        { keepAutoRefresh: false },
+      ),
+    );
+  });
+
+  it("通知の送信に失敗しても、エラーをログに残して次スレへの移動は続ける", async () => {
+    const error = new Error("送信できません");
+    const options = createOptions();
+    vi.mocked(options.commentOverlayController.publishSystemMessage).mockRejectedValue(error);
+    const { result } = renderActions(options);
+
+    result.current.handleFollowNextThread({ title: "次のスレ", url: NEXT_URL });
+
+    await waitFor(() => {
+      expect(loggerError).toHaveBeenCalledWith(
+        "次スレ移動の通知コメント送信に失敗しました:",
+        error,
+      );
+    });
+    expect(options.dispatch).toHaveBeenCalledWith(
+      tabActions.followNextThread(
+        { type: "thread", title: "次のスレ", threadUrl: NEXT_URL },
+        { keepAutoRefresh: false },
+      ),
+    );
+  });
+});
