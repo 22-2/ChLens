@@ -562,6 +562,25 @@ describe("ThreadPage の組み立て", () => {
       expect(h.toast.info).toHaveBeenCalledWith(expect.any(String));
     });
 
+    it("停止の記録済みで自動更新がOFFなら、dat落ちの停止通知を重ねない", () => {
+      const stoppedTab = {
+        id: "tab-stopped",
+        history: [THREAD_PAGE],
+        currentIndex: 0,
+        pinned: false,
+        autoRefreshEnabled: false,
+        autoRefreshPageKey: null,
+        autoRefreshStoppedPageKey: getAutoRefreshPageKey(THREAD_PAGE),
+      } as unknown as Props["tab"];
+      renderThreadPage({ tab: stoppedTab, isAutoRefreshEnabled: false });
+
+      const props = h.autoRefresh.props as { onThreadExpired: () => void };
+      props.onThreadExpired();
+
+      expect(h.dispatch).not.toHaveBeenCalled();
+      expect(h.toast.info).not.toHaveBeenCalled();
+    });
+
     it("新着の再取得は、タブの再読み込みコマンドとして実行する", () => {
       renderThreadPage({ isAutoRefreshEnabled: true });
 
