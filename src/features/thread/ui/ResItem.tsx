@@ -334,6 +334,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           onUrlClick={onUrlClick}
           isBlurred={isImageBlurred}
           imageBlurRadius={imageBlurRadius}
+          blurReason={res.imageBlurReason}
         />
       </article>
     );

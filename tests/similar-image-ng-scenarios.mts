@@ -101,6 +101,8 @@ export async function verifySimilarImageNgRegistration(
 
   await expect(thumb(1)).toHaveClass(/res__thumb--blurred/);
   await expect(thumb(2)).toHaveClass(/res__thumb--blurred/);
+  // ぼかしの理由は、画像にかざしたときの表示（title）に出る。登録時の名前「類似画像」が入る。
+  await expect(thumb(1)).toHaveAttribute("title", /^NGルール: 類似画像\n/u);
   // 判定が終わってからのぼかし（判定待ちではない）であることを確かめる。
   await expect(thumb(1)).not.toHaveClass(/res__thumb--hash-pending/);
   await expect(thumb(2)).not.toHaveClass(/res__thumb--hash-pending/);

@@ -11,4 +11,26 @@ describe("getNgBadgeLabel", () => {
       }),
     ).toBe('NGルール\nhide:\n  when body contains "対象ワード"');
   });
+
+  it("ルールに名前（label）があれば、理由として先頭に出し、DSL条件は次の行に続ける", () => {
+    expect(
+      getNgBadgeLabel({
+        type: "Body",
+        ruleDescription: 'collapse:\n  when body contains "対象ワード"',
+        params: { label: "宣伝" },
+      }),
+    ).toBe('NGルール: 宣伝\ncollapse:\n  when body contains "対象ワード"');
+  });
+
+  it("名前だけがあるとき（DSL条件がないとき）は、名前だけを理由として出す", () => {
+    expect(getNgBadgeLabel({ type: "Body", params: { label: "宣伝" } })).toBe("NGルール: 宣伝");
+  });
+
+  it("名前の前後の空白は無視する", () => {
+    expect(getNgBadgeLabel({ type: "Body", params: { label: "  宣伝  " } })).toBe("NGルール: 宣伝");
+  });
+
+  it("結果がなければ、ルール情報がないことを出す", () => {
+    expect(getNgBadgeLabel(undefined)).toBe("NG（ルール情報なし）");
+  });
 });

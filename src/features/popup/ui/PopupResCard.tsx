@@ -231,6 +231,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           onMiddleClickStart={onLinkMiddleClickStart}
           openOnMiddleMouseDown
           isBlurred={isImageBlurred}
+          blurReason={res.imageBlurReason}
         />
       </article>
     );

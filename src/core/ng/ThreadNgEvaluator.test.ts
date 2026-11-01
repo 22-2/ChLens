@@ -1,5 +1,9 @@
 // @vitest-environment node
-import { applySimilarImageNg, evaluateThreadNg } from "src/core/ng/ThreadNgEvaluator";
+import {
+  applySimilarImageNg,
+  attachSimilarImageBlurReason,
+  evaluateThreadNg,
+} from "src/core/ng/ThreadNgEvaluator";
 import type { INGResult } from "src/core/ports/ng";
 import type { IRes } from "src/core/ports/thread";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -167,5 +171,22 @@ describe("applySimilarImageNg", () => {
     expect(responses[1].ng).toBeUndefined();
     expect(after[0]).toBe(responses[0]);
     expect(after[1]).not.toBe(responses[1]);
+  });
+});
+
+describe("attachSimilarImageBlurReason", () => {
+  it("ぼかしの理由があるレスだけに理由を付ける", () => {
+    const responses = [res(1), res(2)];
+    const after = attachSimilarImageBlurReason(responses, new Map([[2, "NGルール: 類似画像"]]));
+
+    expect(after[0]).toBe(responses[0]);
+    expect(after[1]).toMatchObject({ num: 2, imageBlurReason: "NGルール: 類似画像" });
+    expect(responses[1].imageBlurReason).toBeUndefined();
+  });
+
+  it("理由がなければ、レスをそのまま返す", () => {
+    const responses = [res(1)];
+
+    expect(attachSimilarImageBlurReason(responses, new Map())).toBe(responses);
   });
 });

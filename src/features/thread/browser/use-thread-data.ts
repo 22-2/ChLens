@@ -10,7 +10,11 @@ import {
   useState,
 } from "react";
 import { createLogger } from "src/app/logger";
-import { applySimilarImageNg, evaluateThreadNg } from "src/core/ng/ThreadNgEvaluator";
+import {
+  applySimilarImageNg,
+  attachSimilarImageBlurReason,
+  evaluateThreadNg,
+} from "src/core/ng/ThreadNgEvaluator";
 import {
   useIsNgTemporarilyDisabled,
   useNgDisplayMode,
@@ -194,9 +198,13 @@ export function useThreadData(
     threadUrl: page.threadUrl,
     messageProtocol,
   });
-  const responses = useMemo(
+  const ngAppliedResponses = useMemo(
     () => applySimilarImageNg(rawResponses, similarImageNg.responseNgByNum),
     [rawResponses, similarImageNg.responseNgByNum],
+  );
+  const responses = useMemo(
+    () => attachSimilarImageBlurReason(ngAppliedResponses, similarImageNg.blurReasonByNum),
+    [ngAppliedResponses, similarImageNg.blurReasonByNum],
   );
   const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const isCacheResolved =

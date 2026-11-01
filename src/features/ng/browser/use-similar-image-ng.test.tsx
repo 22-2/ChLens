@@ -142,6 +142,21 @@ describe("類似画像NGでぼかすレス", () => {
     );
   });
 
+  it("ぼかしの理由は、ルールの名前（label）を使い、名前がなければ既定の名前を使う", () => {
+    isSimilarImageNG.mockReturnValue({
+      type: "SimilarImage",
+      action: "blur",
+      params: { label: "定期画像" },
+    });
+    useImageHashStore.setState({ entries: READY_ENTRIES });
+    const { result } = renderHook(() => useSimilarImageNg(options));
+    expect(result.current.blurReasonByNum).toEqual(new Map([[2, "NGルール: 定期画像"]]));
+
+    isSimilarImageNG.mockReturnValue({ type: "SimilarImage", action: "blur" });
+    act(() => ngChangedHandler?.());
+    expect(result.current.blurReasonByNum).toEqual(new Map([[2, "NGルール: 類似画像"]]));
+  });
+
   it("ハッシュが出ていないレスは、隠す・折りたたむ判定の対象にしない", () => {
     const { result } = renderHook(() => useSimilarImageNg(options));
     expect(isSimilarImageResponseNG).not.toHaveBeenCalled();

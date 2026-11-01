@@ -176,6 +176,21 @@ export function applySimilarImageNg(
   });
 }
 
+/**
+ * 類似画像NG（blur）でぼかすレスに、ぼかしの理由を付ける。
+ * 入力のレスは書き換えず、理由が変わるレスだけ新しいオブジェクトを返す。
+ */
+export function attachSimilarImageBlurReason(
+  responses: IRes[],
+  blurReasonByNum: ReadonlyMap<number, string>,
+): IRes[] {
+  if (blurReasonByNum.size === 0) return responses;
+  return responses.map((res) => {
+    const imageBlurReason = blurReasonByNum.get(res.num);
+    return imageBlurReason ? { ...res, imageBlurReason } : res;
+  });
+}
+
 function isImageNgWinning(ruleNg: INGResult | undefined, imageNg: INGResult): boolean {
   if (ruleNg == null) return true;
   // 自動NG・連鎖NGは、画像ルールより先に判定されたものとして残す。
