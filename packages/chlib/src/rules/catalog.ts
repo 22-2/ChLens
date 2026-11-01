@@ -219,8 +219,9 @@ export function getRuleTargetDefinition(target: RuleTarget): RuleTargetDefinitio
 
 /** 現在UIまで実装済みの組み合わせ。warnは将来拡張用の予約語として保持する。 */
 export function isRuleCombinationSupported(action: RuleAction, target: RuleTarget): boolean {
-  // 類似画像NGは、blurとimageの組み合わせだけを使う（ほかは構文検証で拒否する）。
-  if (action === "blur" || target === "image") return action === "blur" && target === "image";
+  // 類似画像NG（image）は、blur・hide・collapseで使う。blurは画像の条件だけを持つ（ほかは構文検証で拒否する）。
+  if (target === "image") return action === "blur" || action === "hide" || action === "collapse";
+  if (action === "blur") return false;
   return (
     action === "hide" || action === "collapse" || (action === "highlight" && target === "title")
   );

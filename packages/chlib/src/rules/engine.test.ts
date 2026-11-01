@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vite-plus/test";
 
 import {
   evaluateBoardRules,
+  evaluateImageResponseRules,
   evaluateImageRules,
   evaluateResponseRules,
   matchRules,
@@ -482,5 +483,39 @@ describe("類似画像NG（evaluateImageRules）", () => {
     };
     expect(evaluateResponseRules([blurRule, hide], context)?.rule).toBe(hide);
     expect(evaluateImageRules([hide, blurRule], context, [near])?.rule).toBe(blurRule);
+  });
+
+  it("画像の条件を持つhide・collapseは、画像の判定（evaluateImageResponseRules）で一致する", () => {
+    const hideRule: Rule = { ...blurRule, action: "hide" };
+    const collapseRule: Rule = { ...blurRule, action: "collapse" };
+    expect(evaluateImageResponseRules([hideRule], context, [near])?.rule).toBe(hideRule);
+    expect(evaluateImageResponseRules([collapseRule], context, [near])?.rule).toBe(collapseRule);
+    expect(evaluateImageResponseRules([hideRule], context, [far])).toBeNull();
+    expect(evaluateImageResponseRules([hideRule], context, [])).toBeNull();
+  });
+
+  it("画像の判定（hide・collapse）はblurを返さず、ぼかしの判定（blur）はhide・collapseを返さない", () => {
+    const hideRule: Rule = { ...blurRule, action: "hide" };
+    expect(evaluateImageResponseRules([blurRule], context, [near])).toBeNull();
+    expect(evaluateImageRules([hideRule], context, [near])).toBeNull();
+  });
+
+  it("画像の条件を持つhide・collapseは、文字列の判定（evaluateResponseRules）には現れない", () => {
+    const hideRule: Rule = { ...blurRule, action: "hide" };
+    expect(evaluateResponseRules([hideRule], context)).toBeNull();
+  });
+
+  it("画像で判定するhide・collapseも、画像以外の条件とANDで判定する", () => {
+    const imageHide: Rule = {
+      ...blurRule,
+      action: "hide",
+      conditions: [{ target: "name", matchers: [{ kind: "contains", value: "名無し" }] }],
+    };
+    const otherName: Rule = {
+      ...imageHide,
+      conditions: [{ target: "name", matchers: [{ kind: "contains", value: "別" }] }],
+    };
+    expect(evaluateImageResponseRules([imageHide], context, [near])?.rule).toBe(imageHide);
+    expect(evaluateImageResponseRules([otherName], context, [near])).toBeNull();
   });
 });
