@@ -118,7 +118,7 @@ describe("NGのwhen/unlessブロックDSL", () => {
     ['hide:\n  sites:\n  when body contains "x"', "1つ以上"],
     ['hide:\n  sites ""\n  when body contains "x"', "空でない"],
     ['hide:\n  disabled yes\n  when body contains "x"', "trueまたはfalse"],
-    ['hide:\n  label "x"\n  when body contains "x"', "highlightとblurでのみ"],
+    ['hide:\n  label "x"\n  when body contains "x"', "highlight・blur・collapseでのみ"],
     ['blur:\n  color red\n  when image similar "0123456789abcdef"', "highlightでのみ"],
     ['warn:\n  when image similar "0123456789abcdef"', "blur・hide・collapseでのみ使えます"],
     [
@@ -235,6 +235,17 @@ describe("NGのwhen/unlessブロックDSL", () => {
     const formatted = formatRuleDsl(result.rules);
     expect(formatted).toContain('hide:\n  similarity 90%\n  when image similar "0123456789abcdef"');
     expect(parseRuleDsl(formatted).rules).toEqual(result.rules);
+  });
+
+  it("collapseのlabelを解析し、書き戻しで往復できる", () => {
+    const source = 'collapse:\n  label "定期スレ"\n  when title contains "定期"';
+    const result = validateRuleDsl(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules[0]).toMatchObject({
+      action: "collapse",
+      presentation: { label: "定期スレ" },
+    });
+    expect(formatRuleDsl(result.rules)).toBe(source);
   });
 
   it("類似画像NGのないhide・collapseは、従来どおり画像の判定の対象にならない", () => {

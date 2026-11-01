@@ -167,8 +167,14 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
     if (current.color != null && action !== "highlight")
       error(current.node, "colorはhighlightでのみ指定できます。");
     // blurはDSL上でルールを見分ける手段がlabelしかないため（保存時にコメントは残らない）、labelを許す。
-    if (current.label != null && action !== "highlight" && action !== "blur")
-      error(current.node, "labelはhighlightとblurでのみ指定できます。");
+    // collapseのlabelは、スレ一覧で折りたたんだスレをまとめるセクションの見出しに使う。
+    if (
+      current.label != null &&
+      action !== "highlight" &&
+      action !== "blur" &&
+      action !== "collapse"
+    )
+      error(current.node, "labelはhighlight・blur・collapseでのみ指定できます。");
     if (current.similarity != null && imageCount === 0)
       error(current.node, "similarityはwhen image similarと一緒に指定してください。");
     if (!current.invalid && current.conditions.length > 0) {
