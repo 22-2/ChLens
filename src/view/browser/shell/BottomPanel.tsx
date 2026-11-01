@@ -131,7 +131,7 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = fa
       }
       update();
     };
-    // サイドパネルは本文に重なって開くため、下部パネルの操作だけ内側へ避ける。
+    // サイドパネルが重なる配置でも、下部パネルの操作を内側へ避ける。
     const MutationObserverConstructor = (viewWindow as Window & typeof globalThis).MutationObserver;
     const mutationObserver = new MutationObserverConstructor(observeSide);
     mutationObserver.observe(workspace, { childList: true });

@@ -133,7 +133,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
       const workspace = currentRoot.closest(".browser-shell__workspace");
       const sidePanel = workspace?.querySelector<HTMLElement>(":scope > .side-panel");
       const sideRect = sidePanel?.getBoundingClientRect();
-      // サイドパネルはペインを縮めずに重なるため、実際に見える右端で操作を配置する。
+      // サイドパネルがペインに重なる配置でも、見える右端に操作を配置する。
       const overlapsSidePanel =
         sideRect != null &&
         sideRect.width > 0 &&
@@ -202,7 +202,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
       if (observedSidePanel) resizeObserver?.observe(observedSidePanel);
     };
     observeSidePanel();
-    // 開閉はペインの寸法を変えないため、サイドパネルの追加・削除も監視する。
+    // サイドパネルの追加・削除時にも重なりを再計算する。
     const MutationObserverConstructor = (viewWindow as Window & typeof globalThis).MutationObserver;
     const mutationObserver =
       workspace && MutationObserverConstructor

@@ -87,12 +87,10 @@
   overflow: hidden;
 }
 .side-panel {
-  /* ステータスバーの幅を保ちつつ、パネルを本文の上に置く。 */
-  position: absolute;
-  inset: 0 0 var(--sys-space-12) auto;
-  /* 変更理由: dat落ち通知（minimap+1のsticky領域）がサイドパネルの上に被らないよう、それより前面に置く。 */
-  z-index: calc(var(--sys-z-minimap) + 2);
+  /* 本文を隠さず、パネルの幅に合わせてペインを縮める。 */
+  position: relative;
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
   min-width: 0;
   max-width: 50%;
@@ -103,9 +101,6 @@
   border-left: 1px solid var(--sys-color-border);
   /* 変更理由: サイドパネルを垂直タブバーと同じタブストリップ色に揃える。 */
   background: var(--sys-color-tab-strip);
-}
-.browser-shell[data-zen-mode="true"] .side-panel {
-  bottom: 0;
 }
 .side-panel__body {
   flex: 1;

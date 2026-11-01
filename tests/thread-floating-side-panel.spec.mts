@@ -14,10 +14,13 @@ test("フローティングボタンはサイドパネルの開閉とリサイ�
   const before = (await down.boundingBox())!;
   await page.getByRole("button", { name: "サイドパネルを開く" }).click();
   const sidePanel = page.getByRole("complementary", { name: "サイドパネル" });
+  const threadPanel = page.locator('.content-area__tab-panel[data-active="true"]');
   const assertOutside = async () => {
     const side = (await sidePanel.boundingBox())!;
     const button = (await down.boundingBox())!;
     expect(button.x + button.width).toBeLessThanOrEqual(side.x);
+    const thread = (await threadPanel.boundingBox())!;
+    expect(thread.x + thread.width).toBeLessThanOrEqual(side.x);
   };
   await expect.poll(async () => (await down.boundingBox())!.x).toBeLessThan(before.x);
   await assertOutside();
@@ -35,6 +38,7 @@ test("フローティングボタンはサイドパネルの開閉とリサイ�
     })
     .toBeLessThanOrEqual(0);
   await page.mouse.up();
+  await assertOutside();
   await down.click();
   const auto = page.getByRole("button", { name: "自動読み込みを開始" });
   await expect(auto).toBeAttached();
@@ -51,7 +55,7 @@ test("フローティングボタンはサイドパネルの開閉とリサイ�
   await expect.poll(async () => (await down.boundingBox())?.x).toBeCloseTo(before.x, 0);
 });
 
-test("2ペインではサイドパネルと重なるペインのボタンだけ移動する", async ({
+test("2ペインではサイドパネルの幅に合わせて両ペインが縮む", async ({
   page,
   extensionId,
   localBoard,
@@ -78,7 +82,9 @@ test("2ペインではサイドパネルと重なるペインのボタンだけ�
   await page.getByRole("button", { name: "サイドパネルを開く" }).click();
   const side = page.getByRole("complementary", { name: "サイドパネル" });
   await expect.poll(async () => (await right.boundingBox())!.x).toBeLessThan(rightBefore);
-  expect((await left.boundingBox())!.x).toBeCloseTo(leftBefore, 0);
+  await expect.poll(async () => (await left.boundingBox())!.x).toBeLessThan(leftBefore);
+  const rightPane = (await panes.nth(1).boundingBox())!;
+  expect(rightPane.x + rightPane.width).toBeLessThanOrEqual((await side.boundingBox())!.x);
   expect((await right.boundingBox())!.x + (await right.boundingBox())!.width).toBeLessThanOrEqual(
     (await side.boundingBox())!.x,
   );
