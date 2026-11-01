@@ -271,8 +271,12 @@ export function useThreadVirtualList({
     container.dispatchEvent(new Event("scroll"));
   }, [isActive, scrollContainerRef, virtualizer]);
 
+  const previousKeyCountRef = useRef(keys.length);
   useLayoutEffect(() => {
-    if (!stickToEnd || !virtualizer.isAtEnd(1)) return;
+    const previousCount = previousKeyCountRef.current;
+    previousKeyCountRef.current = keys.length;
+    // 追従の再開だけでは内容が増えていないため、仮想リストのスクロールを再始動しない。
+    if (keys.length === previousCount || !stickToEnd || !virtualizer.isAtEnd(1)) return;
     virtualizer.scrollToEnd();
   }, [keys.length, stickToEnd, virtualizer]);
 

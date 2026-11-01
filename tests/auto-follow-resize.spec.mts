@@ -1,6 +1,69 @@
 import { expect, test } from "./fixtures.mjs";
 import { openThreadFromBoard, waitForThreadLoaded } from "./thread-scroll-helpers.mjs";
 
+test("しきい線を越えて戻ったときに表示位置が跳ねない", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  await page.addInitScript(() => localStorage.setItem("config_auto_load_second", "5000"));
+  const thread = localBoard.addLargeThread(400);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, 400);
+  const status = page.getByRole("button", { name: /^スレッド自動更新: / });
+  await status.click();
+  await page
+    .locator(".mini-window__toggle-row")
+    .filter({ has: page.getByText("自動更新", { exact: true }) })
+    .getByRole("button")
+    .click();
+  await expect(status).toHaveAccessibleName(/^スレッド自動更新: 追従中/);
+  const panel = page.locator('.content-area__tab-panel[data-active="true"]');
+  await page.keyboard.press("Escape");
+  await panel.hover();
+  await page.mouse.wheel(0, -500);
+  await expect(status).toHaveAccessibleName(/^スレッド自動更新: 待機中/);
+  await panel.evaluate((element) => {
+    const state = element as HTMLElement & { samples: number[]; calls: number };
+    state.samples = [];
+    state.calls = 0;
+    const originalScrollTo = element.scrollTo.bind(element);
+    element.scrollTo = ((...args: Parameters<typeof element.scrollTo>) => {
+      state.calls++;
+      originalScrollTo(...args);
+    }) as typeof element.scrollTo;
+    const sample = () => {
+      const rect = element.getBoundingClientRect();
+      state.samples.push(
+        [...element.querySelectorAll<HTMLElement>("[data-res-num]")].filter((res) => {
+          const box = res.getBoundingClientRect();
+          return box.bottom > rect.top && box.top < rect.bottom;
+        }).length,
+      );
+      if (state.samples.length < 90) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.mouse.wheel(0, 1000);
+  await expect(status).toHaveAccessibleName(/^スレッド自動更新: 追従中/);
+  const offsets = await panel.evaluate(async (element) => {
+    const values: number[] = [];
+    for (let i = 0; i < 30; i++) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      values.push(element.scrollHeight - element.clientHeight - element.scrollTop);
+    }
+    return values;
+  });
+  expect(Math.max(...offsets)).toBeLessThanOrEqual(2);
+  const samples = await panel.evaluate(
+    (element) => (element as HTMLElement & { samples: number[] }).samples,
+  );
+  expect(Math.min(...samples)).toBeGreaterThan(0);
+  expect(
+    await panel.evaluate((element) => (element as HTMLElement & { calls: number }).calls),
+  ).toBe(0);
+});
+
 test("ウィンドウを広い状態から狭くしても自動更新の追従が外れない", async ({
   page,
   extensionId,
