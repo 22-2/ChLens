@@ -135,6 +135,13 @@ export interface INGService {
     url: string,
     imageHashes: readonly string[],
   ): INGResult | null;
+  /** レスの画像のハッシュで類似画像NG（hide・collapse）を判定する。isNGThreadとは別に呼ぶ。 */
+  isSimilarImageResponseNG(
+    res: unknown,
+    title: string,
+    url: string,
+    imageHashes: readonly string[],
+  ): INGResult | null;
   add(ruleDsl: string): Promise<void> | void;
   invalidateCache(): void;
   execExpire(): void;

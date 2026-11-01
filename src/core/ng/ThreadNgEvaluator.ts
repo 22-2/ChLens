@@ -157,3 +157,43 @@ export function evaluateThreadNg(
 
   return results;
 }
+
+/**
+ * 類似画像NG（hide・collapse）の結果を、レスのNG判定結果へ合わせる。
+ *
+ * 同じレスに文字列のルールと画像のルールが一致したら、設定の並び順で先のルールを勝たせる。
+ * 自動NG・連鎖NGは設定の並びを持たないため、文字列のルールで判定済みのものは画像より先に残す。
+ * 入力のレスは書き換えず、変わるレスだけ新しいオブジェクトを返す。
+ */
+export function applySimilarImageNg(
+  responses: IRes[],
+  imageNgByNum: ReadonlyMap<number, INGResult>,
+): IRes[] {
+  if (imageNgByNum.size === 0) return responses;
+  return responses.map((res) => {
+    const imageNg = imageNgByNum.get(res.num);
+    return imageNg && isImageNgWinning(res.ng, imageNg) ? { ...res, ng: imageNg } : res;
+  });
+}
+
+/**
+ * 類似画像NG（blur）でぼかすレスに、ぼかしの理由を付ける。
+ * 入力のレスは書き換えず、理由が変わるレスだけ新しいオブジェクトを返す。
+ */
+export function attachSimilarImageBlurReason(
+  responses: IRes[],
+  blurReasonByNum: ReadonlyMap<number, string>,
+): IRes[] {
+  if (blurReasonByNum.size === 0) return responses;
+  return responses.map((res) => {
+    const imageBlurReason = blurReasonByNum.get(res.num);
+    return imageBlurReason ? { ...res, imageBlurReason } : res;
+  });
+}
+
+function isImageNgWinning(ruleNg: INGResult | undefined, imageNg: INGResult): boolean {
+  if (ruleNg == null) return true;
+  // 自動NG・連鎖NGは、画像ルールより先に判定されたものとして残す。
+  if (ruleNg.ruleIndex == null) return false;
+  return imageNg.ruleIndex != null && imageNg.ruleIndex < ruleNg.ruleIndex;
+}

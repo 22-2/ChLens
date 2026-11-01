@@ -1,5 +1,9 @@
 // @vitest-environment node
-import { evaluateThreadNg } from "src/core/ng/ThreadNgEvaluator";
+import {
+  applySimilarImageNg,
+  attachSimilarImageBlurReason,
+  evaluateThreadNg,
+} from "src/core/ng/ThreadNgEvaluator";
 import type { INGResult } from "src/core/ports/ng";
 import type { IRes } from "src/core/ports/thread";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
@@ -111,5 +115,78 @@ describe("evaluateThreadNg", () => {
     const results = evaluate([res(1), res(2, { other: "Over 1000 Thread" }), res(3)], context);
 
     expect([...results.keys()]).toEqual([1]);
+  });
+});
+
+describe("applySimilarImageNg", () => {
+  const textHide = (ruleIndex: number): INGResult => ({
+    type: "Body",
+    action: "hide",
+    ruleIndex,
+  });
+  const imageHide = (ruleIndex: number): INGResult => ({
+    type: "SimilarImage",
+    action: "hide",
+    ruleIndex,
+  });
+
+  it("画像の結果がなければ、レスをそのまま返す", () => {
+    const responses = [res(1), res(2)];
+
+    expect(applySimilarImageNg(responses, new Map())).toBe(responses);
+  });
+
+  it("文字列の判定がないレスには、画像の結果を付ける", () => {
+    const [first, second] = applySimilarImageNg([res(1), res(2)], new Map([[2, imageHide(0)]]));
+
+    expect(first.ng).toBeUndefined();
+    expect(second.ng).toEqual(imageHide(0));
+  });
+
+  it("両方に一致したら、設定の並び順で先のルールを勝たせる", () => {
+    const before = [res(1, { ng: textHide(2) }), res(2, { ng: textHide(0) })];
+    const after = applySimilarImageNg(
+      before,
+      new Map([
+        [1, imageHide(1)],
+        [2, imageHide(1)],
+      ]),
+    );
+
+    expect(after[0].ng).toEqual(imageHide(1));
+    expect(after[1].ng).toEqual(textHide(0));
+  });
+
+  it("自動NG・連鎖NGは、画像の結果より優先して残す", () => {
+    const autoNg: INGResult = { type: "ID" };
+    const responses = [res(1, { ng: autoNg })];
+
+    expect(applySimilarImageNg(responses, new Map([[1, imageHide(0)]]))[0].ng).toBe(autoNg);
+  });
+
+  it("入力のレスは書き換えず、変わるレスだけ新しいオブジェクトにする", () => {
+    const responses = [res(1), res(2)];
+    const after = applySimilarImageNg(responses, new Map([[2, imageHide(0)]]));
+
+    expect(responses[1].ng).toBeUndefined();
+    expect(after[0]).toBe(responses[0]);
+    expect(after[1]).not.toBe(responses[1]);
+  });
+});
+
+describe("attachSimilarImageBlurReason", () => {
+  it("ぼかしの理由があるレスだけに理由を付ける", () => {
+    const responses = [res(1), res(2)];
+    const after = attachSimilarImageBlurReason(responses, new Map([[2, "NGルール: 類似画像"]]));
+
+    expect(after[0]).toBe(responses[0]);
+    expect(after[1]).toMatchObject({ num: 2, imageBlurReason: "NGルール: 類似画像" });
+    expect(responses[1].imageBlurReason).toBeUndefined();
+  });
+
+  it("理由がなければ、レスをそのまま返す", () => {
+    const responses = [res(1)];
+
+    expect(attachSimilarImageBlurReason(responses, new Map())).toBe(responses);
   });
 });

@@ -53,12 +53,12 @@ describe("補完の構文検証", () => {
         ({ category, label }) => category === "option" && label === "similarity",
       )?.insertText,
     ).toBe("similarity ${1:85}%");
-    // blurは画像以外の対象と、imageはblur以外の動作と組み合わせない。
+    // blurは画像の対象だけと組み合わせ、imageはblur・hide・collapseで使う。
     expect(
       RULE_DSL_COMPLETION_CANDIDATES.filter(
         ({ category, label }) =>
           category === "header" && (label.startsWith("blur ") || label.endsWith("(image)")),
       ).map(({ label }) => label),
-    ).toEqual(["blur (image)"]);
+    ).toEqual(["hide (image)", "collapse (image)", "blur (image)"]);
   });
 });

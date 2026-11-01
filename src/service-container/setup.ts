@@ -316,6 +316,8 @@ export function setupContainer(): void {
     hasImageHash: (hash) => ng.hasImageHash(hash),
     isSimilarImageNG: (res, title, url, imageHashes) =>
       ng.isSimilarImageNG(res, title, url, imageHashes),
+    isSimilarImageResponseNG: (res, title, url, imageHashes) =>
+      ng.isSimilarImageResponseNG(res, title, url, imageHashes),
     add: (ruleDsl) => ng.add(ruleDsl),
     invalidateCache: () => ng.invalidateCache(),
     execExpire: () => ng.execExpire(),

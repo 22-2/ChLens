@@ -1,6 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { useImageHashStore } from "src/features/media/browser/use-image-hash-store";
+import type { INGResult } from "src/core/ports/ng";
+import {
+  type ImageHashEntry,
+  useImageHashStore,
+} from "src/features/media/browser/use-image-hash-store";
 import { collectResImageUrls } from "src/features/media/domain/thread-images";
+import { formatSimilarImageBlurReason } from "src/features/ng/browser/similar-image-blur-reason";
 import { useIsNgTemporarilyDisabled } from "src/features/ng/browser/use-ng-status";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
@@ -12,19 +17,28 @@ interface UseSimilarImageNgOptions {
   messageProtocol: string;
 }
 
+export interface SimilarImageNgResult {
+  /** 類似画像NG（blur）でぼかすレスの番号。 */
+  readonly blurredResNums: ReadonlySet<number>;
+  /** 類似画像NG（hide・collapse）が一致したレスの結果。レス番号ごと。 */
+  readonly responseNgByNum: ReadonlyMap<number, INGResult>;
+  /** ぼかしたレスの理由（画像にかざしたときに出す文言）。レス番号ごと。 */
+  readonly blurReasonByNum: ReadonlyMap<number, string>;
+}
+
 /**
- * 類似画像NGでぼかすレスの番号を返す。
+ * 類似画像NGの判定結果を返す。ぼかすレスの番号と、隠す・折りたたむレスの結果を含む。
  *
  * ルールがあるときだけ、media のストアに画像のハッシュ計算を有効にさせる。
  * 判定はストアのハッシュから描画中に同期的に導く。ハッシュが出て「判定待ち」のぼかしが外れる描画と、
- * NGのぼかしが掛かる描画を同じにしないと、NG画像が一瞬見えてしまうため（effectで遅らせない）。
+ * NGのぼかしや非表示が掛かる描画を同じにしないと、NG画像が一瞬見えてしまうため（effectで遅らせない）。
  */
 export function useSimilarImageNg({
   responses,
   threadTitle,
   threadUrl,
   messageProtocol,
-}: UseSimilarImageNgOptions): ReadonlySet<number> {
+}: UseSimilarImageNgOptions): SimilarImageNgResult {
   const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
   const [ruleState, setRuleState] = useState(() => ({
     hasImageRules: container.ng.hasImageRules(),
@@ -54,20 +68,24 @@ export function useSimilarImageNg({
   const { revision } = ruleState;
 
   return useMemo(() => {
-    const blurred = new Set<number>();
-    if (!hashingEnabled) return blurred;
+    const blurredResNums = new Set<number>();
+    const responseNgByNum = new Map<number, INGResult>();
+    const blurReasonByNum = new Map<number, string>();
+    if (!hashingEnabled) return { blurredResNums, responseNgByNum, blurReasonByNum };
     // ルールの更新をこの判定に結び付ける（ルール本体はcontainer.ngが持つ）。
     void revision;
     for (const res of responses) {
-      const hashes: string[] = [];
-      for (const url of collectResImageUrls(res, messageProtocol)) {
-        const entry = imageHashEntries.get(url);
-        if (entry?.status === "ready") hashes.push(entry.hash);
-      }
+      const hashes = readyImageHashes(res, messageProtocol, imageHashEntries);
       if (hashes.length === 0) continue;
-      if (container.ng.isSimilarImageNG(res, threadTitle, threadUrl, hashes)) blurred.add(res.num);
+      const blurResult = container.ng.isSimilarImageNG(res, threadTitle, threadUrl, hashes);
+      if (blurResult) {
+        blurredResNums.add(res.num);
+        blurReasonByNum.set(res.num, formatSimilarImageBlurReason(blurResult));
+      }
+      const responseNg = container.ng.isSimilarImageResponseNG(res, threadTitle, threadUrl, hashes);
+      if (responseNg) responseNgByNum.set(res.num, responseNg);
     }
-    return blurred;
+    return { blurredResNums, responseNgByNum, blurReasonByNum };
   }, [
     hashingEnabled,
     imageHashEntries,
@@ -77,4 +95,18 @@ export function useSimilarImageNg({
     threadTitle,
     threadUrl,
   ]);
+}
+
+/** レスの画像のうち、ハッシュが出ているものだけを返す。判定待ちや失敗した画像は判定に含めない。 */
+function readyImageHashes(
+  res: IRes,
+  messageProtocol: string,
+  entries: ReadonlyMap<string, ImageHashEntry>,
+): string[] {
+  const hashes: string[] = [];
+  for (const url of collectResImageUrls(res, messageProtocol)) {
+    const entry = entries.get(url);
+    if (entry?.status === "ready") hashes.push(entry.hash);
+  }
+  return hashes;
 }

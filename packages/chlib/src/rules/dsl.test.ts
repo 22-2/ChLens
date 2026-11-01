@@ -118,9 +118,13 @@ describe("NGのwhen/unlessブロックDSL", () => {
     ['hide:\n  sites:\n  when body contains "x"', "1つ以上"],
     ['hide:\n  sites ""\n  when body contains "x"', "空でない"],
     ['hide:\n  disabled yes\n  when body contains "x"', "trueまたはfalse"],
-    ['hide:\n  label "x"\n  when body contains "x"', "highlightとblurでのみ"],
+    ['hide:\n  label "x"\n  when body contains "x"', "highlight・blur・collapseでのみ"],
     ['blur:\n  color red\n  when image similar "0123456789abcdef"', "highlightでのみ"],
-    ['hide:\n  when image similar "0123456789abcdef"', "blurでのみ使えます"],
+    ['warn:\n  when image similar "0123456789abcdef"', "blur・hide・collapseでのみ使えます"],
+    [
+      'hide:\n  when image similar "0123456789abcdef"\n  when image similar "fedcba9876543210"',
+      "1つのルールに1つまで",
+    ],
     ['blur:\n  when body contains "x"', "1つだけ"],
     [
       'blur:\n  when image similar "0123456789abcdef"\n  when image similar "fedcba9876543210"',
@@ -136,7 +140,8 @@ describe("NGのwhen/unlessブロックDSL", () => {
     ['blur:\n  similarity 49%\n  when image similar "0123456789abcdef"', "50〜100"],
     ['blur:\n  similarity 101\n  when image similar "0123456789abcdef"', "50〜100"],
     ['blur:\n  similarity 85.5%\n  when image similar "0123456789abcdef"', "50〜100"],
-    ['hide:\n  similarity 85%\n  when body contains "x"', "blurでのみ指定"],
+    ['hide:\n  similarity 85%\n  when body contains "x"', "when image similarと一緒に"],
+    ['hide:\n  similarity 85%\n  when image contains "x"', "similarを指定"],
     ['highlight:\n  when url contains "x"', "title条件"],
     ['hide:\n  sites "example.com"\n  sites "example.org"\n  when body contains "x"', "重複"],
     ['hide:\n  when body contains "x"\n    "y"', "一覧の見出し"],
@@ -206,6 +211,47 @@ describe("NGのwhen/unlessブロックDSL", () => {
     expect(result.diagnostics).toEqual([]);
     expect(result.rules[0]).not.toHaveProperty("similarity");
     expect(formatRuleDsl(result.rules)).toBe(source);
+  });
+
+  it("類似画像NGは隠す・折りたたむ動作でも解析し、書き戻しで往復できる", () => {
+    const source = [
+      "hide:",
+      "  similarity 90",
+      '  when image similar "0123456789abcdef"',
+      '  unless id contains "許可ID"',
+      "",
+      "collapse:",
+      '  when image similar "fedcba9876543210"',
+      '  when body contains "宣伝"',
+    ].join("\n");
+    const result = validateRuleDsl(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules[0]).toMatchObject({ action: "hide", target: "image", similarity: 90 });
+    expect(result.rules[1]).toMatchObject({
+      action: "collapse",
+      target: "image",
+      conditions: [{ target: "body" }],
+    });
+    const formatted = formatRuleDsl(result.rules);
+    expect(formatted).toContain('hide:\n  similarity 90%\n  when image similar "0123456789abcdef"');
+    expect(parseRuleDsl(formatted).rules).toEqual(result.rules);
+  });
+
+  it("collapseのlabelを解析し、書き戻しで往復できる", () => {
+    const source = 'collapse:\n  label "定期スレ"\n  when title contains "定期"';
+    const result = validateRuleDsl(source);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules[0]).toMatchObject({
+      action: "collapse",
+      presentation: { label: "定期スレ" },
+    });
+    expect(formatRuleDsl(result.rules)).toBe(source);
+  });
+
+  it("類似画像NGのないhide・collapseは、従来どおり画像の判定の対象にならない", () => {
+    const result = validateRuleDsl('hide:\n  when body contains "x"');
+    expect(result.diagnostics).toEqual([]);
+    expect(result.rules[0]).toMatchObject({ action: "hide", target: "body" });
   });
 
   it("similarityは境界の50%と100%を受け付ける", () => {

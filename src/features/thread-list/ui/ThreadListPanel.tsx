@@ -61,6 +61,7 @@ import {
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
 import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
 import { createBoardPage } from "src/view/browser/utils/tab-pages";
+import { buildDemotedThreadSections } from "src/view/browser/utils/thread-list-demoted-sections";
 
 const logger = createLogger("thread-list");
 
@@ -501,17 +502,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       ...(normal.length > 0
         ? [{ key: "normal", label: `スレ一覧（${normal.length}）`, rows: normal }]
         : []),
-      ...(demoted.length > 0
-        ? [
-            {
-              key: "demoted",
-              label: `折りたたんだスレ（${demoted.length}）`,
-              rows: demoted,
-              collapsible: true,
-              defaultCollapsed: true,
-            },
-          ]
-        : []),
+      ...buildDemotedThreadSections(demoted, (item) => item.thread.demoted),
     ];
   }, [isNgTemporarilyDisabled, visibleDisplayThreads]);
 

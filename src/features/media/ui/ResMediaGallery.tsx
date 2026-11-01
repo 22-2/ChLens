@@ -57,6 +57,8 @@ interface ResMediaGalleryProps {
   openOnMiddleMouseDown?: boolean;
   isBlurred?: boolean;
   imageBlurRadius?: number;
+  /** ぼかしの理由（NGルール名など）。ぼかしているときだけ、画像にかざしたときの表示に加える。 */
+  blurReason?: string;
   expandedImageUrls?: ReadonlySet<string>;
   inlineImageWidths?: ReadonlyMap<string, number>;
   onResizeImage?: (url: string, width: number) => void;
@@ -72,6 +74,7 @@ export function ResMediaGallery({
   openOnMiddleMouseDown = false,
   isBlurred = false,
   imageBlurRadius = 4,
+  blurReason,
   expandedImageUrls,
   inlineImageWidths,
   onResizeImage,
@@ -181,6 +184,9 @@ export function ResMediaGallery({
   };
   const blurStyle: ThumbStyle = { "--res-thumb-blur-radius": `${imageBlurRadius}px` };
   const thumbStyle: ThumbStyle | undefined = isBlurred ? blurStyle : undefined;
+  // ぼかしの理由は、ぼかしている画像にだけ出す。判定待ちの画像は理由がないので URL だけを出す。
+  const thumbTitle = (url: string): string =>
+    isBlurred && blurReason ? `${blurReason}\n${url}` : url;
   const hashingEnabled = useImageHashStore((state) => state.hashingEnabled);
   const imageHashEntries = useImageHashStore((state) => state.entries);
   const thumbsRef = useRef<HTMLDivElement | null>(null);
@@ -350,7 +356,7 @@ export function ResMediaGallery({
                   className={`res__thumb res__thumb--image res__thumb--manual${isBlurred ? " res__thumb--blurred" : ""}`}
                   style={thumbStyle}
                   aria-label={getImagePlaceholderLabel(imageState, "画像を読み込む")}
-                  title={item.rawUrl}
+                  title={thumbTitle(item.rawUrl)}
                   onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
                   onClick={(event) => {
                     event.preventDefault();
@@ -405,7 +411,7 @@ export function ResMediaGallery({
                   }}
                   onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
                   onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
-                  title={item.rawUrl}
+                  title={thumbTitle(item.rawUrl)}
                 >
                   {manualImageLoading ? (
                     <ManualLoadExternalImage
@@ -473,7 +479,7 @@ export function ResMediaGallery({
                 style={thumbStyle}
                 aria-pressed={isExpanded}
                 aria-label={`${item.providerLabel} を${isExpanded ? "閉じる" : "展開する"}`}
-                title={item.rawUrl}
+                title={thumbTitle(item.rawUrl)}
                 onContextMenu={(event) => {
                   // 動画サムネイル内の画像も、標準メニューから外部起動させない。
                   if (confirmExternal) openMenu(item.rawUrl, event);

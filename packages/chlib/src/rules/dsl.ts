@@ -150,10 +150,14 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
     );
     const imageCount = targets.filter((target) => target === "image").length;
     // 画像の判定はハッシュの比較で、1つのルールで1つの画像条件だけを扱う。
+    // blurは画像をぼかすため、画像の条件が必須。hide・collapseは画像の条件を任意で足せる。
     // 本文などの条件だけのblurは、既存の語句によるぼかし（image_blur_word）と役割が重なるため受け付けない。
-    if (imageCount > 0 && action !== "blur") error(current.node, "imageはblurでのみ使えます。");
-    else if (action === "blur" && targets.length > 0 && imageCount !== 1)
+    if (action === "blur" && targets.length > 0 && imageCount !== 1)
       error(current.node, "blurにはwhen image similarを1つだけ指定してください。");
+    else if (imageCount > 1)
+      error(current.node, "when image similarは1つのルールに1つまで指定できます。");
+    else if (imageCount > 0 && !IMAGE_RULE_ACTIONS.has(action))
+      error(current.node, "imageはblur・hide・collapseでのみ使えます。");
     else if (targets.length > 0 && !evaluable)
       error(current.node, "動作とすべての条件を同じ画面で判定できません。");
     const titleIndex = current.conditions.findIndex((condition) => condition.target === "title");
@@ -163,14 +167,21 @@ export function parseRuleDsl(source: string): RuleDslParseResult {
     if (current.color != null && action !== "highlight")
       error(current.node, "colorはhighlightでのみ指定できます。");
     // blurはDSL上でルールを見分ける手段がlabelしかないため（保存時にコメントは残らない）、labelを許す。
-    if (current.label != null && action !== "highlight" && action !== "blur")
-      error(current.node, "labelはhighlightとblurでのみ指定できます。");
-    if (current.similarity != null && action !== "blur")
-      error(current.node, "similarityはblurでのみ指定できます。");
+    // collapseのlabelは、スレ一覧で折りたたんだスレをまとめるセクションの見出しに使う。
+    if (
+      current.label != null &&
+      action !== "highlight" &&
+      action !== "blur" &&
+      action !== "collapse"
+    )
+      error(current.node, "labelはhighlight・blur・collapseでのみ指定できます。");
+    if (current.similarity != null && imageCount === 0)
+      error(current.node, "similarityはwhen image similarと一緒に指定してください。");
     if (!current.invalid && current.conditions.length > 0) {
-      // highlightの結果種別はtitleから、blurはimageから決める。ほかの条件を先に書いても意味を変えない。
+      // highlightの結果種別はtitleから決める。ほかの条件を先に書いても意味を変えない。
+      // 画像の条件があるルールは、画像をルールの対象（target）にして判定する。
       const conditions = [...current.conditions];
-      const primaryIndex = action === "highlight" ? titleIndex : action === "blur" ? imageIndex : 0;
+      const primaryIndex = action === "highlight" ? titleIndex : imageIndex < 0 ? 0 : imageIndex;
       const primary = conditions.splice(primaryIndex, 1)[0];
       const toCondition = (condition: ConditionDraft): RuleCondition => ({
         target: condition.target,

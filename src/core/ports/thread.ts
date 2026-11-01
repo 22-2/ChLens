@@ -27,6 +27,8 @@ export interface IRes {
   message: string;
   isNew?: boolean;
   ng?: INGResult;
+  /** 類似画像NGでこのレスの画像をぼかすときの理由。表示用に、判定後のレスへ合わせて入れる。 */
+  imageBlurReason?: string;
   isAA?: boolean;
   class?: string[];
 }

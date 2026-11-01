@@ -63,9 +63,13 @@ export const RESPONSE_RULE_TARGETS = new Set<RuleTarget>([
   "reply-count",
   "anchor-count",
 ]);
-/** 類似画像NG。画像の条件に、レスの文字列・数値の条件をANDで足せる。 */
-export const IMAGE_RULE_ACTIONS = new Set<Rule["action"]>(["blur"]);
+/**
+ * 類似画像NG。blurは画像をぼかし、hide・collapseはレスを隠す・折りたたむ。
+ * 画像の条件に、レスの文字列・数値の条件をANDで足せる。
+ */
+export const IMAGE_RULE_ACTIONS = new Set<Rule["action"]>(["blur", "hide", "collapse"]);
 export const IMAGE_RULE_TARGETS = new Set<RuleTarget>([...RESPONSE_RULE_TARGETS, "image"]);
+const IMAGE_BLUR_ACTIONS = new Set<Rule["action"]>(["blur"]);
 
 // Boardという呼び方を知らないLive側でも、同じ制限を「thread list」として利用できる。
 export const THREAD_LIST_RULE_ACTIONS = BOARD_RULE_ACTIONS;
@@ -262,22 +266,23 @@ export function evaluateResponseRules(
 }
 
 /**
- * 類似画像NG（blur）を、レスの文脈とそのレスの画像のハッシュで判定する。
+ * 類似画像NGのルールを、レスの文脈とそのレスの画像のハッシュで判定する。
+ * 対象の動作（allowedActions）のルールだけを見て、最初に一致した1件を返す。
  *
- * hide・collapseの判定（evaluateResponseRules）は最初に一致した1件だけを返すため、
- * blurを混ぜると隠すルールと取り合いになる。画像の判定はこの関数に分ける。
+ * blurはhide・collapseと別の判定にする。blurは画像だけに掛かり、レスを隠す判定と取り合わないため。
  * 画像の条件は、どれか1枚が登録したハッシュのどれかに似ていれば成立する。
  */
-export function evaluateImageRules(
+function matchImageRules(
   rules: readonly Rule[],
   context: ResponseRuleContext,
   imageHashes: readonly string[],
+  allowedActions: ReadonlySet<Rule["action"]>,
   onRegexError?: (source: string, error: unknown) => void,
 ): RuleMatchResult | null {
   if (imageHashes.length === 0) return null;
   const now = Date.now();
   for (const rule of rules) {
-    if (!IMAGE_RULE_ACTIONS.has(rule.action) || rule.target !== "image") continue;
+    if (!allowedActions.has(rule.action) || rule.target !== "image") continue;
     if (!isRuleActive(rule, context.url, now)) continue;
     const conditions = getRuleConditions(rule);
     if (conditions.some(({ target }) => !IMAGE_RULE_TARGETS.has(target))) continue;
@@ -312,6 +317,29 @@ export function evaluateImageRules(
     return toMatchResult(rule, imageMatcher);
   }
   return null;
+}
+
+/** 類似画像NG（blur）を判定する。ぼかすレスを決めるのに使う。 */
+export function evaluateImageRules(
+  rules: readonly Rule[],
+  context: ResponseRuleContext,
+  imageHashes: readonly string[],
+  onRegexError?: (source: string, error: unknown) => void,
+): RuleMatchResult | null {
+  return matchImageRules(rules, context, imageHashes, IMAGE_BLUR_ACTIONS, onRegexError);
+}
+
+/**
+ * 類似画像NG（hide・collapse）を判定する。レスを隠す・折りたたむのに使う。
+ * 文字列の条件だけのhide・collapseはevaluateResponseRulesが判定し、ここでは画像の条件を持つものだけを返す。
+ */
+export function evaluateImageResponseRules(
+  rules: readonly Rule[],
+  context: ResponseRuleContext,
+  imageHashes: readonly string[],
+  onRegexError?: (source: string, error: unknown) => void,
+): RuleMatchResult | null {
+  return matchImageRules(rules, context, imageHashes, RESPONSE_RULE_ACTIONS, onRegexError);
 }
 
 export function clearRuleRegexCache(): void {
