@@ -5,8 +5,8 @@
 export interface INGResult {
   type: string;
   /**
-   * 一致したルールの動作。blurは類似画像NGの判定（evaluateImageRules）だけが返し、
-   * 隠す・強調の判定結果には現れないが、ルールの動作の型と揃えるため含める。
+   * 一致したルールの動作。blurは類似画像NGのぼかし判定（evaluateImageRules）だけが返す。
+   * hide・collapseは文字列の判定と類似画像NGの判定（evaluateImageResponseRules）の両方が返す。
    */
   action?: "hide" | "collapse" | "highlight" | "warn" | "blur";
   /** 実際に一致した条件だけを抜き出したDSL。NG理由の表示に使用する。 */

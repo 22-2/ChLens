@@ -159,3 +159,67 @@ export async function verifySimilarImageNgRegistration(
     )
     .toBe(true);
 }
+
+/**
+ * 類似画像NGの動作を隠す・折りたたむに変えると、似た画像を含むレスだけが隠れる・折りたたまれることを確かめる。
+ * 右クリックの登録で作ったぼかしのルールを、設定の文字列で hide・collapse に書き換えてから読み直す。
+ */
+export async function verifySimilarImageNgResponseAction(
+  page: Page,
+  localBoard: LocalBoard,
+  action: "hide" | "collapse",
+): Promise<void> {
+  const images = await createTestImages(page);
+  localBoard.setImageBody(1, new Uint8Array(images.original), "image/jpeg");
+  localBoard.setImageBody(2, new Uint8Array(images.recompressed), "image/jpeg");
+  localBoard.setImageBody(3, new Uint8Array(images.other), "image/jpeg");
+  localBoard.setDat(
+    [
+      `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local001<>元の画像 ${localBoard.origin}/img/1.png<>ローカルテストスレッド`,
+      `名無し<>sage<>2026/10/02(金) 12:01:00 ID:local002<>再圧縮 ${localBoard.origin}/img/2.png<>`,
+      `名無し<>sage<>2026/10/02(金) 12:02:00 ID:local003<>別の画像 ${localBoard.origin}/img/3.png<>`,
+    ].join("\n"),
+  );
+
+  await openUrl(page, localBoard.threadUrl);
+  const panel = page.locator('.content-area__tab-panel[data-active="true"]');
+  const article = (resNum: number) => panel.locator(`[data-res-num="${resNum}"]`);
+  const thumb = (resNum: number) => article(resNum).locator(".res__thumb--image");
+  for (const resNum of [1, 2, 3]) {
+    await expect
+      .poll(() =>
+        thumb(resNum)
+          .locator("img")
+          .evaluate((image) => (image as HTMLImageElement).naturalWidth),
+      )
+      .toBeGreaterThan(0);
+  }
+
+  await thumb(1).click({ button: "right" });
+  await page.getByRole("menuitem", { name: "類似画像NGに登録", exact: true }).click();
+  await expect(thumb(1)).toHaveClass(/res__thumb--blurred/);
+
+  // 登録で作られたぼかしのルールを、指定の動作に書き換えて読み直す。labelはぼかしだけで使うため外す。
+  const registered = await page.evaluate(() => localStorage.getItem("config_ngwords") ?? "");
+  const rewritten = registered.replace(/^blur:\r?\n  label "類似画像"\r?\n/u, `${action}:\n`);
+  expect(rewritten).not.toBe(registered);
+  await page.evaluate((text) => localStorage.setItem("config_ngwords", text), rewritten);
+  await page.reload();
+  await openUrl(page, localBoard.threadUrl);
+
+  // 似た画像（元の画像・再圧縮した画像）を含むレスだけが対象になる。
+  await expect(panel.locator('[data-res-num="3"]')).toContainText("別の画像");
+  if (action === "hide") {
+    await expect(article(1)).toHaveCount(0);
+    await expect(article(2)).toHaveCount(0);
+    return;
+  }
+  const placeholder = (resNum: number) =>
+    panel.locator(`.res--ng-placeholder[data-res-num="${resNum}"]`);
+  await expect(placeholder(1)).toBeVisible();
+  await expect(placeholder(2)).toBeVisible();
+  await expect(article(3)).not.toHaveClass(/res--ng-placeholder/);
+  // 折りたたんだレスは、クリックすると本文を表示する。
+  await placeholder(1).click();
+  await expect(article(1)).toContainText("元の画像");
+}

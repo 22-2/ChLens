@@ -173,6 +173,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     idPositions,
     setResponses,
     messageProtocol,
+    similarImageBlurredResNums,
   } = useThreadData(tabId, page, rootRef, refreshController);
   const clearFilter = useThreadFilterReset({ tabId, page, setFilter, setSearchQuery });
   const requestManualRefresh = useCallback(() => {
@@ -679,11 +680,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   });
 
   const blurredResNums = useThreadBlurredResNums({
-    page,
     responses,
     indexes,
     imageBlurConfig,
-    messageProtocol,
+    similarImageBlurredResNums,
   });
   // 画像一覧も本文と同じぼかし判定にするため、判定結果を含めて公開する。
   useThreadSnapshotPublisher({

@@ -32,6 +32,7 @@ describe("useThreadTitleNgDialog", () => {
       hasImageRules: vi.fn().mockReturnValue(false),
       hasImageHash: vi.fn().mockReturnValue(false),
       isSimilarImageNG: vi.fn().mockReturnValue(null),
+      isSimilarImageResponseNG: vi.fn().mockReturnValue(null),
       add: addNgRuleMock,
       invalidateCache: vi.fn(),
       execExpire: vi.fn(),

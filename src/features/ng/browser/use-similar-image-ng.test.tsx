@@ -1,5 +1,8 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { useImageHashStore } from "src/features/media/browser/use-image-hash-store";
+import {
+  type ImageHashEntry,
+  useImageHashStore,
+} from "src/features/media/browser/use-image-hash-store";
 import { useSimilarImageNg } from "src/features/ng/browser/use-similar-image-ng";
 import { container } from "src/service-container";
 import type { IMessage, INGService, IRes } from "src/service-container/interfaces";
@@ -25,12 +28,18 @@ const options = {
 let ngChangedHandler: (() => void) | null = null;
 const hasImageRules = vi.fn<() => boolean>();
 const isSimilarImageNG = vi.fn<INGService["isSimilarImageNG"]>();
+const isSimilarImageResponseNG = vi.fn<INGService["isSimilarImageResponseNG"]>();
+
+const READY_ENTRIES = new Map<string, ImageHashEntry>([
+  [IMAGE_URL, { status: "ready", hash: "0123456789abcdef" }],
+]);
 
 describe("類似画像NGでぼかすレス", () => {
   beforeEach(() => {
     ngStatus.temporarilyDisabled = false;
     hasImageRules.mockReset().mockReturnValue(true);
     isSimilarImageNG.mockReset().mockReturnValue({ type: "SimilarImage", action: "blur" });
+    isSimilarImageResponseNG.mockReset().mockReturnValue(null);
     ngChangedHandler = null;
     container.ng = {
       isNGBoard: vi.fn().mockReturnValue(null),
@@ -38,6 +47,7 @@ describe("類似画像NGでぼかすレス", () => {
       hasImageRules,
       hasImageHash: vi.fn().mockReturnValue(false),
       isSimilarImageNG,
+      isSimilarImageResponseNG,
       add: vi.fn(),
       invalidateCache: vi.fn(),
       execExpire: vi.fn(),
@@ -60,22 +70,21 @@ describe("類似画像NGでぼかすレス", () => {
     hasImageRules.mockReturnValue(false);
     const { result } = renderHook(() => useSimilarImageNg(options));
     expect(useImageHashStore.getState().hashingEnabled).toBe(false);
-    expect(result.current.size).toBe(0);
+    expect(result.current.blurredResNums.size).toBe(0);
+    expect(result.current.responseNgByNum.size).toBe(0);
   });
 
   it("ルールがあればハッシュを計算させ、出たハッシュでレスを判定する", () => {
     const { result } = renderHook(() => useSimilarImageNg(options));
     expect(useImageHashStore.getState().hashingEnabled).toBe(true);
-    expect(result.current.size).toBe(0);
+    expect(result.current.blurredResNums.size).toBe(0);
     expect(isSimilarImageNG).not.toHaveBeenCalled();
 
     // ハッシュが出た描画で、そのままぼかす対象になる（effectで遅らせない）。
     act(() => {
-      useImageHashStore.setState({
-        entries: new Map([[IMAGE_URL, { status: "ready", hash: "0123456789abcdef" }]]),
-      });
+      useImageHashStore.setState({ entries: READY_ENTRIES });
     });
-    expect(result.current).toEqual(new Set([2]));
+    expect(result.current.blurredResNums).toEqual(new Set([2]));
     expect(isSimilarImageNG).toHaveBeenCalledWith(
       responses[1],
       options.threadTitle,
@@ -86,38 +95,56 @@ describe("類似画像NGでぼかすレス", () => {
 
   it("似ていなければぼかさない", () => {
     isSimilarImageNG.mockReturnValue(null);
-    useImageHashStore.setState({
-      entries: new Map([[IMAGE_URL, { status: "ready", hash: "0123456789abcdef" }]]),
-    });
+    useImageHashStore.setState({ entries: READY_ENTRIES });
     const { result } = renderHook(() => useSimilarImageNg(options));
-    expect(result.current.size).toBe(0);
+    expect(result.current.blurredResNums.size).toBe(0);
   });
 
   it("NGの一時解除中はハッシュを計算させず、ぼかさない", () => {
     ngStatus.temporarilyDisabled = true;
-    useImageHashStore.setState({
-      entries: new Map([[IMAGE_URL, { status: "ready", hash: "0123456789abcdef" }]]),
-    });
+    useImageHashStore.setState({ entries: READY_ENTRIES });
     const { result } = renderHook(() => useSimilarImageNg(options));
     expect(useImageHashStore.getState().hashingEnabled).toBe(false);
-    expect(result.current.size).toBe(0);
+    expect(result.current.blurredResNums.size).toBe(0);
   });
 
   it("NGの変更を受けて、ルールの有無と判定をやり直す", () => {
-    useImageHashStore.setState({
-      entries: new Map([[IMAGE_URL, { status: "ready", hash: "0123456789abcdef" }]]),
-    });
+    useImageHashStore.setState({ entries: READY_ENTRIES });
     const { result } = renderHook(() => useSimilarImageNg(options));
-    expect(result.current).toEqual(new Set([2]));
+    expect(result.current.blurredResNums).toEqual(new Set([2]));
 
     hasImageRules.mockReturnValue(false);
     act(() => ngChangedHandler?.());
     expect(useImageHashStore.getState().hashingEnabled).toBe(false);
-    expect(result.current.size).toBe(0);
+    expect(result.current.blurredResNums.size).toBe(0);
 
     hasImageRules.mockReturnValue(true);
     isSimilarImageNG.mockReturnValue(null);
     act(() => ngChangedHandler?.());
-    expect(result.current.size).toBe(0);
+    expect(result.current.blurredResNums.size).toBe(0);
+  });
+
+  it("画像で隠す・折りたたむレスは、その結果をレス番号ごとに返す", () => {
+    const hideResult = { type: "SimilarImage", action: "hide", ruleIndex: 0 } as const;
+    isSimilarImageNG.mockReturnValue(null);
+    isSimilarImageResponseNG.mockReturnValue(hideResult);
+    useImageHashStore.setState({ entries: READY_ENTRIES });
+
+    const { result } = renderHook(() => useSimilarImageNg(options));
+
+    expect(result.current.blurredResNums.size).toBe(0);
+    expect(result.current.responseNgByNum).toEqual(new Map([[2, hideResult]]));
+    expect(isSimilarImageResponseNG).toHaveBeenCalledWith(
+      responses[1],
+      options.threadTitle,
+      options.threadUrl,
+      ["0123456789abcdef"],
+    );
+  });
+
+  it("ハッシュが出ていないレスは、隠す・折りたたむ判定の対象にしない", () => {
+    const { result } = renderHook(() => useSimilarImageNg(options));
+    expect(isSimilarImageResponseNG).not.toHaveBeenCalled();
+    expect(result.current.responseNgByNum.size).toBe(0);
   });
 });

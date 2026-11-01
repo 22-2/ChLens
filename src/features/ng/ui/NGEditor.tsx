@@ -67,6 +67,22 @@ collapse:
   when image similar "0123456789abcdef"`,
   },
   {
+    title: "似た画像を非表示にする",
+    description:
+      "hideはレスを非表示にします。画像の条件はblurと同じで、登録した画像に似た画像を含むレスが対象です。similarityは何%以上似ていたら対象にするかです。例の値は架空なので、登録した値に置き換えてください。",
+    code: `hide:
+  similarity 85%
+  when image similar "0123456789abcdef"`,
+  },
+  {
+    title: "似た画像を折りたたむ",
+    description:
+      "collapseは、似た画像を含むレスをクリックで表示できるように折りたたみます。画像だけをぼかす場合はblur、レスごと隠す場合はhideを使います。",
+    code: `collapse:
+  similarity 85%
+  when image similar "0123456789abcdef"`,
+  },
+  {
     title: "複数の条件を満たすスレを強調する",
     description:
       "タイトルに「実況」を含み、レス数が10以上のスレを青色で強調します。条件を複数書くと、すべて満たす場合に適用します。colorは色、labelはスレ一覧に表示する名前です。",

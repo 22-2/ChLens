@@ -189,6 +189,39 @@ describe("類似画像NG", () => {
     // blurのルールが先にあっても、隠す判定はhideを返す。
     expect(ng.isNGThread(res, "スレ", url)).toMatchObject({ action: "hide" });
   });
+
+  it("画像の条件を持つhide・collapseは、隠す判定ではなく類似画像の判定（hide・collapse）で返す", () => {
+    configStore.set(
+      "ngwords",
+      [
+        'hide:\n  when image similar "0000000000000000"',
+        'collapse:\n  when image similar "0000000000000000"',
+      ].join("\n\n"),
+    );
+    const ng = createNG(deps);
+    ng.invalidateCache();
+
+    expect(ng.hasImageRules()).toBe(true);
+    expect(ng.isNGThread(res, "スレ", url)).toBeNull();
+    expect(ng.isSimilarImageNG(res, "スレ", url, ["0000000000000000"])).toBeNull();
+    expect(ng.isSimilarImageResponseNG(res, "スレ", url, ["00000000000001ff"])).toMatchObject({
+      type: "SimilarImage",
+      action: "hide",
+      ruleIndex: 0,
+    });
+    expect(ng.isSimilarImageResponseNG(res, "スレ", url, ["00000000000003ff"])).toBeNull();
+  });
+
+  it("文字列による隠す・折りたたむの結果に、設定の位置を持たせる", () => {
+    configStore.set(
+      "ngwords",
+      'collapse:\n  when title contains "x"\n\nhide:\n  when body contains "画像"',
+    );
+    const ng = createNG(deps);
+    ng.invalidateCache();
+
+    expect(ng.isNGThread(res, "スレ", url)).toMatchObject({ action: "hide", ruleIndex: 1 });
+  });
 });
 
 describe("類似画像NGの登録済みハッシュ", () => {

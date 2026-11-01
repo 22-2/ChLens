@@ -10,11 +10,12 @@ import {
   useState,
 } from "react";
 import { createLogger } from "src/app/logger";
-import { evaluateThreadNg } from "src/core/ng/ThreadNgEvaluator";
+import { applySimilarImageNg, evaluateThreadNg } from "src/core/ng/ThreadNgEvaluator";
 import {
   useIsNgTemporarilyDisabled,
   useNgDisplayMode,
 } from "src/features/ng/browser/use-ng-status";
+import { useSimilarImageNg } from "src/features/ng/browser/use-similar-image-ng";
 import type { ThreadRefreshController } from "src/features/thread/browser/use-thread-refresh-controller";
 import { container } from "src/service-container/index";
 import type { IRes, IThreadDetail } from "src/service-container/interfaces";
@@ -56,7 +57,10 @@ interface FetchThreadOptions {
 }
 
 interface ThreadData {
+  /** 類似画像NG・文字列のNGを合わせた判定後のレス。 */
   responses: IRes[];
+  /** 類似画像NG（blur）でぼかすレスの番号。語句によるぼかしと合わせて使う。 */
+  similarImageBlurredResNums: ReadonlySet<number>;
   visibleResponses: IRes[];
   loading: boolean;
   isInitialLoading: boolean;
@@ -109,7 +113,8 @@ export function useThreadData(
   );
   const { beginRequest, isLatestRequest, refreshKey, isInternalRefreshKey } = refreshController;
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
-  const [responses, setResponsesState] = useState<IRes[]>([]);
+  // 取得した判定前のレス。表示用の responses は、類似画像NGの結果を合わせたものを返す。
+  const [rawResponses, setResponsesState] = useState<IRes[]>([]);
   const [cacheResolvedThreadUrl, setCacheResolvedThreadUrl] = useState<string | null>(null);
   const responsesRef = useRef<IRes[]>([]);
   const selectionSnapshotRef = useRef<RootSelectionSnapshot | null>(null);
@@ -173,7 +178,7 @@ export function useThreadData(
     }
     selectionSnapshotRef.current = null;
     restoreRootSelection(rootRef.current, snapshot);
-  }, [responses, rootRef]);
+  }, [rawResponses, rootRef]);
 
   const messageProtocol = useMemo(() => {
     try {
@@ -182,13 +187,24 @@ export function useThreadData(
       return "https:";
     }
   }, [page.threadUrl]);
+  // 類似画像NGの結果は描画中に導き、判定待ちのぼかしが外れる描画と同じ回で隠す・折りたたむ（effectで遅らせない）。
+  const similarImageNg = useSimilarImageNg({
+    responses: rawResponses,
+    threadTitle: page.title,
+    threadUrl: page.threadUrl,
+    messageProtocol,
+  });
+  const responses = useMemo(
+    () => applySimilarImageNg(rawResponses, similarImageNg.responseNgByNum),
+    [rawResponses, similarImageNg.responseNgByNum],
+  );
   const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const isCacheResolved =
     cacheResolvedThreadUrl === page.threadUrl || isImportedThreadUrl(page.threadUrl);
 
   // 外部からの「ChLensで開く」も通常の遷移も、キャッシュ確認中から読み込みを示す。
   // 通信が先に完了してもキャッシュ確認が残っていれば待機中とし、本文があれば表示を優先する。
-  const isInitialLoading = responses.length === 0 && (loading || !isCacheResolved);
+  const isInitialLoading = rawResponses.length === 0 && (loading || !isCacheResolved);
 
   const fetchThread = useCallback(
     async (forceUpdate = false, { throttleSubjectCheck = false }: FetchThreadOptions = {}) => {
@@ -437,6 +453,7 @@ export function useThreadData(
 
   return {
     responses,
+    similarImageBlurredResNums: similarImageNg.blurredResNums,
     visibleResponses,
     loading,
     isInitialLoading,

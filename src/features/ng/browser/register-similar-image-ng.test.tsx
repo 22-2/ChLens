@@ -60,6 +60,7 @@ describe("類似画像NGへの登録", () => {
       hasImageRules: vi.fn().mockReturnValue(false),
       hasImageHash,
       isSimilarImageNG: vi.fn().mockReturnValue(null),
+      isSimilarImageResponseNG: vi.fn().mockReturnValue(null),
       add,
       invalidateCache: vi.fn(),
       execExpire: vi.fn(),

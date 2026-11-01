@@ -151,6 +151,7 @@ describe("useThreadData Phase 0 contracts", () => {
       hasImageRules: () => false,
       hasImageHash: (_hash) => false,
       isSimilarImageNG: (_res, _title, _url, _imageHashes) => null,
+      isSimilarImageResponseNG: (_res, _title, _url, _imageHashes) => null,
       add: async (_ruleDsl) => undefined,
       invalidateCache: () => undefined,
       execExpire: () => undefined,

@@ -1,6 +1,7 @@
 import {
   clearRuleRegexCache,
   evaluateBoardRules,
+  evaluateImageResponseRules,
   evaluateImageRules,
   evaluateResponseRules,
   formatRuleDsl,
@@ -266,6 +267,7 @@ export function createNG(deps: NGDeps) {
         type: matched.type,
         action: matched.rule.action,
         ruleDescription: formatMatchedRule(matched),
+        ruleIndex: rules.indexOf(matched.rule),
         name: matched.rule.name,
         params: matched.params,
         disabled: false,
@@ -277,9 +279,9 @@ export function createNG(deps: NGDeps) {
     return null;
   }
 
-  /** 類似画像NG（blur かつ image 条件）のルールがあるか。画像のハッシュ計算を始めるかの判断に使う。 */
+  /** 類似画像NG（image 条件）のルールがあるか。画像のハッシュ計算を始めるかの判断に使う。 */
   function hasImageRules(): boolean {
-    return get().some((rule) => rule.action === "blur" && rule.target === "image");
+    return get().some((rule) => rule.target === "image");
   }
 
   /** 同じハッシュが類似画像NGに登録済みか。登録の二重化を防ぐ。 */
@@ -323,6 +325,36 @@ export function createNG(deps: NGDeps) {
       : null;
   }
 
+  /**
+   * 類似画像NG（hide・collapse）で、レスを隠す・折りたたむかを画像のハッシュで判定する。
+   * 文字列の条件による判定の結果と、設定の並び順で勝ち負けを決めるため、ルールの位置を結果に持たせる。
+   */
+  function isSimilarImageResponseNG(
+    res: unknown,
+    title: string,
+    url: string,
+    imageHashes: readonly string[],
+  ): INGResult | null {
+    const rules = get();
+    const matched = evaluateImageResponseRules(
+      rules,
+      toResponseRuleContext(res as Record<string, unknown>, title, url),
+      imageHashes,
+      onRegexError,
+    );
+    return matched
+      ? {
+          type: matched.type,
+          action: matched.rule.action,
+          ruleDescription: formatMatchedRule(matched),
+          ruleIndex: rules.indexOf(matched.rule),
+          name: matched.rule.name,
+          params: matched.params,
+          disabled: false,
+        }
+      : null;
+  }
+
   function execExpire(): void {
     const activeRules = get();
     const now = Date.now();
@@ -347,6 +379,7 @@ export function createNG(deps: NGDeps) {
     hasImageRules,
     hasImageHash,
     isSimilarImageNG,
+    isSimilarImageResponseNG,
     execExpire,
   };
 }
