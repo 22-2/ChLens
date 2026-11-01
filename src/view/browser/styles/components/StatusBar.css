@@ -138,6 +138,13 @@
   line-height: 1;
 }
 
+/* 狭いペインでも操作を横スクロールなしで使えるよう、アイコンに名前を任せる。 */
+@container pane (max-width: 600px) {
+  .status-bar__btn:has(> svg) > span:not(.status-bar__count) {
+    display: none;
+  }
+}
+
 .status-bar__item--interactive .status-bar__btn {
   width: 100%;
   padding: 0 var(--sys-space-3);

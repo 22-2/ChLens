@@ -9,6 +9,8 @@
 
 .pane-column {
   position: relative;
+  /* ウィンドウ全体ではなく、分割後の各ペインの幅に合わせて表示を切り替える。 */
+  container: pane / inline-size;
   display: flex;
   flex: 1 1 0;
   min-width: 0;

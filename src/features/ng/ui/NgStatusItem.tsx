@@ -54,7 +54,12 @@ export const NgStatusItem: React.FC = () => {
         title={itemTitle}
         interactive
       >
-        <button ref={miniWindowTriggerRef} className={buttonClassName} onClick={toggleMiniWindow}>
+        <button
+          ref={miniWindowTriggerRef}
+          className={buttonClassName}
+          onClick={toggleMiniWindow}
+          aria-label={itemTitle}
+        >
           <Ban size={12} />
           <span>{itemLabel}</span>
         </button>
