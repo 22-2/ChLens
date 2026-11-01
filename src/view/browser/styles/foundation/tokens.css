@@ -228,8 +228,8 @@
   --ref-z-wheel-indicator: 1000;
   --ref-z-mini-window: 30000;
   --ref-z-minimap: 30000;
-  /* 変更理由: URL・コマンド候補をミニマップに隠さず操作できるよう、オムニバーを前面に置く。 */
-  --ref-z-omnibar: 30001;
+  /* 変更理由: ミニマップとその一段上の固定通知に候補が隠れないようにする。 */
+  --ref-z-omnibar: 30002;
   /* Shared by CursorTooltip and the virtualized table's floating tooltip. */
   --ref-z-table-tooltip: 35000;
   --ref-z-popup-layer: 36000;
