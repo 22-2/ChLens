@@ -291,6 +291,7 @@ const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
     "browser/use-image-hash-store",
     "browser/use-image-save",
     "browser/use-media-viewer-store",
+    "browser/use-thread-media-viewer-scope",
     "domain/media-settings",
     "domain/thread-images",
     "ui/ExternalImage",

@@ -83,7 +83,7 @@ describe("画像一覧", () => {
     expect(useMediaViewerStore.getState().viewerScopeId).toBe(`tab\u0000${page.threadUrl}`);
   });
 
-  it("取得済みの画像は本文と同じビューアーで開き、レスへ移動できる", () => {
+  it("取得済みの画像は本文と同じビューアーで開き、クリックしてもスレへジャンプしない", () => {
     useMediaImageStore.setState({
       images: new Map([[imageUrl, { status: "loaded", version: 1, fallbackSrc: null }]]),
     });
@@ -92,8 +92,8 @@ describe("画像一覧", () => {
     expect(container.querySelector(".side-panel__image--blurred")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: ">>2 の画像を拡大" }));
     expect(useMediaViewerStore.getState().viewerScopeId).toBe(`tab\u0000${page.threadUrl}`);
-    fireEvent.click(screen.getByRole("button", { name: /画像のレス/ }));
-    expect(mocks.jump).toHaveBeenCalledWith(page.threadUrl, 2, "tab", true);
+    fireEvent.click(screen.getByText(/画像のレス/));
+    expect(mocks.jump).not.toHaveBeenCalled();
   });
 
   it("画像がなければその旨を表示する", () => {

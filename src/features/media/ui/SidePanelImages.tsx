@@ -126,14 +126,10 @@ function ThreadImageGrid({
               ) : (
                 image
               )}
-              <button
-                type="button"
-                className="side-panel__image-caption"
-                onClick={() => requestThreadResJump(threadUrl, item.resNum, tabId, true)}
-              >
+              <div className="side-panel__image-caption">
                 <strong>{item.resNum}</strong>
                 <span>{item.text}</span>
-              </button>
+              </div>
             </li>
           );
         })}

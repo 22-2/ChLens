@@ -3,7 +3,7 @@ import {
   getThreadMediaViewerScopeId,
   useMediaViewerStore,
 } from "src/features/media/browser/use-media-viewer-store";
-import { useThreadMediaViewerScope } from "src/view/browser/pages/thread/use-thread-media-viewer-scope";
+import { useThreadMediaViewerScope } from "src/features/media/browser/use-thread-media-viewer-scope";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const THREAD_URL = "https://example.com/test/read.cgi/board/1000000001/";

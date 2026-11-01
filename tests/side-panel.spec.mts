@@ -16,7 +16,6 @@ test("サイドパネルの表示とビュー選択を再起動後も復元す�
   await expect.poll(async () => (await panel.boundingBox())!.width).toBeGreaterThan(beforeWidth);
   const changedWidth = (await panel.boundingBox())!.width;
   await panel.getByRole("tab", { name: "画像一覧" }).click();
-  await panel.getByRole("tab", { name: "画像一覧" }).press("Alt+ArrowLeft");
   await expect(panel.getByRole("tab", { name: "画像一覧" })).toHaveAttribute(
     "aria-selected",
     "true",
@@ -28,12 +27,15 @@ test("サイドパネルの表示とビュー選択を再起動後も復元す�
     "aria-selected",
     "true",
   );
-  await expect(panel.getByRole("tab").nth(1)).toHaveAccessibleName("画像一覧");
   await page.getByRole("button", { name: "サイドパネルを閉じる" }).click();
   await expect(panel).toBeHidden();
 });
 
-test("抽出結果を強調し、本文のレスへ移動する", async ({ page, extensionId, localBoard }) => {
+test("抽出結果を強調し、クリックしてもスレへジャンプしない", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
   const thread = localBoard.addLargeThread(150);
   await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
   await waitForThreadLoaded(page, thread.threadUrl, 150);
@@ -45,7 +47,16 @@ test("抽出結果を強調し、本文のレスへ移動する", async ({ page,
   await expect(panel.locator(".side-panel__response").first()).toBeVisible();
   await search.fill("レス本文マーカー42");
   await expect(panel.locator("mark")).toHaveText("レス本文マーカー42");
+  // 抽出の行をクリックしても、本文はそのレスへ移動しない。
   await panel.locator(".side-panel__response").filter({ hasText: "レス本文マーカー42" }).click();
+  await expect(page.locator('.content-area__tab-panel[data-active="true"]')).not.toContainText(
+    "レス本文マーカー42",
+  );
+  // ジャンプは右クリックのメニューから行う。
+  await panel.locator(".side-panel__response").filter({ hasText: "レス本文マーカー42" }).click({
+    button: "right",
+  });
+  await page.locator(".context-menu").getByText("このレスにジャンプ").click();
   await expect(page.locator('.content-area__tab-panel[data-active="true"]')).toContainText(
     "レス本文マーカー42",
   );
@@ -110,10 +121,10 @@ test("抽出レスのアンカーと返信数から本文と同じポップア�
   await page.getByRole("button", { name: "サイドパネルを開く" }).click();
   const panel = page.getByRole("complementary", { name: "サイドパネル" });
   await panel.getByRole("tab", { name: "抽出レス" }).click();
-  const first = panel.getByRole("group", { name: "レス 1 にジャンプ" });
-  const second = panel.getByRole("group", { name: "レス 2 にジャンプ" });
-  const anchor = second.getByRole("button", { name: ">>1", exact: true });
-  await expect(second.getByRole("button", { name: ">>999" })).toHaveClass(/anchor--missing-target/);
+  const first = panel.locator(".side-panel__response").filter({ hasText: "参照先の本文" });
+  const second = panel.locator(".side-panel__response").filter({ hasText: "への返信" });
+  const anchor = second.getByRole("link", { name: ">>1", exact: true });
+  await expect(second.getByRole("link", { name: ">>999" })).toHaveClass(/anchor--missing-target/);
   await anchor.hover();
   const preview = page.locator(".anchor-preview");
   await expect(preview).toBeVisible();
@@ -127,10 +138,6 @@ test("抽出レスのアンカーと返信数から本文と同じポップア�
   await expect(tree).toContainText("への返信");
   await expect(tree.getByRole("button", { name: "ピン留め", exact: true })).toBeVisible();
   await tree.getByRole("button", { name: "閉じる", exact: true }).click();
-  await anchor.click();
-  await expect(
-    page.locator('.content-area__tab-panel[data-active="true"] [data-res-num="1"]'),
-  ).toBeVisible();
 });
 
 test("画像一覧は手動取得の設定に従い、取得した画像をビューアーで開く", async ({

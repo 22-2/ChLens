@@ -1,118 +1,113 @@
-import { parseMessage } from "@chlen/chlib";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { stripHtml } from "src/core/util/strip-html";
+import { extractUrlsFromMessage } from "src/core/util/url-media";
+import { useImgurAlbumMedia } from "src/features/media/application/imgur-album";
+import { useThreadMediaViewerScope } from "src/features/media/browser/use-thread-media-viewer-scope";
+import { ResMediaGallery } from "src/features/media/ui/ResMediaGallery";
 import { buildThreadFindIndex, findThreadMatches } from "src/features/thread/domain/thread-find";
+import { ResBody } from "src/features/thread/ui/ResBody";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
-import { useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
+import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
+import { useTabDispatch, useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
 import { getThreadResInteractions } from "src/view/browser/state/thread-res-interactions";
 import { buildExtractResMenu } from "src/view/browser/state/thread-res-menu";
 import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
-import { hasMissingAnchorTarget, parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
-import { findSearchMatchRanges } from "src/view/browser/utils/search-highlight";
-import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
+import { decodeResponseHtml } from "src/view/browser/utils/response-format";
 
-function ExtractMessage({
-  text,
-  query,
-  protocol,
-  tabId,
-  threadUrl,
-  resMap,
-  ngResNums,
-}: {
-  text: string;
-  query: string;
-  protocol: string;
+type ExtractResponse = ThreadSnapshot["responses"][number];
+type ExtractMenu = { x: number; y: number; items: ContextMenuItem[] };
+type UrlHandlers = ReturnType<typeof useUrlHandlers>;
+
+// 抽出の一覧は本文の操作を持たない。レスへのジャンプは右クリックのメニューに残す。
+const noop = () => undefined;
+
+interface ExtractEntryProps {
   tabId: string;
   threadUrl: string;
+  response: ExtractResponse;
+  snapshot: ThreadSnapshot;
+  query: string;
   resMap: ReadonlyMap<number, unknown>;
   ngResNums: ReadonlySet<number>;
-}) {
-  const hoveredRef = useRef(false);
-  useEffect(
-    () => () => {
-      if (hoveredRef.current) getThreadResInteractions(tabId, threadUrl)?.hideAnchor();
-    },
-    [tabId, threadUrl],
+  urlHandlers: UrlHandlers;
+  onContextMenu: (event: MouseEvent, response: ExtractResponse) => void;
+  onOpenReplies: (event: MouseEvent<HTMLButtonElement>, resNum: number) => void;
+}
+
+// 抽出した1件。本文は本文と同じ部品で描き、リンク・アンカー・画像の操作を揃える。
+function ExtractEntry({
+  tabId,
+  threadUrl,
+  response,
+  snapshot,
+  query,
+  resMap,
+  ngResNums,
+  urlHandlers,
+  onContextMenu,
+  onOpenReplies,
+}: ExtractEntryProps) {
+  const decoded = useMemo(
+    () => decodeResponseHtml(response, snapshot.messageProtocol),
+    [response, snapshot.messageProtocol],
   );
-  const ranges = findSearchMatchRanges(text, query);
-  const parsed = parseMessage(text, { protocol });
-  // パーサーが画像タグなどを正規化した場合は、抽出本文を欠落させない。
-  const tokens =
-    parsed.map((token) => token.value).join("") === text
-      ? parsed
-      : [{ type: "text" as const, value: text }];
-  let offset = 0;
-  const spans: { token: (typeof tokens)[number]; start: number; end: number }[] = [];
-  for (const token of tokens) {
-    const start = offset;
-    offset += token.value.length;
-    spans.push({ token, start, end: offset });
-  }
+  const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
+  const resolvedMedia = useImgurAlbumMedia(decoded.messageHtml, urls, threadUrl);
+  const replyCount = snapshot.replyIndex.get(response.num)?.size ?? 0;
   return (
-    <>
-      {spans.map(({ token, start, end }, index) => {
-        let cursor = start;
-        const content = ranges
-          .filter((range) => range.end > start && range.start < end)
-          .map((range) => {
-            const from = Math.max(range.start, start);
-            const to = Math.min(range.end, end);
-            const before = text.slice(cursor, from);
-            cursor = to;
-            return (
-              <Fragment key={from}>
-                {before}
-                <mark>{text.slice(from, to)}</mark>
-              </Fragment>
-            );
-          });
-        const contents = (
-          <>
-            {content}
-            {text.slice(cursor, end)}
-          </>
-        );
-        if (token.type !== "anchor") return <Fragment key={index}>{contents}</Fragment>;
-        const targets = parseAnchorDisplayTargets(token.value);
-        if (!targets.length) return <Fragment key={index}>{contents}</Fragment>;
-        const missing = hasMissingAnchorTarget(targets, resMap);
-        const ng = targets.some((target) => ngResNums.has(target));
-        const show = (element: HTMLElement) => {
-          hoveredRef.current = true;
-          getThreadResInteractions(tabId, threadUrl)?.showAnchor(
-            targets,
-            element.getBoundingClientRect(),
-            token.value,
-          );
-        };
-        const hide = () => {
-          hoveredRef.current = false;
-          getThreadResInteractions(tabId, threadUrl)?.hideAnchor();
-        };
-        return (
+    <div
+      className="side-panel__entry side-panel__response"
+      onContextMenu={(event) => {
+        // 本文の中のリンクや画像は、ブラウザ既定メニューではなく本文と同じ操作を使う。
+        const target = event.target instanceof Element ? event.target : null;
+        if (target?.closest("a, .res__link, .res__thumb, .res__media-embed")) return;
+        onContextMenu(event, response);
+      }}
+    >
+      <span className="side-panel__response-meta">
+        <strong>{response.num}</strong> {stripHtml(response.name)} {response.date}
+        {replyCount > 0 && (
           <button
             type="button"
-            key={index}
-            className={`side-panel__response-anchor${missing ? " anchor--missing-target" : ""}${ng ? " anchor--ng-target" : ""}`}
-            onMouseEnter={(event) => show(event.currentTarget)}
-            onMouseLeave={hide}
-            onFocus={(event) => show(event.currentTarget)}
-            onBlur={hide}
-            onClick={(event) => {
-              event.stopPropagation();
-              requestThreadResJump(threadUrl, targets[0], tabId, true);
-            }}
+            className="side-panel__response-replies"
+            onClick={(event) => onOpenReplies(event, response.num)}
           >
-            {contents}
+            返信({replyCount})
           </button>
-        );
-      })}
-    </>
+        )}
+      </span>
+      <ResBody
+        messageHtml={resolvedMedia.messageHtml}
+        searchQuery={query}
+        searchTarget="body"
+        anchorPreviewDepth={0}
+        ngResNums={ngResNums}
+        resMap={resMap}
+        onUrlClick={(url, button, mode) => urlHandlers.handleUrlClick(url, undefined, button, mode)}
+        onUrlContextMenu={(url, event, mode) =>
+          urlHandlers.handleUrlContextMenu(url, event, undefined, mode)
+        }
+        onIdLinkClick={noop}
+        onAnchorClick={noop}
+        onAnchorHover={(targets, rect, label) =>
+          getThreadResInteractions(tabId, threadUrl)?.showAnchor(targets, rect, label)
+        }
+        onAnchorLeave={() => getThreadResInteractions(tabId, threadUrl)?.hideAnchor()}
+      />
+      {resolvedMedia.urls.length > 0 && (
+        <ResMediaGallery
+          urls={resolvedMedia.urls}
+          onUrlClick={urlHandlers.handleUrlClick}
+          isBlurred={snapshot.blurredResNums.has(response.num)}
+          imageBlurRadius={snapshot.imageBlurRadius}
+          blurReason={response.imageBlurReason}
+        />
+      )}
+    </div>
   );
 }
 
@@ -128,7 +123,26 @@ function ExtractResults({
   query: string;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+  const [menu, setMenu] = useState<ExtractMenu | null>(null);
+  const dispatch = useTabDispatch();
+  const { openMediaFromUrl } = useThreadMediaViewerScope(tabId, threadUrl);
+  // URLの右クリックメニューは、この一覧の中で開く。
+  const addPopupContextMenu = useCallback((x: number, y: number, items: ContextMenuItem[]) => {
+    setMenu({ x, y, items });
+    return "side-panel-extract-menu";
+  }, []);
+  const urlHandlers = useUrlHandlers({
+    threadUrl,
+    dispatch,
+    openMediaFromUrl,
+    addPopupContextMenu,
+  });
+  useEffect(
+    () => () => {
+      getThreadResInteractions(tabId, threadUrl)?.hideAnchor();
+    },
+    [tabId, threadUrl],
+  );
   const resMap = useMemo(
     () => new Map(snapshot.responses.map((res) => [res.num, res])),
     [snapshot.responses],
@@ -178,71 +192,32 @@ function ExtractResults({
                   ref={virtualizer.measureElement}
                   style={{ transform: `translateY(${item.start}px)` }}
                 >
-                  <div
-                    role="group"
-                    tabIndex={0}
-                    aria-label={`レス ${response.num} にジャンプ`}
-                    className="side-panel__entry side-panel__response"
-                    onClick={(event) => {
-                      const selection = event.currentTarget.ownerDocument.getSelection();
-                      // 選択した本文をコピーやNG指定するとき、選択の終了をジャンプ扱いにしない。
-                      if (
-                        selection &&
-                        !selection.isCollapsed &&
-                        event.currentTarget.contains(selection.anchorNode)
-                      )
-                        return;
-                      requestThreadResJump(threadUrl, response.num, tabId, true);
-                    }}
-                    onKeyDown={(event) => {
-                      if (
-                        event.target !== event.currentTarget ||
-                        (event.key !== "Enter" && event.key !== " ")
-                      )
-                        return;
-                      event.preventDefault();
-                      requestThreadResJump(threadUrl, response.num, tabId, true);
-                    }}
-                    onContextMenu={(event) => {
-                      const items = buildExtractResMenu(tabId, threadUrl, response);
+                  <ExtractEntry
+                    tabId={tabId}
+                    threadUrl={threadUrl}
+                    response={response}
+                    snapshot={snapshot}
+                    query={query}
+                    resMap={resMap}
+                    ngResNums={ngResNums}
+                    urlHandlers={urlHandlers}
+                    onContextMenu={(event, target) => {
+                      const items = buildExtractResMenu(tabId, threadUrl, target);
                       if (!items) return;
                       event.preventDefault();
                       event.stopPropagation();
                       setMenu({ x: event.clientX, y: event.clientY, items });
                     }}
-                  >
-                    <span className="side-panel__response-meta">
-                      <strong>{response.num}</strong> {stripHtml(response.name)} {response.date}
-                      {(snapshot.replyIndex.get(response.num)?.size ?? 0) > 0 && (
-                        <button
-                          type="button"
-                          className="side-panel__response-replies"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            const rect = event.currentTarget.getBoundingClientRect();
-                            getThreadResInteractions(tabId, threadUrl)?.openReplies(
-                              response.num,
-                              event.detail ? event.clientX : rect.left,
-                              event.detail ? event.clientY : rect.bottom,
-                            );
-                          }}
-                        >
-                          返信({snapshot.replyIndex.get(response.num)!.size})
-                        </button>
-                      )}
-                    </span>
-                    <span>
-                      <ExtractMessage
-                        text={stripHtml(response.message)}
-                        query={query}
-                        protocol={snapshot.messageProtocol}
-                        tabId={tabId}
-                        threadUrl={threadUrl}
-                        resMap={resMap}
-                        ngResNums={ngResNums}
-                      />
-                    </span>
-                  </div>
+                    onOpenReplies={(event, resNum) => {
+                      event.stopPropagation();
+                      const rect = event.currentTarget.getBoundingClientRect();
+                      getThreadResInteractions(tabId, threadUrl)?.openReplies(
+                        resNum,
+                        event.detail ? event.clientX : rect.left,
+                        event.detail ? event.clientY : rect.bottom,
+                      );
+                    }}
+                  />
                 </div>
               );
             })}

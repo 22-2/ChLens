@@ -97,6 +97,9 @@
   min-width: 0;
   max-width: 50%;
   overflow: hidden;
+  /* 変更理由: 狭いパネルで文字を小さくし、長いスレタイや URL は折り返して右端の外へはみ出さないようにする。 */
+  font-size: var(--sys-font-size-sm);
+  overflow-wrap: anywhere;
   border-left: 1px solid var(--sys-color-border);
   /* 変更理由: サイドパネルを垂直タブバーと同じタブストリップ色に揃える。 */
   background: var(--sys-color-tab-strip);
@@ -190,6 +193,10 @@
   padding: var(--sys-space-2);
   cursor: pointer;
 }
+/* 変更理由: 板一覧の見出し（メニュー・カテゴリ）も、項目と同じホバー色にして、どこにカーソルがあるか揃えて示す。 */
+.side-panel__content summary:hover {
+  background: var(--sys-color-list-hover-bg);
+}
 .side-panel__category {
   margin-left: var(--sys-space-4);
 }
@@ -201,6 +208,8 @@
   color: var(--sys-color-text);
   text-align: left;
   padding: var(--sys-space-2) var(--sys-space-6);
+  white-space: normal;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
 .side-panel__entry:hover {
@@ -239,11 +248,17 @@
   display: grid;
   gap: var(--sys-space-2);
   border-bottom: 1px solid var(--sys-color-border);
+  /* 本文も含めて小さくし、抽出の一覧を一度に多く見せる。 */
+  font-size: var(--sys-font-size-xs);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .side-panel__response-meta {
   color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-xs);
+}
+/* 本文は通常のレス用の大きさで組まれているため、抽出の一覧でだけ小さくする。 */
+.side-panel__response .res__body {
   font-size: var(--sys-font-size-xs);
 }
 .side-panel__response strong {

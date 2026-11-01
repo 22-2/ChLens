@@ -357,7 +357,7 @@ vi.mock("src/view/browser/pages/thread/use-thread-top-scroll-open-filter", () =>
   useThreadTopScrollOpenFilter: () => undefined,
 }));
 
-vi.mock("src/view/browser/pages/thread/use-url-handlers", () => ({
+vi.mock("src/view/browser/hooks/use-url-handlers", () => ({
   useUrlHandlers: () => ({
     handleUrlClick: vi.fn(),
     handleUrlContextMenu: vi.fn(),

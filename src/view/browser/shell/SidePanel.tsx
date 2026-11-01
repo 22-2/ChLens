@@ -90,7 +90,6 @@ interface SortableViewTabProps {
   isActive: boolean;
   wasDraggingRef: RefObject<boolean>;
   onSelect: () => void;
-  onMove: (target: number) => void;
 }
 
 // メインのタブバーと同じ useSortable の設定・クラス名でドラッグ並べ替えを行う。
@@ -102,7 +101,6 @@ function SortableViewTab({
   isActive,
   wasDraggingRef,
   onSelect,
-  onMove,
 }: SortableViewTabProps) {
   const { ref, isDragSource } = useSortableTab({ id, index, group: "side-panel" });
   return (
@@ -112,14 +110,8 @@ function SortableViewTab({
       role="tab"
       className={`side-panel__tab${isDragSource ? " side-panel__tab--dragging" : ""}`}
       aria-selected={isActive}
-      title={`${label}（Alt と左右キーで並べ替え）`}
+      title={label}
       aria-label={label}
-      onKeyDown={(e) => {
-        if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
-          e.preventDefault();
-          onMove(index + (e.key === "ArrowLeft" ? -1 : 1));
-        }
-      }}
       onClick={() => {
         if (wasDraggingRef.current) {
           wasDraggingRef.current = false;
@@ -212,7 +204,6 @@ export function SidePanel() {
                 isActive={state.activeView === id}
                 wasDraggingRef={wasDragging}
                 onSelect={() => update({ activeView: id })}
-                onMove={(target) => move(id, target)}
               />
             );
           })}

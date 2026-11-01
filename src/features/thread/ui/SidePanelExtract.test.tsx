@@ -9,8 +9,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 const mocks = vi.hoisted(() => ({ query: "", update: vi.fn(), jump: vi.fn() }));
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabViewState: () => ({ state: { sidePanelExtractQuery: mocks.query }, update: mocks.update }),
+  useTabDispatch: () => vi.fn(),
 }));
 vi.mock("src/view/browser/utils/thread-read-state", () => ({ requestThreadResJump: mocks.jump }));
+// 本文の画像・リンクは拡張機能のプラットフォームに依存するため、この試験では読み込まない。
+vi.mock("src/app/platform/index", () => ({ platform: {} }));
+// URLの処理は拡張機能のプラットフォームに依存するため、この試験では置き換える。
+vi.mock("src/view/browser/hooks/use-url-handlers", () => ({
+  useUrlHandlers: () => ({
+    handleUrlClick: vi.fn(),
+    handleUrlContextMenu: vi.fn(),
+    openPopupUrlContextMenu: vi.fn(),
+  }),
+}));
 const page = { type: "thread" as const, title: "スレ", threadUrl: "https://example.com/thread" };
 
 describe("抽出レス", () => {
@@ -45,7 +56,7 @@ describe("抽出レス", () => {
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "本文" } });
     expect(mocks.update).toHaveBeenCalledWith({ sidePanelExtractQuery: "本文" });
   });
-  it("本文の一致を強調し、対象タブへジャンプする", () => {
+  it("本文の一致を強調し、クリックしてもスレへジャンプしない", () => {
     mocks.query = "ﾃｽﾄ";
     publishThreadSnapshot("tab", Symbol(), {
       threadUrl: page.threadUrl,
@@ -62,8 +73,8 @@ describe("抽出レス", () => {
     });
     render(<SidePanelExtract tabId="tab" page={page} />);
     expect(screen.getByText("テスト").tagName).toBe("MARK");
-    fireEvent.click(screen.getByRole("group", { name: "レス 1 にジャンプ" }));
-    expect(mocks.jump).toHaveBeenCalledWith(page.threadUrl, 1, "tab", true);
+    fireEvent.click(screen.getByText("テスト"));
+    expect(mocks.jump).not.toHaveBeenCalled();
   });
   it("アンカーの欠損・NGと返信数を示し、共有ポップアップを呼び出す", () => {
     const showAnchor = vi.fn();
@@ -93,15 +104,13 @@ describe("抽出レス", () => {
       expired: false,
     });
     render(<SidePanelExtract tabId="tab" page={page} />);
-    const anchor = screen.getByRole("button", { name: ">>1" });
-    expect(screen.getByRole("button", { name: ">>3" })).toHaveClass("anchor--ng-target");
-    expect(screen.getByRole("button", { name: ">>99" })).toHaveClass("anchor--missing-target");
-    fireEvent.mouseEnter(anchor);
+    const anchor = screen.getByRole("link", { name: ">>1" });
+    expect(screen.getByRole("link", { name: ">>3" })).toHaveClass("anchor--ng-target");
+    expect(screen.getByRole("link", { name: ">>99" })).toHaveClass("anchor--missing-target");
+    fireEvent.mouseOver(anchor);
     expect(showAnchor).toHaveBeenCalledWith([1], expect.anything(), ">>1");
-    fireEvent.mouseLeave(anchor);
-    expect(hideAnchor).toHaveBeenCalled();
     fireEvent.click(anchor);
-    expect(mocks.jump).toHaveBeenCalledWith(page.threadUrl, 1, "tab", true);
+    expect(mocks.jump).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "返信(1)" }), {
       clientX: 20,
       clientY: 30,

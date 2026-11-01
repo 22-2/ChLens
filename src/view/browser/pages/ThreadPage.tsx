@@ -29,6 +29,7 @@ import { useLiveChatReplyIndex } from "src/features/live-chat/browser/use-live-c
 import { useLiveChatResponses } from "src/features/live-chat/browser/use-live-chat-responses";
 import { useThreadDisplayModeSetting } from "src/features/live-chat/browser/use-thread-display-mode-setting";
 import { openDetachedMediaViewer } from "src/features/media/browser/use-media-viewer-store";
+import { useThreadMediaViewerScope } from "src/features/media/browser/use-thread-media-viewer-scope";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/features/next-thread/browser/use-auto-next-thread-setting";
@@ -62,6 +63,7 @@ import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
+import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
 import { ThreadAutoScrollThreshold } from "src/view/browser/pages/thread/ThreadAutoScrollThreshold";
 import { ThreadPageNotices } from "src/view/browser/pages/thread/ThreadPageNotices";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
@@ -79,7 +81,6 @@ import { useThreadFilterDefaultOpenSetting } from "src/view/browser/pages/thread
 import { useThreadFilterModeToggle } from "src/view/browser/pages/thread/use-thread-filter-mode-toggle";
 import { useThreadFilterReset } from "src/view/browser/pages/thread/use-thread-filter-reset";
 import { useThreadImageExpansion } from "src/view/browser/pages/thread/use-thread-image-expansion";
-import { useThreadMediaViewerScope } from "src/view/browser/pages/thread/use-thread-media-viewer-scope";
 import { useThreadMoveToBottomOnEnable } from "src/view/browser/pages/thread/use-thread-move-to-bottom-on-enable";
 import { useThreadReadPositionMode } from "src/view/browser/pages/thread/use-thread-read-position-mode";
 import { useThreadReadState } from "src/view/browser/pages/thread/use-thread-read-state";
@@ -88,7 +89,6 @@ import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-threa
 import { useThreadStatusSync } from "src/view/browser/pages/thread/use-thread-status-sync";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
-import { useUrlHandlers } from "src/view/browser/pages/thread/use-url-handlers";
 import {
   getAutoRefreshPageKey,
   isAutoRefreshStoppedForPage,

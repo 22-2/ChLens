@@ -90,36 +90,16 @@ describe("サイドパネル", () => {
       }),
     );
   });
-  it("非表示のタブがあっても表示中のタブを並べ替える", () => {
-    mocks.hiddenViews = ["favorites"];
-    render(<SidePanel />);
-    fireEvent.keyDown(screen.getByRole("tab", { name: "画像一覧" }), {
-      key: "ArrowLeft",
-      altKey: true,
-    });
-    expect(mocks.dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sidePanel: expect.objectContaining({
-          views: ["images", "boards", "favorites", "extract", "properties", "write"],
-        }),
-      }),
-    );
-  });
-  it("キーボードでビューを並べ替える", () => {
-    render(<SidePanel />);
-    fireEvent.keyDown(screen.getByRole("tab", { name: "画像一覧" }), {
-      key: "ArrowLeft",
-      altKey: true,
-    });
-    expect(mocks.dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sidePanel: expect.objectContaining({
-          views: ["boards", "images", "favorites", "extract", "properties", "write"],
-        }),
-      }),
-    );
-  });
 });
+
+vi.mock("src/app/platform/index", () => ({ platform: {} }));
+vi.mock("src/view/browser/hooks/use-url-handlers", () => ({
+  useUrlHandlers: () => ({
+    handleUrlClick: () => false,
+    handleUrlContextMenu: () => false,
+    openPopupUrlContextMenu: () => () => undefined,
+  }),
+}));
 
 vi.mock("src/features/board/ui/SidePanelBoards", () => ({
   SidePanelBoards: () => <div>板一覧</div>,
