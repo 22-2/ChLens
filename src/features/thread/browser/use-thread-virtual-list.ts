@@ -203,12 +203,23 @@ export function useThreadVirtualList({
   );
   const signatureRef = useRef<Map<VirtualKey, string>>(new Map());
   useLayoutEffect(() => {
+    let correctionFrame: number | undefined;
     const changed = displaySignature.some((signature, index) => {
       const key = keys[index]!;
       const previous = signatureRef.current.get(key);
       return previous !== undefined && previous !== signature;
     });
     if (changed) {
+      const container = scrollContainerRef.current;
+      // 幅の変更で画面外の推定高さも変わるため、現在のレスと画面内の位置を基準に戻す。
+      const anchor =
+        container && !stickToEnd
+          ? virtualizer.measurementsCache.find(
+              (item) =>
+                typeof item.key === "number" && item.end > container.scrollTop + stickyHeaderHeight,
+            )
+          : undefined;
+      const anchorOffset = anchor && container ? anchor.start - container.scrollTop : 0;
       virtualizer.measure();
       // 幅が変わっても高さが同じ要素には ResizeObserver の通知が来ない。
       // キャッシュ消去後に描画中の要素を実測しないと、推定値のまま余白や重なりが残る。
@@ -219,11 +230,38 @@ export function useThreadVirtualList({
           virtualizer.resizeItem(index, element.offsetHeight);
         }
       }
+      if (anchor && typeof anchor.key === "number" && container) {
+        const index = keyIndex.get(anchor.key);
+        const updated = index === undefined ? undefined : virtualizer.measurementsCache[index];
+        if (updated) {
+          virtualizer.scrollToOffset(updated.start - anchorOffset);
+          // 描画範囲の実測で推定がさらに変わるため、次の描画後に同じレスの位置を補正する。
+          correctionFrame = viewWindow.requestAnimationFrame(() => {
+            const element = virtualizer.elementsCache.get(anchor.key);
+            if (!element?.isConnected || !container.isConnected) return;
+            const actualOffset =
+              element.getBoundingClientRect().top - container.getBoundingClientRect().top;
+            container.scrollTop += actualOffset - anchorOffset;
+          });
+        }
+      }
     }
     signatureRef.current = new Map(
       displaySignature.map((signature, index) => [keys[index]!, signature]),
     );
-  }, [displaySignature, keys, virtualizer]);
+    return () => {
+      if (correctionFrame !== undefined) viewWindow.cancelAnimationFrame(correctionFrame);
+    };
+  }, [
+    displaySignature,
+    keyIndex,
+    keys,
+    scrollContainerRef,
+    stickyHeaderHeight,
+    stickToEnd,
+    viewWindow,
+    virtualizer,
+  ]);
 
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;

@@ -78,6 +78,31 @@ test("狭いペインではステータスバーの操作をアイコンにし�
   await expect(page.locator(".bottom-panel")).toBeVisible();
 });
 
+test("サイドパネルの開閉で読んでいるレスを保つ", async ({ page, extensionId, localBoard }) => {
+  await page.setViewportSize({ width: 750, height: 700 });
+  const thread = localBoard.addLargeThread(1000);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, 1000);
+  const panel = page.locator('.content-area__tab-panel[data-active="true"]');
+  await panel.evaluate((element) => element.scrollTo(0, element.scrollHeight * 0.7));
+  await expect
+    .poll(async () => panel.evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(1000);
+  const visibleRes = () =>
+    panel.evaluate((element) => {
+      const top = element.getBoundingClientRect().top + 80;
+      return [...element.querySelectorAll<HTMLElement>("[data-res-num]")].find(
+        (res) => res.getBoundingClientRect().bottom > top,
+      )?.dataset.resNum;
+    });
+  const before = await visibleRes();
+  expect(before).toBeDefined();
+  await page.getByRole("button", { name: "サイドパネルを開く" }).click();
+  await expect.poll(visibleRes).toBe(before);
+  await page.getByRole("button", { name: "サイドパネルを閉じる" }).click();
+  await expect.poll(visibleRes).toBe(before);
+});
+
 test("2ペインではサイドパネルの幅に合わせて両ペインが縮む", async ({
   page,
   extensionId,
