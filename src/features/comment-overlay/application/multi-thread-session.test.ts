@@ -49,7 +49,7 @@ describe("コメントOverlayの候補スレセッション", () => {
     const candidate = thread(candidateUrl, "番組実況 ★5", 1500);
     expect(findCommentOverlayCandidateThreads([candidate], current, 3000)).toEqual([candidate]);
     expect(findCommentOverlayCandidateThreads([candidate], current, 1000)).toEqual([]);
-    expect(findCommentOverlayCandidateThreads([candidate], current, null)).toEqual([candidate]);
+    expect(findCommentOverlayCandidateThreads([candidate], current, null)).toEqual([]);
   });
 
   it("同じ板の近い連番だけを候補として列挙する", () => {

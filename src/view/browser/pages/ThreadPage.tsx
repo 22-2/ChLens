@@ -67,6 +67,7 @@ import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
 import { ThreadAutoScrollThreshold } from "src/view/browser/pages/thread/ThreadAutoScrollThreshold";
 import { ThreadPageNotices } from "src/view/browser/pages/thread/ThreadPageNotices";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
+import { useAutoRefreshReset } from "src/view/browser/pages/thread/use-auto-refresh-reset";
 import { useBlankAreaDoubleClickRefresh } from "src/view/browser/pages/thread/use-blank-area-double-click-refresh";
 import { useBoardResponseLimit } from "src/view/browser/pages/thread/use-board-response-limit";
 import { useCommentOverlayHandoff } from "src/view/browser/pages/thread/use-comment-overlay-handoff";
@@ -95,7 +96,6 @@ import {
   isAutoRefreshStoppedForPage,
   isNextThreadWaitingForPage,
 } from "src/view/browser/state/tabs/auto-refresh-pages";
-import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { registerThreadResInteractions } from "src/view/browser/state/thread-res-interactions";
 import { type Tab, type ThreadPage as ThreadPageType } from "src/view/browser/types";
@@ -332,19 +332,18 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 変更理由: Overlayへ流しているスレッドはタブを切り替えても取得を止めず、
   // 表示中の実況と自動次スレ探索をバックグラウンドで継続する。
   const isActiveAutoRefreshEnabled = (isActive || isCommentOverlayFlowing) && isAutoRefreshEnabled;
+  // 次スレ待機中も、追従位置の計測と次スレ探索の経路（トラッキング）は止めない。
   const isNextThreadWaiting = tab ? isNextThreadWaitingForPage(tab, page) : false;
   const isActiveAutoRefreshTracking =
     (isActive || isCommentOverlayFlowing) && (isAutoRefreshEnabled || isNextThreadWaiting);
+  // 変更理由: 画面上はいずれも dat 落ち案内を表示する状態であり、
+  // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
   const autoRefreshPageKey = getAutoRefreshPageKey(page);
-  useEffect(() => {
-    if (threadCapabilities.canAutoRefresh || !tabAutoRefreshEnabled || autoRefreshPageKey == null)
-      return;
-    // 既存タブが自動更新中でも、過去実況の位置へ切り替わった時点で保存状態も解除する。
-    dispatch(tabActions.setAutoRefreshEnabled(false, autoRefreshPageKey));
-  }, [autoRefreshPageKey, dispatch, tabAutoRefreshEnabled, threadCapabilities.canAutoRefresh]);
+  useAutoRefreshReset(dispatch, autoRefreshPageKey, tabAutoRefreshEnabled, threadCapabilities);
   const responseLimit = useBoardResponseLimit(page.threadUrl);
   const isAutoRefreshStopped = tab ? isAutoRefreshStoppedForPage(tab, page) : false;
   // dat落ちや探索終了の停止記録は、不確定subject応答や別窓再マウントでも保持する。
+  // 本文タイマーと次スレ探索を同時に止めるため、ThreadDataの取得結果とは別に扱う。
   const {
     autoRefreshExpired,
     hasReachedThreadLimit,
@@ -361,6 +360,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   });
   const isNextThreadFeatureEnabled = isAutoNextThreadEnabled && threadCapabilities.canAutoAdvance;
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
+  // ポップアップを読む間は取得・追従・キュー再生を一緒に待機する。
   // タブを離れた後のポップアップ状態で、非表示タブのOverlay実況を止めない。
   const isThreadDisplayPaused = isActive && pauseAutoScrollOnPopup && popups.length > 0;
   // 自動追従の結果は自動更新と再生の循環依存を避けて描画後に同期する。

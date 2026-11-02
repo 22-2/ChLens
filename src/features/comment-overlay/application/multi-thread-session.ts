@@ -3,6 +3,7 @@ import {
   mapWithConcurrency,
   MAX_CONCURRENT_BATCH_REQUESTS,
 } from "src/core/util/map-with-concurrency";
+import { isThreadFull } from "src/features/next-thread/domain/auto-next-thread-trigger";
 import {
   calculateTitleSimilarity,
   extractThreadSequenceNumber,
@@ -52,18 +53,16 @@ interface BoardSnapshot {
 export function findCommentOverlayCandidateThreads(
   threads: readonly IThread[],
   currentThread: Pick<IThread, "url" | "title">,
-  responseLimit: number | null = 1000,
+  responseLimit: number | null = null,
 ): readonly IThread[] {
   const currentSequence = extractThreadSequenceNumber(currentThread.title);
   const currentIsMarked = currentThread.title.trimStart().startsWith("●");
 
   return threads
     .filter((thread) => {
-      if (
-        thread.url === currentThread.url ||
-        (responseLimit != null && thread.resCount >= responseLimit)
-      )
+      if (thread.url === currentThread.url || isThreadFull(thread.resCount, responseLimit)) {
         return false;
+      }
       const currentBoardUrl = getBoardUrlFromThreadUrl(currentThread.url);
       const candidateBoardUrl = getBoardUrlFromThreadUrl(thread.url);
       if (
@@ -180,7 +179,7 @@ export class CommentOverlayMultiThreadSession {
     try {
       const [result, responseLimit] = await Promise.all([
         this.options.source.getThreads(this.boardUrl),
-        this.options.source.getResponseLimit?.(this.options.threadUrl) ?? Promise.resolve(1000),
+        this.options.source.getResponseLimit?.(this.options.threadUrl) ?? Promise.resolve(null),
       ]);
       if (!this.running) return;
 

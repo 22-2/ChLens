@@ -1,5 +1,14 @@
 export const NEXT_THREAD_TRIGGER_RES_COUNT = 1000;
 
+/**
+ * 候補から外す満了スレかを判定する。
+ * 上限不明（null/undefined）は従来どおり1000で満了とみなし、満了済みスレを候補へ混ぜない。
+ * 自動更新の停止判定は上限不明のとき件数で止めないため、こちらとは扱いを分けている。
+ */
+export function isThreadFull(resCount: number, responseLimit?: number | null): boolean {
+  return resCount >= (responseLimit ?? NEXT_THREAD_TRIGGER_RES_COUNT);
+}
+
 export function isNextThreadSearchTriggered(
   responseCount: number,
   expired: boolean,

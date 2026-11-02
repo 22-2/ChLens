@@ -45,7 +45,7 @@ describe("next-thread-search", () => {
     ).toHaveLength(0);
     expect(
       findNextThreadCandidates([candidate], current, { mode: "aggressive", responseLimit: null }),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
   });
 
   it("【朗報】などの定型タグだけが共通する別話題を関連候補に含めない", () => {

@@ -1,3 +1,4 @@
+import { isThreadFull } from "src/features/next-thread/domain/auto-next-thread-trigger";
 import type {
   AutoNextThreadMode,
   CandidateScore,
@@ -102,7 +103,7 @@ export function rankNextThreadCandidates(
     currentNumber.isExplicitSequence &&
     threads.some((thread) => {
       if (
-        (options.responseLimit != null && thread.resCount >= options.responseLimit) ||
+        isThreadFull(thread.resCount, options.responseLimit) ||
         !isSameBoard(thread.url, currentThread.url)
       ) {
         return false;
@@ -126,7 +127,7 @@ export function rankNextThreadCandidates(
     .filter((thread) => {
       if (
         thread.url === currentThread.url ||
-        (options.responseLimit != null && thread.resCount >= options.responseLimit) ||
+        isThreadFull(thread.resCount, options.responseLimit) ||
         !isSameBoard(thread.url, currentThread.url)
       ) {
         return false;
