@@ -26,6 +26,28 @@ function createThread(
 }
 
 describe("next-thread-search", () => {
+  it("板の上限が3000なら1000を超えた候補も含める", () => {
+    const current = {
+      title: "架空番組 ★1",
+      url: "https://example.com/test/read.cgi/live/1700000000/",
+    };
+    const candidate = createThread({
+      title: "架空番組 ★2",
+      url: "https://example.com/test/read.cgi/live/1700000001/",
+      resCount: 1500,
+      createdAt: 1700000001000,
+    });
+    expect(
+      findNextThreadCandidates([candidate], current, { mode: "aggressive", responseLimit: 3000 }),
+    ).toHaveLength(1);
+    expect(
+      findNextThreadCandidates([candidate], current, { mode: "aggressive", responseLimit: 1000 }),
+    ).toHaveLength(0);
+    expect(
+      findNextThreadCandidates([candidate], current, { mode: "aggressive", responseLimit: null }),
+    ).toHaveLength(1);
+  });
+
   it("【朗報】などの定型タグだけが共通する別話題を関連候補に含めない", () => {
     const currentThread = {
       title: "【朗報】声優の鬼頭明里さん、絵が上手い",

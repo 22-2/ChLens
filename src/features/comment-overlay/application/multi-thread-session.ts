@@ -22,6 +22,7 @@ const INITIAL_CANDIDATE_COMMENT_COUNT = 5;
 export interface CommentOverlayMultiThreadSource {
   getThreads(boardUrl: string): Promise<IBoardResult>;
   getThread(threadUrl: string): Promise<IThreadDetail>;
+  getResponseLimit?(threadUrl: string): Promise<number | null>;
 }
 
 export interface CommentOverlayMultiThreadSessionOptions {
@@ -51,13 +52,18 @@ interface BoardSnapshot {
 export function findCommentOverlayCandidateThreads(
   threads: readonly IThread[],
   currentThread: Pick<IThread, "url" | "title">,
+  responseLimit: number | null = 1000,
 ): readonly IThread[] {
   const currentSequence = extractThreadSequenceNumber(currentThread.title);
   const currentIsMarked = currentThread.title.trimStart().startsWith("●");
 
   return threads
     .filter((thread) => {
-      if (thread.url === currentThread.url || thread.resCount >= 1_000) return false;
+      if (
+        thread.url === currentThread.url ||
+        (responseLimit != null && thread.resCount >= responseLimit)
+      )
+        return false;
       const currentBoardUrl = getBoardUrlFromThreadUrl(currentThread.url);
       const candidateBoardUrl = getBoardUrlFromThreadUrl(thread.url);
       if (
@@ -172,7 +178,10 @@ export class CommentOverlayMultiThreadSession {
     }
 
     try {
-      const result = await this.options.source.getThreads(this.boardUrl);
+      const [result, responseLimit] = await Promise.all([
+        this.options.source.getThreads(this.boardUrl),
+        this.options.source.getResponseLimit?.(this.options.threadUrl) ?? Promise.resolve(1000),
+      ]);
       if (!this.running) return;
 
       const currentThread = result.threads.find((thread) => thread.url === this.options.threadUrl);
@@ -183,7 +192,7 @@ export class CommentOverlayMultiThreadSession {
         title: this.targetTitle || currentThread?.title || "",
       };
       const candidates = this.targetTitle
-        ? findCommentOverlayCandidateThreads(result.threads, currentForCandidates)
+        ? findCommentOverlayCandidateThreads(result.threads, currentForCandidates, responseLimit)
         : [];
 
       for (const thread of candidates) {
@@ -227,6 +236,7 @@ export class CommentOverlayMultiThreadSession {
             thread.url === this.activeSourceThreadUrl || this.candidateStates.has(thread.url),
         );
         const match = findMainstreamThreadMatch(fetchedThreads, {
+          responseLimit,
           originalThreadUrl: this.options.threadUrl,
           originalThreadTitle: this.targetTitle,
           currentThreadUrl: this.activeSourceThreadUrl,

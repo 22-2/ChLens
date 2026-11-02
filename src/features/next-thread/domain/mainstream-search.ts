@@ -28,6 +28,7 @@ function filterMainstreamCandidates(
   > & {
     currentThreadTitle: string;
     minimumResCount: number;
+    responseLimit: number | null;
   },
 ): CandidateScore[] {
   const {
@@ -36,13 +37,17 @@ function filterMainstreamCandidates(
     currentThreadUrl,
     currentThreadTitle,
     minimumResCount,
+    responseLimit,
   } = options;
   const originalSortKey = extractThreadTimestamp(originalThreadUrl);
   const candidates = threads.filter((thread) => {
     if (thread.url === currentThreadUrl || thread.url === originalThreadUrl) {
       return false;
     }
-    if (thread.resCount >= 1000 || thread.resCount < minimumResCount) {
+    if (
+      (responseLimit != null && thread.resCount >= responseLimit) ||
+      thread.resCount < minimumResCount
+    ) {
       return false;
     }
     // 移動後の勢い比較でも探索元の板と時系列を守り、同名の別板や過去スレへ戻らない。
@@ -105,6 +110,7 @@ export function findMainstreamThreadMatch(
     currentThreadUrl,
     mode = DEFAULT_CONFIG.auto_next_thread_mode as AutoNextThreadMode,
     minimumResCount = 10,
+    responseLimit = 1000,
     momentumRatio = 1.5,
     previousThreads,
     previousObservedAt,
@@ -130,6 +136,7 @@ export function findMainstreamThreadMatch(
     currentThreadUrl,
     currentThreadTitle: currentThread.title,
     minimumResCount,
+    responseLimit,
   });
   const minimumSimilarity = mode === "balanced" ? 0.5 : 0.3;
 

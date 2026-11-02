@@ -44,6 +44,14 @@ describe("コメントOverlayの候補スレセッション", () => {
     vi.useRealTimers();
   });
 
+  it("板上限が3000なら1000を超える候補も取得する", () => {
+    const current = { url: targetUrl, title: "番組実況 ★5" };
+    const candidate = thread(candidateUrl, "番組実況 ★5", 1500);
+    expect(findCommentOverlayCandidateThreads([candidate], current, 3000)).toEqual([candidate]);
+    expect(findCommentOverlayCandidateThreads([candidate], current, 1000)).toEqual([]);
+    expect(findCommentOverlayCandidateThreads([candidate], current, null)).toEqual([candidate]);
+  });
+
   it("同じ板の近い連番だけを候補として列挙する", () => {
     const candidates = findCommentOverlayCandidateThreads(
       [

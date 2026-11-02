@@ -101,7 +101,10 @@ export function rankNextThreadCandidates(
   const hasNumberedContinuation =
     currentNumber.isExplicitSequence &&
     threads.some((thread) => {
-      if (thread.resCount >= 1000 || !isSameBoard(thread.url, currentThread.url)) {
+      if (
+        (options.responseLimit != null && thread.resCount >= options.responseLimit) ||
+        !isSameBoard(thread.url, currentThread.url)
+      ) {
         return false;
       }
       const sortKey = extractThreadTimestamp(thread.url);
@@ -123,7 +126,7 @@ export function rankNextThreadCandidates(
     .filter((thread) => {
       if (
         thread.url === currentThread.url ||
-        thread.resCount >= 1000 ||
+        (options.responseLimit != null && thread.resCount >= options.responseLimit) ||
         !isSameBoard(thread.url, currentThread.url)
       ) {
         return false;
