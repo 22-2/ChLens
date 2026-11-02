@@ -41,11 +41,14 @@ function advanceCatchUp(
   isFetching: boolean,
 ): PlaybackState {
   if (playback.catchUp === "none") return playback;
-  if (playback.released !== lastNum) return releaseAll(playback, lastNum);
-  if (playback.catchUp === "waiting" && isFetching) return { ...playback, catchUp: "fetching" };
-  // 新着なしで取得が終わったら、以降の新着は通常どおり流す。
-  if (playback.catchUp === "fetching" && !isFetching) return { ...playback, catchUp: "none" };
-  return playback;
+  // 復帰直後の取得中に複数回描画されても、取得完了まではすべて追いつき分とする。
+  const synced =
+    playback.released !== lastNum
+      ? { ...playback, baseline: lastNum, released: lastNum }
+      : playback;
+  if (synced.catchUp === "waiting" && isFetching) return { ...synced, catchUp: "fetching" };
+  if (synced.catchUp === "fetching" && !isFetching) return { ...synced, catchUp: "none" };
+  return synced;
 }
 
 export function useLiveChatResponses<T extends ResponseNumber>({
@@ -112,7 +115,8 @@ export function useLiveChatResponses<T extends ResponseNumber>({
   playback = advanceCatchUp(playback, lastNum, isFetching);
   // 過去レスを読む間に表示済みの行も基準へ含め、末尾への復帰時に再入場させない。
   if (!isFlowing && (playback.released !== lastNum || playback.baseline !== lastNum)) {
-    playback = releaseAll(playback, lastNum);
+    // 追従状態の測定前でも、復帰直後の取得を待つ状態は維持する。
+    playback = { ...playback, baseline: lastNum, released: lastNum };
   }
 
   let pending = isFlowing ? responses.filter((res) => res.num > (playback.released ?? 0)) : [];
