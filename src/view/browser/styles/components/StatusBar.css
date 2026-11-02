@@ -138,6 +138,18 @@
   line-height: 1;
 }
 
+/* 回転中のアイコンに重ねて停止操作を示し、設定ボタンとは操作を分ける。 */
+.status-bar__btn .auto-refresh-pause__icon,
+.auto-refresh-pause:hover .auto-refresh-pause__spinner,
+.auto-refresh-pause:focus-visible .auto-refresh-pause__spinner {
+  display: none;
+}
+
+.auto-refresh-pause:hover .auto-refresh-pause__icon,
+.auto-refresh-pause:focus-visible .auto-refresh-pause__icon {
+  display: block;
+}
+
 /* 狭いペインでも操作を横スクロールなしで使えるよう、アイコンに名前を任せる。 */
 @container pane (max-width: 600px) {
   .status-bar__btn:has(> svg) > span:not(.status-bar__count) {

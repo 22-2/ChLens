@@ -1,4 +1,4 @@
-import { Clock3, Hourglass, Pause, RefreshCw } from "lucide-react";
+import { CirclePause, Clock3, Hourglass, Pause, RefreshCw } from "lucide-react";
 import React, { useState } from "react";
 import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/features/auto-refresh/browser/auto-refresh-config";
 import {
@@ -252,6 +252,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
   // 変更理由: 次スレ待機は自動更新のONではないため、ONの表示より優先して待機として見せる。
   const isStatusWaiting = panelKind === "thread" && isNextThreadWaiting;
   const statusAppearance = isStatusWaiting ? "waiting" : isStatusActive ? "active" : null;
+  const canPauseFromIcon = isStatusActive && !isPaused;
   const intervalLabel = `${intervalSec} s`;
 
   // panelKindがnullの場合はこのコンポーネント全体を表示しない
@@ -310,6 +311,22 @@ export const AutoRefreshStatusItem: React.FC = () => {
         title={itemTitle}
         interactive
       >
+        {canPauseFromIcon && (
+          <button
+            type="button"
+            className="status-bar__btn auto-refresh-pause"
+            onClick={toggle}
+            title="自動更新を一時停止"
+            aria-label="自動更新を一時停止"
+          >
+            <RefreshCw
+              size={13}
+              className="icon--spinning auto-refresh-pause__spinner"
+              aria-hidden="true"
+            />
+            <CirclePause size={13} className="auto-refresh-pause__icon" aria-hidden="true" />
+          </button>
+        )}
         {/* OFFでも設定を開けるため、無効な操作に見える薄い色にはしない。 */}
         <button
           ref={miniWindowTriggerRef}
@@ -318,7 +335,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
           title={itemTitle}
           aria-label={itemTitle}
         >
-          {renderStatusIcon()}
+          {!canPauseFromIcon && renderStatusIcon()}
           {
             // 変更理由: ステータスバー上で現在値が見えないと、
             // ミニウィンドウを開くまで更新間隔を確認できず操作往復が増えるため。

@@ -145,6 +145,15 @@ describe("AutoRefreshStatusItem", () => {
     vi.clearAllMocks();
   });
 
+  it("回転中のアイコンから自動更新を一時停止できる", () => {
+    mocks.autoRefreshPanel.isEnabled = true;
+    mocks.canAutoScroll = true;
+    const view = renderItem();
+    expect(view.container.querySelector(".lucide-circle-pause")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "自動更新を一時停止" }));
+    expect(mocks.autoRefreshPanel.toggle).toHaveBeenCalledTimes(1);
+  });
+
   it("表示形式だけを切り替え、自動更新の開始や間隔変更を発火しない", () => {
     renderItem();
     const button = screen.getByRole("button", { name: /自動更新/ });
@@ -324,10 +333,10 @@ describe("AutoRefreshStatusItem", () => {
           </StatusBarProvider>,
         );
         expect(statusBar).toHaveClass(appearance);
-        const resumedButton = screen.getByRole("button", { name: /自動更新/ });
+        const resumedButton = screen.getByRole("button", { name: /スレッド自動更新/ });
         expect(resumedButton.querySelector(".lucide-pause")).toBeNull();
         expect(
-          resumedButton.querySelector(canAutoScroll ? ".icon--spinning" : ".lucide-clock-3"),
+          view.container.querySelector(canAutoScroll ? ".icon--spinning" : ".lucide-clock-3"),
         ).toBeInTheDocument();
       }
     },
