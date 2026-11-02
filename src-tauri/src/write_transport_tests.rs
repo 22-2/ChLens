@@ -164,7 +164,7 @@ fn 書き込み_urlを検証してサイト名を正規化する() {
 #[test]
 fn 投稿ヘッダーの既定値と不正値を安全な値へ戻す() {
   let action = Url::parse("https://example.com/board/post").unwrap();
-  let defaults = build_headers(&action, "", None);
+  let defaults = build_headers(&action, "", None).unwrap();
   assert_eq!(defaults[CONTENT_TYPE], "application/x-www-form-urlencoded");
   assert_eq!(defaults[USER_AGENT], DEFAULT_USER_AGENT);
   assert_eq!(defaults[ORIGIN], "https://example.com");
@@ -174,11 +174,12 @@ fn 投稿ヘッダーの既定値と不正値を安全な値へ戻す() {
     &action,
     "https://example.com/thread",
     Some("Custom-Agent/1.0"),
-  );
+  )
+  .unwrap();
   assert_eq!(custom[USER_AGENT], "Custom-Agent/1.0");
   assert_eq!(custom[REFERER], "https://example.com/thread");
 
-  let invalid = build_headers(&action, "bad\nreferer", Some("bad\nagent"));
+  let invalid = build_headers(&action, "bad\nreferer", Some("bad\nagent")).unwrap();
   assert_eq!(invalid[USER_AGENT], DEFAULT_USER_AGENT);
   assert_eq!(invalid[REFERER], action.as_str());
 }

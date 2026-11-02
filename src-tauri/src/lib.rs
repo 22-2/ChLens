@@ -48,7 +48,8 @@ fn create_requested_window<R: Runtime>(
   let builder = WebviewWindowBuilder::new(
     app,
     label.clone(),
-    WebviewUrl::External("about:blank".parse().expect("about:blank is a valid URL")),
+    // 検証済みのURLを使い、固定文字列の再解析でパニックしないようにする。
+    WebviewUrl::External(url),
   )
   // DOMのWindowProxyから同じOS窓を復元・フォーカスできるよう、生成時のラベルを渡す。
   .initialization_script(format!("window.__chlensPopupLabel = {label:?};"))
@@ -80,9 +81,14 @@ fn new_window_handler<R: Runtime>(
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
+pub fn run() -> Result<(), Box<dyn std::error::Error>> {
   // WebView2の保存先は最初のWebViewを作る前に決まるため、Builderより先に差し替える。
-  let data_override = data_dir::prepare_override().expect("E2E用の保存先を作成できませんでした");
+  let data_override = data_dir::prepare_override().map_err(|error| {
+    std::io::Error::new(
+      error.kind(),
+      format!("E2E用の保存先を作成できませんでした: {error}"),
+    )
+  })?;
 
   #[cfg(feature = "e2e")]
   let context = e2e_cdp::apply(tauri::generate_context!());
@@ -183,6 +189,6 @@ pub fn run() {
       }
       Ok(())
     })
-    .run(context)
-    .expect("error while running tauri application");
+    .run(context)?;
+  Ok(())
 }

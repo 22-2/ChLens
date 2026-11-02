@@ -106,7 +106,11 @@ fn add_header(headers: &mut HeaderMap, name: reqwest::header::HeaderName, value:
   }
 }
 
-fn build_headers(action: &Url, referer: &str, user_agent: Option<&str>) -> HeaderMap {
+fn build_headers(
+  action: &Url,
+  referer: &str,
+  user_agent: Option<&str>,
+) -> Result<HeaderMap, String> {
   let mut headers = HeaderMap::new();
   headers.insert(
     CONTENT_TYPE,
@@ -135,12 +139,14 @@ fn build_headers(action: &Url, referer: &str, user_agent: Option<&str>) -> Heade
     Ok(value) => value,
     Err(_) => {
       log::warn!("書き込み用RefererにHTTPヘッダーとして使えない文字が含まれていました");
-      HeaderValue::from_str(fallback_referer).expect("URL由来のRefererは有効です")
+      // URL由来の値も検証し、万一ヘッダーにできなければ投稿エラーとして返す。
+      HeaderValue::from_str(fallback_referer)
+        .map_err(|error| format!("書き込み先URLをRefererに設定できませんでした: {error}"))?
     }
   };
   headers.insert(REFERER, referer_value);
 
-  headers
+  Ok(headers)
 }
 
 fn get_or_create_client(state: &WriteTransportState, site: &str) -> Result<Client, String> {
@@ -252,7 +258,7 @@ async fn write_request_inner(
   if let Some(bootstrap_url) = request.bootstrap_url.as_deref() {
     match parse_http_url(bootstrap_url, "書き込み前のCookie取得URL") {
       Ok(bootstrap) => {
-        let headers = build_headers(&bootstrap, "", request.user_agent.as_deref());
+        let headers = build_headers(&bootstrap, "", request.user_agent.as_deref())?;
         // 変更理由: 5ch互換サーバーはスレッド閲覧時に確認用Cookieを発行するため、
         // 初回POSTの前に同じRust ClientでGETして共有Cookie Jarへ保存する。
         match client.get(bootstrap).headers(headers).send().await {
@@ -267,7 +273,7 @@ async fn write_request_inner(
     }
   }
 
-  let mut headers = build_headers(&action, &request.referer, request.user_agent.as_deref());
+  let mut headers = build_headers(&action, &request.referer, request.user_agent.as_deref())?;
   apply_cookie_exclusions(
     &mut headers,
     state.cookies.jar(&site).cookies(&action),
