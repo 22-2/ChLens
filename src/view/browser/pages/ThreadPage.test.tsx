@@ -2,6 +2,10 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
+import {
+  manualPauseKey,
+  useManualPauseStore,
+} from "src/features/auto-refresh/browser/manual-pause-store";
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { ThreadPage } from "src/view/browser/pages/ThreadPage";
@@ -448,6 +452,7 @@ describe("ThreadPage の組み立て", () => {
     h.autoRefresh.canAutoScroll = false;
     h.nextThread.pendingMove = null;
     h.nextThreadSetting.enabled = false;
+    useManualPauseStore.setState({ paused: {} });
   });
 
   afterEach(() => {
@@ -659,6 +664,16 @@ describe("ThreadPage の組み立て", () => {
       renderThreadPage({ tab: waitingTab, isAutoRefreshEnabled: false });
 
       expect(h.floatingActions.props).toMatchObject({ isAutoRefreshEnabled: true });
+    });
+
+    it("手動一時停止中は自動更新を有効のまま取得と追従を止める", () => {
+      useManualPauseStore.getState().setPaused(manualPauseKey("paused-tab", THREAD_URL), true);
+      renderThreadPage({ tabId: "paused-tab", isAutoRefreshEnabled: true });
+      expect(h.autoRefresh.props).toMatchObject({
+        enabled: true,
+        pauseRefresh: true,
+        pauseAutoScroll: true,
+      });
     });
 
     it("新着の再取得は、タブの再読み込みコマンドとして実行する", () => {

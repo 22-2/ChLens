@@ -22,6 +22,7 @@ import {
   resolveThreadAutoRefreshStop,
   shouldDeferExpiredAutoRefreshStop,
 } from "src/features/auto-refresh/browser/auto-refresh-stop";
+import { useManualThreadPause } from "src/features/auto-refresh/browser/manual-pause-store";
 import { usePopupAutoScrollPauseSetting } from "src/features/auto-refresh/browser/use-popup-auto-scroll-pause-setting";
 import { useThreadAutoRefresh } from "src/features/auto-refresh/browser/use-thread-auto-refresh";
 import { useCommentOverlay } from "src/features/comment-overlay/application/use-comment-overlay";
@@ -325,7 +326,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     openFilterToolbar,
     rootRef,
   });
-
   // 変更理由: 自動更新とステータスバー強調の条件を同一ソースに統一し、
   // タブ切替後に非アクティブタブの状態がステータスバーへ残留するのを防ぐ。
   // 変更理由: Overlayへ流しているスレッドはタブを切り替えても取得を止めず、
@@ -361,7 +361,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const { enabled: pauseAutoScrollOnPopup } = usePopupAutoScrollPauseSetting();
   // ポップアップを読む間は取得・追従・キュー再生を一緒に待機する。
   // タブを離れた後のポップアップ状態で、非表示タブのOverlay実況を止めない。
-  const isThreadDisplayPaused = isActive && pauseAutoScrollOnPopup && popups.length > 0;
+  const manuallyPaused = useManualThreadPause(tabId, page.threadUrl, isAutoRefreshEnabled);
+  const isThreadDisplayPaused =
+    manuallyPaused || (isActive && pauseAutoScrollOnPopup && popups.length > 0);
   // 自動追従の結果は自動更新と再生の循環依存を避けて描画後に同期する。
   const [liveChatFollowing, setLiveChatFollowing] = useState(false);
   const moveToBottomOnEnable = useThreadMoveToBottomOnEnable({
@@ -391,7 +393,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     releasedResponses: liveChat.responses,
     repIndex: indexes.repIndex,
   });
-
   const {
     handleAutoRefreshStop,
     handleEnableAutoRefresh,
@@ -621,7 +622,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     openMediaFromUrl,
     addPopupContextMenu,
   });
-
   const {
     openAnchorPreviewFromPopup,
     handleIdClick,
