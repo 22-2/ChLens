@@ -121,6 +121,27 @@ describe("useWrite", () => {
     },
   );
 
+  it("書き込み成功の表示中も新しい本文をすぐ送信できる", async () => {
+    vi.useFakeTimers();
+    fetchTauriWriteMock.mockResolvedValue({
+      status: 200,
+      headers: {},
+      url: "https://example.com/test/bbs.cgi",
+      body: "<html><head><title>書きこみました</title></head></html>",
+    });
+    const { result } = renderHook(() => useWrite(THREAD_URL));
+    act(() => result.current.setMessage("最初の投稿"));
+    await act(async () => result.current.submit());
+    expect(result.current.status).toBe("success");
+    expect(result.current.canSubmit).toBe(false);
+    act(() => result.current.setMessage("次の投稿"));
+    expect(result.current.canSubmit).toBe(true);
+    await act(async () => result.current.submit());
+    expect(fetchTauriWriteMock).toHaveBeenCalledTimes(2);
+    expect(result.current.status).toBe("success");
+    await act(async () => vi.runAllTimersAsync());
+  });
+
   it("自分レス照合用の成功通知は再取得の5秒待機より前に一度だけ配信する", async () => {
     vi.useFakeTimers();
     vi.mocked(resolveWriteSuccessDelayMs).mockReturnValue(5000);

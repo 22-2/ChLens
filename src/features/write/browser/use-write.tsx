@@ -296,7 +296,9 @@ export function useWrite(threadUrl: string, options: UseWriteOptions = {}): UseW
     setMessageState((currentMessage) => (currentMessage === draft ? currentMessage : draft));
   }, [draft]);
 
-  const canSubmit = status === "idle" && threadUrl !== "" && message.trim() !== "";
+  // 成功表示を残す3秒間も新しい本文があれば送信できるようにする。
+  const canSubmit =
+    (status === "idle" || status === "success") && threadUrl !== "" && message.trim() !== "";
 
   // 書き込み成功後、少し待ってから idle に戻す
   useEffect(() => {
