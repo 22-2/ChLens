@@ -4,6 +4,10 @@ import type { AddressInfo } from "node:net";
 import iconv from "iconv-lite";
 
 import {
+  createEdgeAuthPage,
+  EDGE_AUTH_TOKEN,
+} from "../src/features/write/fixtures/edge-auth-page.ts";
+import {
   createLargeThreadPost,
   createLargeThreadPosts,
   LARGE_THREAD_ID,
@@ -29,6 +33,8 @@ export async function startLocalBoard() {
       ],
     },
   ];
+  let edgeAuthEnabled = false;
+  const edgeWriteAttempts: { mail: string; message: string }[] = [];
   const requests: string[] = [];
   const requestMethods: string[] = [];
   const hiddenSubjectThreadIds = new Set<string>();
@@ -39,6 +45,54 @@ export async function startLocalBoard() {
     const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
     requests.push(pathname);
     requestMethods.push(request.method ?? "GET");
+    if (pathname === "/favicon.ico") {
+      response.writeHead(204).end();
+      return;
+    }
+    if (edgeAuthEnabled && pathname === "/auth-code" && request.method === "GET") {
+      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      response.end(createEdgeAuthPage());
+      return;
+    }
+    if (edgeAuthEnabled && pathname === "/test/bbs.cgi" && request.method === "POST") {
+      const chunks: Buffer[] = [];
+      request.on("data", (chunk: Buffer) => chunks.push(chunk));
+      request.on("end", () => {
+        const encoded = Buffer.concat(chunks).toString("ascii");
+        const readField = (name: string) => {
+          const value =
+            encoded
+              .split("&")
+              .find((entry) => entry.startsWith(`${name}=`))
+              ?.slice(name.length + 1) ?? "";
+          const bytes = Buffer.from(
+            value
+              .replace(/\+/g, " ")
+              .replace(/%([0-9a-f]{2})/gi, (_match, hex: string) =>
+                String.fromCharCode(parseInt(hex, 16)),
+              ),
+            "latin1",
+          );
+          return iconv.decode(bytes, "Shift_JIS");
+        };
+        const mail = readField("mail");
+        const message = readField("MESSAGE");
+        edgeWriteAttempts.push({ mail, message });
+        const success = mail === EDGE_AUTH_TOKEN;
+        if (success)
+          threads[0]!.posts.push(`名無し<>sage<>2026/10/02(金) 12:02:00 ID:local003<>${message}<>`);
+        const host = request.headers.host ?? "127.0.0.1";
+        const html = success
+          ? "<html><head><title>書きこみました</title></head><body>書きこみました</body></html>"
+          : `<html><head><title>ＥＲＲＯＲ</title><meta name="error_code" content="E-Unauthenticated"></head><body>認証コード'123456'を用いて、以下のURLから認証を行ってください https://${host}/auth-code</body></html>`;
+        response.writeHead(200, {
+          "Content-Type": "text/html; charset=Shift_JIS",
+          "Cache-Control": "no-store",
+        });
+        response.end(iconv.encode(html, "Shift_JIS"));
+      });
+      return;
+    }
     if (/^\/img\/\d+\.png$/u.test(pathname)) {
       // 実画像は小さい固定PNGを使い、HEADのサイズだけ境界値へ調整して事前警告を検証する。
       // 類似画像NGのように画像の中身が要る検証では、setImageBodyで差し替える。
@@ -97,6 +151,10 @@ export async function startLocalBoard() {
     threadUrl: `${origin}/test/read.cgi/local/1000000001/`,
     requests,
     requestMethods,
+    edgeWriteAttempts,
+    enableEdgeAuth() {
+      edgeAuthEnabled = true;
+    },
     setDat(source: string, threadId = threads[0]!.id) {
       // 添付DATの再現でも、外部掲示板へ通信せず同じ文字コード・取得経路を通す。
       const thread = threads.find((item) => item.id === threadId);

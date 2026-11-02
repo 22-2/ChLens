@@ -119,3 +119,57 @@ test("未認証の通知から認証コードとURLを案内し本文を保持�
   await expect(dialog).toBeHidden();
   await expect(body).toHaveValue("てす");
 });
+
+test("認証と規約同意後にトークンで書き込みを再試行する", async ({
+  page,
+  context,
+  extensionId,
+  localBoard,
+}) => {
+  localBoard.enableEdgeAuth();
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, "ローカルテストスレッド");
+  await waitForThreadLoaded(page, localBoard.threadUrl, 2);
+  await page.getByRole("button", { name: "書き込みパネルを開閉" }).click();
+  const panel = page.locator(".bottom-panel");
+  const body = panel.getByRole("textbox", { name: "本文" });
+  await body.fill("てす");
+  await panel.getByRole("button", { name: "書き込む" }).click();
+  await expect.poll(() => localBoard.edgeWriteAttempts.length).toBe(1);
+  const dialog = page.getByRole("dialog", { name: "認証を完了してください" });
+  await expect(dialog.getByLabel("認証コード")).toHaveValue("123456");
+  const auth = await context.newPage();
+  await auth.goto(`${localBoard.origin}/auth-code`);
+  await auth.getByRole("button", { name: "利用規約を確認して同意する" }).click();
+  const agree = auth.getByRole("button", { name: "利用規約に同意する", exact: true });
+  await expect(agree).toBeDisabled();
+  await auth.getByRole("checkbox").check();
+  await expect(agree).toBeDisabled();
+  await auth.locator("#terms").evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await expect(agree).toBeEnabled();
+  await agree.click();
+  await auth.getByLabel("認証コード").fill("000000");
+  await auth.getByRole("button", { name: "利用規約に同意して認証を行う" }).click();
+  await expect(auth.getByRole("alert")).toHaveText("認証コードが正しくありません");
+  await auth.getByLabel("認証コード").fill("123456");
+  await auth.getByRole("button", { name: "利用規約に同意して認証を行う" }).click();
+  const token = await auth.getByLabel("認証トークン").inputValue();
+  expect(token).toBe("#abcdefghijklmnop");
+  await dialog.getByRole("button", { name: "再入力" }).click();
+  await expect(body).toHaveValue("てす");
+  await panel.getByRole("button", { name: "その他の操作" }).click();
+  await page.getByRole("button", { name: "書き込み設定" }).click();
+  const settings = page.getByRole("dialog", { name: "書き込み設定" });
+  await settings.getByRole("textbox", { name: "メール" }).fill(token);
+  await settings.getByRole("button", { name: "閉じる" }).click();
+  await panel.getByRole("button", { name: "書き込む" }).click();
+  await expect
+    .poll(() => localBoard.edgeWriteAttempts)
+    .toEqual([
+      { mail: "", message: "てす" },
+      { mail: token, message: "てす" },
+    ]);
+  await expect(body).toHaveValue("");
+  await auth.close();
+});
