@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, RefreshCw } from "lucide-react";
+import { ArrowDown, ArrowUp, Play } from "lucide-react";
 import React, { type RefObject, useCallback, useEffect, useState } from "react";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
@@ -265,9 +265,6 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
     ACTION_BOTTOM_OFFSET,
     viewWindow.innerHeight - layout.panelBottom + ACTION_BOTTOM_OFFSET,
   );
-  // 縦にステータスバーの下へ移動させず、上端に重ねてz-indexだけを下げて背後へ沈める。
-  const autoLoadBottom = Math.max(0, viewWindow.innerHeight - layout.panelBottom);
-  const centerLeft = layout.panelLeft + (layout.panelRight - layout.panelLeft) / 2;
   // CSS変数は「ミニマップ幅 + 左右の逃がし」を予約しているので、
   // その開始位置から少し左へボタンを置けばミニマップに重ならない。
   const jumpRightEdge = layout.panelRight - layout.minimapReservation - 8;
@@ -275,38 +272,34 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
 
   return (
     <>
+      {/* 末尾では下への移動が不要になるため、同じ場所を自動更新の開始操作に使う。 */}
       {layout.isAtBottom && !loading && !isAutoRefreshEnabled && canAutoRefresh && (
-        <button
-          type="button"
-          className="thread-page__floating-action thread-page__floating-action--auto-load"
-          style={{
-            left: `${centerLeft}px`,
-            bottom: `${autoLoadBottom}px`,
-            maxWidth: `${layout.panelRight - layout.panelLeft}px`,
-            boxSizing: "border-box",
-          }}
-          aria-label="自動読み込みを開始"
-          title="自動読み込みを開始"
-          onClick={onEnableAutoRefresh}
-        >
-          <RefreshCw size={16} aria-hidden="true" />
-          <span>自動読み込み</span>
-        </button>
-      )}
-
-      {/* 少し上の範囲では本文の操作を邪魔しないよう出さず、さらに上へ離れた時だけ戻り道を示す。 */}
-      {!layout.isAtBottom && !layout.isSlightlyAboveBottom && (
         <button
           type="button"
           className="thread-page__floating-action thread-page__floating-action--jump"
           style={{ left: `${jumpLeft}px`, bottom: `${jumpBottom}px` }}
-          aria-label="下へジャンプ"
-          title="下へジャンプ"
-          onClick={scrollToBottom}
+          aria-label="自動読み込みを開始"
+          title="自動読み込みを開始"
+          onClick={onEnableAutoRefresh}
         >
-          <ArrowDown size={18} aria-hidden="true" />
+          <Play size={18} aria-hidden="true" />
         </button>
       )}
+
+      {/* 自動更新を開始できるときは、末尾で開始ボタンへ切り替わるまで下への操作を残す。 */}
+      {!layout.isAtBottom &&
+        (!layout.isSlightlyAboveBottom || (!isAutoRefreshEnabled && canAutoRefresh)) && (
+          <button
+            type="button"
+            className="thread-page__floating-action thread-page__floating-action--jump"
+            style={{ left: `${jumpLeft}px`, bottom: `${jumpBottom}px` }}
+            aria-label="下へジャンプ"
+            title="下へジャンプ"
+            onClick={scrollToBottom}
+          >
+            <ArrowDown size={18} aria-hidden="true" />
+          </button>
+        )}
 
       {layout.isFarFromTop && (
         <button

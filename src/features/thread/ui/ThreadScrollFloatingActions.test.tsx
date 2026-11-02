@@ -106,6 +106,9 @@ describe("ThreadScrollFloatingActions", () => {
 
     const button = screen.getByRole("button", { name: "自動読み込みを開始" });
     expect(button).toBeInTheDocument();
+    expect(button).toHaveStyle({ left: "802px" });
+    expect(button.querySelector(".lucide-play")).toBeInTheDocument();
+    expect(button.textContent).toBe("");
     fireEvent.click(button);
     expect(onEnableAutoRefresh).toHaveBeenCalledOnce();
     expect(screen.queryByRole("button", { name: "下へジャンプ" })).not.toBeInTheDocument();
@@ -136,11 +139,19 @@ describe("ThreadScrollFloatingActions", () => {
     expect(scrollTo).toHaveBeenCalledWith({ top: 500, behavior: "auto" });
   });
 
-  it("最下部から少し上では下へジャンプを表示しない", () => {
+  it("末尾の手前から末尾まで、下へジャンプから開始ボタンへ途切れず切り替わる", () => {
     scrollTop = 250;
-    renderActions();
+    const { panel } = renderActions();
+
+    expect(screen.getByRole("button", { name: "下へジャンプ" })).toBeInTheDocument();
+    scrollTop = 297;
+    fireEvent.scroll(panel);
+    expect(screen.getByRole("button", { name: "下へジャンプ" })).toBeInTheDocument();
+    scrollTop = 300;
+    fireEvent.scroll(panel);
 
     expect(screen.queryByRole("button", { name: "下へジャンプ" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "自動読み込みを開始" })).toBeInTheDocument();
   });
 
   it("自動更新中は開始ボタンを重ねて表示しない", () => {
