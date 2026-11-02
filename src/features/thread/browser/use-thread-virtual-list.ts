@@ -305,13 +305,10 @@ export function useThreadVirtualList({
     (resNum: number, options: ThreadScrollToResponseOptions = {}) => {
       const index = keyIndex.get(resNum);
       if (index === undefined || !virtualizer.scrollElement) return false;
-      virtualizer.scrollToIndex(index, { align: options.align ?? "start" });
-      if (options.offset) {
-        requestAnimationFrame(() => {
-          const item = virtualizer.measurementsCache[index];
-          if (item) virtualizer.scrollToOffset(item.start - options.offset!);
-        });
-      }
+      const item = virtualizer.measurementsCache[index];
+      // 保存した画面内の位置まで同じ描画前に移動し、先頭揃えからの二段階移動を防ぐ。
+      if (options.offset != null && item) virtualizer.scrollToOffset(item.start - options.offset);
+      else virtualizer.scrollToIndex(index, { align: options.align ?? "start" });
       if (options.highlight ?? true) setHighlightKey(resNum);
       return true;
     },

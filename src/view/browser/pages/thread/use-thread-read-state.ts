@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import type { ThreadScrollToResponseOptions } from "src/features/thread/browser/use-thread-virtual-list";
 import { container } from "src/service-container/index";
@@ -223,7 +223,7 @@ export function useThreadReadState({
     viewWindow,
   ]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (
       !isActive ||
       isInitialReadStateResolved ||

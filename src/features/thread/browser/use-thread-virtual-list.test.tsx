@@ -56,6 +56,30 @@ function setup(initialResponses = responses) {
 }
 
 describe("TanStack Virtualを使ったレス一覧", () => {
+  it("保存したレス位置とオフセットを同じ処理内で復元する", () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    scrollContainerRef.current = document.createElement("div");
+    const { result } = setup();
+    const virtualizer = result.current.list.virtualizer;
+    virtualizer.getTotalSize();
+    const item = virtualizer.measurementsCache[1]!;
+    const scrollToOffset = vi.spyOn(virtualizer, "scrollToOffset");
+    const scrollToIndex = vi.spyOn(virtualizer, "scrollToIndex");
+
+    act(() => {
+      expect(result.current.list.scrollToResponse(2, { offset: 10, highlight: false })).toBe(true);
+    });
+
+    expect(scrollToOffset).toHaveBeenCalledWith(item.start - 10);
+    expect(scrollToIndex).not.toHaveBeenCalled();
+  });
   it("固定ヘッダーの高さをジャンプ先の上余白に反映する", () => {
     vi.stubGlobal(
       "ResizeObserver",
