@@ -110,8 +110,10 @@ export function useLiveChatResponses<T extends ResponseNumber>({
     playback = releaseAll(stored, lastNum);
   }
   playback = advanceCatchUp(playback, lastNum, isFetching);
-  // 過去レスを読んでいる間は保留分を流さず、通常表示の末尾に同期する。
-  if (!isFlowing && playback.released !== lastNum) playback = releaseAll(playback, lastNum);
+  // 過去レスを読む間に表示済みの行も基準へ含め、末尾への復帰時に再入場させない。
+  if (!isFlowing && (playback.released !== lastNum || playback.baseline !== lastNum)) {
+    playback = releaseAll(playback, lastNum);
+  }
 
   let pending = isFlowing ? responses.filter((res) => res.num > (playback.released ?? 0)) : [];
   const [wasPaused, setWasPaused] = useState(paused);

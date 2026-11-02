@@ -166,6 +166,20 @@ describe("ライブチャットの新着表示", () => {
     expect(result.current.pendingCount).toBe(1);
   });
 
+  it("表示済みの新着は過去レスから末尾に戻っても再入場させない", () => {
+    const following = { ...initial, isFollowing: true };
+    const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: following });
+    const responses = rows(1, 2, 3);
+    rerender({ ...following, responses });
+    advance(600);
+    expect(result.current.responses).toEqual(responses);
+    expect(result.current.baseline).toBe(2);
+    rerender({ ...following, responses, isFollowing: false });
+    rerender({ ...following, responses });
+    expect(result.current.responses).toEqual(responses);
+    expect(result.current.baseline).toBe(3);
+  });
+
   it("過去レスを読んでいる間は一括表示し、末尾に戻ると新着を流す", () => {
     const following = { ...initial, isFollowing: true };
     const { result, rerender } = renderHook(useLiveChatResponses, { initialProps: following });
