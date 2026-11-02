@@ -152,17 +152,35 @@ describe("AutoRefreshStatusItem", () => {
     mocks.canAutoScroll = true;
     const view = renderItem();
     expect(view.container.querySelector(".lucide-circle-pause")).toBeInTheDocument();
+    expect(view.container.querySelector(".icon--spinning")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "自動更新を一時停止" }));
     expect(mocks.autoRefreshPanel.toggle).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "自動更新を再開" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "自動更新を再開" }).querySelector(".lucide-circle-pause"),
+    ).toBeInTheDocument();
+    expect(view.container.querySelector(".icon--spinning")).not.toBeInTheDocument();
     expect(view.container.querySelector(".status-bar")).toHaveClass("status-bar--active");
     fireEvent.click(screen.getByRole("button", { name: "自動更新を再開" }));
     expect(screen.getByRole("button", { name: "自動更新を一時停止" })).toBeInTheDocument();
   });
 
+  it.each(["thread", "threadList"] as const)(
+    "%s の自動更新がOFFなら再生アイコンから開始できる",
+    (kind) => {
+      mocks.autoRefreshPanel.panelKind = kind;
+      const view = renderItem();
+      const start = screen.getByRole("button", { name: "自動更新を開始" });
+      expect(start.querySelector(".lucide-circle-play")).toBeInTheDocument();
+      fireEvent.click(start);
+      expect(mocks.autoRefreshPanel.toggle).toHaveBeenCalledTimes(1);
+      expect(view.container.querySelector(".status-bar--active")).not.toBeInTheDocument();
+    },
+  );
+
   it("表示形式だけを切り替え、自動更新の開始や間隔変更を発火しない", () => {
     renderItem();
-    const button = screen.getByRole("button", { name: /自動更新/ });
+    const button = screen.getByRole("button", { name: /^(スレッド|スレ一覧)自動更新:/ });
     Object.defineProperty(button, "getBoundingClientRect", { value: () => createRect() });
     fireEvent.click(button);
     const select = screen.getByLabelText("表示形式");
@@ -179,7 +197,7 @@ describe("AutoRefreshStatusItem", () => {
   it("スレッド用ミニウィンドウを開き、同じボタンの再クリックで閉じる", () => {
     renderItem();
 
-    const button = screen.getByRole("button", { name: /自動更新/ });
+    const button = screen.getByRole("button", { name: /^(スレッド|スレ一覧)自動更新:/ });
     Object.defineProperty(button, "getBoundingClientRect", {
       configurable: true,
       value: () => createRect(),
@@ -342,7 +360,7 @@ describe("AutoRefreshStatusItem", () => {
         const resumedButton = screen.getByRole("button", { name: /スレッド自動更新/ });
         expect(resumedButton.querySelector(".lucide-pause")).toBeNull();
         expect(
-          view.container.querySelector(canAutoScroll ? ".lucide-circle-pause" : ".lucide-clock-3"),
+          view.container.querySelector(canAutoScroll ? ".icon--spinning" : ".lucide-clock-3"),
         ).toBeInTheDocument();
       }
     },
@@ -373,7 +391,7 @@ describe("AutoRefreshStatusItem", () => {
   it("詳細設定は既定で折りたたみ、開き直しても開閉状態を保つ", () => {
     renderItem();
 
-    const button = screen.getByRole("button", { name: /自動更新/ });
+    const button = screen.getByRole("button", { name: /^(スレッド|スレ一覧)自動更新:/ });
     Object.defineProperty(button, "getBoundingClientRect", {
       configurable: true,
       value: () => createRect(),
@@ -398,7 +416,7 @@ describe("AutoRefreshStatusItem", () => {
   it("ミニウィンドウから自動次スレ移動を切り替えられる", () => {
     renderItem();
 
-    const button = screen.getByRole("button", { name: /自動更新/ });
+    const button = screen.getByRole("button", { name: /^(スレッド|スレ一覧)自動更新:/ });
     Object.defineProperty(button, "getBoundingClientRect", {
       configurable: true,
       value: () => createRect(),
@@ -420,7 +438,7 @@ describe("AutoRefreshStatusItem", () => {
   it("ミニウィンドウから次スレ判定を変更できる", () => {
     renderItem();
 
-    const button = screen.getByRole("button", { name: /自動更新/ });
+    const button = screen.getByRole("button", { name: /^(スレッド|スレ一覧)自動更新:/ });
     Object.defineProperty(button, "getBoundingClientRect", {
       configurable: true,
       value: () => createRect(),
@@ -437,7 +455,7 @@ describe("AutoRefreshStatusItem", () => {
   it("ミニウィンドウからポップアップ表示中の一時停止を切り替えられる", () => {
     renderItem();
 
-    const button = screen.getByRole("button", { name: /自動更新/ });
+    const button = screen.getByRole("button", { name: /^(スレッド|スレ一覧)自動更新:/ });
     Object.defineProperty(button, "getBoundingClientRect", {
       configurable: true,
       value: () => createRect(),

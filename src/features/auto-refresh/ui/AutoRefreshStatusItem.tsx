@@ -261,6 +261,8 @@ export const AutoRefreshStatusItem: React.FC = () => {
   const statusAppearance = isStatusWaiting ? "waiting" : isStatusActive ? "active" : null;
   const canPauseFromIcon =
     panelKind === "thread" && isEnabled && (manuallyPaused || (isStatusActive && !isPaused));
+  // 次スレ待機はOFFとは別の状態で、探索中に誤って開始操作へ切り替えない。
+  const canStartFromIcon = panelKind != null && !isEnabled && !isNextThreadWaiting;
   const intervalLabel = `${intervalSec} s`;
 
   // panelKindがnullの場合はこのコンポーネント全体を表示しない
@@ -320,6 +322,17 @@ export const AutoRefreshStatusItem: React.FC = () => {
         interactive
       >
         <div className="auto-refresh-controls">
+          {canStartFromIcon && (
+            <button
+              type="button"
+              className="status-bar__btn"
+              onClick={toggle}
+              title="自動更新を開始"
+              aria-label="自動更新を開始"
+            >
+              <CirclePlay size={13} aria-hidden="true" />
+            </button>
+          )}
           {canPauseFromIcon && (
             <button
               type="button"
@@ -328,11 +341,18 @@ export const AutoRefreshStatusItem: React.FC = () => {
               title={manuallyPaused ? "自動更新を再開" : "自動更新を一時停止"}
               aria-label={manuallyPaused ? "自動更新を再開" : "自動更新を一時停止"}
             >
-              {manuallyPaused ? (
-                <CirclePlay size={13} aria-hidden="true" />
-              ) : (
-                <CirclePause size={13} aria-hidden="true" />
+              {!manuallyPaused && (
+                <RefreshCw
+                  size={13}
+                  className="icon--spinning auto-refresh-pause__spinner"
+                  aria-hidden="true"
+                />
               )}
+              <CirclePause
+                size={13}
+                className={manuallyPaused ? undefined : "auto-refresh-pause__hover"}
+                aria-hidden="true"
+              />
             </button>
           )}
           {/* OFFでも設定を開けるため、無効な操作に見える薄い色にはしない。 */}
@@ -343,7 +363,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
             title={itemTitle}
             aria-label={itemTitle}
           >
-            {!canPauseFromIcon && renderStatusIcon()}
+            {!canPauseFromIcon && !canStartFromIcon && renderStatusIcon()}
             {
               // 変更理由: ステータスバー上で現在値が見えないと、
               // ミニウィンドウを開くまで更新間隔を確認できず操作往復が増えるため。

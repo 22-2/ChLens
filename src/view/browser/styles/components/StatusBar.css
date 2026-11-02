@@ -162,6 +162,18 @@
   padding-left: 0;
 }
 
+/* 動作中は回転を示し、操作可能なホバー・フォーカス時だけ停止アイコンに替える。 */
+.status-bar__btn .auto-refresh-pause__hover,
+.auto-refresh-pause:hover .auto-refresh-pause__spinner,
+.auto-refresh-pause:focus-visible .auto-refresh-pause__spinner {
+  display: none;
+}
+
+.auto-refresh-pause:hover .auto-refresh-pause__hover,
+.auto-refresh-pause:focus-visible .auto-refresh-pause__hover {
+  display: block;
+}
+
 /* 狭いペインでも操作を横スクロールなしで使えるよう、アイコンに名前を任せる。 */
 @container pane (max-width: 600px) {
   .status-bar__btn:has(> svg) > span:not(.status-bar__count) {
