@@ -9,8 +9,8 @@ import { ResBody } from "src/features/thread/ui/ResBody";
 import { container } from "src/service-container";
 import { toastStore } from "src/service-container/toast-store";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
-import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
+import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { ConfirmableLink } from "src/view/browser/ui/ConfirmableLink";
 import { requestExternalLink } from "src/view/browser/utils/external-link";
 
