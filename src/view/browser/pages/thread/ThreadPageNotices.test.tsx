@@ -21,6 +21,20 @@ describe("ThreadPageNotices", () => {
     expect(container.childElementCount).toBe(0);
   });
 
+  it("次スレ待機を通知し、キャンセルできる", () => {
+    const cancel = vi.fn();
+    render(
+      <ThreadPageNotices
+        {...defaultProps}
+        isNextThreadWaiting
+        onCancelNextThreadWaiting={cancel}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("次スレを待機中です");
+    fireEvent.click(screen.getByRole("button", { name: "キャンセル" }));
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
   it("dat落ちしたスレッドは、本文の上に状態を伝える通知を出す", () => {
     render(<ThreadPageNotices {...defaultProps} expired />);
 

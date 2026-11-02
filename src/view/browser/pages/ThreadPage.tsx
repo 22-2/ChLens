@@ -318,7 +318,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     rootRef,
     resMap: indexes.resMap,
   });
-
   useThreadTopScrollOpenFilter({
     activeTopBar,
     closeTopBar: closeTopBarPreservingFilter,
@@ -408,7 +407,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     toast,
     commentOverlayController,
   });
-
   const handleNewResponses = useThreadReplyNotification({
     page,
     responses,
@@ -416,7 +414,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     replyToOwnResNums,
     viewWindow,
   });
-
   const { onThreadExpired, onThreadExpiredDetected } = useThreadExpiryStopHandlers({
     tabId,
     tab,
@@ -431,7 +428,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     handleAutoRefreshStop,
     dispatch,
   });
-
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
     enabled: isActiveAutoRefreshTracking,
     startAtBottom: startAutoRefreshAtBottom,
@@ -904,6 +900,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
               expired={expired}
               missingFromSubject={missingFromSubject}
               error={error}
+              isNextThreadWaiting={isNextThreadWaiting}
+              onCancelNextThreadWaiting={() =>
+                handleAutoRefreshStop("次スレ待機をキャンセルしました")
+              }
               onSearchRelatedThreads={onSearchRelatedThreads}
             />
           </div>
