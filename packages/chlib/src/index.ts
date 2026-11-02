@@ -1,4 +1,5 @@
 export * from "./board/BBSMenuNormalizer";
+export * from "./board/BoardResponseLimit";
 export * from "./board/BoardTitleResolver";
 export * from "./fetcher/BBSMenuFetchPolicy";
 export * from "./fetcher/BBSMenuResponseResolver";

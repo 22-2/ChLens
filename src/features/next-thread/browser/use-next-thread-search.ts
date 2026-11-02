@@ -92,7 +92,10 @@ export function useNextThreadSearch({
 
       try {
         const boardUrl = getBoardUrlFromThreadUrl(sourceThread.url);
-        const result = await container.board.getThreads(boardUrl);
+        const [result, responseLimit] = await Promise.all([
+          container.board.getThreads(boardUrl),
+          container.boardResponseLimit.get(sourceThread.url),
+        ]);
         if (requestIdRef.current !== requestId) {
           return;
         }
@@ -101,6 +104,7 @@ export function useNextThreadSearch({
         // 次スレ検索は次スレ判定の結果だけに絞り、タイトル関連度だけで候補を広げすぎない。
         const nextCandidates = findNextThreadCandidates(result.threads, sourceThread, {
           mode: "aggressive",
+          responseLimit,
         });
         let candidates: ThreadSearchCandidate[] = nextCandidates;
         if (searchType === "related") {

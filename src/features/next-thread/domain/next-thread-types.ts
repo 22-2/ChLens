@@ -33,6 +33,7 @@ export interface NextThreadMatch extends ThreadSearchCandidate {
 export interface NextThreadSearchOptions {
   mode?: AutoNextThreadMode;
   responseMessages?: readonly string[];
+  responseLimit?: number | null;
 }
 
 export interface ThreadNumberResult {
@@ -65,6 +66,7 @@ export interface MainstreamSearchOptions {
   currentThreadUrl: string;
   mode?: AutoNextThreadMode;
   minimumResCount?: number;
+  responseLimit?: number | null;
   momentumRatio?: number;
   previousThreads?: readonly IThread[];
   previousObservedAt?: number;

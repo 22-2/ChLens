@@ -73,6 +73,7 @@ export function findNextThreadCandidates(
   const resolvedOptions: Required<NextThreadSearchOptions> = {
     mode: options.mode ?? (DEFAULT_CONFIG.auto_next_thread_mode as AutoNextThreadMode),
     responseMessages: options.responseMessages ?? [],
+    responseLimit: options.responseLimit ?? null,
   };
   const policy = NEXT_THREAD_MODE_POLICY[resolvedOptions.mode];
 
@@ -111,6 +112,7 @@ export function findNextThreadMatch(
   const resolvedOptions: Required<NextThreadSearchOptions> = {
     mode: options.mode ?? (DEFAULT_CONFIG.auto_next_thread_mode as AutoNextThreadMode),
     responseMessages: options.responseMessages ?? [],
+    responseLimit: options.responseLimit ?? null,
   };
   const candidates = rankNextThreadCandidates(threads, currentThread, resolvedOptions, "score");
   const best = candidates[0];

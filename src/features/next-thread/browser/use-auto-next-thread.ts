@@ -50,6 +50,7 @@ interface UseAutoNextThreadOptions {
   threadUrl: string;
   threadTitle: string;
   responseCount: number;
+  responseLimit?: number | null;
   expired: boolean;
   mode: AutoNextThreadMode;
   responseMessages: readonly string[];
@@ -104,6 +105,7 @@ export function useAutoNextThread({
   threadUrl,
   threadTitle,
   responseCount,
+  responseLimit,
   expired,
   mode,
   responseMessages,
@@ -333,7 +335,7 @@ export function useAutoNextThread({
     if (!autoRefreshEnabled || !featureEnabled || !isDocumentVisible || !canAutoScroll) {
       return;
     }
-    if (!isNextThreadSearchTriggered(responseCount, expired)) {
+    if (!isNextThreadSearchTriggered(responseCount, expired, responseLimit)) {
       return;
     }
 
@@ -425,7 +427,7 @@ export function useAutoNextThread({
         return;
       }
 
-      // 1000到達直後は3秒間隔で見つけやすくし、30秒後は10秒間隔にして期限までの取得負荷を抑える。
+      // 満了直後は3秒間隔で見つけやすくし、30秒後は10秒間隔にして期限までの取得負荷を抑える。
       while (!cancelled && session.phase === "searching") {
         if (Date.now() >= session.deadline) {
           finishSearch();
@@ -463,6 +465,7 @@ export function useAutoNextThread({
             },
             {
               mode,
+              responseLimit,
               responseMessages: responseMessagesRef.current,
             },
           );
@@ -488,7 +491,7 @@ export function useAutoNextThread({
               const alternatives = findNextThreadCandidates(
                 result.threads,
                 { title: threadTitle, url: threadUrl },
-                { mode, responseMessages: responseMessagesRef.current },
+                { mode, responseLimit, responseMessages: responseMessagesRef.current },
               ).filter((candidate) => candidate.thread.url !== match.thread.url);
               // 判定を通過した候補を先頭に固定し、手動検索と同じレス数・一致度を複数表示する。
               const candidates = [match, ...alternatives];
@@ -554,6 +557,7 @@ export function useAutoNextThread({
     moveToCandidate,
     searchDurationSeconds,
     responseCount,
+    responseLimit,
     threadTitle,
     threadUrl,
     skipMoveDelay,
@@ -613,6 +617,7 @@ export function useAutoNextThread({
           }
 
           const match = findMainstreamThreadMatch(result.threads, {
+            responseLimit,
             originalThreadUrl: watchState.originalThreadUrl,
             originalThreadTitle: watchState.originalThreadTitle,
             currentThreadUrl: threadUrl,
@@ -680,6 +685,7 @@ export function useAutoNextThread({
     featureEnabled,
     isDocumentVisible,
     mode,
+    responseLimit,
     threadUrl,
     toast,
     viewWindow,

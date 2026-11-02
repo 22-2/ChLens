@@ -6,8 +6,11 @@ import {
 } from "packages/chlib/src/index";
 import { defer } from "src/app/Defer";
 import { createLogger } from "src/app/logger";
+import {
+  type BoardSettingFetcher,
+  createBoardSettingFetcher,
+} from "src/core/board/BoardSettingFetcher";
 import { getBoardUrlKey } from "src/core/board/BoardUrlNormalizer";
-import { Request } from "src/core/network/HTTP";
 import type { IBBSMenuResult } from "src/core/ports/bbs-menu";
 import type { CorePorts } from "src/core/ports/registry";
 
@@ -26,7 +29,10 @@ const isSavedTitleResolved = (title: string | null, boardUrl: string): title is 
 export type BoardTitleSolverDeps = Pick<CorePorts, "bbsMenu" | "bookmark" | "config" | "message">;
 
 /** 板名の解決と板一覧のキャッシュを持つインスタンスを作る。状態はインスタンスごとに分かれる。 */
-export function createBoardTitleSolver(deps: BoardTitleSolverDeps) {
+export function createBoardTitleSolver(
+  deps: BoardTitleSolverDeps,
+  settingFetcher: BoardSettingFetcher = createBoardSettingFetcher(),
+) {
   const getCachedTitles = async (): Promise<Map<string, string>> => {
     // 一覧の表示だけで全板のSETTING.TXTを取得しないよう、通信可能なaskとは入口を分ける。
     const titles = new Map<string, string>();
@@ -158,16 +164,8 @@ export function createBoardTitleSolver(deps: BoardTitleSolverDeps) {
     const request = createBoardTitleRequest(url.href);
     if (!request) return null;
 
-    const charset = request.charset === "shift_jis" ? "Shift_JIS" : "EUC-JP";
-    const { status, body } = await new Request("GET", request.url, {
-      mimeType: `text/plain; charset=${charset}`,
-      timeout: 1000 * 10,
-    }).send();
-
-    if (status !== 200) {
-      throw new Error("板名を取得する通信に失敗しました");
-    }
-
+    // 板名の再取得は明示操作なので、共有キャッシュを使わず最新の設定を読む。
+    const body = await settingFetcher.fetch(request, { force: true });
     return resolveBoardTitle(request, body);
   };
 

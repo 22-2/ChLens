@@ -148,7 +148,7 @@ const ThreadAutoRefreshPanelContent: React.FC<ThreadAutoRefreshPanelContentProps
             disabled={!isOnThread}
           />
         </MiniWindowField>
-        <MiniWindowNote>1000到達後に次スレを探し、見つからなければ停止します</MiniWindowNote>
+        <MiniWindowNote>レス上限到達後に次スレを探し、見つからなければ停止します</MiniWindowNote>
       </MiniWindowSection>
 
       <MiniWindowSeparator />

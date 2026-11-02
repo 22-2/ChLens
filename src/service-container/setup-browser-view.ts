@@ -1,3 +1,5 @@
+import { createBoardResponseLimitService } from "src/core/board/BoardResponseLimitService";
+import { createBoardSettingFetcher } from "src/core/board/BoardSettingFetcher";
 import { createBoardTitleSolver } from "src/core/board/BoardTitleSolver";
 import { createOpenedBoards } from "src/core/board/OpenedBoards";
 import * as History from "src/core/history/History";
@@ -32,7 +34,10 @@ export function setupBrowserViewServices(): void {
   };
   // config は setupContainer で登録した container.config を使う。
   container.openedBoards = createOpenedBoards(container);
-  container.boardTitle = createBoardTitleSolver(container);
+  // 板名とレス上限は同じ板設定を読むため、取得とキャッシュを共有する。
+  const boardSettingFetcher = createBoardSettingFetcher();
+  container.boardTitle = createBoardTitleSolver(container, boardSettingFetcher);
+  container.boardResponseLimit = createBoardResponseLimitService(boardSettingFetcher);
   // 静的メソッドを切り離して渡すと this が外れるため、Cache を通して呼ぶ関数で包む。
   container.threadLog = {
     listLogs: (...args) => Cache.listLogs(...args),

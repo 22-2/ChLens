@@ -55,3 +55,47 @@ test("スレッドの自動更新をONにすると新着を取得して追従し
   await page.waitForTimeout(6000);
   expect(datRequests()).toBe(requestsAfterOff);
 });
+
+test("板の上限が3000なら1000を超えても自動更新を続ける", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  localBoard.setResponseLimit(3000);
+  await page.addInitScript(() => localStorage.setItem("config_auto_load_second", "5000"));
+  const thread = localBoard.addLargeThread(1001);
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.boardUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  await page
+    .locator('.content-area__tab-panel[data-active="true"]')
+    .getByText(thread.title, { exact: true })
+    .click();
+  await expect.poll(() => localBoard.requests.includes("/local/SETTING.TXT")).toBe(true);
+  const status = page.getByRole("button", { name: /^スレッド自動更新: / });
+  await status.click();
+  const toggle = page
+    .locator(".mini-window__toggle-row")
+    .filter({ has: page.getByText("自動更新", { exact: true }) })
+    .getByRole("button");
+  await toggle.click();
+  await expect(toggle).toHaveText("ON");
+  localBoard.appendLargeThreadPosts(1);
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const debug = (
+            window as typeof window & { __chlensDebug?: { state(): Record<string, unknown> } }
+          ).__chlensDebug;
+          const threadState = Object.entries(debug?.state() ?? {}).find(([key]) =>
+            key.startsWith("thread:"),
+          )?.[1] as { responseCount?: number; shouldStopFetching?: boolean } | undefined;
+          return threadState?.responseCount;
+        }),
+      { timeout: 15000 },
+    )
+    .toBe(1002);
+  await expect(status).toHaveAccessibleName(/^スレッド自動更新: 追従中/);
+});

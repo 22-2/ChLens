@@ -26,6 +26,7 @@ export async function startLocalBoard() {
     },
   ];
   let edgeAuthEnabled = false;
+  let responseLimit: number | null = null;
   const edgeWriteAttempts: { mail: string; message: string }[] = [];
   const requests: string[] = [];
   const requestMethods: string[] = [];
@@ -53,6 +54,7 @@ export async function startLocalBoard() {
     "/",
     createBoardRoutes({
       threads,
+      getResponseLimit: () => responseLimit,
       hiddenSubjectThreadIds,
       imageContentLengthOverrides,
       imageHeadStatusOverrides,
@@ -73,6 +75,9 @@ export async function startLocalBoard() {
     requests,
     requestMethods,
     edgeWriteAttempts,
+    setResponseLimit(value: number | null) {
+      responseLimit = value;
+    },
     enableEdgeAuth() {
       edgeAuthEnabled = true;
     },

@@ -57,6 +57,21 @@ describe("スレッドの自動更新の停止判定", () => {
     expect(result.stopMessage).toBe(LIMIT_MESSAGE);
   });
 
+  it("板の上限までは1000を超えても止めず、上限到達時に停止する", () => {
+    expect(resolve({ responseCount: 1000, responseLimit: 3000 }).shouldStopFetching).toBe(false);
+    expect(resolve({ responseCount: 2999, responseLimit: 3000 }).shouldStopFetching).toBe(false);
+    expect(resolve({ responseCount: 3000, responseLimit: 3000 })).toMatchObject({
+      shouldStopFetching: true,
+      stopMessage: "3000レスに到達したため自動更新を停止しました",
+    });
+  });
+  it("上限不明でもdat落ちは停止し、件数だけでは停止しない", () => {
+    expect(resolve({ responseCount: 5000, responseLimit: null }).shouldStopFetching).toBe(false);
+    expect(
+      resolve({ responseCount: 5000, responseLimit: null, expired: true }).shouldStopFetching,
+    ).toBe(true);
+  });
+
   it("次スレ移動がOFFなら、dat落ちでも停止を保留しない", () => {
     const result = resolve({ expired: true, autoNextThreadEnabled: false });
 

@@ -10,6 +10,7 @@ export interface LocalThread {
 }
 export interface BoardRouteState {
   threads: LocalThread[];
+  getResponseLimit: () => number | null;
   hiddenSubjectThreadIds: Set<string>;
   imageContentLengthOverrides: Map<string, number | null>;
   imageHeadStatusOverrides: Map<string, number>;
@@ -42,7 +43,7 @@ export function createBoardRoutes(state: BoardRouteState) {
     const resources: Record<string, string> = {
       "/bbsmenu.html":
         '<html><head><title>テスト板メニュー</title></head><body>\n<br><br><b>テストカテゴリ</b><br>\n<a href="/local/">ローカルテスト板</a><br>\n</body></html>',
-      "/local/SETTING.TXT": "BBS_TITLE=ローカルテスト板\n",
+      "/local/SETTING.TXT": `BBS_TITLE=ローカルテスト板\n${state.getResponseLimit() == null ? "" : `BBS_RES_MAX=${state.getResponseLimit()}\n`}`,
       "/local/subject.txt": `${state.threads
         .filter((thread) => !state.hiddenSubjectThreadIds.has(thread.id))
         .map((thread) => `${thread.id}.dat<>${thread.title} (${thread.posts.length})`)

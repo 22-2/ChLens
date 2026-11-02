@@ -42,6 +42,7 @@ describe("useNextThreadSearch", () => {
       ],
       message: null,
     });
+    container.boardResponseLimit = { get: vi.fn().mockResolvedValue(3000) };
     container.board = {
       getThreads: getThreadsMock,
       getCachedResCount: vi.fn(),

@@ -1,5 +1,6 @@
 import {
   IBBSMenuService,
+  IBoardResponseLimitService,
   IBoardService,
   IBoardTitleService,
   IBookmark,
@@ -49,6 +50,7 @@ interface ServiceContainerImpl extends IServiceContainer {
   _imgurImages: IImgurImagesService | undefined;
   _openedBoards: IOpenedBoardsService | undefined;
   _boardTitle: IBoardTitleService | undefined;
+  _boardResponseLimit: IBoardResponseLimitService | undefined;
   _replaceStr: IReplaceStrService | undefined;
   _notice: ICoreNoticeService | undefined;
 }
@@ -74,6 +76,7 @@ if (!globalObj.__ServiceContainer) {
     _imgurImages: undefined,
     _openedBoards: undefined,
     _boardTitle: undefined,
+    _boardResponseLimit: undefined,
     _replaceStr: undefined,
     _notice: undefined,
 
@@ -227,6 +230,14 @@ if (!globalObj.__ServiceContainer) {
     },
     set boardTitle(value: IBoardTitleService) {
       this._boardTitle = value;
+    },
+
+    get boardResponseLimit(): IBoardResponseLimitService {
+      if (!this._boardResponseLimit) throw new Error("BoardResponseLimit service not registered");
+      return this._boardResponseLimit;
+    },
+    set boardResponseLimit(value: IBoardResponseLimitService) {
+      this._boardResponseLimit = value;
     },
 
     get replaceStr(): IReplaceStrService {
