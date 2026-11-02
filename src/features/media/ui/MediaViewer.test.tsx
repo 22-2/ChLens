@@ -97,11 +97,11 @@ describe("MediaViewer", () => {
 
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
       "画像URLを開く",
-      "新しいタブで開く",
-      "新しいウィンドウで開く",
-      "URLをコピー",
+      "新しいタブで開く (I)",
+      "新しいウィンドウで開く (W)",
+      "URLをコピー (E)",
       "追跡情報を除いてURLをコピー",
-      "画像をコピー",
+      "画像をコピー (C)",
       "画像を破棄",
     ]);
   });

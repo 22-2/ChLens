@@ -140,12 +140,14 @@ export function useUrlHandlers({
         {
           id: "open-in-new-tab",
           label: internalPage ? "拡張内の新しいタブで開く" : "新しいタブで開く",
+          accessKey: "t",
           onSelect: () => openResolvedUrl(absoluteUrl, 1, undefined, internalPage),
         },
         { id: "sep-url-1", separator: true },
         {
           id: "copy-url",
           label: "URLをコピー",
+          accessKey: "e",
           onSelect: () => runClipboardCommand(absoluteUrl),
         },
         {

@@ -60,6 +60,7 @@ export function MediaViewer({
             {
               id: "copy-image",
               label: "画像をコピー",
+              accessKey: "c",
               icon: <Copy size={14} />,
               disabled: isLoading || !imageIsLoaded,
               onSelect: onCopy,

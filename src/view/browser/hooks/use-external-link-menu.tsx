@@ -85,12 +85,14 @@ export function useExternalLinkMenu() {
       {
         id: "open-background",
         label: "新しいタブで開く",
+        accessKey: state.openLabel === DEFAULT_OPEN_LABEL ? "t" : "i",
         icon: <CopyPlus size={14} />,
         onSelect: () => open(false),
       },
       {
         id: "open-window",
         label: "新しいウィンドウで開く",
+        accessKey: "w",
         icon: <AppWindow size={14} />,
         onSelect: () => open(true, true),
       },
@@ -98,6 +100,7 @@ export function useExternalLinkMenu() {
       {
         id: "copy",
         label: "URLをコピー",
+        accessKey: "e",
         icon: <Link size={14} />,
         onSelect: () => copy(state.url),
       },

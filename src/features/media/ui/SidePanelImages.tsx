@@ -79,6 +79,7 @@ function ThreadImageGrid({
                     {
                       id: "copy-image",
                       label: "画像をコピー",
+                      accessKey: "c",
                       icon: <Copy size={14} />,
                       onSelect: () => void copyMediaImageWithNotice(item.rawUrl, surface, toast),
                     },

@@ -8,6 +8,7 @@ import { getEventTargetElement } from "src/view/browser/utils/dom";
 export interface ContextMenuItem {
   id: string;
   label?: string;
+  accessKey?: string;
   allowMultilineLabel?: boolean;
   icon?: ReactNode;
   disabled?: boolean;
@@ -196,6 +197,20 @@ export const ContextMenu: React.FC<Props> = ({
           // Content の配置は Radix が contextmenu の clientX/clientY を基準に行う。
           // ここで left/top を再設定するとクリック座標が二重に加算されるため、z-index だけ補正する。
           style={zIndex != null ? { zIndex } : undefined}
+          onKeyDownCapture={(event) => {
+            if (event.altKey || event.ctrlKey || event.metaKey || event.key.length !== 1) return;
+            const item = visibleItems.find(
+              (candidate) =>
+                !candidate.disabled &&
+                candidate.accessKey?.toLowerCase() === event.key.toLowerCase(),
+            );
+            if (!item) return;
+            // Radix の文字検索より先にアクセスキーを処理し、クリックと同じ操作を実行する。
+            event.preventDefault();
+            event.stopPropagation();
+            item.onSelect?.();
+            onClose();
+          }}
           onMouseDownCapture={handleMouseDownCapture}
           onAuxClickCapture={handleAuxClickCapture}
           onMouseEnter={handleMouseEnter}
@@ -243,6 +258,9 @@ export const ContextMenu: React.FC<Props> = ({
                   }`}
                 >
                   {item.label}
+                  {item.accessKey && (
+                    <span aria-hidden="true"> ({item.accessKey.toUpperCase()})</span>
+                  )}
                 </span>
               </button>
             );

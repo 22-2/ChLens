@@ -135,6 +135,7 @@ export function ResMediaGallery({
             {
               id: "copy-image",
               label: "画像をコピー",
+              accessKey: "c",
               icon: <Copy size={14} />,
               onSelect: () => void copyMediaImageWithNotice(url, surface, toast),
             },
@@ -145,6 +146,7 @@ export function ResMediaGallery({
             {
               id: "save-image",
               label: "画像を保存",
+              accessKey: "v",
               icon: <Download size={14} />,
               onSelect: () => void save([url]),
             },

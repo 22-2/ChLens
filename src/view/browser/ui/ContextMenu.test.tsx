@@ -27,3 +27,25 @@ it("チェック項目の状態を伝え、選択できる", async () => {
   fireEvent.click(item);
   expect(onSelect).toHaveBeenCalledOnce();
 });
+
+it("アクセスキーで対応する項目だけを実行する", async () => {
+  const onSelect = vi.fn();
+  const onClose = vi.fn();
+  render(
+    <ContextMenu
+      x={10}
+      y={10}
+      onClose={onClose}
+      items={[
+        { id: "open", label: "新しいタブで開く", accessKey: "t", onSelect },
+        { id: "disabled", label: "無効", accessKey: "e", disabled: true, onSelect },
+      ]}
+    />,
+  );
+  const menu = await screen.findByRole("menu");
+  fireEvent.keyDown(menu, { key: "e" });
+  expect(onSelect).not.toHaveBeenCalled();
+  fireEvent.keyDown(menu, { key: "T" });
+  expect(onSelect).toHaveBeenCalledOnce();
+  expect(onClose).toHaveBeenCalledOnce();
+});

@@ -200,13 +200,13 @@ describe("ResMediaGallery", () => {
 
     expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
       "画像URLを開く",
-      "新しいタブで開く",
-      "新しいウィンドウで開く",
-      "URLをコピー",
+      "新しいタブで開く (I)",
+      "新しいウィンドウで開く (W)",
+      "URLをコピー (E)",
       "追跡情報を除いてURLをコピー",
       "ビューアで開く",
-      "画像をコピー",
-      "画像を保存",
+      "画像をコピー (C)",
+      "画像を保存 (V)",
       "画像を破棄",
     ]);
   });
