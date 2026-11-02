@@ -37,7 +37,8 @@ export function getWriteFormData(threadUrl: string, input: WriteFormInput): ChWr
   if (!threadId || !boardName) return null;
   const timestamp = String((input.nowSeconds ?? Math.floor(Date.now() / 1000)) - 60);
   const referer = url.toBoard().url.href;
-  const action = `${url.protocol}//${url.hostname}`;
+  // 投稿先にもポートを残し、独自ポートの掲示板へ正しく送信する。
+  const action = `${url.protocol}//${url.url.host}`;
   const textarea = { MESSAGE: input.message };
 
   if (bbsType === "2ch") {

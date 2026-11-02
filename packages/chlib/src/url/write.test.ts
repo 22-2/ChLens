@@ -44,6 +44,16 @@ describe("投稿URLから投稿フォームの意味データを作る", () => {
     });
   });
 
+  it("独自ポートを指定した掲示板への投稿先にポートを残す", () => {
+    expect(
+      getWriteFormData("http://example.com:12345/test/read.cgi/sample/123/", {
+        name: "",
+        mail: "",
+        message: "本文",
+      })?.action,
+    ).toBe("http://example.com:12345/test/bbs.cgi");
+  });
+
   it("したらばとまちBBSのフォーム項目名・action・charsetを分ける", () => {
     const jbbs = getWriteFormData(
       urlWithHost(HOSTNAME.NEW_JBBS, "/bbs/read.cgi/sample-dir/12/123/45"),
