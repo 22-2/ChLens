@@ -26,7 +26,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function WritePanelStory() {
+function WritePanelStory({ authScenario = false }: { authScenario?: boolean }) {
   const { paneId } = useTabStore();
   return (
     <PaneProvider paneId={paneId}>
@@ -39,6 +39,19 @@ function WritePanelStory() {
             <main className="browser-shell__workspace">
               <div className="content-area" style={{ flex: 1, padding: "24px" }}>
                 Storybook サンプルスレッド
+                {authScenario && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      window.postMessage(
+                        { type: "auth-code", code: "123456", url: "https://example.com/auth-code" },
+                        "*",
+                      )
+                    }
+                  >
+                    認証が必要な応答を再現
+                  </button>
+                )}
               </div>
               <StatusBarProvider>
                 <section className="bottom-panel" style={{ height: 460 }}>
@@ -72,6 +85,20 @@ export const Default: Story = {
   render: () => (
     <PanelStoryEnvironment>
       <WritePanelStory />
+    </PanelStoryEnvironment>
+  ),
+};
+
+export const Authentication: Story = {
+  name: "エッヂの認証案内",
+  parameters: {
+    docs: {
+      description: { story: "架空の認証コードとURLを使い、書き込み後の認証案内を再現します。" },
+    },
+  },
+  render: () => (
+    <PanelStoryEnvironment>
+      <WritePanelStory authScenario />
     </PanelStoryEnvironment>
   ),
 };

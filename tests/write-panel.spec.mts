@@ -92,3 +92,30 @@ test("書き込み欄は入力に合わせて伸縮し、メニューは画面�
   await expect(dialog.getByRole("textbox", { name: "名前" })).toHaveValue("テスト名");
   await expect(dialog.getByRole("textbox", { name: "メール" })).toHaveValue("sage");
 });
+
+test("未認証の通知から認証コードとURLを案内し本文を保持する", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const thread = localBoard.addLargeThread(2);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, 2);
+  await page.getByRole("button", { name: "書き込みパネルを開閉" }).click();
+  const body = page.locator(".bottom-panel").getByRole("textbox", { name: "本文" });
+  await body.fill("てす");
+  // 掲示板へPOSTせず、content scriptが結果判定後に送る通知を再現する。
+  await page.evaluate(
+    (origin) =>
+      window.postMessage({ type: "auth-code", code: "123456", url: `${origin}/auth-code` }, "*"),
+    localBoard.origin,
+  );
+  const dialog = page.getByRole("dialog", { name: "認証を完了してください" });
+  await expect(dialog.getByLabel("認証コード")).toHaveValue("123456");
+  await expect(dialog.getByLabel("認証ページURL")).toHaveValue(
+    `${localBoard.origin.replace("http:", "https:")}/auth-code`,
+  );
+  await dialog.getByRole("button", { name: "再入力" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(body).toHaveValue("てす");
+});
