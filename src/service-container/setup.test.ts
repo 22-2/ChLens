@@ -62,6 +62,9 @@ vi.mock("src/core/history/History", () => mocks.history);
 vi.mock("src/core/thread/ReplaceStrTxt", () => ({
   createReplaceStrTxt: () => ({ get: vi.fn(), set: mocks.replaceStrSet, replace: vi.fn() }),
 }));
+vi.mock("src/core/board/BoardResponseLimitService", () => ({
+  createBoardResponseLimitService: () => ({ get: vi.fn().mockResolvedValue(null) }),
+}));
 vi.mock("src/core/board/BoardTitleSolver", () => ({
   createBoardTitleSolver: () => ({
     ask: vi.fn(),

@@ -1,3 +1,4 @@
+import { createBoardResponseLimitService } from "src/core/board/BoardResponseLimitService";
 import { createBoardTitleSolver } from "src/core/board/BoardTitleSolver";
 import { createOpenedBoards } from "src/core/board/OpenedBoards";
 import * as History from "src/core/history/History";
@@ -33,6 +34,7 @@ export function setupBrowserViewServices(): void {
   // config は setupContainer で登録した container.config を使う。
   container.openedBoards = createOpenedBoards(container);
   container.boardTitle = createBoardTitleSolver(container);
+  container.boardResponseLimit = createBoardResponseLimitService();
   // 静的メソッドを切り離して渡すと this が外れるため、Cache を通して呼ぶ関数で包む。
   container.threadLog = {
     listLogs: (...args) => Cache.listLogs(...args),

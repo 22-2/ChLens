@@ -122,6 +122,10 @@ export interface IBookmarkRootService {
   setRootNodeId(rootNodeId: string): Promise<boolean>;
 }
 
+export interface IBoardResponseLimitService {
+  get(threadUrl: string): Promise<number | null>;
+}
+
 export interface IServiceContainer {
   config: IConfig;
   cache: ICacheService;
@@ -142,6 +146,7 @@ export interface IServiceContainer {
   imgurImages: IImgurImagesService;
   openedBoards: IOpenedBoardsService;
   boardTitle: IBoardTitleService;
+  boardResponseLimit: IBoardResponseLimitService;
   replaceStr: IReplaceStrService;
   notice: ICoreNoticeService;
 }
