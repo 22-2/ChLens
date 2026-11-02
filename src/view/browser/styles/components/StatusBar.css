@@ -138,16 +138,28 @@
   line-height: 1;
 }
 
-/* 回転中のアイコンに重ねて停止操作を示し、設定ボタンとは操作を分ける。 */
-.status-bar__btn .auto-refresh-pause__icon,
-.auto-refresh-pause:hover .auto-refresh-pause__spinner,
-.auto-refresh-pause:focus-visible .auto-refresh-pause__spinner {
-  display: none;
+/* 停止操作と設定操作を同じ高さの項目にまとめる。 */
+.auto-refresh-controls {
+  display: inline-flex;
+  align-items: stretch;
+  align-self: stretch;
 }
 
-.auto-refresh-pause:hover .auto-refresh-pause__icon,
-.auto-refresh-pause:focus-visible .auto-refresh-pause__icon {
-  display: block;
+.status-bar__item--interactive .auto-refresh-controls .status-bar__btn {
+  width: auto;
+}
+
+/* 二つの操作をバーの高さいっぱいに揃え、フォーカス枠は項目全体に表示する。 */
+.auto-refresh-controls:has(.status-bar__btn:focus-visible) {
+  outline: auto;
+}
+
+.auto-refresh-controls .status-bar__btn:focus-visible {
+  outline: none;
+}
+
+.auto-refresh-controls .status-bar__btn + .status-bar__btn {
+  padding-left: 0;
 }
 
 /* 狭いペインでも操作を横スクロールなしで使えるよう、アイコンに名前を任せる。 */

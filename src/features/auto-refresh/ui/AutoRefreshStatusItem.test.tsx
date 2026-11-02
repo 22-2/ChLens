@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { useManualPauseStore } from "src/features/auto-refresh/browser/manual-pause-store";
 import { AutoRefreshStatusItem } from "src/features/auto-refresh/ui/AutoRefreshStatusItem";
 import { container } from "src/service-container/index";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
@@ -95,6 +96,7 @@ function renderItem() {
 
 describe("AutoRefreshStatusItem", () => {
   beforeEach(() => {
+    useManualPauseStore.setState({ paused: {} });
     mocks.viewPage = {
       type: "thread",
       title: "スレッド",
@@ -145,13 +147,17 @@ describe("AutoRefreshStatusItem", () => {
     vi.clearAllMocks();
   });
 
-  it("回転中のアイコンから自動更新を一時停止できる", () => {
+  it("アイコンから自動更新を一時停止し、再開できる", () => {
     mocks.autoRefreshPanel.isEnabled = true;
     mocks.canAutoScroll = true;
     const view = renderItem();
     expect(view.container.querySelector(".lucide-circle-pause")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "自動更新を一時停止" }));
-    expect(mocks.autoRefreshPanel.toggle).toHaveBeenCalledTimes(1);
+    expect(mocks.autoRefreshPanel.toggle).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "自動更新を再開" })).toBeInTheDocument();
+    expect(view.container.querySelector(".status-bar")).toHaveClass("status-bar--active");
+    fireEvent.click(screen.getByRole("button", { name: "自動更新を再開" }));
+    expect(screen.getByRole("button", { name: "自動更新を一時停止" })).toBeInTheDocument();
   });
 
   it("表示形式だけを切り替え、自動更新の開始や間隔変更を発火しない", () => {
@@ -336,7 +342,7 @@ describe("AutoRefreshStatusItem", () => {
         const resumedButton = screen.getByRole("button", { name: /スレッド自動更新/ });
         expect(resumedButton.querySelector(".lucide-pause")).toBeNull();
         expect(
-          view.container.querySelector(canAutoScroll ? ".icon--spinning" : ".lucide-clock-3"),
+          view.container.querySelector(canAutoScroll ? ".lucide-circle-pause" : ".lucide-clock-3"),
         ).toBeInTheDocument();
       }
     },

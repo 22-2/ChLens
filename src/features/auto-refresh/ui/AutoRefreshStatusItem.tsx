@@ -1,6 +1,10 @@
-import { CirclePause, Clock3, Hourglass, Pause, RefreshCw } from "lucide-react";
+import { CirclePause, CirclePlay, Clock3, Hourglass, Pause, RefreshCw } from "lucide-react";
 import React, { useState } from "react";
 import { IDLE_STOP_TIMEOUT_OPTIONS } from "src/features/auto-refresh/browser/auto-refresh-config";
+import {
+  manualPauseKey,
+  useManualPauseStore,
+} from "src/features/auto-refresh/browser/manual-pause-store";
 import {
   MAX_BOARD_INTERVAL_SEC,
   MAX_INTERVAL_SEC,
@@ -206,7 +210,10 @@ const ThreadListAutoRefreshPanelContent: React.FC<ThreadListAutoRefreshPanelCont
 // ステータスバーアイテム本体
 // -----------------------------------------------------------------------
 export const AutoRefreshStatusItem: React.FC = () => {
-  const { viewTab } = useTabStore();
+  const { viewTab, viewPage } = useTabStore();
+  const pauseKey = viewPage.type === "thread" ? manualPauseKey(viewTab.id, viewPage.threadUrl) : "";
+  const manuallyPaused = useManualPauseStore((state) => !!state.paused[pauseKey]);
+  const setManuallyPaused = useManualPauseStore((state) => state.setPaused);
   const { mode: displayMode, setMode: setDisplayMode } = useThreadDisplayModeSetting();
   const {
     panelKind,
@@ -252,7 +259,8 @@ export const AutoRefreshStatusItem: React.FC = () => {
   // 変更理由: 次スレ待機は自動更新のONではないため、ONの表示より優先して待機として見せる。
   const isStatusWaiting = panelKind === "thread" && isNextThreadWaiting;
   const statusAppearance = isStatusWaiting ? "waiting" : isStatusActive ? "active" : null;
-  const canPauseFromIcon = isStatusActive && !isPaused;
+  const canPauseFromIcon =
+    panelKind === "thread" && isEnabled && (manuallyPaused || (isStatusActive && !isPaused));
   const intervalLabel = `${intervalSec} s`;
 
   // panelKindがnullの場合はこのコンポーネント全体を表示しない
@@ -266,7 +274,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
       ? !isEnabled
         ? "スレッド自動更新: OFF"
         : isPaused
-          ? `スレッド自動更新: 一時停止中（ポップアップ表示中, ${intervalSec}秒間隔）`
+          ? `スレッド自動更新: 一時停止中（${manuallyPaused ? "手動" : "ポップアップ表示中"}, ${intervalSec}秒間隔）`
           : canAutoScroll || isAutoScrolling
             ? `スレッド自動更新: 追従中（${intervalSec}秒間隔）`
             : `スレッド自動更新: 待機中（しきい線より上, ${intervalSec}秒間隔）`
@@ -311,37 +319,38 @@ export const AutoRefreshStatusItem: React.FC = () => {
         title={itemTitle}
         interactive
       >
-        {canPauseFromIcon && (
+        <div className="auto-refresh-controls">
+          {canPauseFromIcon && (
+            <button
+              type="button"
+              className="status-bar__btn auto-refresh-pause"
+              onClick={() => setManuallyPaused(pauseKey, !manuallyPaused)}
+              title={manuallyPaused ? "自動更新を再開" : "自動更新を一時停止"}
+              aria-label={manuallyPaused ? "自動更新を再開" : "自動更新を一時停止"}
+            >
+              {manuallyPaused ? (
+                <CirclePlay size={13} aria-hidden="true" />
+              ) : (
+                <CirclePause size={13} aria-hidden="true" />
+              )}
+            </button>
+          )}
+          {/* OFFでも設定を開けるため、無効な操作に見える薄い色にはしない。 */}
           <button
-            type="button"
-            className="status-bar__btn auto-refresh-pause"
-            onClick={toggle}
-            title="自動更新を一時停止"
-            aria-label="自動更新を一時停止"
+            ref={miniWindowTriggerRef}
+            className="status-bar__btn"
+            onClick={toggleMiniWindow}
+            title={itemTitle}
+            aria-label={itemTitle}
           >
-            <RefreshCw
-              size={13}
-              className="icon--spinning auto-refresh-pause__spinner"
-              aria-hidden="true"
-            />
-            <CirclePause size={13} className="auto-refresh-pause__icon" aria-hidden="true" />
+            {!canPauseFromIcon && renderStatusIcon()}
+            {
+              // 変更理由: ステータスバー上で現在値が見えないと、
+              // ミニウィンドウを開くまで更新間隔を確認できず操作往復が増えるため。
+            }
+            <span className="status-bar__btn-label">{intervalLabel}</span>
           </button>
-        )}
-        {/* OFFでも設定を開けるため、無効な操作に見える薄い色にはしない。 */}
-        <button
-          ref={miniWindowTriggerRef}
-          className="status-bar__btn"
-          onClick={toggleMiniWindow}
-          title={itemTitle}
-          aria-label={itemTitle}
-        >
-          {!canPauseFromIcon && renderStatusIcon()}
-          {
-            // 変更理由: ステータスバー上で現在値が見えないと、
-            // ミニウィンドウを開くまで更新間隔を確認できず操作往復が増えるため。
-          }
-          <span className="status-bar__btn-label">{intervalLabel}</span>
-        </button>
+        </div>
       </StatusBarItem>
 
       {miniWindowAnchor && (
