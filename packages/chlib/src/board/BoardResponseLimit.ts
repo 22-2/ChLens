@@ -4,9 +4,9 @@ export function parseBoardResponseLimit(
   source: "setting" | "jbbs",
 ): number | null {
   const key = source === "jbbs" ? "BBS_THREAD_STOP" : "BBS_RES_MAX";
-  const line = settingText.split(/\r?\n/).find((item) => item.startsWith(`${key}=`));
-  if (!line) return null;
-  const value = line.slice(key.length + 1).trim();
+  // 板名の解析（resolveBoardTitle）と同じく、行頭のキー=値だけを対象にする。
+  const value = new RegExp(`^${key}=(.*)$`, "m").exec(settingText)?.[1]?.trim();
+  if (value == null) return null;
   if (!/^\d+$/.test(value)) return null;
   const limit = Number(value);
   return Number.isSafeInteger(limit) && limit > 0 ? limit : null;
