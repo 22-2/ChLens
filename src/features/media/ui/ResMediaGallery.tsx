@@ -461,6 +461,8 @@ export function ResMediaGallery({
                       onUrlClick(item.rawUrl, imageUrls, 0, undefined, saveImageUrls)
                     }
                     onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
+                    onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
+                    onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
                     onLoad={requestImageHash}
                     onError={markImageUnavailable}
                   />

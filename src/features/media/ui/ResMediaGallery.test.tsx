@@ -48,6 +48,26 @@ afterEach(() => {
 });
 
 describe("ResMediaGallery", () => {
+  it("サムネイルとインライン画像のミドルクリックは同じURLを開く", () => {
+    const url = "https://example.com/photo.png";
+    const onUrlClick = vi.fn();
+    render(
+      <ResMediaGallery
+        urls={[url]}
+        onUrlClick={onUrlClick}
+        onToggleImage={() => {}}
+        expandedImageUrls={new Set([url])}
+      />,
+    );
+    fireEvent(screen.getByRole("link"), new MouseEvent("auxclick", { bubbles: true, button: 1 }));
+    fireEvent(
+      screen.getByRole("button", { name: "画像を折りたたむ" }),
+      new MouseEvent("auxclick", { bubbles: true, button: 1 }),
+    );
+    expect(onUrlClick).toHaveBeenCalledTimes(2);
+    expect(onUrlClick).toHaveBeenCalledWith(url, [url], 1);
+  });
+
   it("複数画像があっても一括保存操作はギャラリーに表示しない", () => {
     render(
       <ResMediaGallery

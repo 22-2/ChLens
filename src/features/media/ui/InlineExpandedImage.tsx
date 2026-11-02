@@ -44,6 +44,8 @@ export function InlineExpandedImage({
   width,
   onResize,
   onContextMenu,
+  onMouseDown,
+  onAuxClick,
   onLoad,
   onError,
 }: {
@@ -56,6 +58,8 @@ export function InlineExpandedImage({
   width?: number;
   onResize?: (width: number) => void;
   onContextMenu: (event: React.MouseEvent<HTMLElement>) => void;
+  onMouseDown?: (event: React.MouseEvent<HTMLElement>) => void;
+  onAuxClick?: (event: React.MouseEvent<HTMLElement>) => void;
   onLoad: (event: React.SyntheticEvent<HTMLImageElement>) => void;
   onError: () => void;
 }) {
@@ -84,6 +88,8 @@ export function InlineExpandedImage({
         type="button"
         className="res__inline-image-content"
         aria-label="画像を折りたたむ"
+        onMouseDown={onMouseDown}
+        onAuxClick={onAuxClick}
         onClick={(event) => {
           event.stopPropagation();
           onClose();
