@@ -1,25 +1,17 @@
-import { createServer } from "node:http";
+import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
-import iconv from "iconv-lite";
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
 
-import {
-  createEdgeAuthPage,
-  EDGE_AUTH_TOKEN,
-} from "../src/features/write/fixtures/edge-auth-page.ts";
 import {
   createLargeThreadPost,
   createLargeThreadPosts,
   LARGE_THREAD_ID,
   LARGE_THREAD_TITLE,
-  TINY_PNG,
 } from "./large-thread.mjs";
-
-interface LocalThread {
-  id: string;
-  title: string;
-  posts: string[];
-}
+import { createBoardRoutes, type LocalThread } from "./localboard/board-routes.mjs";
+import { createWriteRoutes } from "./localboard/write-routes.mjs";
 
 /** 実際の通信とShift_JIS変換を通しつつ、外部掲示板に依存しない板を起動する。 */
 export async function startLocalBoard() {
@@ -41,107 +33,36 @@ export async function startLocalBoard() {
   const imageContentLengthOverrides = new Map<string, number | null>();
   const imageHeadStatusOverrides = new Map<string, number>();
   const imageBodies = new Map<string, { body: Uint8Array; contentType: string }>();
-  const server = createServer((request, response) => {
-    const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
-    requests.push(pathname);
-    requestMethods.push(request.method ?? "GET");
-    if (pathname === "/favicon.ico") {
-      response.writeHead(204).end();
-      return;
-    }
-    if (edgeAuthEnabled && pathname === "/auth-code" && request.method === "GET") {
-      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      response.end(createEdgeAuthPage());
-      return;
-    }
-    if (edgeAuthEnabled && pathname === "/test/bbs.cgi" && request.method === "POST") {
-      const chunks: Buffer[] = [];
-      request.on("data", (chunk: Buffer) => chunks.push(chunk));
-      request.on("end", () => {
-        const encoded = Buffer.concat(chunks).toString("ascii");
-        const readField = (name: string) => {
-          const value =
-            encoded
-              .split("&")
-              .find((entry) => entry.startsWith(`${name}=`))
-              ?.slice(name.length + 1) ?? "";
-          const bytes = Buffer.from(
-            value
-              .replace(/\+/g, " ")
-              .replace(/%([0-9a-f]{2})/gi, (_match, hex: string) =>
-                String.fromCharCode(parseInt(hex, 16)),
-              ),
-            "latin1",
-          );
-          return iconv.decode(bytes, "Shift_JIS");
-        };
-        const mail = readField("mail");
-        const message = readField("MESSAGE");
-        edgeWriteAttempts.push({ mail, message });
-        const success = mail === EDGE_AUTH_TOKEN;
-        if (success)
-          threads[0]!.posts.push(`名無し<>sage<>2026/10/02(金) 12:02:00 ID:local003<>${message}<>`);
-        const host = request.headers.host ?? "127.0.0.1";
-        const html = success
-          ? "<html><head><title>書きこみました</title></head><body>書きこみました</body></html>"
-          : `<html><head><title>ＥＲＲＯＲ</title><meta name="error_code" content="E-Unauthenticated"></head><body>認証コード'123456'を用いて、以下のURLから認証を行ってください https://${host}/auth-code</body></html>`;
-        response.writeHead(200, {
-          "Content-Type": "text/html; charset=Shift_JIS",
-          "Cache-Control": "no-store",
-        });
-        response.end(iconv.encode(html, "Shift_JIS"));
-      });
-      return;
-    }
-    if (/^\/img\/\d+\.png$/u.test(pathname)) {
-      // 実画像は小さい固定PNGを使い、HEADのサイズだけ境界値へ調整して事前警告を検証する。
-      // 類似画像NGのように画像の中身が要る検証では、setImageBodyで差し替える。
-      const customImage = imageBodies.get(pathname);
-      const imageBody = customImage?.body ?? TINY_PNG;
-      const headStatus = imageHeadStatusOverrides.get(pathname) ?? 200;
-      const headers: Record<string, string> = {
-        "Content-Type": customImage?.contentType ?? "image/png",
-        "Cache-Control": "no-store",
-      };
-      const contentLength = imageContentLengthOverrides.has(pathname)
-        ? imageContentLengthOverrides.get(pathname)
-        : imageBody.byteLength;
-      if (request.method === "HEAD" && contentLength != null) {
-        headers["Content-Length"] = String(contentLength);
-      }
-      response.writeHead(request.method === "HEAD" ? headStatus : 200, headers);
-      response.end(request.method === "HEAD" ? undefined : imageBody);
-      return;
-    }
-    const resources: Record<string, string> = {
-      "/bbsmenu.html":
-        '<html><head><title>テスト板メニュー</title></head><body>\n<br><br><b>テストカテゴリ</b><br>\n<a href="/local/">ローカルテスト板</a><br>\n</body></html>',
-      "/local/SETTING.TXT": "BBS_TITLE=ローカルテスト板\n",
-      "/local/subject.txt": `${threads
-        .filter((thread) => !hiddenSubjectThreadIds.has(thread.id))
-        .map((thread) => `${thread.id}.dat<>${thread.title} (${thread.posts.length})`)
-        .join("\n")}\n`,
-    };
-    const datMatch = pathname.match(/^\/local\/dat\/(\d+)\.dat$/u);
-    const datThread =
-      datMatch == null ? undefined : threads.find((item) => item.id === datMatch[1]);
-    const body = datThread == null ? resources[pathname] : `${datThread.posts.join("\n")}\n`;
-    if (body === undefined) {
-      console.error(`[localboard] 未対応のリクエスト: ${request.method} ${request.url}`);
-      response.writeHead(404).end();
-      return;
-    }
-    // 更新時も全体を200で返し、クライアント側のレス統合と重複防止を確認できるようにする。
-    response.writeHead(200, {
-      "Content-Type": `${pathname.endsWith(".html") ? "text/html" : "text/plain"}; charset=Shift_JIS`,
-      "Cache-Control": "no-store",
-    });
-    response.end(iconv.encode(body, "Shift_JIS"));
+  const app = new Hono();
+  app.use("*", async (c, next) => {
+    requests.push(c.req.path);
+    requestMethods.push(c.req.method);
+    await next();
   });
+  app.get("/favicon.ico", (c) => c.body(null, 204));
+  app.route(
+    "/",
+    createWriteRoutes({
+      enabled: () => edgeAuthEnabled,
+      attempts: edgeWriteAttempts,
+      append: (message) =>
+        threads[0]!.posts.push(`名無し<>sage<>2026/10/02(金) 12:02:00 ID:local003<>${message}<>`),
+    }),
+  );
+  app.route(
+    "/",
+    createBoardRoutes({
+      threads,
+      hiddenSubjectThreadIds,
+      imageContentLengthOverrides,
+      imageHeadStatusOverrides,
+      imageBodies,
+    }),
+  );
+  const server = serve({ fetch: app.fetch, port: 0, hostname: "127.0.0.1" }) as Server;
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
-    // 空きポートをテスト単位で割り当て、並列実行時のポート競合を防ぐ。
-    server.listen(0, "127.0.0.1", resolve);
+    server.once("listening", resolve);
   });
   server.on("error", (error) => console.error("[localboard] サーバーエラー", error));
   const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
