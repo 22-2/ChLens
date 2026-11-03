@@ -355,3 +355,55 @@
 .thread-list__row--visited .thread-list__created-at {
   color: var(--sys-color-text-muted);
 }
+
+/* 変更理由: 固定幅の列だけで320px前後のペインが埋まり、タイトル列の幅が0になって
+   スレ名が読めなくなっていた。狭いペインでは補助的な列（勢い・作成日時・板名・名前・メール）を
+   隠し、残る列の余白も詰めて、タイトルに幅を回す。ウィンドウ幅ではなくペイン幅で切り替える。 */
+@container pane (max-width: 480px) {
+  .thread-list__th--heat,
+  .thread-list__heat,
+  .thread-list__th--created-at,
+  .thread-list__created-at,
+  .simple-data-table__th--history-board,
+  .simple-data-table__history-board,
+  .simple-data-table__th--writehistory-name,
+  .simple-data-table__writehistory-name,
+  .simple-data-table__th--writehistory-mail,
+  .simple-data-table__writehistory-mail {
+    /* display: none だと、スペーサー行の colspan が列数を保ったまま消えた列分の幅を余らせ、
+       タイトル列が広がらない。列は残したまま幅0で隠し、余りをタイトル列へ回す。 */
+    width: 0;
+    max-width: 0;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
+
+  .simple-data-table__th--num,
+  .thread-list__th--num {
+    padding-left: var(--sys-space-3);
+  }
+
+  .simple-data-table__num,
+  .thread-list__num,
+  .simple-data-table__th--num,
+  .thread-list__th--num {
+    width: 32px;
+  }
+
+  .simple-data-table__count,
+  .thread-list__count,
+  .simple-data-table__th--count,
+  .thread-list__th--count {
+    width: 44px;
+    padding-right: var(--sys-space-3);
+  }
+
+  .simple-data-table__history-date,
+  .simple-data-table__writehistory-date,
+  .simple-data-table__th--history-date,
+  .simple-data-table__th--writehistory-date {
+    width: 96px;
+  }
+}
