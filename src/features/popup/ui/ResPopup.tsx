@@ -1,32 +1,15 @@
-import { Copy, Image as ImageIcon, Pin, PinOff } from "lucide-react";
-import React, { useCallback } from "react";
+import type React from "react";
 import { PopupResCardScope } from "src/features/popup/browser/popup-res-card-context";
 import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
 import { usePopupResContextMenu } from "src/features/popup/browser/use-popup-res-context-menu";
+import { useResListPopupMenu } from "src/features/popup/browser/use-res-list-popup-menu";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
 import type { IRes } from "src/service-container";
-import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
-import { useTheme } from "src/view/browser/hooks/use-theme";
-import { useToast } from "src/view/browser/hooks/use-toast";
-import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
-import { canCopyImageToClipboard, copyImageWithNotice } from "src/view/browser/utils/clipboard";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
-import { formatResForCopy } from "src/view/browser/utils/response-format";
-import { canvasToBlob, renderResponseListImageCanvas } from "src/view/browser/utils/response-image";
-
-function buildIdPopupCopyText(items: IRes[], threadTitle?: string, threadUrl?: string): string {
-  const sections = [items.map(formatResForCopy).join("\n\n")];
-  const threadInfo = [threadTitle, threadUrl].filter((value): value is string => value != null);
-  if (threadInfo.length > 0) {
-    sections.push(threadInfo.join("\n"));
-  }
-  return sections.join("\n\n");
-}
 
 // --- IDポップアップ ---
 export const ResPopup: React.FC<{
@@ -112,64 +95,16 @@ export const ResPopup: React.FC<{
   resMap,
   threadKey,
 }) => {
-  const viewSurface = useViewSurface();
-  const toast = useToast();
-  const { document: viewDocument } = viewSurface;
-  const theme = useTheme();
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
-  // 変更理由: IDレス本文のコピーも共通コマンドへ寄せ、別窓のClipboardと通知先を
-  // メニューごとに個別管理しないようにする。
-  const runClipboardCommand = useCallback(
-    (text: string) => {
-      void runCommandRequest(
-        { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text } },
-        { surface: viewSurface, toast },
-      );
-    },
-    [toast, viewSurface],
-  );
-
-  const idMenuItems: ContextMenuItem[] = [
-    {
-      id: "copy-id-responses",
-      label: "IDのレスを一括コピー",
-      icon: <Copy size={14} />,
-      onSelect: () => {
-        // ID索引の表示順を保ったままコピーし、別の場所へ移してもレス単位で読める形にする。
-        runClipboardCommand(buildIdPopupCopyText(items, threadTitle, threadUrl));
-      },
-    },
-    {
-      id: "copy-id-image",
-      label: "IDのレスを画像としてコピー",
-      icon: <ImageIcon size={14} />,
-      disabled: !canCopyImageToClipboard(viewSurface),
-      onSelect: () => {
-        void copyImageWithNotice(
-          async () => {
-            const canvas = renderResponseListImageCanvas(items, {
-              title,
-              threadTitle,
-              threadUrl,
-              theme,
-              targetDocument: viewDocument,
-            });
-            return canvasToBlob(canvas);
-          },
-          viewSurface,
-          toast,
-          "IDのレス画像",
-        );
-      },
-    },
-    {
-      id: "toggle-id-pin",
-      label: pinned ? "ピン留めを解除" : "ピン留め",
-      icon: pinned ? <PinOff size={14} /> : <Pin size={14} />,
-      onSelect: onTogglePinned,
-    },
-  ];
-
+  const idMenuItems = useResListPopupMenu({
+    variant: "id",
+    items,
+    title,
+    threadTitle,
+    threadUrl,
+    pinned,
+    onTogglePinned,
+  });
   const handleResContextMenu = usePopupResContextMenu(onResContextMenu, onPopupMouseDown);
   return (
     <FloatingPopup

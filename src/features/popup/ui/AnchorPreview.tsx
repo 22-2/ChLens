@@ -1,32 +1,15 @@
-import { Copy, Image as ImageIcon, Pin, PinOff } from "lucide-react";
 import React, { useCallback } from "react";
 import { PopupResCardScope } from "src/features/popup/browser/popup-res-card-context";
 import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
 import { usePopupResContextMenu } from "src/features/popup/browser/use-popup-res-context-menu";
+import { useResListPopupMenu } from "src/features/popup/browser/use-res-list-popup-menu";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
 import type { IRes } from "src/service-container";
-import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
-import { useTheme } from "src/view/browser/hooks/use-theme";
-import { useToast } from "src/view/browser/hooks/use-toast";
-import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
-import { canCopyImageToClipboard, copyImageWithNotice } from "src/view/browser/utils/clipboard";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
-import { formatResForCopy } from "src/view/browser/utils/response-format";
-import { canvasToBlob, renderResponseListImageCanvas } from "src/view/browser/utils/response-image";
-
-function buildAnchorPopupCopyText(items: IRes[], threadTitle?: string, threadUrl?: string): string {
-  const sections = [items.map(formatResForCopy).join("\n\n")];
-  const threadInfo = [threadTitle, threadUrl].filter((value): value is string => value != null);
-  if (threadInfo.length > 0) {
-    sections.push(threadInfo.join("\n"));
-  }
-  return sections.join("\n\n");
-}
 
 export interface AnchorPreviewProps {
   depth: number;
@@ -113,65 +96,17 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   threadTitle,
   threadUrl,
 }) => {
-  const viewSurface = useViewSurface();
-  const toast = useToast();
-  const { document: viewDocument } = viewSurface;
-  const theme = useTheme();
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
   const title = `参照: ${label}`;
-  // 変更理由: ポップアップ固有のClipboard呼び出しをなくし、別窓でも
-  // 同じ表示先とエラー通知を共有する。
-  const runClipboardCommand = useCallback(
-    (text: string) => {
-      void runCommandRequest(
-        { id: COMMAND_REQUEST_IDS.CLIPBOARD_COPY_TEXT, args: { text } },
-        { surface: viewSurface, toast },
-      );
-    },
-    [toast, viewSurface],
-  );
-
-  const anchorMenuItems: ContextMenuItem[] = [
-    {
-      id: "copy-anchor-responses",
-      label: "参照を一括コピー",
-      icon: <Copy size={14} />,
-      onSelect: () => {
-        // 変更理由: IDポップアップと同じく表示順を保ったままコピーし、貼り付け先でも読める形にする。
-        runClipboardCommand(buildAnchorPopupCopyText(items, threadTitle, threadUrl));
-      },
-    },
-    {
-      id: "copy-anchor-image",
-      label: "参照を画像としてコピー",
-      icon: <ImageIcon size={14} />,
-      disabled: !canCopyImageToClipboard(viewSurface),
-      onSelect: () => {
-        void copyImageWithNotice(
-          async () => {
-            const canvas = renderResponseListImageCanvas(items, {
-              title,
-              threadTitle,
-              threadUrl,
-              theme,
-              targetDocument: viewDocument,
-            });
-            return canvasToBlob(canvas);
-          },
-          viewSurface,
-          toast,
-          "参照画像",
-        );
-      },
-    },
-    {
-      id: "toggle-anchor-pin",
-      label: pinned ? "ピン留めを解除" : "ピン留め",
-      icon: pinned ? <PinOff size={14} /> : <Pin size={14} />,
-      onSelect: onTogglePinned,
-    },
-  ];
-
+  const anchorMenuItems = useResListPopupMenu({
+    variant: "anchor",
+    items,
+    title,
+    threadTitle,
+    threadUrl,
+    pinned,
+    onTogglePinned,
+  });
   const handleResContextMenu = usePopupResContextMenu(onResContextMenu, onPopupMouseDown);
 
   const handleClose = useCallback(() => {
