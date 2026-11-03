@@ -33,6 +33,8 @@ export interface TreePopupItem extends PopupItemBase {
     // 返信ツリー内で開いたアンカーも親アンカープレビュー配下として扱い続けないと、
     // 次のアンカーホバーで既存プレビュー一式を root 扱いで閉じてしまう。
     anchorPreviewDepth: number;
+    /** 「ツリー先頭から」で開いたとき、ユーザーが実際に操作した元レス。ツリー内で薄く強調する。 */
+    focusResNum?: number;
   };
 }
 

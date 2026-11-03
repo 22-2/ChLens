@@ -59,6 +59,8 @@ export const ReplyTreePopup: React.FC<{
   ownResNums?: ReadonlySet<number>;
   replyToOwnResNums?: ReadonlySet<number>;
   threadKey?: string;
+  /** 「ツリー先頭から」で開いた元レス。ツリー内で薄く強調する。 */
+  focusResNum?: number;
 }> = ({
   x,
   y,
@@ -95,6 +97,7 @@ export const ReplyTreePopup: React.FC<{
   ownResNums,
   replyToOwnResNums,
   threadKey,
+  focusResNum,
 }) => {
   // hard-ngの通常索引は非表示レスを除外するため、返信ツリーでは全レスから専用索引を作り、
   // NGレスもクリック式プレースホルダーとして辿れるようにする。
@@ -229,6 +232,7 @@ export const ReplyTreePopup: React.FC<{
                   replyToOwnResNums={replyToOwnResNums}
                   allowHardNgReveal
                   threadKey={threadKey}
+                  focusResNum={focusResNum}
                   onSubTreeMenu={handleSubTreeMenuClick}
                 />
               </section>

@@ -292,6 +292,7 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
           x={treePopup.x}
           y={treePopup.y}
           resNum={treePopup.payload.resNum}
+          focusResNum={treePopup.payload.focusResNum}
           repIndex={repIndex}
           replySourceNums={replySourceNums}
           idIndex={idIndex}

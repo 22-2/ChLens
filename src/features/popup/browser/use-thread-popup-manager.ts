@@ -43,6 +43,7 @@ export interface ThreadPopupManagerResult {
     clientY: number,
     parentId?: string,
     anchorPreviewDepth?: number,
+    focusResNum?: number,
   ) => string;
   addPopupContextMenu: (
     clientX: number,
@@ -260,13 +261,14 @@ export function useThreadPopupManager({
       clientY: number,
       parentId?: string,
       anchorPreviewDepth = 0,
+      focusResNum?: number,
     ) => {
       const { x, y } = toPageCoords(clientX, clientY);
       return addPopup({
         type: "tree",
         x,
         y,
-        payload: { resNum, anchorPreviewDepth, pinned: false },
+        payload: { resNum, anchorPreviewDepth, pinned: false, focusResNum },
         parentId,
       });
     },

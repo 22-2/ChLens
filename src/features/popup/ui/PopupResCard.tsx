@@ -27,6 +27,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     idIndex,
     disableRepClick,
     isHighlighted,
+    isFocused,
     isOwn,
     isReplyToOwn,
     onUrlClick,
@@ -119,6 +120,7 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
         className={[
           "res",
           isHighlighted ? "res--highlighted-persistent" : "",
+          isFocused ? "res--highlighted-soft" : "",
           isNgHighlighted ? "res--ng-highlight" : "",
         ]
           .filter(Boolean)
@@ -249,6 +251,8 @@ export interface StaticResCardProps {
   /** 参照元レスの返信を再帰的に開くのを防ぐための無効化フラグ */
   disableRepClick?: boolean;
   isHighlighted?: boolean;
+  /** 操作の起点になった元レスを、参照元より薄く強調する。 */
+  isFocused?: boolean;
   /** 本文側と同じ自分レス・自分への返信バッヂを表示する。 */
   isOwn?: boolean;
   isReplyToOwn?: boolean;

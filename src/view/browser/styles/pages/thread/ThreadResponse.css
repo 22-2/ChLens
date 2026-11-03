@@ -277,6 +277,12 @@
   border-radius: var(--sys-radius-lg);
 }
 
+.res--highlighted-soft {
+  /* 参照元の強調より控えめにして、返信ツリー内で元の操作対象だけを見つけやすくする。 */
+  background-color: var(--sys-color-response-highlight-soft-bg);
+  border-radius: var(--sys-radius-lg);
+}
+
 .res--ng-highlight {
   /* 内容を残す方式でもNG判定を見落とさないよう、既存のエラー色で行全体を強調する。 */
   border-radius: var(--sys-radius-lg);

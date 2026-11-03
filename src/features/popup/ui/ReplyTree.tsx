@@ -33,6 +33,8 @@ export interface ReplyTreeProps {
   /** 個別ツリーの三点メニュークリック時コールバック（渡された場合のみボタン表示） */
   onSubTreeMenu?: SubTreeMenuClickHandler;
   threadKey?: string;
+  /** 「ツリー先頭から」で開いたとき、元の操作対象としてツリー内で薄く強調するレス番号 */
+  focusResNum?: number;
 }
 
 /** 再帰しても変わらない、ツリー全体で共有する props。 */
@@ -120,6 +122,7 @@ const ReplyTreeBranch: React.FC<ReplyTreeBranchProps> = ({
     allowHardNgReveal = false,
     onSubTreeMenu,
     threadKey,
+    focusResNum,
   } = shared;
 
   if (depth >= MAX_TREE_DEPTH) return null;
@@ -144,6 +147,7 @@ const ReplyTreeBranch: React.FC<ReplyTreeBranchProps> = ({
             <div className="reply-tree-node">
               <PopupResCard
                 res={res}
+                isFocused={focusResNum === res.num}
                 messageProtocol={messageProtocol}
                 // アンカープレビュー配下で開いた返信ツリーは、その階層を子レスにも引き継ぐ。
                 // ここを 0 に戻すと、次のアンカーホバーで親プレビューごと閉じる回帰が起きる。

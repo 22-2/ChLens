@@ -124,7 +124,15 @@ export function useResInteractionHandlers({
         // 葉のアンカーから辿る時は起点レスを ancIndex で逆引きしてから開くことで、
         // 相互アンカーが続くケースでも最初の流れを辿りやすくする。
         const rootResNum = resolveReplyTreeRootResNum(resNum, indexes.ancIndex, indexes.resMap);
-        addTreePopup(rootResNum, e.clientX, e.clientY, parentId, anchorPreviewDepth);
+        // 起点へ遡った場合は、押した元レスをツリー内で薄く強調して位置を見失わないようにする。
+        addTreePopup(
+          rootResNum,
+          e.clientX,
+          e.clientY,
+          parentId,
+          anchorPreviewDepth,
+          rootResNum === resNum ? undefined : resNum,
+        );
       },
     [addTreePopup, clearAnchorPreviewHideTimer, indexes.ancIndex, indexes.resMap],
   );
