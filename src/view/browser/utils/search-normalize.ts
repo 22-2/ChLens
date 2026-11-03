@@ -175,6 +175,33 @@ export function compileSearch(
   };
 }
 
+/**
+ * 同じ条件の判定器を1つにまとめ、いずれかに一致した範囲を重ならないよう前から返す。
+ * 複数の項を1回の強調表示で扱うために使う。正規化の条件は全員同じでなければならない。
+ */
+export function combineMatchers(matchers: readonly SearchMatcher[]): SearchMatcher | null {
+  if (matchers.length === 0) return null;
+  if (matchers.length === 1) return matchers[0];
+  const [first] = matchers;
+  return {
+    fold: first.fold,
+    normalize: first.normalize,
+    find: (normalized) => {
+      const ranges = matchers
+        .flatMap((matcher) => matcher.find(normalized))
+        .sort((a, b) => a.start - b.start || b.end - a.end);
+      const merged: SearchMatchRange[] = [];
+      let lastEnd = 0;
+      for (const range of ranges) {
+        if (range.start < lastEnd) continue;
+        merged.push(range);
+        lastEnd = range.end;
+      }
+      return merged;
+    },
+  };
+}
+
 /** 判定器が無い（検索語が空・式が不正）ときは絞り込まず、すべて一致とみなす。 */
 export function matcherMatches(matcher: SearchMatcher | null, text: string): boolean {
   return matcher === null || matcher.find(matcher.normalize(text)).length > 0;
