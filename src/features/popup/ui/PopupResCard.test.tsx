@@ -2,7 +2,12 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { NgStatusProvider, useNgStatus } from "src/features/ng/browser/use-ng-status";
-import { PopupResCard } from "src/features/popup/ui/PopupResCard";
+import {
+  PopupResCardScope,
+  type PopupResCardShared,
+} from "src/features/popup/browser/popup-res-card-context";
+import type { StaticResCardProps } from "src/features/popup/ui/PopupResCard";
+import { PopupResCard as BasePopupResCard } from "src/features/popup/ui/PopupResCard";
 import type { IRes } from "src/service-container/interfaces";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -61,6 +66,51 @@ vi.mock("src/core/util/url-media", async () => {
     toViewerImageUrl: (rawUrl: string) => rawUrl,
   };
 });
+
+// 共通のハンドラー・設定は PopupResCardScope で渡す設計になったため、
+// 各テストでは従来どおり1つの props として書けるよう、ここで分けて渡す。
+type TestCardProps = StaticResCardProps &
+  Omit<PopupResCardShared, "onRepClick"> & {
+    onRepClick?: PopupResCardShared["onRepClick"];
+    isImageBlurred?: boolean;
+    isOwn?: boolean;
+    isReplyToOwn?: boolean;
+  };
+
+function PopupResCard({
+  res,
+  anchorPreviewDepth,
+  repIndex,
+  disableRepClick,
+  isHighlighted,
+  isFocused,
+  onOpenRootReplyTree,
+  allowHardNgReveal,
+  isImageBlurred,
+  isOwn,
+  isReplyToOwn,
+  ...shared
+}: TestCardProps) {
+  return (
+    <PopupResCardScope
+      {...shared}
+      blurredResNums={isImageBlurred ? new Set([res.num]) : undefined}
+      ownResNums={isOwn ? new Set([res.num]) : undefined}
+      replyToOwnResNums={isReplyToOwn ? new Set([res.num]) : undefined}
+    >
+      <BasePopupResCard
+        res={res}
+        anchorPreviewDepth={anchorPreviewDepth}
+        repIndex={repIndex}
+        disableRepClick={disableRepClick}
+        isHighlighted={isHighlighted}
+        isFocused={isFocused}
+        onOpenRootReplyTree={onOpenRootReplyTree}
+        allowHardNgReveal={allowHardNgReveal}
+      />
+    </PopupResCardScope>
+  );
+}
 
 const BASE_RES: IRes = {
   num: 10,

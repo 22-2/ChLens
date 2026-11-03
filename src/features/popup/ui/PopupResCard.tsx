@@ -7,13 +7,13 @@ import {
   useNgDisplayMode,
 } from "src/features/ng/browser/use-ng-status";
 import { NgBadge } from "src/features/ng/ui/NgBadge";
+import { usePopupResCardShared } from "src/features/popup/browser/popup-res-card-context";
 import { useIsRepeatedReply } from "src/features/popup/browser/repeated-reply-context";
 import { ResBody } from "src/features/thread/ui/ResBody";
 import type { IRes } from "src/service-container";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
-import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import { decodeResponseHtml } from "src/view/browser/utils/response-format";
@@ -21,31 +21,36 @@ import { decodeResponseHtml } from "src/view/browser/utils/response-format";
 export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
   ({
     res,
-    messageProtocol,
     anchorPreviewDepth,
     repIndex,
-    idIndex,
     disableRepClick,
     isHighlighted,
     isFocused,
-    isOwn,
-    isReplyToOwn,
-    onUrlClick,
-    onUrlContextMenu,
-    onLinkMiddleClickStart,
-    onIdLinkClick,
-    onRepClick,
     onOpenRootReplyTree,
-    onAnchorClick,
-    onAnchorHover,
-    onAnchorLeave,
-    onContextMenu,
-    isImageBlurred,
-    ngResNums,
-    resMap,
-    threadKey,
     allowHardNgReveal = false,
   }) => {
+    const {
+      messageProtocol,
+      idIndex,
+      resMap,
+      threadKey,
+      blurredResNums,
+      ngResNums,
+      ownResNums,
+      replyToOwnResNums,
+      onUrlClick,
+      onUrlContextMenu,
+      onLinkMiddleClickStart,
+      onIdLinkClick,
+      onRepClick,
+      onAnchorClick,
+      onAnchorHover,
+      onAnchorLeave,
+      onContextMenu,
+    } = usePopupResCardShared();
+    const isImageBlurred = blurredResNums?.has(res.num);
+    const isOwn = ownResNums?.has(res.num);
+    const isReplyToOwn = replyToOwnResNums?.has(res.num);
     const { window: viewWindow } = useViewSurface();
     const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
     // ResItemと同じく、collapseルールの折りたたみを全体設定より優先する。
@@ -249,38 +254,15 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
 PopupResCard.displayName = "PopupResCard";
 export interface StaticResCardProps {
   res: IRes;
-  messageProtocol: string;
   anchorPreviewDepth: number;
-  /** 渡された場合、ヘッダーに返信数ボタンを表示する */
+  /** 渡された場合、ヘッダーに返信数ボタンを表示する。ツリー専用の索引を使う場合があるため、共通設定とは別に渡す。 */
   repIndex?: Map<number, Set<number>>;
-  /** 渡された場合、ヘッダーのIDに同一IDのレス数を表示してクリック可能にする */
-  idIndex?: Map<string, Set<number>>;
   /** 参照元レスの返信を再帰的に開くのを防ぐための無効化フラグ */
   disableRepClick?: boolean;
   isHighlighted?: boolean;
   /** 操作の起点になった元レスを、参照元より薄く強調する。 */
   isFocused?: boolean;
-  /** 本文側と同じ自分レス・自分への返信バッヂを表示する。 */
-  isOwn?: boolean;
-  isReplyToOwn?: boolean;
-  onUrlClick: UrlClickHandler;
-  onUrlContextMenu: UrlContextMenuHandler;
-  onLinkMiddleClickStart?: () => void;
-  onIdLinkClick: (id: string, e: React.MouseEvent) => void;
-  onRepClick?: (resNum: number, e: React.MouseEvent) => void;
   onOpenRootReplyTree?: (resNum: number, e: React.MouseEvent) => void;
-  onAnchorClick: (resNum: number) => void;
-  onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
-  onAnchorLeave: (fromDepth: number) => void;
-  onContextMenu?: (e: React.MouseEvent, res: IRes) => void;
-  /** ポップアップ内でも画像ぼかしを適用するためのフラグ */
-  isImageBlurred?: boolean;
-  /** 本文中のアンカー先NGレスを強調するためのレス番号集合 */
-  ngResNums?: ReadonlySet<number>;
-  /** 本文アンカーの欠損判定をメインスレッドと揃えるためのレス索引 */
-  resMap?: ReadonlyMap<number, unknown>;
-  /** 親スレッドのURL。ポップアップでも同じ失敗抑止単位を使う。 */
-  threadKey?: string;
   /** 返信ツリーなどでhard-ngもプレースホルダー表示し、明示操作で本文を確認できるようにする。 */
   allowHardNgReveal?: boolean;
 }
