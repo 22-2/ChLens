@@ -35,7 +35,6 @@ function renderReplyNotification(
   options: {
     ownResNums?: ReadonlySet<number>;
     replyToOwnResNums?: ReadonlySet<number>;
-    viewWindow?: Window;
   } = {},
 ) {
   return renderHook(() =>
@@ -44,7 +43,6 @@ function renderReplyNotification(
       responses,
       ownResNums: options.ownResNums ?? new Set([2]),
       replyToOwnResNums: options.replyToOwnResNums ?? new Set([4]),
-      viewWindow: options.viewWindow ?? window,
     }),
   );
 }
@@ -101,6 +99,52 @@ describe("useThreadReplyNotification", () => {
     result.current(0, 3);
 
     expect(notifyMock).not.toHaveBeenCalled();
+  });
+
+  it("返信が表示済みになるまで通知を保留し、表示された時点で通知する", () => {
+    const { result, rerender } = renderHook(
+      ({ displayedResNums }: { displayedResNums: ReadonlySet<number> }) =>
+        useThreadReplyNotification({
+          page: { type: "thread", title: "テストスレ", threadUrl: THREAD_URL },
+          responses,
+          ownResNums: new Set([2]),
+          replyToOwnResNums: new Set([4]),
+          displayedResNums,
+        }),
+      { initialProps: { displayedResNums: new Set([1, 2, 3]) } },
+    );
+
+    result.current(2, 3);
+
+    expect(notifyMock).not.toHaveBeenCalled();
+
+    rerender({ displayedResNums: new Set([1, 2, 3, 4]) });
+
+    expect(notifyMock).toHaveBeenCalledTimes(1);
+    expect(notifyMock).toHaveBeenCalledWith(
+      "自分のレスへの返信: テストスレ",
+      expect.objectContaining({ message: "1件の返信があります" }),
+    );
+  });
+
+  it("表示済みの返信は取得直後に通知し、未表示の返信だけを保留する", () => {
+    const { result } = renderHook(() =>
+      useThreadReplyNotification({
+        page: { type: "thread", title: "テストスレ", threadUrl: THREAD_URL },
+        responses,
+        ownResNums: new Set([2]),
+        replyToOwnResNums: new Set([4, 5]),
+        displayedResNums: new Set([1, 2, 3, 4]),
+      }),
+    );
+
+    result.current(2, 3);
+
+    expect(notifyMock).toHaveBeenCalledTimes(1);
+    expect(notifyMock).toHaveBeenCalledWith(
+      "自分のレスへの返信: テストスレ",
+      expect.objectContaining({ message: "1件の返信があります" }),
+    );
   });
 
   it("通知機能が利用できない環境では、通知を出さない", () => {

@@ -413,7 +413,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     responses,
     ownResNums,
     replyToOwnResNums,
-    viewWindow,
+    displayedResNums: liveChatReplies.replySourceNums,
   });
   const { onThreadExpired, onThreadExpiredDetected } = useThreadExpiryStopHandlers({
     tabId,

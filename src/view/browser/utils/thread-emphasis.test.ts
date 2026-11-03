@@ -5,7 +5,7 @@ import {
   buildReplyToWrittenResSet,
   buildWrittenResSet,
   compileImageBlurPattern,
-  countNewRepliesToWrittenResponses,
+  findNewRepliesToWrittenResponses,
 } from "src/view/browser/utils/thread-emphasis";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -41,8 +41,8 @@ describe("thread-emphasis", () => {
     expect(Array.from(replyToWritten).sort((a, b) => a - b)).toEqual([7, 8, 11]);
   });
 
-  it("新着範囲から自分以外による自分のレスへの返信だけを数える", () => {
-    const count = countNewRepliesToWrittenResponses(
+  it("新着範囲から自分以外による自分のレスへの返信だけを番号で返す", () => {
+    const replyNums = findNewRepliesToWrittenResponses(
       [{ num: 10 }, { num: 11 }, { num: 12 }, { num: 13 }, { num: 14 }],
       new Set([10, 13]),
       new Set([11, 13, 14]),
@@ -50,7 +50,7 @@ describe("thread-emphasis", () => {
       4,
     );
 
-    expect(count).toBe(2);
+    expect(replyNums).toEqual([11, 14]);
   });
 
   it("NGではないグロ返信だけを返信先サムネぼかし対象にする", () => {
