@@ -15,7 +15,6 @@ import { useAutoFollowScroll } from "src/features/auto-refresh/browser/use-auto-
 import { useAutoRefreshTimer } from "src/features/auto-refresh/browser/use-auto-refresh-timer";
 import { useThreadExpiryStop } from "src/features/auto-refresh/browser/use-thread-expiry-stop";
 import type { ThreadRefreshController } from "src/features/thread/browser/use-thread-refresh-controller";
-import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
 type AutoRefreshPhase = "idle" | "scrolling";
@@ -106,15 +105,31 @@ export function useAutoRefresh({
   const idleStopStateRef = useRef<IdleStopState>(INITIAL_IDLE_STOP_STATE);
   // 完了判定は layout effect で行うため、同じ render の最新レス一覧を参照する通知処理を
   // 完了処理より先に差し替える。passive effect では旧 render のレス一覧を捕まえてしまう。
-  const requestRefreshRef = useLatestRef(requestRefresh);
-  const onNewResponsesRef = useLatestRef(onNewResponses);
-  const onAutoStopRef = useLatestRef(onAutoStop);
+  const requestRefreshRef = useRef(requestRefresh);
+  useLayoutEffect(() => {
+    requestRefreshRef.current = requestRefresh;
+  }, [requestRefresh]);
+  const onNewResponsesRef = useRef(onNewResponses);
+  useLayoutEffect(() => {
+    onNewResponsesRef.current = onNewResponses;
+  }, [onNewResponses]);
+  const onAutoStopRef = useRef(onAutoStop);
+  useLayoutEffect(() => {
+    onAutoStopRef.current = onAutoStop;
+  }, [onAutoStop]);
   // 変更理由: intervalのcleanup前に予約済みcallbackが届いても、最新の停止条件で拒否する。
   const enabledRef = useRef(enabled);
+  useLayoutEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
   const expiredRef = useRef(expired);
-  enabledRef.current = enabled;
-  expiredRef.current = expired;
-  const pauseRefreshRef = useLatestRef(pauseRefresh);
+  useLayoutEffect(() => {
+    expiredRef.current = expired;
+  }, [expired]);
+  const pauseRefreshRef = useRef(pauseRefresh);
+  useLayoutEffect(() => {
+    pauseRefreshRef.current = pauseRefresh;
+  }, [pauseRefresh]);
   const loadingRef = useRef(loading);
   const prevLoadingRef = useRef(loading);
   const prevEnabledRef = useRef(enabled);

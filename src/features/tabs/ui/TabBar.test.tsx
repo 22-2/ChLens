@@ -37,6 +37,12 @@ vi.mock("@dnd-kit/react/sortable", async () =>
 
 setupTabBarTest();
 
+// 変更理由: HTMLElement.prototype のメソッドを直接参照すると unbound-method に当たるため、
+// 退避する元の値は Reflect 経由で読み、差し替えと復元は defineProperty で行う。
+function readPrototypeMethod(name: "scrollIntoView" | "getBoundingClientRect"): unknown {
+  return Reflect.get(HTMLElement.prototype, name);
+}
+
 describe("TabBar wheel switching", () => {
   beforeEach(() => {
     mocks.tabStore.state = {
@@ -259,7 +265,7 @@ describe("TabBar wheel switching", () => {
 
   it("バックグラウンドで新規タブが追加されても追加位置までスクロールする", () => {
     const scrollIntoViewMock = vi.fn();
-    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    const originalScrollIntoView = readPrototypeMethod("scrollIntoView");
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: scrollIntoViewMock,
@@ -302,8 +308,8 @@ describe("TabBar wheel switching", () => {
 
   it("アクティブタブが見えている間はタブバーをスクロールしない", () => {
     const scrollIntoViewMock = vi.fn();
-    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
-    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const originalScrollIntoView = readPrototypeMethod("scrollIntoView");
+    const originalGetBoundingClientRect = readPrototypeMethod("getBoundingClientRect");
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: scrollIntoViewMock,
@@ -341,8 +347,8 @@ describe("TabBar wheel switching", () => {
 
   it("アクティブタブがビューポート外へ切り替わったときだけスクロールする", () => {
     const scrollIntoViewMock = vi.fn();
-    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
-    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const originalScrollIntoView = readPrototypeMethod("scrollIntoView");
+    const originalGetBoundingClientRect = readPrototypeMethod("getBoundingClientRect");
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
       value: scrollIntoViewMock,

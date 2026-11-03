@@ -128,9 +128,10 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
     const fallbackStatusRef = useRef<FallbackStatus>("idle");
     const requestVersionRef = useRef(0);
     const currentSrcRef = useRef(src);
+    useLayoutEffect(() => {
+      currentSrcRef.current = src;
+    }, [src]);
     const placeholderRef = useRef<HTMLElement | null>(null);
-
-    currentSrcRef.current = src;
 
     useEffect(() => {
       const decision = decidePreflight({

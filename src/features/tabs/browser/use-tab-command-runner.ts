@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import {
   executeTabCommandRequest,
   TAB_COMMAND_IDS,
@@ -25,18 +25,8 @@ export function useTabCommandRunner(
   const tabStore = useTabStore();
   const { dispatch, stateRef, paneId } = tabStore;
   const paneState = tabStore.state;
-  const fallbackStateRef = useRef({
-    panes: [
-      {
-        id: paneId,
-        tabs: paneState?.tabs ?? [],
-        activeTabId: paneState?.selectedTabId ?? tabId,
-      },
-    ],
-    activePaneId: paneId,
-    closedTabs: paneState?.closedTabs ?? [],
-  });
-  fallbackStateRef.current = {
+  // 変更理由: callback の依存を増やさないよう、描画ごとの値は最新値の ref に入れて読む。
+  const fallbackState = {
     panes: [
       {
         id: paneId,
@@ -47,6 +37,11 @@ export function useTabCommandRunner(
     activePaneId: paneId,
     closedTabs: paneState?.closedTabs ?? [],
   };
+  const fallbackStateRef = useRef(fallbackState);
+  // 値は描画ごとに作り直されるため、依存配列は置かず毎回同期する。
+  useLayoutEffect(() => {
+    fallbackStateRef.current = fallbackState;
+  });
 
   return useCallback(
     (id: TabCommandId, options?: TabCommandRunnerOptions) => {

@@ -139,20 +139,21 @@ export function useSettingsMaintenanceActions({
     onResetError(null);
 
     try {
-      const getAll = container.config.getAll;
-      const del = container.config.del;
-      if (!getAll || !del) {
+      const { config } = container;
+      if (!config.getAll || !config.del) {
         throw new Error("設定リセットAPIが利用できません");
       }
 
-      const allConfigEntries = getAll();
+      // 変更理由: メソッドを this なしで取り出すと unbound-method になるため、config に束縛して呼び出す。
+      const deleteConfig = config.del.bind(config);
+      const allConfigEntries = config.getAll();
       const keys = Object.keys(allConfigEntries)
         .filter((key) => key.startsWith("config_"))
         .map((key) => key.slice(7));
 
       // 既定値へ戻す目的なので set(default) ではなく del を使い、
       // 既定に存在しない一時キーも同時に掃除する。
-      await Promise.all(keys.map((key) => del(key)));
+      await Promise.all(keys.map((key) => deleteConfig(key)));
 
       onResetFormState(readAllSettings());
       container.toast.success("すべての設定をデフォルトに戻しました");

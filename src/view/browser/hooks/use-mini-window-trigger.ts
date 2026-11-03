@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 interface UseMiniWindowTriggerResult {
   triggerRef: React.RefObject<HTMLButtonElement | null>;
@@ -16,10 +16,12 @@ export function useMiniWindowTrigger(resetKey?: unknown): UseMiniWindowTriggerRe
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
-
-  useEffect(() => {
+  // 変更理由: resetKey の変化を描画中に検出して閉じる。effect で閉じると、古い対象の表示が一度描かれるため。
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (!Object.is(prevResetKey, resetKey)) {
+    setPrevResetKey(resetKey);
     setIsOpen(false);
-  }, [resetKey]);
+  }
 
   const toggle = useCallback(() => {
     // 開くたびに位置を測り直し、ステータスバー項目の並びが変わっても真上に出す。

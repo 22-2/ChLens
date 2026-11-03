@@ -85,6 +85,10 @@ function StopHarness({
 }
 
 describe("dat落ちから次スレ待機と停止までの連携", () => {
+  // 変更理由: container.board.getThreads は IBoard のメソッドとして参照すると unbound-method に当たるため、
+  // モックを変数に持ち、検証はその変数に対して行う。
+  const getThreads = vi.fn();
+
   beforeEach(() => {
     vi.useFakeTimers();
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
@@ -99,8 +103,10 @@ describe("dat落ちから次スレ待機と停止までの連携", () => {
       ready: (callback) => callback(),
     } as IConfig;
     container.message = { send: vi.fn(), on: vi.fn(), off: vi.fn() };
+    getThreads.mockReset();
+    getThreads.mockResolvedValue({ threads: [], message: null });
     container.board = {
-      getThreads: vi.fn().mockResolvedValue({ threads: [], message: null }),
+      getThreads,
       getCachedResCount: vi.fn(),
     };
     container.toast = { info: vi.fn(), error: vi.fn(), success: vi.fn(), notify: vi.fn() };
@@ -136,9 +142,9 @@ describe("dat落ちから次スレ待機と停止までの連携", () => {
       expect(screen.getByTestId("enabled")).toHaveTextContent("OFF");
       expect(onSearchExhausted).toHaveBeenCalledOnce();
       expect(onStop).toHaveBeenCalledOnce();
-      const requestCount = vi.mocked(container.board.getThreads).mock.calls.length;
+      const requestCount = getThreads.mock.calls.length;
       await act(async () => vi.advanceTimersByTimeAsync(30_000));
-      expect(container.board.getThreads).toHaveBeenCalledTimes(requestCount);
+      expect(getThreads).toHaveBeenCalledTimes(requestCount);
       expect(onStop).toHaveBeenCalledOnce();
     },
   );
@@ -156,7 +162,7 @@ describe("dat落ちから次スレ待機と停止までの連携", () => {
     );
     await act(async () => vi.advanceTimersByTimeAsync(3000));
     expect(screen.getByTestId("enabled")).toHaveTextContent("OFF");
-    expect(container.board.getThreads).not.toHaveBeenCalled();
+    expect(getThreads).not.toHaveBeenCalled();
     expect(onStop).toHaveBeenCalledOnce();
   });
 

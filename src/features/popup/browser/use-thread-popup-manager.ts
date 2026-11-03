@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import type {
   AnchorPopupItem,
   ContextMenuPopupItem,
@@ -108,8 +108,10 @@ export function useThreadPopupManager({
         .sort((left, right) => left.payload.depth - right.payload.depth),
     [popups],
   );
-  const anchorPreviewsRef = useRef<AnchorPopupItem[]>(anchorPreviews);
-  anchorPreviewsRef.current = anchorPreviews;
+  const anchorPreviewsRef = useRef(anchorPreviews);
+  useLayoutEffect(() => {
+    anchorPreviewsRef.current = anchorPreviews;
+  }, [anchorPreviews]);
 
   const treePopupItems = useMemo(
     () => popups.filter((item): item is TreePopupItem => item.type === "tree"),

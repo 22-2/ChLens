@@ -111,10 +111,8 @@ export const BookmarkListPage: React.FC<BookmarkListPageProps> = ({ tabId, isAct
   const [contextMenuState, setContextMenuState] =
     useState<BookmarkContextMenuState<BookmarkEntry> | null>(null);
 
-  useEffect(() => {
-    // 非表示タブも保持されるため、タブ切り替え時に別の画面へメニューが残らないよう閉じる。
-    if (!isActive) setContextMenuState(null);
-  }, [isActive]);
+  // 非表示タブも保持されるため、タブ切り替え時に別の画面へメニューが残らないよう閉じる。
+  if (!isActive && contextMenuState) setContextMenuState(null);
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [sortState, setSortState] = useState<BookmarkSortState>(() => {
     const column = persistedViewState.sortColumn;

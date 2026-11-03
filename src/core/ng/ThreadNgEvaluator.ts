@@ -132,21 +132,22 @@ export function evaluateThreadNg(
   while (changed) {
     changed = false;
     if (isAutoNgEnabled(deps.config, "chainId")) {
-      for (const id of [...chainedIds]) {
+      // 変更理由: markChain が results を書き換えるため、走査対象は複製してから回す（for-of で直接展開すると lint に当たる）。
+      for (const id of Array.from(chainedIds)) {
         for (const num of idIndex.get(id) ?? []) {
           changed = markChain(num, { type: "ChainID" }) || changed;
         }
       }
     }
     if (isAutoNgEnabled(deps.config, "chainSlip")) {
-      for (const slip of [...chainedSlips]) {
+      for (const slip of Array.from(chainedSlips)) {
         for (const num of slipIndex.get(slip) ?? []) {
           changed = markChain(num, { type: "ChainSLIP" }) || changed;
         }
       }
     }
     if (isAutoNgEnabled(deps.config, "chain")) {
-      for (const ngNum of [...results.keys()]) {
+      for (const ngNum of Array.from(results.keys())) {
         for (const replyNum of repIndex.get(ngNum) ?? []) {
           // 未来のレスへの安価は連鎖の対象にしない（過去レスを巻き込まない）。
           if (replyNum > ngNum) changed = markChain(replyNum, { type: "Chain" }) || changed;

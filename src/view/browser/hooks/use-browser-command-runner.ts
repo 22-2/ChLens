@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   type BrowserCommandContext,
   type ResolvedBrowserCommand,
@@ -32,11 +32,17 @@ export function useBrowserCommandRunner({
   const [runningCommandIds, setRunningCommandIds] = useState<Set<string>>(() => new Set());
   const [recentCommandIds, setRecentCommandIds] = useState<string[]>([]);
   const recentCommandIdsRef = useRef(recentCommandIds);
-  recentCommandIdsRef.current = recentCommandIds;
+  useLayoutEffect(() => {
+    recentCommandIdsRef.current = recentCommandIds;
+  }, [recentCommandIds]);
   const contextRef = useRef(context);
-  contextRef.current = context;
+  useLayoutEffect(() => {
+    contextRef.current = context;
+  }, [context]);
   const onBeforeExecuteRef = useRef(onBeforeExecute);
-  onBeforeExecuteRef.current = onBeforeExecute;
+  useLayoutEffect(() => {
+    onBeforeExecuteRef.current = onBeforeExecute;
+  }, [onBeforeExecute]);
 
   useEffect(() => {
     let cancelled = false;

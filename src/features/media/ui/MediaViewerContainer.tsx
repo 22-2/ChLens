@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   type AuxiliaryWindowWatcher,
   watchAuxiliaryWindow,
@@ -43,7 +43,9 @@ export function MediaViewerContainer({
   const viewer = useMediaViewerStore((state) => state.viewer);
   const [detached, setDetached] = useState<DetachedMediaViewerWindow | null>(null);
   const detachedRef = useRef(detached);
-  detachedRef.current = detached;
+  useLayoutEffect(() => {
+    detachedRef.current = detached;
+  }, [detached]);
 
   const removeDetachedWindow = useCallback((expectedWindow?: Window) => {
     const current = detachedRef.current;

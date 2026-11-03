@@ -144,6 +144,8 @@ describe("類似画像NGのハッシュのホバー", () => {
   it("記録がないハッシュは、その旨を出す", async () => {
     getSimilarImageRecord.mockResolvedValue(null);
     const result = await captureHover()('  when image similar "0123456789abcdef"', 1, 25);
-    expect((result?.contents[0] as { value: string }).value).toContain("記録はありません");
+    expect(result?.contents[0]).toMatchObject({
+      value: expect.stringContaining("記録はありません"),
+    });
   });
 });

@@ -54,6 +54,28 @@ interface UseOmnibarResult {
   handleSelectSuggestion: (suggestion: OmnibarSuggestion) => void;
 }
 
+/** 候補の選択位置を、現在の候補の中で有効な位置へ寄せる。 */
+function resolveActiveSuggestionIndex({
+  activeIndex,
+  suggestionCount,
+  isCommandMode,
+  commandSuggestions,
+}: {
+  activeIndex: number;
+  suggestionCount: number;
+  isCommandMode: boolean;
+  commandSuggestions: readonly { enabled: boolean }[];
+}): number {
+  if (activeIndex >= suggestionCount) {
+    return 0;
+  }
+  if (isCommandMode && !commandSuggestions[activeIndex]?.enabled) {
+    const firstEnabled = commandSuggestions.findIndex((command) => command.enabled);
+    return firstEnabled >= 0 ? firstEnabled : 0;
+  }
+  return activeIndex;
+}
+
 export function useOmnibar({
   displayUrl,
   maxSuggestions,
@@ -73,20 +95,24 @@ export function useOmnibar({
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const mode: OmnibarInputMode = inputValue.startsWith(">") ? "command" : "navigation";
 
-  useEffect(() => {
-    if (!isFocused) {
-      setInputValue(displayUrl);
-    }
-  }, [displayUrl, isFocused]);
+  // 変更理由: 非フォーカス時の表示URLへの追従は描画中に行う。effect で行うと古い入力が一度描かれるため。
+  // 条件は値が一致すると偽になるので、描画中の更新は一度で終わる。
+  if (!isFocused && inputValue !== displayUrl) {
+    setInputValue(displayUrl);
+  }
+
+  // 変更理由: コマンドモードでは履歴ソースを待たずに候補を表示し、
+  // 「>」入力直後の操作感を保つ。ナビゲーションへ戻った時だけ遅延ロードする。
+  const needsOmnibarEntries = isFocused && mode !== "command" && !isOmnibarLoaded;
+  // 読み込み開始の表示は描画中に立てる。effect で立てると、spinner なしの候補が一度描かれるため。
+  if (needsOmnibarEntries && !isOmnibarLoading) {
+    setIsOmnibarLoading(true);
+  }
 
   useEffect(() => {
-    // 変更理由: コマンドモードでは履歴ソースを待たずに候補を表示し、
-    // 「>」入力直後の操作感を保つ。ナビゲーションへ戻った時だけ遅延ロードする。
-    if (!isFocused || mode === "command" || isOmnibarLoaded) {
+    if (!needsOmnibarEntries) {
       return;
     }
-
-    setIsOmnibarLoading(true);
 
     let cancelled = false;
     void loadEntries()
@@ -116,15 +142,13 @@ export function useOmnibar({
     return () => {
       cancelled = true;
     };
-  }, [isFocused, isOmnibarLoaded, loadEntries, mode]);
+  }, [loadEntries, needsOmnibarEntries]);
 
-  useEffect(() => {
-    if (mode === "command" && isOmnibarLoading) {
-      // 変更理由: 履歴取得中に「>」へ切り替えても、古いナビゲーション用spinnerで
-      // コマンド候補を隠さず、入力モードの切り替えを即時に反映する。
-      setIsOmnibarLoading(false);
-    }
-  }, [isOmnibarLoading, mode]);
+  // 変更理由: 履歴取得中に「>」へ切り替えても、古いナビゲーション用spinnerで
+  // コマンド候補を隠さず、入力モードの切り替えを即時に反映する。
+  if (mode === "command" && isOmnibarLoading) {
+    setIsOmnibarLoading(false);
+  }
 
   const navigationSuggestions = useMemo(
     () => buildOmnibarSuggestions(omnibarEntries, inputValue, maxSuggestions),
@@ -179,17 +203,17 @@ export function useOmnibar({
 
   const activeSuggestionCount = mode === "command" ? commandSuggestions.length : suggestions.length;
 
-  useEffect(() => {
-    if (activeSuggestionIndex >= activeSuggestionCount) {
-      setActiveSuggestionIndex(0);
-      return;
-    }
-
-    if (mode === "command" && !commandSuggestions[activeSuggestionIndex]?.enabled) {
-      const firstEnabled = commandSuggestions.findIndex((command) => command.enabled);
-      setActiveSuggestionIndex(firstEnabled >= 0 ? firstEnabled : 0);
-    }
-  }, [activeSuggestionCount, activeSuggestionIndex, commandSuggestions, mode]);
+  // 候補が減ったときや無効なコマンドを選んでいるときは、描画中に有効な候補へ寄せる。
+  // 結果が現在値と同じなら更新しないため、描画中の更新は繰り返されない。
+  const resolvedSuggestionIndex = resolveActiveSuggestionIndex({
+    activeIndex: activeSuggestionIndex,
+    suggestionCount: activeSuggestionCount,
+    isCommandMode: mode === "command",
+    commandSuggestions,
+  });
+  if (resolvedSuggestionIndex !== activeSuggestionIndex) {
+    setActiveSuggestionIndex(resolvedSuggestionIndex);
+  }
 
   const shouldShowNoMatch =
     isFocused &&

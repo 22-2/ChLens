@@ -193,7 +193,7 @@ describe("設定セクションの実行環境フィルター", () => {
     const site = getSettingsSections(false).find((section) => section.id === "site-board");
 
     expect(site?.title).toBe("サイト");
-    expect((site?.icon as { type: unknown }).type).toBe(ThreadListIcon);
+    expect(site?.icon).toMatchObject({ type: ThreadListIcon });
   });
 
   it("書き込み操作の設定を一般セクションへ表示しない", () => {

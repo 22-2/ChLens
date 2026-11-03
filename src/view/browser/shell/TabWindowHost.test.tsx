@@ -12,6 +12,10 @@ const mocks = vi.hoisted(() => ({
   openAuxiliaryWindow: vi.fn(),
   tabDispatch: vi.fn(),
   fakeWindow: null as Window | null,
+  // 変更理由: 別窓の focus・close は Window のメソッドとして参照すると unbound-method に当たるため、
+  // 検証用のモックを別に持つ。
+  windowFocus: vi.fn(),
+  windowClose: vi.fn(),
   root: null as HTMLElement | null,
 }));
 
@@ -127,11 +131,13 @@ describe("TabWindowHost", () => {
     mocks.panes = [{ id: "pane-1", tabs: [tab, createThreadTab("tab-2")], activeTabId: tab.id }];
     mocks.root = document.createElement("div");
     document.body.appendChild(mocks.root);
+    mocks.windowFocus.mockReset();
+    mocks.windowClose.mockReset();
     mocks.fakeWindow = {
       closed: false,
       document,
-      focus: vi.fn(),
-      close: vi.fn(),
+      focus: mocks.windowFocus,
+      close: mocks.windowClose,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     } as unknown as Window;
@@ -158,12 +164,12 @@ describe("TabWindowHost", () => {
     fireEvent.click(screen.getByRole("button", { name: "開く" }));
 
     expect(mocks.openAuxiliaryWindow).toHaveBeenCalledTimes(1);
-    expect(mocks.fakeWindow?.focus).toHaveBeenCalledTimes(2);
+    expect(mocks.windowFocus).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId("detached-state")).toHaveTextContent("true");
 
     fireEvent.click(screen.getByRole("button", { name: "切り替え" }));
     expect(screen.getByTestId("detached-state")).toHaveTextContent("false");
-    expect(mocks.fakeWindow?.close).toHaveBeenCalledTimes(1);
+    expect(mocks.windowClose).toHaveBeenCalledTimes(1);
     expect(mocks.tabDispatch).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: "CLOSE_TAB", tabId: "tab-1" }),
     );
@@ -278,6 +284,6 @@ describe("TabWindowHost", () => {
     fireEvent.click(screen.getByRole("button", { name: "開く" }));
 
     expect(screen.getByTestId("detached-state")).toHaveTextContent("false");
-    expect(mocks.fakeWindow?.close).not.toHaveBeenCalled();
+    expect(mocks.windowClose).not.toHaveBeenCalled();
   });
 });

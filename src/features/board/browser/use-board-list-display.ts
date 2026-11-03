@@ -46,20 +46,15 @@ export function useBoardListDisplay(params: {
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const savedOpenStatesRef = useRef<Record<string, boolean> | null>(null);
   const { openStates, updateOpenStates } = params;
+  // 変更理由: 依存配列に params 全体を入れると描画のたびに作り直されるため、使う値を先に取り出して依存に並べる。
+  const { categories, removedBoardUrls, removedCategoryIds, removedMenuNames, openedBoardEntries } =
+    params;
 
   useEffect(() => {
     updateViewState({ searchQuery });
   }, [searchQuery, updateViewState]);
 
   const displayMenus = useMemo(() => {
-    const {
-      categories,
-      removedBoardUrls,
-      removedCategoryIds,
-      removedMenuNames,
-      openedBoardEntries,
-    } = params;
-
     const baseMenus = categories
       .filter((menu) => !removedMenuNames.has(menu.name))
       .map((menu) => {
@@ -161,11 +156,11 @@ export function useBoardListDisplay(params: {
 
     return applySearchFilter(baseMenus, normalizedQuery);
   }, [
-    params.categories,
-    params.openedBoardEntries,
-    params.removedBoardUrls,
-    params.removedCategoryIds,
-    params.removedMenuNames,
+    categories,
+    openedBoardEntries,
+    removedBoardUrls,
+    removedCategoryIds,
+    removedMenuNames,
     searchQuery,
   ]);
 

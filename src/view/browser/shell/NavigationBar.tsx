@@ -111,11 +111,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
   const [backMenuPosition, setBackMenuPosition] = useState<MenuPosition | null>(null);
   const [refreshMenuPosition, setRefreshMenuPosition] = useState<MenuPosition | null>(null);
+  // 変更理由: 相対時刻の基準は描画中に Date.now() で決めず、メニューを開く操作の中で記録する。
+  const [refreshMenuOpenedAt, setRefreshMenuOpenedAt] = useState(0);
   const [snapshots, setSnapshots] = useState<ThreadListSnapshot[]>([]);
   const selectedSnapshot = useSelectedThreadListSnapshot(viewTab.id);
   const boardUrl = viewPage.type === "threadList" ? viewPage.boardUrl : null;
-  // 変更理由: 相対時刻の基準を開いた時点で取り直さないと、メモ化した項目が古い「たった今」のまま残る。
-  const refreshMenuOpenedAt = useMemo(() => Date.now(), [refreshMenuPosition]);
   useEffect(() => {
     if (!refreshMenuPosition || !boardUrl) return;
     let cancelled = false;
@@ -357,6 +357,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       setBackMenuPosition(null);
       setForwardMenuPosition(null);
       setSnapshots([]);
+      setRefreshMenuOpenedAt(Date.now());
       setRefreshMenuPosition((prev) => (prev ? null : { x: e.clientX, y: e.clientY }));
     },
     [viewPage.type],

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import { subscribeConfigKeys } from "src/view/browser/utils/config-setting";
 import {
@@ -15,7 +15,9 @@ export function useScopedConfigStringSetting(key: ScopedSettingKey, url: string)
   const [state, setState] = useState(() => ({ url, value: readScopedConfigValue(key, url) ?? "" }));
   const pending = useRef(0);
   const latestUrl = useRef(url);
-  latestUrl.current = url;
+  useLayoutEffect(() => {
+    latestUrl.current = url;
+  }, [url]);
   const value = state.url === url ? state.value : (readScopedConfigValue(key, url) ?? "");
   useEffect(
     () =>

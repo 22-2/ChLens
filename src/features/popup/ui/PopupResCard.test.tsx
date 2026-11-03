@@ -389,7 +389,9 @@ describe("PopupResCard", () => {
       cancelable: true,
     });
 
-    act(() => thumb.dispatchEvent(contextMenuEvent));
+    act(() => {
+      thumb.dispatchEvent(contextMenuEvent);
+    });
 
     expect(onContextMenu).not.toHaveBeenCalled();
     expect(contextMenuEvent.defaultPrevented).toBe(true);

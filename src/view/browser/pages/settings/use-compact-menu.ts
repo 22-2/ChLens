@@ -36,9 +36,14 @@ export function useCompactMenu(isCompact: boolean) {
   useEffect(() => {
     if (!isCompact) {
       clearCompactMenuCloseTimer();
-      setIsCompactMenuOpen(false);
     }
   }, [clearCompactMenuCloseTimer, isCompact]);
+
+  // 変更理由: 狭い表示から戻った直後に古い開閉状態を残さないよう、描画中に閉じる。
+  // 開いていない間は更新しないことで、描画中の更新が繰り返されないようにする。
+  if (!isCompact && isCompactMenuOpen) {
+    setIsCompactMenuOpen(false);
+  }
 
   return {
     isCompactMenuOpen,

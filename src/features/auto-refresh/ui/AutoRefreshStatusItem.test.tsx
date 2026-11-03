@@ -8,6 +8,10 @@ import { StatusBar, StatusBarProvider } from "src/view/browser/components/Status
 import type { Page } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
+// 変更理由: container.config.set は IConfig のメソッドとして参照すると unbound-method に当たるため、
+// 保存先の検証は独立したモックに対して行う。
+const configSet = vi.hoisted(() => vi.fn());
+
 const mocks = vi.hoisted(() => ({
   viewTab: { id: "tab-a" },
   dispatch: vi.fn(),
@@ -124,6 +128,7 @@ describe("AutoRefreshStatusItem", () => {
     mocks.canAutoScroll = false;
     mocks.isPaused = false;
 
+    configSet.mockReset();
     container.config = {
       get: vi.fn((key: string) => {
         if (key === "auto_load_second_board") {
@@ -131,7 +136,7 @@ describe("AutoRefreshStatusItem", () => {
         }
         return "0";
       }),
-      set: vi.fn(),
+      set: configSet,
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
     };
@@ -187,7 +192,7 @@ describe("AutoRefreshStatusItem", () => {
     expect(select).toHaveValue("normal");
     fireEvent.change(select, { target: { value: "live-chat" } });
     // タブ状態ではなく設定へ保存し、新しいタブや再起動後も同じ表示形式を使う。
-    expect(container.config.set).toHaveBeenCalledWith("thread_display_mode", "live-chat");
+    expect(configSet).toHaveBeenCalledWith("thread_display_mode", "live-chat");
     expect(select).toHaveValue("live-chat");
     expect(mocks.dispatch).not.toHaveBeenCalled();
     expect(mocks.autoRefreshPanel.toggle).not.toHaveBeenCalled();

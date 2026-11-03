@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
   removeImgurImageLines,
@@ -37,7 +37,9 @@ export function useImgurUpload({
 }: UseImgurUploadParams) {
   const { window: viewWindow } = viewSurface;
   const messageRef = useRef(message);
-  messageRef.current = message;
+  useLayoutEffect(() => {
+    messageRef.current = message;
+  }, [message]);
   const [isImgurUploading, setIsImgurUploading] = useState(false);
   const [imgurUploadStatus, setImgurUploadStatus] = useState<ImgurUploadStatus | null>(null);
 

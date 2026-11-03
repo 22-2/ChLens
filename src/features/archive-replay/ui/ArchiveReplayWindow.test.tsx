@@ -65,9 +65,10 @@ describe("過去実況再生ウィンドウ", () => {
 
   it("開始日時を省略して読み込み、レスの時刻へシークできる", async () => {
     const archiveReplayEventBus = new MemoryArchiveReplayOverlayEventBus();
+    const hide = vi.fn(async () => {});
     const overlayPlatform = {
       show: vi.fn(async () => {}),
-      hide: vi.fn(async () => {}),
+      hide,
     } as unknown as CommentOverlayWindowPlatform;
     render(
       <div className="browser-shell">
@@ -132,7 +133,7 @@ describe("過去実況再生ウィンドウ", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "過去実況再生を閉じる" }));
-    expect(overlayPlatform.hide).toHaveBeenCalled();
+    expect(hide).toHaveBeenCalled();
     expect(archiveReplayEventBus.events.some((event) => event.type === "stop")).toBe(true);
   });
 

@@ -4,7 +4,7 @@ import type { CDPSession } from "@playwright/test";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import { expect, test } from "../fixtures.mjs";
+import { test } from "../fixtures.mjs";
 import {
   openThreadFromBoard,
   runPaletteCommand,

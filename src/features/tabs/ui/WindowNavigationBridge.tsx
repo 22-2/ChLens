@@ -1,4 +1,4 @@
-import { type Dispatch, type FC, useEffect, useRef } from "react";
+import { type Dispatch, type FC, useEffect, useLayoutEffect, useRef } from "react";
 import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
@@ -77,9 +77,13 @@ function useWindowNavigationEvents({
   viewWindow: Window;
 }): void {
   const targetTabIdRef = useRef(targetTabId);
+  useLayoutEffect(() => {
+    targetTabIdRef.current = targetTabId;
+  }, [targetTabId]);
   const dispatchRef = useRef(dispatch);
-  targetTabIdRef.current = targetTabId;
-  dispatchRef.current = dispatch;
+  useLayoutEffect(() => {
+    dispatchRef.current = dispatch;
+  }, [dispatch]);
 
   useEffect(() => {
     // 別窓はWindowProxy自身の履歴をアプリ履歴に置き換えない。

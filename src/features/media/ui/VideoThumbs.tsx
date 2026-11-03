@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   type ExternalMediaEmbed,
   getDirectVideoFallbackThumbnailUrl,
@@ -15,10 +15,13 @@ export function VideoThumbImage({
   manualImageLoading: boolean;
 }): React.ReactElement {
   const [posterUrl, setPosterUrl] = useState(embed.thumbnailUrl);
-
-  useEffect(() => {
+  // 変更理由: 投稿のサムネイルが変わったら、読み込み失敗で切り替えた予備の URL を捨てて描き直す。
+  // effect で戻すと古い画像が一度描かれるため、描画中に比較して戻す。
+  const [prevThumbnailUrl, setPrevThumbnailUrl] = useState(embed.thumbnailUrl);
+  if (prevThumbnailUrl !== embed.thumbnailUrl) {
+    setPrevThumbnailUrl(embed.thumbnailUrl);
     setPosterUrl(embed.thumbnailUrl);
-  }, [embed.thumbnailUrl]);
+  }
 
   if (manualImageLoading) {
     return <span className="res__thumb-video-manual-placeholder">クリックして動画を展開</span>;

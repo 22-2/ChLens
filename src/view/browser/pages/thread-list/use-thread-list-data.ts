@@ -129,13 +129,16 @@ export function useThreadListData({
         setError(e instanceof Error ? e.message : "スレッド一覧の取得に失敗しました");
       }
     } finally {
-      if (requestId !== requestIdRef.current) return;
-      initialFetchFinishedRef.current = true;
-      setLoading(false);
-      setIsAutoRefreshing(false);
-      // 変更理由: 完了後のフェード用にスピナーを残すとロード時間より長く見えるため、
-      // 成功・失敗のどちらでも取得完了と同時に更新表示を終了する。
-      setShowRefreshOverlay(false);
+      // 変更理由: finally で return すると catch から投げた例外まで握りつぶすため、
+      // 後始末は最新の取得だけに限り、return は使わない。
+      if (requestId === requestIdRef.current) {
+        initialFetchFinishedRef.current = true;
+        setLoading(false);
+        setIsAutoRefreshing(false);
+        // 変更理由: 完了後のフェード用にスピナーを残すとロード時間より長く見えるため、
+        // 成功・失敗のどちらでも取得完了と同時に更新表示を終了する。
+        setShowRefreshOverlay(false);
+      }
     }
     // refreshKeyが変わったとき（更新ボタン押下）に再取得を走らせる
   }, [

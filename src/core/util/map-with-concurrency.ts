@@ -11,7 +11,7 @@ export async function mapWithConcurrency<T, R>(
     throw new RangeError("concurrencyは1以上の整数で指定してください");
   }
 
-  const results = new Array<R>(items.length);
+  const results: R[] = [];
   let nextIndex = 0;
   const workerCount = Math.min(concurrency, items.length);
   const workers = Array.from({ length: workerCount }, async () => {

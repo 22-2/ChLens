@@ -65,10 +65,8 @@ export const FavoriteBoardsSection: React.FC = () => {
     React.useState<BookmarkContextMenuState<FavoriteBoard> | null>(null);
   const isActive = viewPage.type === "home";
 
-  React.useEffect(() => {
-    // ホームは常時マウントされるため、他のタブへ移った時点で対象板のメニューを閉じる。
-    if (!isActive) setContextMenuState(null);
-  }, [isActive]);
+  // ホームは常時マウントされるため、他のタブへ移った時点で対象板のメニューを閉じる。
+  if (!isActive && contextMenuState) setContextMenuState(null);
 
   const loadFavoriteBoards = React.useCallback(async () => {
     setLoading(true);

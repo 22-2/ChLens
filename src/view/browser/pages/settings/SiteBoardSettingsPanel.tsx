@@ -225,7 +225,7 @@ export function SiteBoardSettingsPanel() {
   const [savingKey, setSavingKey] = useState<ScopedSettingKey | null>(null);
   const [isClearingCookies, setIsClearingCookies] = useState(false);
   const [isClearingSiteSettings, setIsClearingSiteSettings] = useState(false);
-  const [isCheckingCookies, setIsCheckingCookies] = useState(false);
+  const [isCheckingCookies, setIsCheckingCookies] = useState(true);
   const [hasSiteCookies, setHasSiteCookies] = useState(false);
   const [globalValues, setGlobalValues] =
     useState<Record<ScopedSettingKey, string>>(readGlobalSettingValues);
@@ -295,33 +295,34 @@ export function SiteBoardSettingsPanel() {
     return Array.from(keys).sort((left, right) => left.localeCompare(right));
   }, [boards, document.sites]);
 
-  useEffect(() => {
-    if (!selectedSite || sites.includes(selectedSite)) {
-      return;
-    }
-    // 変更理由: 選択中のドメインが候補から消えた場合は先頭へ勝手に移さず、「すべて」に戻す。
+  // 変更理由: 選択中のドメインが候補から消えた場合は先頭へ勝手に移さず、「すべて」に戻す。
+  // 描画中に直すのは、effect だと消えたドメインの表示が一度描かれるため。
+  if (selectedSite && !sites.includes(selectedSite)) {
     setSelectedSite("");
-  }, [selectedSite, sites]);
+  }
 
   const siteBoards = useMemo(
     () => boards.filter((board) => board.site === selectedSite),
     [boards, selectedSite],
   );
 
-  useEffect(() => {
-    if (
-      selectedBoard === SITE_SHARED_SCOPE ||
-      siteBoards.some((board) => board.key === selectedBoard)
-    ) {
-      return;
-    }
+  if (
+    selectedBoard !== SITE_SHARED_SCOPE &&
+    !siteBoards.some((board) => board.key === selectedBoard)
+  ) {
     setSelectedBoard(SITE_SHARED_SCOPE);
-  }, [selectedBoard, siteBoards]);
+  }
+
+  // 選択が変わったら前の確認結果を捨てて確認中に戻す。描画中に行い、古い結果を一度も描かないようにする。
+  const [cookieCheckedSite, setCookieCheckedSite] = useState(selectedSite);
+  if (cookieCheckedSite !== selectedSite) {
+    setCookieCheckedSite(selectedSite);
+    setHasSiteCookies(false);
+    setIsCheckingCookies(true);
+  }
 
   useEffect(() => {
     let cancelled = false;
-    setHasSiteCookies(false);
-    setIsCheckingCookies(true);
     const checking = selectedSite
       ? platformCookieManager.hasSiteCookies(selectedSite)
       : platformCookieManager.hasAnyCookies();

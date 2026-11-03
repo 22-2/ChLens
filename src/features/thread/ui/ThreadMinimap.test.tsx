@@ -374,7 +374,8 @@ describe("ThreadMinimap", () => {
       configurable: true,
       value: panel,
     });
-    panel.scrollTo = vi.fn();
+    const scrollTo = vi.fn();
+    panel.scrollTo = scrollTo;
     panel.getBoundingClientRect = () =>
       ({
         top: 0,
@@ -430,7 +431,7 @@ describe("ThreadMinimap", () => {
     });
 
     // 変更理由: ドラッグは視点移動が目的なので、離しても対象レスの強調は行わない。
-    expect(panel.scrollTo).toHaveBeenCalled();
+    expect(scrollTo).toHaveBeenCalled();
     expect(onResponseClick).not.toHaveBeenCalled();
   });
 

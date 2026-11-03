@@ -81,7 +81,7 @@ describe("evaluateThreadNg", () => {
       context,
     );
 
-    expect([...results.keys()].sort()).toEqual([1, 2, 4]);
+    expect([...results.keys()].sort((a, b) => a - b)).toEqual([1, 2, 4]);
     expect(results.get(1)).toEqual({ type: "ChainID" });
     expect(results.get(4)).toEqual({ type: "ChainID" });
   });

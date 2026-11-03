@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { getBoardUrlKey } from "src/core/board/BoardUrlNormalizer";
 import { container } from "src/service-container/index";
 import type { IReadState, IThread } from "src/service-container/interfaces";
@@ -36,7 +36,9 @@ export function useThreadListReadStateSync({
   const { panes } = useTabPanes();
   const isForeground = isActive && ownPaneId === focusedPaneId;
   const isForegroundRef = useRef(isForeground);
-  isForegroundRef.current = isForeground;
+  useLayoutEffect(() => {
+    isForegroundRef.current = isForeground;
+  }, [isForeground]);
   const autoRefreshingThreadPageKeys = useMemo(() => {
     const pageKeys = new Set<string>();
 
@@ -55,7 +57,9 @@ export function useThreadListReadStateSync({
     return pageKeys;
   }, [panes]);
   const autoRefreshingThreadPageKeysRef = useRef(autoRefreshingThreadPageKeys);
-  autoRefreshingThreadPageKeysRef.current = autoRefreshingThreadPageKeys;
+  useLayoutEffect(() => {
+    autoRefreshingThreadPageKeysRef.current = autoRefreshingThreadPageKeys;
+  }, [autoRefreshingThreadPageKeys]);
   const pendingReadStateRef = useRef<{ updated: IReadState[]; removed: string[] }>({
     updated: [],
     removed: [],

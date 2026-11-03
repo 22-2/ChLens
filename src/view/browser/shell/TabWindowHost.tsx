@@ -1,4 +1,12 @@
-import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { createLogger } from "src/app/logger";
 import {
@@ -68,8 +76,9 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
   const theme = useTheme();
   const [windows, setWindows] = useState<Map<string, TabWindowEntry>>(() => new Map());
   const windowsRef = useRef(windows);
-  const closeDetachedTabRef = useRef<(tabId: string) => void>(() => {});
-  windowsRef.current = windows;
+  useLayoutEffect(() => {
+    windowsRef.current = windows;
+  }, [windows]);
 
   const removeWindow = useCallback((tabId: string, expectedWindow?: Window) => {
     const current = windowsRef.current;
@@ -236,7 +245,10 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
     },
     [dispatch, reattachTab, removeWindow, stateRef],
   );
-  closeDetachedTabRef.current = closeDetachedTab;
+  const closeDetachedTabRef = useRef(closeDetachedTab);
+  useLayoutEffect(() => {
+    closeDetachedTabRef.current = closeDetachedTab;
+  }, [closeDetachedTab]);
 
   const focusTabWindow = useCallback((tabId: string) => {
     const entry = windowsRef.current.get(tabId);

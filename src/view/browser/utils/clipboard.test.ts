@@ -113,9 +113,10 @@ describe("clipboard", () => {
         constructor(public readonly data: Record<string, Promise<Blob>>) {}
       },
     });
+    const toastSuccess = vi.fn();
     const toast: IToastService = {
       notify: vi.fn(),
-      success: vi.fn(),
+      success: toastSuccess,
       error: vi.fn(),
       info: vi.fn(),
     };
@@ -129,7 +130,7 @@ describe("clipboard", () => {
     expect(write).toHaveBeenCalledOnce();
     resolvePng?.(new Blob(["png"], { type: "image/png" }));
     await operation;
-    expect(toast.success).toHaveBeenCalledWith("画像をコピーしました");
+    expect(toastSuccess).toHaveBeenCalledWith("画像をコピーしました");
   });
 
   it("画像コピーの失敗時にtoastで知らせる", async () => {

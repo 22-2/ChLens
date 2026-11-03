@@ -97,8 +97,14 @@ export function useOwnResTracking({
     };
   }, [threadUrl]);
 
-  useEffect(() => {
+  // 別のスレへ移ったら未確定の書き込みを捨てる。描画中に行い、前のスレの判定を一度も使わないようにする。
+  const [pendingWriteThreadUrl, setPendingWriteThreadUrl] = useState(threadUrl);
+  if (pendingWriteThreadUrl !== threadUrl) {
+    setPendingWriteThreadUrl(threadUrl);
     setPendingWrite(null);
+  }
+
+  useEffect(() => {
     pendingWriteHistoryRef.current = null;
   }, [threadUrl]);
 

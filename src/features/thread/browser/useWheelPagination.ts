@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import {
@@ -46,7 +46,9 @@ export function useWheelPagination({
   const resetTimerRef = useRef<number | null>(null);
   const previousLoadingRef = useRef(isLoading);
   const onRefreshRef = useRef(onRefresh);
-  onRefreshRef.current = onRefresh;
+  useLayoutEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
   const manualRefreshCoolingDown = useManualRefreshCooldown(cooldownScopeKey);
 
   const reset = useCallback(() => {

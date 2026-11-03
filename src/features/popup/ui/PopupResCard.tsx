@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { extractUrlsFromMessage } from "src/core/util/url-media";
 import { useImgurAlbumMedia } from "src/features/media/application/imgur-album";
 import { ResMediaGallery } from "src/features/media/ui/ResMediaGallery";
@@ -86,12 +86,11 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     const [isNgRevealed, setIsNgRevealed] = useState(false);
     const canRevealNg =
       ngDisplayMode === "soft-ng" || (ngDisplayMode === "hard-ng" && allowHardNgReveal);
-    useEffect(() => {
-      if (!canRevealNg && isNgRevealed) {
-        // 表示方式の変更後に以前の一時表示を引き継がず、各方式のNG方針を保つ。
-        setIsNgRevealed(false);
-      }
-    }, [canRevealNg, isNgRevealed]);
+    // 表示方式の変更後に以前の一時表示を引き継がず、各方式のNG方針を保つ。
+    // 描画中に state を直すのは、effect で直すと一度古い表示が描かれるため。条件が偽になるので再描画は一度で終わる。
+    if (!canRevealNg && isNgRevealed) {
+      setIsNgRevealed(false);
+    }
     if (isNgActive && ngDisplayMode === "hard-ng" && !allowHardNgReveal) {
       // 通常レスと同じhard-ngを適用し、ポップアップだけから本文を覗けないようにする。
       return null;

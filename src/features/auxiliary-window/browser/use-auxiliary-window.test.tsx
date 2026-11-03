@@ -56,15 +56,20 @@ function createReloadablePopup(): {
   };
 }
 
-function createPopup(): Window {
-  return {
+// 変更理由: Window の focus・close をメソッドとして参照すると unbound-method に当たるため、
+// 検証用のモックを変数として返し、呼び出しの確認はそれに対して行う。
+function createPopup() {
+  const focus = vi.fn();
+  const close = vi.fn();
+  const popup = {
     document: document.implementation.createHTMLDocument(),
     closed: false,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
-    focus: vi.fn(),
-    close: vi.fn(),
+    focus,
+    close,
   } as unknown as Window;
+  return { popup, focus, close };
 }
 
 const Probe: React.FC = () => {
@@ -97,7 +102,7 @@ describe("useAuxiliaryWindow", () => {
   });
 
   it("別窓の表示基盤を作成し、同じ窓を再利用する", () => {
-    const popup = createPopup();
+    const { popup, focus } = createPopup();
     mocks.openPopup.mockReturnValue(popup);
     render(<Probe />);
 
@@ -113,13 +118,13 @@ describe("useAuxiliaryWindow", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "別窓を開く" }));
     expect(mocks.openPopup).toHaveBeenCalledTimes(1);
-    expect(popup.focus).toHaveBeenCalledTimes(2);
+    expect(focus).toHaveBeenCalledTimes(2);
     expect(mocks.focusPopup).toHaveBeenCalledTimes(1);
     expect(mocks.focusPopup).toHaveBeenLastCalledWith(popup);
   });
 
   it("閉じる操作で表示状態と別窓を解放する", () => {
-    const popup = createPopup();
+    const { popup, close } = createPopup();
     mocks.openPopup.mockReturnValue(popup);
     render(<Probe />);
 
@@ -127,7 +132,7 @@ describe("useAuxiliaryWindow", () => {
     fireEvent.click(screen.getByRole("button", { name: "別窓を閉じる" }));
 
     expect(screen.getByTestId("open")).toHaveTextContent("false");
-    expect(popup.close).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
   });
 
   it("別窓を再読み込みしても閉じたと扱わず、表示基盤を作り直す", () => {
@@ -163,8 +168,8 @@ describe("useAuxiliaryWindow", () => {
   });
 
   it("呼び出し元のWindowを使ってポップアップを開く", () => {
-    const sourceWindow = createPopup();
-    const popup = createPopup();
+    const { popup: sourceWindow } = createPopup();
+    const { popup } = createPopup();
     mocks.openPopup.mockReturnValue(popup);
 
     const handle = openAuxiliaryWindow(OPTIONS, sourceWindow);

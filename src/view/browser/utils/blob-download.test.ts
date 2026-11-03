@@ -4,17 +4,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 describe("Blobのダウンロード", () => {
   let originalCreateObjectURL: PropertyDescriptor | undefined;
   let originalRevokeObjectURL: PropertyDescriptor | undefined;
+  // 変更理由: URL のメソッドを直接参照すると unbound-method に当たるため、モックを変数に持って検証する。
+  let createObjectURL = vi.fn(() => "blob:download-test");
+  let revokeObjectURL = vi.fn();
 
   beforeEach(() => {
     originalCreateObjectURL = Object.getOwnPropertyDescriptor(URL, "createObjectURL");
     originalRevokeObjectURL = Object.getOwnPropertyDescriptor(URL, "revokeObjectURL");
+    createObjectURL = vi.fn(() => "blob:download-test");
+    revokeObjectURL = vi.fn();
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
-      value: vi.fn(() => "blob:download-test"),
+      value: createObjectURL,
     });
     Object.defineProperty(URL, "revokeObjectURL", {
       configurable: true,
-      value: vi.fn(),
+      value: revokeObjectURL,
     });
   });
 
@@ -34,8 +39,6 @@ describe("Blobのダウンロード", () => {
 
   it("指定名で保存し、一時URLを解放する", () => {
     const blob = new Blob(["content"], { type: "text/plain" });
-    const createObjectURL = vi.mocked(URL.createObjectURL);
-    const revokeObjectURL = vi.mocked(URL.revokeObjectURL);
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, "click")
       .mockImplementation(() => undefined);
@@ -53,7 +56,6 @@ describe("Blobのダウンロード", () => {
 
   it("クリックに失敗しても一時URLを解放する", () => {
     const error = new Error("download failed");
-    const revokeObjectURL = vi.mocked(URL.revokeObjectURL);
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click");
     click.mockImplementation(() => {
       throw error;

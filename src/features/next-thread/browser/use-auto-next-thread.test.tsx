@@ -452,12 +452,15 @@ describe("useAutoNextThread", () => {
     const onFollowThread = vi.fn();
     const onSearchExhausted = vi.fn();
     const props = { responseCount: 600, onFollowThread, onSearchExhausted };
+    // 変更理由: getThreads を IBoard のメソッドとして参照すると unbound-method に当たるため、モックを変数に持つ。
+    const boardGetThreads = vi.fn().mockResolvedValue({ threads: [], message: null });
+    container.board = { getThreads: boardGetThreads, getCachedResCount: vi.fn() };
     const view = render(<AutoNextThreadHarness {...props} />);
     await act(async () => vi.advanceTimersByTimeAsync(30_000));
-    expect(container.board.getThreads).not.toHaveBeenCalled();
+    expect(boardGetThreads).not.toHaveBeenCalled();
     view.rerender(<AutoNextThreadHarness {...props} expired />);
     await flushPromises();
-    expect(container.board.getThreads).toHaveBeenCalledOnce();
+    expect(boardGetThreads).toHaveBeenCalledOnce();
     await act(async () => vi.advanceTimersByTimeAsync(179_999));
     expect(onSearchExhausted).not.toHaveBeenCalled();
     await act(async () => vi.advanceTimersByTimeAsync(1));

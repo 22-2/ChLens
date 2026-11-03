@@ -19,14 +19,15 @@ type DnrRule = browser.DeclarativeNetRequest.Rule;
 type DnrApi = NonNullable<(typeof browser)["declarativeNetRequest"]>;
 
 async function getSessionRules(dnr: DnrApi): Promise<DnrRule[]> {
-  const getSessionRulesFn = dnr.getSessionRules;
+  // 変更理由: メソッドを this なしで取り出すと unbound-method になるため、dnr に束縛してから呼び出す。
+  const getSessionRulesFn = dnr.getSessionRules.bind(dnr);
 
   if (getSessionRulesFn.length === 0) {
-    return await (getSessionRulesFn as () => Promise<DnrRule[]>).call(dnr);
+    return await (getSessionRulesFn as () => Promise<DnrRule[]>)();
   }
 
   return await new Promise((resolve) => {
-    (getSessionRulesFn as (callback: (rules: DnrRule[]) => void) => void).call(dnr, (rules) =>
+    (getSessionRulesFn as (callback: (rules: DnrRule[]) => void) => void)((rules) =>
       resolve(rules),
     );
   });

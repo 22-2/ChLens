@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, PanelRight, RotateCw, Search } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { createLogger } from "src/app/logger";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { TabContextMenu } from "src/features/tabs/ui/TabContextMenu";
@@ -60,11 +60,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   const refreshCoolingDown = useManualRefreshCooldown(manualRefreshScopeKey);
   const [menuPosition, setMenuPosition] = useState<TitleBarMenuPosition | null>(null);
   const [refreshMenuPosition, setRefreshMenuPosition] = useState<TitleBarMenuPosition | null>(null);
+  // 変更理由: 相対時刻の基準は描画中に Date.now() で決めず、メニューを開く操作の中で記録する。
+  const [refreshMenuOpenedAt, setRefreshMenuOpenedAt] = useState(0);
   const [threadListSnapshots, setThreadListSnapshots] = useState<ThreadListSnapshot[]>([]);
   const boardUrl = viewPage.type === "threadList" ? viewPage.boardUrl : null;
   const selectedSnapshot = useSelectedThreadListSnapshot(viewTab.id);
-  // 変更理由: 相対時刻の基準をメニューを開いた時点に固定し、開くたびに経過時間を計算し直す。
-  const refreshMenuOpenedAt = useMemo(() => Date.now(), [refreshMenuPosition]);
   const refreshDisabled = !canRefresh || refreshCoolingDown;
 
   useEffect(() => {
@@ -104,6 +104,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       // 変更理由: スナップショット復元の入口を、通常の更新と同じタイトルバー上に揃える。
       setMenuPosition(null);
       setThreadListSnapshots([]);
+      setRefreshMenuOpenedAt(Date.now());
       setRefreshMenuPosition({ x: event.clientX, y: event.clientY });
     },
     [boardUrl],

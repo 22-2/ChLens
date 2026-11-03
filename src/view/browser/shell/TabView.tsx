@@ -68,11 +68,10 @@ export const TabPanel = memo(function TabPanel({
   // 初回表示（アクティブ化）されるまでDOMのマウントおよびレンダリングを遅延させる。
   const [hasRendered, setHasRendered] = useState(isActive);
 
-  useEffect(() => {
-    if (isActive && !hasRendered) {
-      setHasRendered(true);
-    }
-  }, [isActive, hasRendered]);
+  // 一度表示したら描画済みのまま残すため、アクティブ化は描画中に記録する。
+  if (isActive && !hasRendered) {
+    setHasRendered(true);
+  }
 
   if (!hasRendered && !isActive) {
     return null;

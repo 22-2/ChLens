@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getStore2String, setStore2String } from "src/app/Store2Storage";
 import type { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
@@ -131,21 +131,25 @@ export function useColumnVisibility<TRow>(
     [columns, normalizedHiddenColumnKeys],
   );
 
-  const toggleColumnVisibility = (columnKey: string): void => {
-    if (lockedColumnKeySet.has(columnKey) || !options?.storageKey) {
-      return;
-    }
-
-    setHiddenColumnKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(columnKey)) {
-        next.delete(columnKey);
-      } else {
-        next.add(columnKey);
+  // 変更理由: メニュー項目の useMemo の依存に入れるため、描画のたびに作り直さないよう useCallback で固定する。
+  const toggleColumnVisibility = useCallback(
+    (columnKey: string): void => {
+      if (lockedColumnKeySet.has(columnKey) || !options?.storageKey) {
+        return;
       }
-      return clampHiddenColumnKeys(next, columns, lockedColumnKeySet);
-    });
-  };
+
+      setHiddenColumnKeys((prev) => {
+        const next = new Set(prev);
+        if (next.has(columnKey)) {
+          next.delete(columnKey);
+        } else {
+          next.add(columnKey);
+        }
+        return clampHiddenColumnKeys(next, columns, lockedColumnKeySet);
+      });
+    },
+    [columns, lockedColumnKeySet, options?.storageKey],
+  );
 
   const columnVisibilityMenuItems = useMemo(
     () =>
@@ -168,7 +172,7 @@ export function useColumnVisibility<TRow>(
           onSelect: () => toggleColumnVisibility(column.key),
         } satisfies ContextMenuItem;
       }),
-    [columns, lockedColumnKeySet, normalizedHiddenColumnKeys],
+    [columns, lockedColumnKeySet, normalizedHiddenColumnKeys, toggleColumnVisibility],
   );
 
   const openHeaderContextMenu = (x: number, y: number): void => {
