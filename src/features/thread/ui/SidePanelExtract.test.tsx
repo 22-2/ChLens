@@ -162,6 +162,7 @@ describe("抽出レス", () => {
     });
     render(<SidePanelExtract tabId="tab" page={page} />);
     expect(screen.getByText("スレッドの情報を取得できません。")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    // 検索条件の切り替えボタンは出るため、レスの操作（返信の一覧）が無いことだけを確かめる。
+    expect(screen.queryByRole("button", { name: /返信/ })).not.toBeInTheDocument();
   });
 });

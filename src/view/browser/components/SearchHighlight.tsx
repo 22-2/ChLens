@@ -1,14 +1,17 @@
 import React from "react";
 import { findSearchMatchRanges } from "src/view/browser/utils/search-highlight";
+import type { SearchOptions } from "src/view/browser/utils/search-normalize";
 
 interface Props {
   text: string;
   query: string;
+  /** 一覧の絞り込みと同じ条件にそろえる。省略すると従来どおりすべて区別しない。 */
+  options?: SearchOptions;
 }
 
 /** スレ内フィルタと同じ一致範囲・スタイルで、一覧のテキスト検索を強調する。 */
-export function SearchHighlight({ text, query }: Props): React.ReactElement | string {
-  const ranges = findSearchMatchRanges(text, query.trim());
+export function SearchHighlight({ text, query, options }: Props): React.ReactElement | string {
+  const ranges = findSearchMatchRanges(text, query.trim(), options);
   if (ranges.length === 0) return text;
 
   const content: React.ReactNode[] = [];

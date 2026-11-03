@@ -1,0 +1,28 @@
+/* 検索欄の右端に並べる、検索条件の切り替えボタン。 */
+.search-option-toggles {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--sys-space-1);
+}
+
+/* 色と押下状態は共通の .icon-button に任せ、ここでは大きさだけ決める。 */
+.search-option-toggles__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sys-radius-sm);
+  cursor: pointer;
+}
+
+/* 正規表現が不正なとき、入力欄の枠でそれを示す。 */
+.search-bar__input[aria-invalid="true"],
+.thread-find-bar__input[aria-invalid="true"],
+.thread-page__toolbar-search-input[aria-invalid="true"],
+.side-panel__search-row [aria-invalid="true"] {
+  border-color: var(--sys-color-error);
+}

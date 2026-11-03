@@ -10,6 +10,11 @@ import {
 } from "src/features/thread/domain/thread-find";
 import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import {
+  compileSearch,
+  DEFAULT_SEARCH_OPTIONS,
+  type SearchOptions,
+} from "src/view/browser/utils/search-normalize";
 
 interface UseThreadFindParams {
   isActive: boolean;
@@ -28,6 +33,9 @@ export interface UseThreadFindResult {
   /** レスの強調に使う検索語（前後の空白を除いたもの）。閉じているときは空。 */
   highlightQuery: string;
   setQuery: (query: string) => void;
+  /** 大文字小文字・かな・正規表現の条件。検索語と同じく開いている間だけ有効。 */
+  options: SearchOptions;
+  setOptions: (options: SearchOptions) => void;
   total: number;
   /** 0始まり。一致がなければ -1。 */
   activeIndex: number;
@@ -59,12 +67,17 @@ export function useThreadFind({
   const { window: viewWindow } = useViewSurface();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQueryState] = useState("");
+  const [options, setOptions] = useState<SearchOptions>(DEFAULT_SEARCH_OPTIONS);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [focusKey, setFocusKey] = useState(0);
   // 打鍵ごとに全レスを探すと入力が重くなるため、探す処理は入力より後回しにしてよい。
   const deferredQuery = useDeferredValue(isOpen ? query.trim() : "");
-  const index = useMemo(() => buildThreadFindIndex(responses), [responses]);
-  const matches = useMemo(() => findThreadMatches(index, deferredQuery), [deferredQuery, index]);
+  const index = useMemo(() => buildThreadFindIndex(responses, options), [options, responses]);
+  const matcher = useMemo(
+    () => compileSearch(deferredQuery, options).matcher,
+    [deferredQuery, options],
+  );
+  const matches = useMemo(() => findThreadMatches(index, matcher), [index, matcher]);
   const activeMatch = activeIndex >= 0 ? (matches[activeIndex] ?? null) : null;
 
   const revealMatch = useCallback(
@@ -91,11 +104,11 @@ export function useThreadFind({
   // 検索語が変わったら、いま見ているレス以降の最初の一致を選ぶ（読んでいる位置から飛ばさない）。
   const getTopVisibleResNumRef = useLatestRef(getTopVisibleResNum);
   const revealMatchRef = useLatestRef(revealMatch);
-  const lastSearchedRef = useRef<{ query: string; index: typeof index } | null>(null);
+  const lastSearchedRef = useRef<{ matcher: typeof matcher; index: typeof index } | null>(null);
   useEffect(() => {
     const previous = lastSearchedRef.current;
-    lastSearchedRef.current = { query: deferredQuery, index };
-    if (previous?.query === deferredQuery) {
+    lastSearchedRef.current = { matcher, index };
+    if (previous?.matcher === matcher) {
       // 新着などで並びだけが変わったときは、選んでいた一致の位置を保つ。
       setActiveIndex((current) => Math.min(current, matches.length - 1));
       return;
@@ -103,7 +116,7 @@ export function useThreadFind({
     const start = findStartIndex(matches, getTopVisibleResNumRef.current() ?? 0);
     setActiveIndex(start);
     revealMatchRef.current(matches[start] ?? null);
-  }, [deferredQuery, getTopVisibleResNumRef, index, matches, revealMatchRef]);
+  }, [getTopVisibleResNumRef, index, matcher, matches, revealMatchRef]);
 
   const step = useCallback(
     (direction: 1 | -1) => {
@@ -153,6 +166,8 @@ export function useThreadFind({
     query,
     highlightQuery: isOpen ? query.trim() : "",
     setQuery,
+    options,
+    setOptions,
     total: matches.length,
     activeIndex,
     activeMatch,

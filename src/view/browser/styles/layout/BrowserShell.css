@@ -177,6 +177,17 @@
 .side-panel__content {
   padding: var(--sys-space-3);
 }
+/* 抽出欄と、その右端の検索条件の切り替えを一行に並べる。 */
+.side-panel__search-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+}
+.side-panel__search-row .side-panel__search {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
 .side-panel__search {
   width: 100%;
   color: var(--sys-color-text);

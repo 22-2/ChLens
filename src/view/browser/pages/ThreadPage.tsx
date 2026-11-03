@@ -171,6 +171,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setSearchTarget,
     searchQuery,
     setSearchQuery,
+    searchOptions,
+    setSearchOptions,
     fetchThread,
     idPositions,
     setResponses,
@@ -794,6 +796,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         miniAa={res.isAA === true || miniAaResNums.has(res.num)}
         messageProtocol={messageProtocol}
         searchQuery={searchQuery}
+        searchOptions={searchOptions}
         searchTarget={searchTarget}
         onIdClick={handleIdClick}
         onRepClick={handleRepClick}
@@ -813,6 +816,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         ngRevealed={revealedNgResNums.has(res.num)}
         onNgRevealedChange={handleNgRevealedChange}
         findQuery={find.highlightQuery}
+        findOptions={find.options}
         findActiveField={find.activeMatch?.resNum === res.num ? find.activeMatch.field : undefined}
         findActiveOccurrence={
           find.activeMatch?.resNum === res.num ? find.activeMatch.occurrence : undefined
@@ -870,18 +874,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
       ) : (
         <>
           <div className="thread-page__sticky-header">
-            {find.isOpen ? (
-              <ThreadFindBar
-                query={find.query}
-                total={find.total}
-                activeIndex={find.activeIndex}
-                focusKey={find.focusKey}
-                onQueryChange={find.setQuery}
-                onNext={find.next}
-                onPrevious={find.previous}
-                onClose={find.close}
-              />
-            ) : null}
+            {find.isOpen ? <ThreadFindBar find={find} /> : null}
             <ThreadPageTopBar
               activeTopBar={activeTopBar}
               filter={filter}
@@ -893,6 +886,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
               searchFocusKey={searchFocusKey}
               suppressInitialFocus={suppressInitialFocus}
               searchQuery={searchQuery}
+              searchOptions={searchOptions}
+              onSearchOptionsChange={setSearchOptions}
               searchTarget={searchTarget}
             />
 

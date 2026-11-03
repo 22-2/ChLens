@@ -43,6 +43,10 @@ import {
 } from "src/view/browser/utils/manual-refresh";
 import { normalizePopularReplyThreshold } from "src/view/browser/utils/popular-filter";
 import {
+  DEFAULT_SEARCH_OPTIONS,
+  type SearchOptions,
+} from "src/view/browser/utils/search-normalize";
+import {
   getThreadResponseCache,
   setThreadResponseCache,
 } from "src/view/browser/utils/thread-data-cache";
@@ -81,6 +85,8 @@ interface ThreadData {
   setSearchTarget: Dispatch<SetStateAction<ThreadSearchTarget>>;
   searchQuery: string;
   setSearchQuery: Dispatch<SetStateAction<string>>;
+  searchOptions: SearchOptions;
+  setSearchOptions: Dispatch<SetStateAction<SearchOptions>>;
   showSearch: boolean;
   setShowSearch: Dispatch<SetStateAction<boolean>>;
   fetchThread: (forceUpdate?: boolean, options?: FetchThreadOptions) => Promise<void>;
@@ -144,6 +150,10 @@ export function useThreadData(
       : "body";
   });
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
+  const [searchOptions, setSearchOptions] = useState<SearchOptions>(() => ({
+    ...DEFAULT_SEARCH_OPTIONS,
+    ...persistedViewState.searchOptions,
+  }));
   const [showSearch, setShowSearch] = useState(false);
   const titleUpdatedRef = useRef(false);
   const fetchedThreadUrlRef = useRef(page.threadUrl);
@@ -152,10 +162,11 @@ export function useThreadData(
     updateViewState({
       filter,
       searchQuery,
+      searchOptions,
       searchTarget,
       searchTargetDefaultMigrated: true,
     });
-  }, [filter, searchQuery, searchTarget, updateViewState]);
+  }, [filter, searchOptions, searchQuery, searchTarget, updateViewState]);
 
   const setResponses = useCallback<Dispatch<SetStateAction<IRes[]>>>(
     (nextResponses) => {
@@ -444,6 +455,7 @@ export function useThreadData(
         filter,
         popularReplyThreshold,
         searchQuery,
+        searchOptions,
         searchTarget,
         isNgTemporarilyDisabled,
         ngDisplayMode,
@@ -454,6 +466,7 @@ export function useThreadData(
       ngDisplayMode,
       popularReplyThreshold,
       responses,
+      searchOptions,
       searchQuery,
       searchTarget,
     ],
@@ -478,6 +491,8 @@ export function useThreadData(
     setSearchTarget,
     searchQuery,
     setSearchQuery,
+    searchOptions,
+    setSearchOptions,
     showSearch,
     setShowSearch,
     fetchThread,

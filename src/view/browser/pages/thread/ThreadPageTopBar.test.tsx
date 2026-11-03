@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
+import { DEFAULT_SEARCH_OPTIONS } from "src/view/browser/utils/search-normalize";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const COUNTS = { popular: 2, image: 3, video: 0, link: 9 };
@@ -28,6 +29,8 @@ describe("ThreadPageTopBar", () => {
         onSearchQueryChange={vi.fn()}
         searchFocusKey={0}
         searchQuery=""
+        searchOptions={DEFAULT_SEARCH_OPTIONS}
+        onSearchOptionsChange={vi.fn()}
         searchTarget="all"
       />,
     );
@@ -55,6 +58,8 @@ describe("ThreadPageTopBar", () => {
         searchFocusKey={0}
         suppressInitialFocus
         searchQuery=""
+        searchOptions={DEFAULT_SEARCH_OPTIONS}
+        onSearchOptionsChange={vi.fn()}
         searchTarget="all"
       />,
     );
@@ -75,6 +80,8 @@ describe("ThreadPageTopBar", () => {
         onSearchQueryChange={vi.fn()}
         searchFocusKey={0}
         searchQuery=""
+        searchOptions={DEFAULT_SEARCH_OPTIONS}
+        onSearchOptionsChange={vi.fn()}
         searchTarget="all"
       />,
     );
@@ -109,6 +116,8 @@ describe("ThreadPageTopBar", () => {
         onSearchQueryChange={vi.fn()}
         searchFocusKey={0}
         searchQuery=""
+        searchOptions={DEFAULT_SEARCH_OPTIONS}
+        onSearchOptionsChange={vi.fn()}
         searchTarget="all"
       />,
     );
@@ -135,6 +144,8 @@ describe("ThreadPageTopBar", () => {
         onSearchQueryChange={onSearchQueryChange}
         searchFocusKey={0}
         searchQuery="abc"
+        searchOptions={DEFAULT_SEARCH_OPTIONS}
+        onSearchOptionsChange={vi.fn()}
         searchTarget="all"
       />,
     );
@@ -159,6 +170,8 @@ describe("ThreadPageTopBar", () => {
         onSearchQueryChange={onSearchQueryChange}
         searchFocusKey={0}
         searchQuery=""
+        searchOptions={DEFAULT_SEARCH_OPTIONS}
+        onSearchOptionsChange={vi.fn()}
         searchTarget="all"
       />,
     );
@@ -182,6 +195,8 @@ describe("ThreadPageTopBar", () => {
         onSearchQueryChange={vi.fn()}
         searchFocusKey={0}
         searchQuery=""
+        searchOptions={DEFAULT_SEARCH_OPTIONS}
+        onSearchOptionsChange={vi.fn()}
         searchTarget="all"
       />,
     );
@@ -208,6 +223,8 @@ describe("ThreadPageTopBar", () => {
         onSearchQueryChange={vi.fn()}
         searchFocusKey={0}
         searchQuery=""
+        searchOptions={DEFAULT_SEARCH_OPTIONS}
+        onSearchOptionsChange={vi.fn()}
         searchTarget="all"
       />,
     );

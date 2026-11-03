@@ -24,6 +24,7 @@ import {
   findSearchMatchRanges,
   highlightSearchMatches,
 } from "src/view/browser/utils/search-highlight";
+import type { SearchOptions } from "src/view/browser/utils/search-normalize";
 
 const SEARCH_MATCH_CLASS = "res__search-match";
 const FIND_MATCH_CLASS = "res__find-match";
@@ -34,8 +35,9 @@ function renderHighlightedText(
   searchQuery: string,
   className = SEARCH_MATCH_CLASS,
   activeIndex = -1,
+  searchOptions?: SearchOptions,
 ): React.ReactNode {
-  const ranges = findSearchMatchRanges(text, searchQuery);
+  const ranges = findSearchMatchRanges(text, searchQuery, searchOptions);
   if (ranges.length === 0) {
     return text;
   }
@@ -92,12 +94,14 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     resMap,
     threadUrl,
     searchQuery = "",
+    searchOptions,
     searchTarget = "all",
     animateEntry = false,
     onEntryDisplayed,
     ngRevealed,
     onNgRevealedChange,
     findQuery = "",
+    findOptions,
     findActiveField,
     findActiveOccurrence = -1,
   }) => {
@@ -146,19 +150,22 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     const highlightedNameHtml = useMemo(() => {
       const searched =
         searchTarget === "all" || searchTarget === "name"
-          ? highlightSearchMatches(decoded.nameHtml, searchQuery)
+          ? highlightSearchMatches(decoded.nameHtml, searchQuery, { searchOptions })
           : decoded.nameHtml;
       // ページ内検索の一致は検索フィルタの強調に重ねて付け、どちらの一致も見えるようにする。
       return highlightSearchMatches(searched, findQuery, {
         className: FIND_MATCH_CLASS,
         activeIndex: findActiveField === "name" ? findActiveOccurrence : -1,
         activeClassName: FIND_CURRENT_CLASS,
+        searchOptions: findOptions,
       });
     }, [
       decoded.nameHtml,
       findActiveField,
       findActiveOccurrence,
+      findOptions,
       findQuery,
+      searchOptions,
       searchQuery,
       searchTarget,
     ]);
@@ -284,10 +291,14 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                     findQuery,
                     FIND_MATCH_CLASS,
                     findActiveField === "id" ? findActiveOccurrence : -1,
+                    findOptions,
                   )
                 : renderHighlightedText(
                     res.id,
                     searchTarget === "all" || searchTarget === "id" ? searchQuery : "",
+                    undefined,
+                    undefined,
+                    searchOptions,
                   )}
               {idCount >= 2 && `(${idPos}/${idCount})`}
             </span>
@@ -316,8 +327,10 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           imageUrls={onToggleImage ? imageUrls : undefined}
           onSaveImage={onToggleImage ? saveImage : undefined}
           searchQuery={searchQuery}
+          searchOptions={searchOptions}
           searchTarget={searchTarget}
           findQuery={findQuery}
+          findOptions={findOptions}
           findActiveOccurrence={findActiveField === "body" ? findActiveOccurrence : -1}
           anchorPreviewDepth={0}
           ngResNums={ngResNums}
@@ -385,9 +398,11 @@ export interface ResItemProps {
   /** アルバムAPIの失敗抑止をスレッド単位で分離するためのキー */
   threadUrl?: string;
   searchQuery?: string;
+  searchOptions?: SearchOptions;
   searchTarget?: ThreadSearchTarget;
   /** ページ内検索（Ctrl+F）の検索語。一致箇所を検索フィルタとは別の色で強調する。 */
   findQuery?: string;
+  findOptions?: SearchOptions;
   /** 現在の一致がこのレスにあるとき、その欄と欄の中で何番目の一致か。 */
   findActiveField?: ThreadFindField;
   findActiveOccurrence?: number;

@@ -1,6 +1,11 @@
 import React, { useEffect, useRef } from "react";
+import {
+  getSearchError,
+  SearchOptionToggles,
+} from "src/view/browser/components/SearchOptionToggles";
 import type { TopBarMode } from "src/view/browser/pages/thread/use-thread-top-bar";
 import type { ThreadFilter, ThreadSearchTarget } from "src/view/browser/types";
+import type { SearchOptions } from "src/view/browser/utils/search-normalize";
 import type { ThreadFilterCounts } from "src/view/browser/utils/thread-data-derived";
 
 interface ThreadPageTopBarProps {
@@ -11,9 +16,11 @@ interface ThreadPageTopBarProps {
   onFilterChange: (filter: ThreadFilter) => void;
   onSearchTargetChange: (searchTarget: ThreadSearchTarget) => void;
   onSearchQueryChange: (query: string) => void;
+  onSearchOptionsChange: (options: SearchOptions) => void;
   searchFocusKey: number;
   suppressInitialFocus?: boolean;
   searchQuery: string;
+  searchOptions: SearchOptions;
   searchTarget: ThreadSearchTarget;
 }
 
@@ -40,12 +47,15 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
   onFilterChange,
   onSearchTargetChange,
   onSearchQueryChange,
+  onSearchOptionsChange,
   searchFocusKey,
   suppressInitialFocus = false,
   searchQuery,
+  searchOptions,
   searchTarget,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchError = getSearchError(searchQuery, searchOptions);
 
   useEffect(() => {
     if (activeTopBar === "none" || suppressInitialFocus) {
@@ -106,6 +116,8 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
           type="text"
           className="thread-page__toolbar-search-input"
           placeholder="フィルタする文字を入力"
+          aria-invalid={searchError ? true : undefined}
+          title={searchError ?? undefined}
           value={searchQuery}
           onChange={(event) => onSearchQueryChange(event.target.value)}
           onKeyDown={(event) => {
@@ -121,6 +133,7 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
             onClose();
           }}
         />
+        <SearchOptionToggles options={searchOptions} onChange={onSearchOptionsChange} />
       </div>
     </div>
   );

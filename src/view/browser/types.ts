@@ -1,3 +1,5 @@
+import type { SearchOptions } from "src/view/browser/utils/search-normalize";
+
 // ページ種別の定義
 // すべてのタブがホームを起点とし、同じタブでスレ一覧・スレッドへ移動する。
 export type PageType =
@@ -125,7 +127,10 @@ export interface TabViewState {
   settingsPage?: SettingsPageUiState;
   boardListOpenStates?: Record<string, boolean>;
   sidePanelExtractQuery?: string;
+  // 検索欄の右端で切り替える条件（大文字小文字・かな・正規表現）。検索語と同じ単位で復元する。
+  sidePanelExtractOptions?: Partial<SearchOptions>;
   searchQuery?: string;
+  searchOptions?: Partial<SearchOptions>;
   filter?: ThreadFilter;
   // 人気フィルタの判定条件もフィルタ状態と同じスレッド単位で復元する。
   popularReplyThreshold?: number;

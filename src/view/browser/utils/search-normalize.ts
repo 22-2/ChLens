@@ -25,25 +25,166 @@ export function splitSearchUnits(text: string): string[] {
   return units;
 }
 
-/** 正規化の単位1つを、比較用の文字列へ変える。結果は1文字とは限らない（「㍻」は「平成」）。 */
-export function normalizeSearchUnit(unit: string): string {
-  return unit
-    .normalize("NFKC")
-    .toLowerCase()
-    .replace(/[ァ-ヶ]/gu, (kana) => {
-      const code = kana.charCodeAt(0);
-      return code >= KATAKANA_START && code <= KATAKANA_END
-        ? String.fromCharCode(code - KANA_SHIFT)
-        : kana;
-    });
+/** 利用者が切り替えられる検索の条件。既定は従来どおり、すべてを区別しない部分一致。 */
+export interface SearchOptions {
+  /** true なら大文字・小文字を区別する。 */
+  caseSensitive: boolean;
+  /** true ならひらがな・カタカナを区別する。 */
+  kanaSensitive: boolean;
+  /** true なら検索語を正規表現として扱う。 */
+  regex: boolean;
 }
 
-export function normalizeSearchText(text: string): string {
-  return splitSearchUnits(text).map(normalizeSearchUnit).join("");
+export const DEFAULT_SEARCH_OPTIONS: SearchOptions = {
+  caseSensitive: false,
+  kanaSensitive: false,
+  regex: false,
+};
+
+/** 正規化で何を同一視するか。全角・半角（NFKC）は常に同一視する。 */
+export interface SearchFold {
+  case: boolean;
+  kana: boolean;
+}
+
+const DEFAULT_FOLD: SearchFold = { case: true, kana: true };
+
+/**
+ * 検索条件から、文字列の正規化で同一視するものを決める。
+ * 正規表現のときは検索語の意味（`\D` など）を保つため、大文字・小文字は `i` フラグ側で区別する。
+ * 索引を先に作る側（ページ内検索）も同じ規則で正規化できるよう公開している。
+ */
+export function searchFoldOf(options: SearchOptions): SearchFold {
+  return { case: !options.caseSensitive && !options.regex, kana: !options.kanaSensitive };
+}
+
+/** カタカナをひらがなにそろえる。正規表現の検索語にも、記号を壊さないようこれだけを掛ける。 */
+export function foldKatakana(text: string): string {
+  return text.replace(/[ァ-ヶ]/gu, (kana) => {
+    const code = kana.charCodeAt(0);
+    return code >= KATAKANA_START && code <= KATAKANA_END
+      ? String.fromCharCode(code - KANA_SHIFT)
+      : kana;
+  });
+}
+
+/** 正規化の単位1つを、比較用の文字列へ変える。結果は1文字とは限らない（「㍻」は「平成」）。 */
+export function normalizeSearchUnit(unit: string, fold: SearchFold = DEFAULT_FOLD): string {
+  const normalized = unit.normalize("NFKC");
+  const cased = fold.case ? normalized.toLowerCase() : normalized;
+  return fold.kana ? foldKatakana(cased) : cased;
+}
+
+export function normalizeSearchText(text: string, fold: SearchFold = DEFAULT_FOLD): string {
+  return splitSearchUnits(text)
+    .map((unit) => normalizeSearchUnit(unit, fold))
+    .join("");
+}
+
+/** 正規化済みの文字列の中の一致範囲（[start, end)）。 */
+export interface SearchMatchRange {
+  start: number;
+  end: number;
+}
+
+/**
+ * 検索語を条件に沿って組み立てた判定器。
+ * 文字列は先に `normalize` で比較用へ変え、その上で `find` を呼ぶ。索引を先に作っておけるよう
+ * 正規化と一致探しを分けている。
+ */
+export interface SearchMatcher {
+  fold: SearchFold;
+  normalize: (text: string) => string;
+  /** 正規化済みの文字列から、重ならない一致を前から順に返す。 */
+  find: (normalized: string) => SearchMatchRange[];
+}
+
+export interface CompiledSearch {
+  /** 検索語が空のときは null（絞り込まない）。正規表現が不正なときも null。 */
+  matcher: SearchMatcher | null;
+  /** 正規表現が不正なときの理由。画面の入力欄に不正を示すために使う。 */
+  error: string | null;
+}
+
+const EMPTY_SEARCH: CompiledSearch = { matcher: null, error: null };
+
+function findLiteral(normalized: string, needle: string): SearchMatchRange[] {
+  const ranges: SearchMatchRange[] = [];
+  for (
+    let start = normalized.indexOf(needle);
+    start >= 0;
+    start = normalized.indexOf(needle, start + needle.length)
+  ) {
+    ranges.push({ start, end: start + needle.length });
+  }
+  return ranges;
+}
+
+function findRegex(normalized: string, pattern: RegExp): SearchMatchRange[] {
+  const ranges: SearchMatchRange[] = [];
+  // 空文字への一致（`a*` など）は強調も件数も意味がないため除く。
+  for (const match of normalized.matchAll(pattern)) {
+    if (match[0].length > 0) {
+      ranges.push({ start: match.index, end: match.index + match[0].length });
+    }
+  }
+  return ranges;
+}
+
+/**
+ * 検索語を判定器にする。前後の空白の扱いは呼び出し側が決める（従来どおり trim してから渡す）。
+ *
+ * 正規表現の検索語へは、記号の意味を壊さないようカタカナ→ひらがなだけを掛ける。
+ */
+export function compileSearch(
+  query: string,
+  options: SearchOptions = DEFAULT_SEARCH_OPTIONS,
+): CompiledSearch {
+  if (query === "") return EMPTY_SEARCH;
+
+  if (options.regex) {
+    const fold = searchFoldOf(options);
+    const source = fold.kana ? foldKatakana(query) : query;
+    let pattern: RegExp;
+    try {
+      pattern = new RegExp(source, options.caseSensitive ? "g" : "gi");
+    } catch (error) {
+      // 入力の途中は不正な式になりやすい。絞り込みは止めず、画面で不正を示すために理由を返す。
+      return { matcher: null, error: error instanceof Error ? error.message : String(error) };
+    }
+    return {
+      matcher: {
+        fold,
+        normalize: (text) => normalizeSearchText(text, fold),
+        find: (normalized) => findRegex(normalized, pattern),
+      },
+      error: null,
+    };
+  }
+
+  const fold = searchFoldOf(options);
+  const needle = normalizeSearchText(query, fold);
+  if (needle === "") return EMPTY_SEARCH;
+  return {
+    matcher: {
+      fold,
+      normalize: (text) => normalizeSearchText(text, fold),
+      find: (normalized) => findLiteral(normalized, needle),
+    },
+    error: null,
+  };
+}
+
+/** 判定器が無い（検索語が空・式が不正）ときは絞り込まず、すべて一致とみなす。 */
+export function matcherMatches(matcher: SearchMatcher | null, text: string): boolean {
+  return matcher === null || matcher.find(matcher.normalize(text)).length > 0;
 }
 
 /** 検索対象とクエリを同じ規則で正規化して部分一致を判定する。 */
-export function matchesSearchQuery(text: string, query: string): boolean {
-  const normalizedQuery = normalizeSearchText(query.trim());
-  return normalizedQuery === "" || normalizeSearchText(text).includes(normalizedQuery);
+export function matchesSearchQuery(
+  text: string,
+  query: string,
+  options: SearchOptions = DEFAULT_SEARCH_OPTIONS,
+): boolean {
+  return matcherMatches(compileSearch(query.trim(), options).matcher, text);
 }

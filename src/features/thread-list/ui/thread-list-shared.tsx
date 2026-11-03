@@ -8,6 +8,7 @@ import type { IThread } from "src/service-container/interfaces";
 import { SearchHighlight } from "src/view/browser/components/SearchHighlight";
 import type { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { formatRelativeTime } from "src/view/browser/utils/date-time";
+import type { SearchOptions } from "src/view/browser/utils/search-normalize";
 
 const logger = createLogger("thread-list");
 
@@ -174,6 +175,7 @@ export type DisplayThread = {
   heat: number;
   isBookmarked: boolean;
   highlightQuery?: string;
+  highlightOptions?: SearchOptions;
 };
 
 /** 一覧では既読位置のないスレを未読 0 として扱い、未読バッジの対象にしない。 */
@@ -197,7 +199,7 @@ export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
     cellClassName: "thread-list__title",
     sortable: true,
     searchable: true,
-    cell: ({ thread, isBookmarked, highlightQuery }) => {
+    cell: ({ thread, isBookmarked, highlightQuery, highlightOptions }) => {
       return (
         <span className="thread-list__title-content">
           {isBookmarked ? (
@@ -209,7 +211,11 @@ export const THREAD_LIST_COLUMNS: ColumnDef<DisplayThread>[] = [
             />
           ) : null}
           <span className="thread-list__title-text">
-            <SearchHighlight text={thread.title} query={highlightQuery ?? ""} />
+            <SearchHighlight
+              text={thread.title}
+              query={highlightQuery ?? ""}
+              options={highlightOptions}
+            />
           </span>
           {/* 変更理由: ハイライトの識別はセクション先頭の縦線と見出しで十分なため、
               各アイテムへ補助バッヂを重ねずタイトルの視認性を保つ。 */}

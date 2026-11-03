@@ -1,5 +1,11 @@
 import { stripHtml } from "src/core/util/strip-html";
-import { normalizeSearchText } from "src/view/browser/utils/search-normalize";
+import {
+  DEFAULT_SEARCH_OPTIONS,
+  normalizeSearchText,
+  searchFoldOf,
+  type SearchMatcher,
+  type SearchOptions,
+} from "src/view/browser/utils/search-normalize";
 
 /**
  * スレッド内のページ内検索（Ctrl+F の置き換え）で、一致箇所をレスのデータから探す。
@@ -31,35 +37,33 @@ export interface ThreadFindIndexEntry {
   fields: ReadonlyArray<readonly [ThreadFindField, string]>;
 }
 
-/** 打鍵のたびに全レスを正規化し直さないよう、レスの並びが変わったときだけ作る。 */
-export function buildThreadFindIndex(responses: readonly FindableRes[]): ThreadFindIndexEntry[] {
+/** 打鍵のたびに全レスを正規化し直さないよう、レスの並びと検索条件が変わったときだけ作る。 */
+export function buildThreadFindIndex(
+  responses: readonly FindableRes[],
+  options: SearchOptions = DEFAULT_SEARCH_OPTIONS,
+): ThreadFindIndexEntry[] {
+  const fold = searchFoldOf(options);
   return responses.map((res) => ({
     resNum: res.num,
     fields: [
-      ["name", normalizeSearchText(stripHtml(res.name))],
-      ["id", normalizeSearchText(res.id ?? "")],
-      ["body", normalizeSearchText(stripHtml(res.message))],
+      ["name", normalizeSearchText(stripHtml(res.name), fold)],
+      ["id", normalizeSearchText(res.id ?? "", fold)],
+      ["body", normalizeSearchText(stripHtml(res.message), fold)],
     ],
   }));
 }
 
+/** `matcher` は索引と同じ検索条件で `compileSearch` したもの。 */
 export function findThreadMatches(
   index: readonly ThreadFindIndexEntry[],
-  query: string,
+  matcher: SearchMatcher | null,
 ): ThreadFindMatch[] {
-  const normalizedQuery = normalizeSearchText(query.trim());
-  if (!normalizedQuery) return [];
+  if (!matcher) return [];
   const matches: ThreadFindMatch[] = [];
   for (const { resNum, fields } of index) {
     for (const [field, text] of fields) {
-      let occurrence = 0;
-      for (
-        let position = text.indexOf(normalizedQuery);
-        position >= 0;
-        position = text.indexOf(normalizedQuery, position + normalizedQuery.length)
-      ) {
+      for (const [occurrence] of matcher.find(text).entries()) {
         matches.push({ resNum, field, occurrence });
-        occurrence += 1;
       }
     }
   }

@@ -1,31 +1,37 @@
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { useEffect, useRef } from "react";
+import type { UseThreadFindResult } from "src/features/thread/browser/use-thread-find";
+import {
+  getSearchError,
+  SearchOptionToggles,
+} from "src/view/browser/components/SearchOptionToggles";
 
 interface ThreadFindBarProps {
-  query: string;
-  total: number;
-  /** 0始まり。一致がなければ -1。 */
-  activeIndex: number;
-  focusKey: number;
-  onQueryChange: (query: string) => void;
-  onNext: () => void;
-  onPrevious: () => void;
-  onClose: () => void;
+  find: Pick<
+    UseThreadFindResult,
+    | "query"
+    | "setQuery"
+    | "options"
+    | "setOptions"
+    | "total"
+    | "activeIndex"
+    | "focusKey"
+    | "next"
+    | "previous"
+    | "close"
+  >;
 }
 
 /**
  * スレッドのページ内検索バー。Enter で次、Shift+Enter で前の一致へ移り、Esc で閉じる。
  */
-export function ThreadFindBar({
-  query,
-  total,
-  activeIndex,
-  focusKey,
-  onQueryChange,
-  onNext,
-  onPrevious,
-  onClose,
-}: ThreadFindBarProps) {
+export function ThreadFindBar({ find }: ThreadFindBarProps) {
+  const { query, options, total, activeIndex, focusKey } = find;
+  const onQueryChange = find.setQuery;
+  const onOptionsChange = find.setOptions;
+  const onNext = find.next;
+  const onPrevious = find.previous;
+  const onClose = find.close;
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,6 +43,7 @@ export function ThreadFindBar({
   }, [focusKey]);
 
   const hasQuery = query.trim() !== "";
+  const searchError = getSearchError(query, options);
   const status = !hasQuery ? "" : total === 0 ? "一致なし" : `${activeIndex + 1} / ${total}`;
 
   return (
@@ -47,6 +54,8 @@ export function ThreadFindBar({
         className="thread-find-bar__input"
         placeholder="スレッド内を検索"
         aria-label="スレッド内を検索"
+        aria-invalid={searchError ? true : undefined}
+        title={searchError ?? undefined}
         value={query}
         onChange={(event) => onQueryChange(event.target.value)}
         onKeyDown={(event) => {
@@ -60,6 +69,7 @@ export function ThreadFindBar({
           }
         }}
       />
+      <SearchOptionToggles options={options} onChange={onOptionsChange} />
       <span
         className={`thread-find-bar__status${
           hasQuery && total === 0 ? " thread-find-bar__status--empty" : ""

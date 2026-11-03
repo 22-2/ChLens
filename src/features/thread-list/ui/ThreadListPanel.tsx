@@ -59,7 +59,12 @@ import {
   useManualRefreshCooldown,
 } from "src/view/browser/utils/manual-refresh";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
-import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
+import {
+  compileSearch,
+  DEFAULT_SEARCH_OPTIONS,
+  matcherMatches,
+  type SearchOptions,
+} from "src/view/browser/utils/search-normalize";
 import { createBoardPage } from "src/view/browser/utils/tab-pages";
 import { buildDemotedThreadSections } from "src/view/browser/utils/thread-list-demoted-sections";
 
@@ -201,6 +206,10 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
+  const [searchOptions, setSearchOptions] = useState<SearchOptions>(() => ({
+    ...DEFAULT_SEARCH_OPTIONS,
+    ...persistedViewState.searchOptions,
+  }));
   const [isSearchOpen, setIsSearchOpen] = useState(() => Boolean(persistedViewState.searchQuery));
   const [sortPreference, setSortPreference] = useState<ThreadListSortPreference>(() => {
     const column = persistedViewState.sortColumn;
@@ -329,11 +338,12 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
 
     updateViewState({
       searchQuery,
+      searchOptions,
       sortColumn: sortPreference.column,
       sortDirection: sortPreference.direction,
     });
     writeThreadListSortPreference(descriptor.boardUrl, sortPreference);
-  }, [descriptor.boardUrl, searchQuery, sortPreference, updateViewState]);
+  }, [descriptor.boardUrl, searchOptions, searchQuery, sortPreference, updateViewState]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -415,13 +425,16 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       unreadCount: getThreadUnreadCount(thread),
       heat: Number.parseFloat(calcHeat(now, thread.createdAt, thread.resCount)),
       highlightQuery: searchQuery,
+      highlightOptions: searchOptions,
     }));
 
     if (searchQuery) {
+      // 正規表現が不正な間は matcher が無く、絞り込まない（入力欄が不正を示す）。
+      const { matcher } = compileSearch(searchQuery.trim(), searchOptions);
       list.splice(
         0,
         list.length,
-        ...list.filter(({ thread }) => matchesSearchQuery(thread.title, searchQuery)),
+        ...list.filter(({ thread }) => matcherMatches(matcher, thread.title)),
       );
     }
 
@@ -452,7 +465,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       });
     }
     return list;
-  }, [bookmarkRevision, searchQuery, sortColumn, sortDirection, threads]);
+  }, [bookmarkRevision, searchOptions, searchQuery, sortColumn, sortDirection, threads]);
 
   const visibleDisplayThreads = useMemo(
     () => displayThreads.filter(({ thread }) => thread.ng == null || isNgTemporarilyDisabled),
@@ -655,6 +668,8 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
           className="thread-list-panel__search-bar"
           query={searchQuery}
           onQueryChange={setSearchQuery}
+          searchOptions={searchOptions}
+          onSearchOptionsChange={setSearchOptions}
           onClose={() => {
             setSearchQuery("");
             setIsSearchOpen(false);

@@ -85,7 +85,12 @@ import {
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
-import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
+import {
+  compileSearch,
+  DEFAULT_SEARCH_OPTIONS,
+  matcherMatches,
+  type SearchOptions,
+} from "src/view/browser/utils/search-normalize";
 import { buildDemotedThreadSections } from "src/view/browser/utils/thread-list-demoted-sections";
 import { ThreadListView } from "src/view/shared/ThreadListView";
 
@@ -253,6 +258,11 @@ export const ThreadListPage: React.FC<Props> = ({
     return readThreadListSortPreference(page.boardUrl);
   });
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
+  // 切り替えは検索欄の使い方の好みに近いため、板を移っても引き継ぎ、タブの復元時に戻す。
+  const [searchOptions, setSearchOptions] = useState<SearchOptions>(() => ({
+    ...DEFAULT_SEARCH_OPTIONS,
+    ...persistedViewState.searchOptions,
+  }));
   const previousBoardUrlRef = useRef(page.boardUrl);
   const skipViewStateUpdateRef = useRef(false);
   // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
@@ -328,10 +338,11 @@ export const ThreadListPage: React.FC<Props> = ({
 
     updateViewState({
       searchQuery,
+      searchOptions,
       sortColumn: sortPreference.column,
       sortDirection: sortPreference.direction,
     });
-  }, [searchQuery, sortPreference, updateViewState]);
+  }, [searchOptions, searchQuery, sortPreference, updateViewState]);
 
   useEffect(() => {
     writeThreadListSortPreference(page.boardUrl, sortPreference);
@@ -507,11 +518,14 @@ export const ThreadListPage: React.FC<Props> = ({
       unreadCount: getThreadUnreadCount(t),
       heat: parseFloat(calcHeat(now, t.createdAt, t.resCount)),
       highlightQuery: searchQuery,
+      highlightOptions: searchOptions,
     }));
 
     // テキスト検索フィルタ
     if (searchQuery) {
-      list = list.filter(({ thread }) => matchesSearchQuery(thread.title, searchQuery));
+      // 正規表現が不正な間は matcher が無く、絞り込まない（入力欄が不正を示す）。
+      const { matcher } = compileSearch(searchQuery.trim(), searchOptions);
+      list = list.filter(({ thread }) => matcherMatches(matcher, thread.title));
     }
 
     // sortColumn が null の間は取得順を維持し、デフォルト状態へ戻せるようにする。
@@ -543,7 +557,15 @@ export const ThreadListPage: React.FC<Props> = ({
     }
 
     return list;
-  }, [bookmarkRevision, threads, sortColumn, sortDirection, searchQuery, selectedSnapshot]);
+  }, [
+    bookmarkRevision,
+    threads,
+    sortColumn,
+    sortDirection,
+    searchOptions,
+    searchQuery,
+    selectedSnapshot,
+  ]);
 
   const handleThreadClick = useCallback(
     ({ thread }: DisplayThread) => {
@@ -776,6 +798,8 @@ export const ThreadListPage: React.FC<Props> = ({
         <SearchBar
           query={searchQuery}
           onQueryChange={setSearchQuery}
+          searchOptions={searchOptions}
+          onSearchOptionsChange={setSearchOptions}
           hitCount={visibleDisplayThreads.length}
           autoFocus={false}
         />

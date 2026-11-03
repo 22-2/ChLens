@@ -2,6 +2,10 @@ import type { IRes } from "src/service-container/interfaces";
 import type { ThreadFilter, ThreadSearchTarget } from "src/view/browser/types";
 import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/message-filter";
 import type { NgDisplayMode } from "src/view/browser/utils/ng-display-mode";
+import {
+  DEFAULT_SEARCH_OPTIONS,
+  type SearchOptions,
+} from "src/view/browser/utils/search-normalize";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
 import { filterThreadResponses } from "src/view/browser/utils/thread-search";
 
@@ -10,6 +14,8 @@ export interface ThreadDerivedDataOptions {
   filter: ThreadFilter;
   popularReplyThreshold: number;
   searchQuery: string;
+  /** 省略すると従来どおり、大文字小文字・かなを区別しない部分一致。 */
+  searchOptions?: SearchOptions;
   searchTarget: ThreadSearchTarget;
   isNgTemporarilyDisabled: boolean;
   ngDisplayMode: NgDisplayMode;
@@ -58,6 +64,7 @@ export function deriveThreadData(options: ThreadDerivedDataOptions): ThreadDeriv
     filter,
     popularReplyThreshold,
     searchQuery,
+    searchOptions = DEFAULT_SEARCH_OPTIONS,
     searchTarget,
     isNgTemporarilyDisabled,
     ngDisplayMode,
@@ -87,7 +94,12 @@ export function deriveThreadData(options: ThreadDerivedDataOptions): ThreadDeriv
   }
 
   if (searchQuery) {
-    filteredResponses = filterThreadResponses(filteredResponses, searchQuery, searchTarget);
+    filteredResponses = filterThreadResponses(
+      filteredResponses,
+      searchQuery,
+      searchTarget,
+      searchOptions,
+    );
   }
 
   const idPositions = new Map<number, number>();

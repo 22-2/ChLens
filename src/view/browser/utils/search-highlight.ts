@@ -1,13 +1,15 @@
 import {
-  normalizeSearchText,
+  compileSearch,
+  DEFAULT_SEARCH_OPTIONS,
   normalizeSearchUnit,
+  type SearchFold,
+  type SearchMatcher,
+  type SearchMatchRange,
+  type SearchOptions,
   splitSearchUnits,
 } from "src/view/browser/utils/search-normalize";
 
-export interface SearchMatchRange {
-  start: number;
-  end: number;
-}
+export type { SearchMatchRange };
 
 interface NormalizedText {
   value: string;
@@ -30,13 +32,15 @@ export interface HighlightOptions {
   activeIndex?: number;
   /** 現在の一致に足すクラス。 */
   activeClassName?: string;
+  /** 大文字・小文字、かな、正規表現の条件。省略すると従来どおりすべて区別しない。 */
+  searchOptions?: SearchOptions;
 }
 
 interface IndexedRange extends SearchMatchRange {
   matchIndex: number;
 }
 
-function normalizeWithOffsets(text: string): NormalizedText {
+function normalizeWithOffsets(text: string, fold: SearchFold): NormalizedText {
   let value = "";
   const starts: number[] = [];
   const ends: number[] = [];
@@ -48,7 +52,7 @@ function normalizeWithOffsets(text: string): NormalizedText {
     // フィルタ（thread-search）と同じ正規化を使い、一致範囲の表示がずれないようにする。
     // 正規化で長さが変わる（「ｶﾞ」→「が」、「㍻」→「平成」）ため、正規化後の各文字に
     // 元の単位の範囲を対応づけ、一致範囲を元の文字列の位置へ戻せるようにする。
-    const normalizedUnit = normalizeSearchUnit(unit);
+    const normalizedUnit = normalizeSearchUnit(unit, fold);
     value += normalizedUnit;
     for (let index = 0; index < normalizedUnit.length; index++) {
       starts.push(start);
@@ -59,31 +63,22 @@ function normalizeWithOffsets(text: string): NormalizedText {
   return { value, starts, ends };
 }
 
-export function findSearchMatchRanges(text: string, query: string): SearchMatchRange[] {
-  const normalizedQuery = normalizeSearchText(query);
-  if (!normalizedQuery) {
-    return [];
-  }
+/** 組み立て済みの判定器で、元の文字列の中の一致範囲を求める。 */
+export function findMatcherRanges(text: string, matcher: SearchMatcher): SearchMatchRange[] {
+  const normalizedText = normalizeWithOffsets(text, matcher.fold);
+  return matcher.find(normalizedText.value).map(({ start, end }) => ({
+    start: normalizedText.starts[start],
+    end: normalizedText.ends[end - 1],
+  }));
+}
 
-  const normalizedText = normalizeWithOffsets(text);
-  const ranges: SearchMatchRange[] = [];
-  let searchStart = 0;
-
-  while (searchStart < normalizedText.value.length) {
-    const normalizedStart = normalizedText.value.indexOf(normalizedQuery, searchStart);
-    if (normalizedStart < 0) {
-      break;
-    }
-
-    const normalizedEnd = normalizedStart + normalizedQuery.length - 1;
-    ranges.push({
-      start: normalizedText.starts[normalizedStart],
-      end: normalizedText.ends[normalizedEnd],
-    });
-    searchStart = normalizedEnd + 1;
-  }
-
-  return ranges;
+export function findSearchMatchRanges(
+  text: string,
+  query: string,
+  options: SearchOptions = DEFAULT_SEARCH_OPTIONS,
+): SearchMatchRange[] {
+  const { matcher } = compileSearch(query, options);
+  return matcher ? findMatcherRanges(text, matcher) : [];
 }
 
 function appendHighlightedText(
@@ -169,7 +164,7 @@ export function highlightSearchMatches(
   // DOMのテキストノードだけをmarkで包み、既存の要素と操作対象を維持する。
   const document = new DOMParser().parseFromString(html, "text/html");
   const searchableText = collectSearchableText(document, className);
-  const ranges = findSearchMatchRanges(searchableText.text, query);
+  const ranges = findSearchMatchRanges(searchableText.text, query, options.searchOptions);
 
   let highlighted = false;
   for (const { node, start, end } of searchableText.nodes) {

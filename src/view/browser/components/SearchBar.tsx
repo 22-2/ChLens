@@ -1,5 +1,10 @@
 import React, { useEffect, useRef } from "react";
+import {
+  getSearchError,
+  SearchOptionToggles,
+} from "src/view/browser/components/SearchOptionToggles";
 import { Spinner } from "src/view/browser/ui/Spinner";
+import type { SearchOptions } from "src/view/browser/utils/search-normalize";
 
 interface Props {
   className?: string;
@@ -14,6 +19,9 @@ interface Props {
   placeholder?: string;
   /** 表示時に入力欄へフォーカスするか。常設のバーでは奪わないよう false にする。 */
   autoFocus?: boolean;
+  /** 渡すと右端に大文字小文字・かな・正規表現の切り替えを出す。`onSearchOptionsChange` と一緒に渡す。 */
+  searchOptions?: SearchOptions;
+  onSearchOptionsChange?: (options: SearchOptions) => void;
 }
 
 export const SearchBar: React.FC<Props> = ({
@@ -26,8 +34,11 @@ export const SearchBar: React.FC<Props> = ({
   prefix,
   placeholder = "検索...",
   autoFocus = true,
+  searchOptions,
+  onSearchOptionsChange,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchError = searchOptions ? getSearchError(query, searchOptions) : null;
 
   useEffect(() => {
     if (autoFocus) inputRef.current?.focus();
@@ -42,11 +53,16 @@ export const SearchBar: React.FC<Props> = ({
         className="search-bar__input"
         placeholder={placeholder}
         value={query}
+        aria-invalid={searchError ? true : undefined}
+        title={searchError ?? undefined}
         onChange={(e) => onQueryChange(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Escape") onClose?.();
         }}
       />
+      {searchOptions && onSearchOptionsChange ? (
+        <SearchOptionToggles options={searchOptions} onChange={onSearchOptionsChange} />
+      ) : null}
       {loading ? (
         <Spinner size="xs" aria-label="検索中" />
       ) : hitCount !== undefined ? (

@@ -7,6 +7,10 @@ import { useThreadMediaViewerScope } from "src/features/media/browser/use-thread
 import { ResMediaGallery } from "src/features/media/ui/ResMediaGallery";
 import { buildThreadFindIndex, findThreadMatches } from "src/features/thread/domain/thread-find";
 import { ResBody } from "src/features/thread/ui/ResBody";
+import {
+  getSearchError,
+  SearchOptionToggles,
+} from "src/view/browser/components/SearchOptionToggles";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
 import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
@@ -17,6 +21,11 @@ import type { ThreadSnapshot } from "src/view/browser/state/thread-snapshot";
 import type { ThreadPage } from "src/view/browser/types";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { decodeResponseHtml } from "src/view/browser/utils/response-format";
+import {
+  compileSearch,
+  DEFAULT_SEARCH_OPTIONS,
+  type SearchOptions,
+} from "src/view/browser/utils/search-normalize";
 
 type ExtractResponse = ThreadSnapshot["responses"][number];
 type ExtractMenu = { x: number; y: number; items: ContextMenuItem[] };
@@ -31,6 +40,7 @@ interface ExtractEntryProps {
   response: ExtractResponse;
   snapshot: ThreadSnapshot;
   query: string;
+  searchOptions: SearchOptions;
   resMap: ReadonlyMap<number, unknown>;
   ngResNums: ReadonlySet<number>;
   urlHandlers: UrlHandlers;
@@ -45,6 +55,7 @@ function ExtractEntry({
   response,
   snapshot,
   query,
+  searchOptions,
   resMap,
   ngResNums,
   urlHandlers,
@@ -83,6 +94,7 @@ function ExtractEntry({
       <ResBody
         messageHtml={resolvedMedia.messageHtml}
         searchQuery={query}
+        searchOptions={searchOptions}
         searchTarget="body"
         anchorPreviewDepth={0}
         ngResNums={ngResNums}
@@ -116,11 +128,13 @@ function ExtractResults({
   threadUrl,
   snapshot,
   query,
+  searchOptions,
 }: {
   tabId: string;
   threadUrl: string;
   snapshot: ThreadSnapshot;
   query: string;
+  searchOptions: SearchOptions;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [menu, setMenu] = useState<ExtractMenu | null>(null);
@@ -157,14 +171,16 @@ function ExtractResults({
     [snapshot.responses],
   );
   const results = useMemo(() => {
-    if (!query) return snapshot.visibleResponses;
+    // 正規表現が不正な間は絞り込まず、入力欄の表示で不正を伝える。
+    const { matcher } = compileSearch(query, searchOptions);
+    if (!matcher) return snapshot.visibleResponses;
     const matched = new Set(
-      findThreadMatches(buildThreadFindIndex(snapshot.visibleResponses), query)
+      findThreadMatches(buildThreadFindIndex(snapshot.visibleResponses, searchOptions), matcher)
         .filter((match) => match.field === "body")
         .map((match) => match.resNum),
     );
     return snapshot.visibleResponses.filter((response) => matched.has(response.num));
-  }, [snapshot, query]);
+  }, [snapshot, query, searchOptions]);
   // 本文の長さはレスごとに異なるため、表示した行を実測して後続の位置を補正する。
   const virtualizer = useVirtualizer({
     count: results.length,
@@ -198,6 +214,7 @@ function ExtractResults({
                     response={response}
                     snapshot={snapshot}
                     query={query}
+                    searchOptions={searchOptions}
                     resMap={resMap}
                     ngResNums={ngResNums}
                     urlHandlers={urlHandlers}
@@ -234,16 +251,29 @@ function ExtractResults({
 export function SidePanelExtract({ tabId, page }: { tabId: string; page: ThreadPage }) {
   const { state, update } = useTabViewState(tabId, page);
   const query = (state.sidePanelExtractQuery ?? "").trim();
+  const searchOptions = useMemo<SearchOptions>(
+    () => ({ ...DEFAULT_SEARCH_OPTIONS, ...state.sidePanelExtractOptions }),
+    [state.sidePanelExtractOptions],
+  );
+  const searchError = getSearchError(query, searchOptions);
   return (
     <div className="side-panel__content side-panel__extract">
-      <input
-        className="side-panel__search"
-        type="search"
-        aria-label="レスを抽出"
-        placeholder="レスを抽出"
-        value={state.sidePanelExtractQuery ?? ""}
-        onChange={(event) => update({ sidePanelExtractQuery: event.currentTarget.value })}
-      />
+      <div className="side-panel__search-row">
+        <input
+          className="side-panel__search"
+          type="search"
+          aria-label="レスを抽出"
+          aria-invalid={searchError ? true : undefined}
+          title={searchError ?? undefined}
+          placeholder="レスを抽出"
+          value={state.sidePanelExtractQuery ?? ""}
+          onChange={(event) => update({ sidePanelExtractQuery: event.currentTarget.value })}
+        />
+        <SearchOptionToggles
+          options={searchOptions}
+          onChange={(next) => update({ sidePanelExtractOptions: next })}
+        />
+      </div>
       <ThreadSnapshotGate tabId={tabId} threadUrl={page.threadUrl}>
         {(snapshot) => (
           <ExtractResults
@@ -251,6 +281,7 @@ export function SidePanelExtract({ tabId, page }: { tabId: string; page: ThreadP
             threadUrl={page.threadUrl}
             snapshot={snapshot}
             query={query}
+            searchOptions={searchOptions}
           />
         )}
       </ThreadSnapshotGate>

@@ -16,6 +16,7 @@ import {
 } from "src/view/browser/utils/link-routing";
 import { normalizeIdLinkText } from "src/view/browser/utils/response-format";
 import { highlightSearchMatches } from "src/view/browser/utils/search-highlight";
+import type { SearchOptions } from "src/view/browser/utils/search-normalize";
 
 const PRIMARY_MOUSE_BUTTON = 0 as const;
 const MIDDLE_MOUSE_BUTTON = 1 as const;
@@ -43,9 +44,11 @@ interface ResBodyProps {
   imageUrls?: readonly string[];
   onSaveImage?: (url: string) => void;
   searchQuery?: string;
+  searchOptions?: SearchOptions;
   searchTarget?: ThreadSearchTarget;
   /** ページ内検索（Ctrl+F）の検索語と、本文の中で現在の一致が何番目か（なければ -1）。 */
   findQuery?: string;
+  findOptions?: SearchOptions;
   findActiveOccurrence?: number;
   anchorPreviewDepth: number;
   onUrlClick: ResBodyUrlClickHandler;
@@ -432,8 +435,10 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     imageUrls,
     onSaveImage,
     searchQuery = "",
+    searchOptions,
     searchTarget = "all",
     findQuery = "",
+    findOptions,
     findActiveOccurrence = -1,
     anchorPreviewDepth,
     onUrlClick,
@@ -465,15 +470,24 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     const highlightedMessageHtml = useMemo(() => {
       const searched =
         searchTarget === "all" || searchTarget === "body"
-          ? highlightSearchMatches(messageHtml, searchQuery)
+          ? highlightSearchMatches(messageHtml, searchQuery, { searchOptions })
           : messageHtml;
       // ページ内検索の一致は検索フィルタの強調に重ねて付け、どちらの一致も見えるようにする。
       return highlightSearchMatches(searched, findQuery, {
         className: "res__find-match",
         activeIndex: findActiveOccurrence,
         activeClassName: "res__find-match--current",
+        searchOptions: findOptions,
       });
-    }, [findActiveOccurrence, findQuery, messageHtml, searchQuery, searchTarget]);
+    }, [
+      findActiveOccurrence,
+      findOptions,
+      findQuery,
+      messageHtml,
+      searchOptions,
+      searchQuery,
+      searchTarget,
+    ]);
     const decoratedMessageHtml = useMemo(() => {
       if (
         !confirmExternal &&
