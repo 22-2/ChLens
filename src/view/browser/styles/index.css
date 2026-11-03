@@ -31,6 +31,7 @@
 @import "./components/WritePanel.css";
 @import "./components/NavigationBar.css";
 @import "./components/WheelScrollIndicator.css";
+@import "./components/BuildInfoList.css";
 @import "./pages/PageStatus.css";
 @import "./pages/HomeTabPage.css";
 @import "./pages/AboutPage.css";

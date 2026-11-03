@@ -1,4 +1,5 @@
-import { CHLENS_BUILD_INFO } from "src/app/build-info";
+import { CHLENS_BUILD_INFO, type ChlensBuildInfo } from "src/app/build-info";
+import { buildInfoRows } from "src/app/debug/build-info-rows";
 import { formatJstTimestamp } from "src/app/debug/log-persistence";
 import { isTauriRuntime } from "src/app/platform/runtime";
 
@@ -6,12 +7,10 @@ import { isTauriRuntime } from "src/app/platform/runtime";
  * 不具合報告に添える実行環境の情報。
  *
  * 変更理由: ログだけでは、どの版のどの実行環境で起きたかを報告者に毎回聞き直す必要があった。
- * 版とハッシュはビルド時の値をそのまま使い、画面の出どころ（Tauri・拡張機能など）も一緒に残す。
+ * 版の項目はビルド情報の一覧と同じ行を使い、画面の出どころ（Tauri・拡張機能など）も一緒に残す。
  */
 export interface EnvironmentInfo {
-  version: string;
-  buildTime: string;
-  gitHash: string;
+  buildInfo: ChlensBuildInfo;
   /** "tauri" か、画面の URL のスキーム（chrome-extension・moz-extension・http など）。 */
   runtime: string;
   language: string;
@@ -20,9 +19,7 @@ export interface EnvironmentInfo {
 
 export function collectEnvironmentInfo(): EnvironmentInfo {
   return {
-    version: CHLENS_BUILD_INFO.version,
-    buildTime: CHLENS_BUILD_INFO.buildTime,
-    gitHash: CHLENS_BUILD_INFO.gitHash,
+    buildInfo: CHLENS_BUILD_INFO,
     // Tauri の WebView は拡張機能と同じ http 系のスキームを使う環境があるため、先に Tauri を判定する。
     runtime: isTauriRuntime() ? "tauri" : window.location.protocol.replace(/:$/, ""),
     language: navigator.language,
@@ -35,9 +32,7 @@ export function formatEnvironmentInfo(info: EnvironmentInfo, now = Date.now()): 
   return [
     "--- ChLens 環境情報 ---",
     `出力時刻: ${formatJstTimestamp(now)}`,
-    `バージョン: ${info.version}`,
-    `ビルド時刻: ${formatJstTimestamp(Date.parse(info.buildTime))}`,
-    `Gitハッシュ: ${info.gitHash}`,
+    ...buildInfoRows(info.buildInfo).map((row) => `${row.label}: ${row.value}`),
     `実行環境: ${info.runtime}`,
     `言語: ${info.language}`,
     `ユーザーエージェント: ${info.userAgent}`,

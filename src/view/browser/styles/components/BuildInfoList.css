@@ -1,0 +1,24 @@
+/* 版情報の一覧。項目名は本文より小さく薄い色にし、値を読みやすくする。 */
+.build-info-list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--sys-space-4) var(--sys-space-8);
+  margin: 0;
+}
+.build-info-list dt {
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+.build-info-list dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--sys-color-text);
+  overflow-wrap: anywhere;
+}
+.build-info-list__hash {
+  font-family: var(--sys-font-family-mono);
+}
+.build-info-list__link:focus-visible {
+  outline: var(--sys-border-width-thin) solid var(--sys-color-focus-ring);
+  outline-offset: var(--sys-space-1);
+}

@@ -113,6 +113,11 @@
   padding: var(--sys-space-6) var(--sys-space-10);
 }
 
+/* 版情報の一覧を枠の中へ置くときは、行と同じ余白で囲む。 */
+.settings-page__group-card > .build-info-list {
+  padding: var(--sys-space-6) var(--sys-space-10);
+}
+
 /* 直前の入力に対する操作なので、線で切り離さず同じ項目の続きとして置く。 */
 .settings-page__group-card > .settings-page__group-actions {
   display: flex;

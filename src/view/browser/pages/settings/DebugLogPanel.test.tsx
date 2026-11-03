@@ -26,6 +26,16 @@ vi.mock("src/service-container/index", () => ({
   container: { toast: { success: mocks.toastSuccess, error: mocks.toastError } },
 }));
 vi.mock("src/view/browser/utils/clipboard", () => ({ copyText: mocks.copyText }));
+vi.mock("src/app/build-info", () => ({
+  CHLENS_BUILD_INFO: {
+    version: "1.2.3",
+    buildTime: "2026-10-31T03:04:05.000Z",
+    gitHash: "abc1234",
+    author: "テスト作者",
+    license: "MIT",
+    repositoryUrl: "https://example.com/test-owner/chlens",
+  },
+}));
 
 import { DebugLogPanel } from "src/view/browser/pages/settings/DebugLogPanel";
 
@@ -88,6 +98,19 @@ describe("DebugLogPanel", () => {
     );
     expect(copied).toContain("バージョン: ");
     expect(copied.endsWith("---")).toBe(true);
+  });
+
+  it("ビルド情報を、ChLensについてのページと同じ項目名と値で表示する", async () => {
+    render(<DebugLogPanel />);
+
+    expect(screen.getByText("ビルド情報")).toBeInTheDocument();
+    const version = screen.getByText("バージョン", { selector: "dt" });
+    expect(version.nextElementSibling).toHaveTextContent("1.2.3");
+    const repository = screen.getByText("リポジトリ", { selector: "dt" });
+    expect(repository.nextElementSibling).toHaveTextContent(
+      "https://example.com/test-owner/chlens",
+    );
+    await screen.findByLabelText("デバッグログ（直近）");
   });
 
   it("確認を承諾したときだけログを削除する", async () => {

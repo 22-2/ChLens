@@ -2,7 +2,6 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, render, screen } from "@testing-library/react";
 import { AboutPage } from "src/view/browser/pages/AboutPage";
-import { formatCompactDateTime } from "src/view/browser/utils/date-time";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 // 変更理由: 表示の検証を、git の状態や vitest.config.ts の固定値に依らせないため、配布物の情報を差し替える。
@@ -40,12 +39,13 @@ describe("ChLensについてのページ", () => {
     expect(getDetail("Gitハッシュ")).toHaveTextContent("abc1234");
   });
 
-  it("ビルド時刻は機械が読める日時と、画面向けの表示の両方を出す", () => {
+  it("ビルド時刻は機械が読める日時と、日本時間の表示の両方を出す", () => {
     render(<AboutPage />);
 
     const time = getDetail("ビルド時刻").querySelector("time");
     expect(time).toHaveAttribute("dateTime", buildInfo.buildTime);
-    expect(time).toHaveTextContent(formatCompactDateTime(Date.parse(buildInfo.buildTime)));
+    // 2026-10-31T03:04:05Z は日本時間で 12:04:05。実行環境のタイムゾーンに依らず同じ表示にする。
+    expect(time).toHaveTextContent("2026-10-31T12:04:05.000+09:00");
   });
 
   it("リポジトリの場所を項目に表示する", () => {

@@ -23,14 +23,12 @@ describe("実行環境の情報", () => {
     isTauriRuntimeMock.mockReset();
   });
 
-  it("版・ビルド時刻・ハッシュ・言語・ユーザーエージェントを集める", () => {
+  it("ビルド情報・言語・ユーザーエージェントを集める", () => {
     isTauriRuntimeMock.mockReturnValue(false);
 
     const info = collectEnvironmentInfo();
 
-    expect(info.version).toBe("1.2.3");
-    expect(info.buildTime).toBe(buildInfo.buildTime);
-    expect(info.gitHash).toBe("abc1234");
+    expect(info.buildInfo).toEqual(buildInfo);
     expect(info.language).toBe(navigator.language);
     expect(info.userAgent).toBe(navigator.userAgent);
   });
@@ -47,12 +45,10 @@ describe("実行環境の情報", () => {
     expect(collectEnvironmentInfo().runtime).toBe(window.location.protocol.replace(/:$/, ""));
   });
 
-  it("項目名つきの1ブロックにし、時刻は日本時間で書く", () => {
+  it("版の項目はビルド情報の一覧と同じ表記で、項目名つきの1ブロックにする", () => {
     const text = formatEnvironmentInfo(
       {
-        version: "1.2.3",
-        buildTime: buildInfo.buildTime,
-        gitHash: "abc1234",
+        buildInfo,
         runtime: "chrome-extension",
         language: "ja",
         userAgent: "UA-test",
@@ -67,6 +63,9 @@ describe("実行環境の情報", () => {
         "バージョン: 1.2.3",
         "ビルド時刻: 2026-10-31T12:04:05.000+09:00",
         "Gitハッシュ: abc1234",
+        "作者: テスト作者",
+        "リポジトリ: https://example.com/test-owner/chlens",
+        "ライセンス: MIT",
         "実行環境: chrome-extension",
         "言語: ja",
         "ユーザーエージェント: UA-test",

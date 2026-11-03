@@ -18,26 +18,6 @@
   color: var(--sys-color-text-muted);
   font-size: var(--sys-font-size-sm);
 }
-.about-page__details {
-  display: grid;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--sys-space-4) var(--sys-space-8);
-  margin: var(--sys-space-10) 0 0;
-}
-.about-page__details dt {
-  color: var(--sys-color-text-muted);
-  font-size: var(--sys-font-size-sm);
-}
-.about-page__details dd {
-  min-width: 0;
-  margin: 0;
-  color: var(--sys-color-text);
-  overflow-wrap: anywhere;
-}
-.about-page__hash {
-  font-family: var(--sys-font-family-mono);
-}
-.about-page__link:focus-visible {
-  outline: var(--sys-border-width-thin) solid var(--sys-color-focus-ring);
-  outline-offset: var(--sys-space-1);
+.about-page .build-info-list {
+  margin-top: var(--sys-space-10);
 }
