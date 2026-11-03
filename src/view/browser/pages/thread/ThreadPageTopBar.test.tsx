@@ -8,7 +8,14 @@ import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar
 import { DEFAULT_SEARCH_OPTIONS } from "src/view/browser/utils/search-normalize";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-const COUNTS = { popular: 2, image: 3, video: 0, link: 9 };
+const COUNTS = {
+  internalLink: 0,
+  own: 0,
+  popular: 2,
+  image: 3,
+  video: 0,
+  link: 9,
+};
 
 const threadPageCss = readFileSync(resolve("src/view/browser/styles/pages/ThreadPage.css"), "utf8");
 

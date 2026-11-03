@@ -65,6 +65,7 @@ import { OperationStatusItem } from "src/view/browser/components/OperationStatus
 import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
+import { ReadPositionLine } from "src/view/browser/pages/thread/ReadPositionLine";
 import { ThreadAutoScrollThreshold } from "src/view/browser/pages/thread/ThreadAutoScrollThreshold";
 import { ThreadPageNotices } from "src/view/browser/pages/thread/ThreadPageNotices";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
@@ -74,6 +75,7 @@ import { useBoardResponseLimit } from "src/view/browser/pages/thread/use-board-r
 import { useCommentOverlayHandoff } from "src/view/browser/pages/thread/use-comment-overlay-handoff";
 import { useCommentOverlaySync } from "src/view/browser/pages/thread/use-comment-overlay-sync";
 import { useImageBlurConfig } from "src/view/browser/pages/thread/use-image-blur-config";
+import { useOwnResFilter } from "src/view/browser/pages/thread/use-own-res-filter";
 import { useOwnResTracking } from "src/view/browser/pages/thread/use-own-res-tracking";
 import { useResInteractionHandlers } from "src/view/browser/pages/thread/use-res-interaction-handlers";
 import { useThreadAutoRefreshActions } from "src/view/browser/pages/thread/use-thread-auto-refresh-actions";
@@ -163,8 +165,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     expired,
     missingFromSubject,
     indexes,
-    filteredResponses,
-    filterCounts,
+    filteredResponses: derivedResponses,
+    filterCounts: derivedCounts,
     filter,
     setFilter,
     searchTarget,
@@ -190,6 +192,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     threadUrl: page.threadUrl,
     threadTitle: page.title,
     responses,
+  });
+  const { filteredResponses, filterCounts } = useOwnResFilter({
+    filter,
+    ownResNums,
+    responses,
+    derivedResponses,
+    derivedCounts,
   });
   const replyToOwnResNums = useMemo(
     () => buildReplyToWrittenResSet(ownResNums, indexes.repIndex),
@@ -749,12 +758,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         active={isActive && !loading && isInitialReadStateResolved}
       />
     ) : null;
-  const readLine =
-    readBoundary >= 0 ? (
-      <div className="thread-page__replay-position" role="separator" aria-label="ここまで読んだ">
-        <span>ここまで読んだ</span>
-      </div>
-    ) : null;
+  const readLine = readBoundary >= 0 ? <ReadPositionLine /> : null;
 
   const displayedResponseByNum = useMemo(
     () => new Map(displayedResponses.map((res) => [res.num, res])),

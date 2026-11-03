@@ -17,7 +17,7 @@ export type PageType =
 
 // スレッドの絞り込みはタブのviewStatesへ保存されるため、
 // スレッド画面だけでなくタブ状態モデルからも参照できる共通型としてここに置く。
-export type ThreadFilter = "all" | "popular" | "image" | "video" | "link";
+export type ThreadFilter = "all" | "popular" | "image" | "video" | "link" | "internalLink" | "own";
 
 // 変更理由: 検索対象も検索語と同じスレッド単位で復元し、タブを切り替えても
 // ユーザーが選んだ本文・名前・IDの検索条件を失わないようにする。

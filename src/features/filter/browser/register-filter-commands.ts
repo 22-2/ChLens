@@ -25,7 +25,7 @@ function dispatchThreadFilterModeToggle(
   toggleThreadFilterMode(viewWindow, context.viewTab.id, filter);
 }
 
-// 変更理由: フィルタボタンと同じ4モードを、それぞれ選択・解除できるパレット項目として並べる。
+// 変更理由: フィルタメニューと同じ各モードを、それぞれ選択・解除できるパレット項目として並べる。
 const THREAD_FILTER_MODE_COMMANDS: readonly BrowserCommandDefinition[] = [
   {
     id: "filter.toggle-popular",
@@ -70,6 +70,29 @@ const THREAD_FILTER_MODE_COMMANDS: readonly BrowserCommandDefinition[] = [
     icon: Filter,
     when: ({ viewPage }) => viewPage.type === "thread",
     run: (context) => dispatchThreadFilterModeToggle(context, "link"),
+  },
+  {
+    id: "filter.toggle-internal-link",
+    label: "内部リンクのフィルタを切り替え",
+    englishLabel: "Toggle Internal Link Filter",
+    description:
+      "同じサイトへのリンクを含むレスだけに絞り込みます。選択中にもう一度実行すると解除します",
+    keywords: ["内部", "リンク", "link", "絞り込み", "フィルタ"],
+    group: "page",
+    icon: Filter,
+    when: ({ viewPage }) => viewPage.type === "thread",
+    run: (context) => dispatchThreadFilterModeToggle(context, "internalLink"),
+  },
+  {
+    id: "filter.toggle-own",
+    label: "自分のレスのフィルタを切り替え",
+    englishLabel: "Toggle Own Posts Filter",
+    description: "自分が書き込んだレスだけに絞り込みます。選択中にもう一度実行すると解除します",
+    keywords: ["自分", "own", "書き込み", "絞り込み", "フィルタ"],
+    group: "page",
+    icon: Filter,
+    when: ({ viewPage }) => viewPage.type === "thread",
+    run: (context) => dispatchThreadFilterModeToggle(context, "own"),
   },
 ];
 

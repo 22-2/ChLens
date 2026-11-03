@@ -49,7 +49,14 @@ describe("スレッド表示用派生データ", () => {
     });
 
     expect(result.filteredResponses).toEqual([]);
-    expect(result.filterCounts).toEqual({ popular: 1, image: 1, video: 1, link: 2 });
+    expect(result.filterCounts).toEqual({
+      popular: 1,
+      image: 1,
+      video: 1,
+      link: 2,
+      internalLink: 0,
+      own: 0,
+    });
   });
 
   it("IDごとの出現位置と返信索引を表示側へ渡す", () => {
@@ -66,5 +73,28 @@ describe("スレッド表示用派生データ", () => {
     expect(result.idPositions.get(1)).toBe(1);
     expect(result.idPositions.get(2)).toBe(2);
     expect(result.indexes.repIndex.get(1)).toEqual(new Set([2]));
+  });
+
+  it("スレッドのURLを渡すと、同じサイトのリンクを内部リンク、別のサイトを外部リンクに分ける", () => {
+    const linked = [
+      response(1, "https://itest.5ch.io/test/read.cgi/news/1/"),
+      response(2, "https://example.com/page"),
+      response(3, "リンクなし"),
+    ];
+    const derive = (filter: "link" | "internalLink") =>
+      deriveThreadData({
+        responses: linked,
+        filter,
+        popularReplyThreshold: 1,
+        searchQuery: "",
+        searchTarget: "all",
+        threadUrl: "https://mi.5ch.io/test/read.cgi/news/2/",
+        isNgTemporarilyDisabled: false,
+        ngDisplayMode: "soft-ng",
+      });
+
+    expect(derive("internalLink").filteredResponses.map((item) => item.num)).toEqual([1]);
+    expect(derive("link").filteredResponses.map((item) => item.num)).toEqual([2]);
+    expect(derive("link").filterCounts).toMatchObject({ link: 1, internalLink: 1 });
   });
 });

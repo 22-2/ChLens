@@ -1,6 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 
-import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/message-filter";
+import {
+  hasExternalLink,
+  hasImage,
+  hasInternalLink,
+  hasVideo,
+  siteDomainOf,
+} from "src/view/browser/utils/message-filter";
 import { describe, expect, it } from "vite-plus/test";
 
 describe("message-filter", () => {
@@ -48,5 +54,41 @@ describe("message-filter", () => {
         "https://video.twimg.com/amplify_video/0000000000000000000/vid/avc1/1280x720/test-video.mp4?tag=14",
       ),
     ).toBe(true);
+  });
+});
+
+describe("リンクの内外の判定", () => {
+  const threadUrl = "https://mi.5ch.io/test/read.cgi/news/1234567890/";
+
+  it("スレッドと同じサイトのリンクだけなら内部リンクで、外部リンクには数えない", () => {
+    const message = "https://itest.5ch.io/test/read.cgi/news/1111111111/";
+
+    expect(hasInternalLink(message, threadUrl)).toBe(true);
+    expect(hasExternalLink(message, threadUrl)).toBe(false);
+  });
+
+  it("別のサイトへのリンクは外部リンクで、内部リンクには数えない", () => {
+    const message = "https://example.com/page";
+
+    expect(hasExternalLink(message, threadUrl)).toBe(true);
+    expect(hasInternalLink(message, threadUrl)).toBe(false);
+  });
+
+  it("内外のリンクが混ざっていれば、どちらにも当てはまる", () => {
+    const message = "https://example.com/a https://mi.5ch.io/test/read.cgi/news/2/";
+
+    expect(hasExternalLink(message, threadUrl)).toBe(true);
+    expect(hasInternalLink(message, threadUrl)).toBe(true);
+  });
+
+  it("スレッドのURLを渡さないときの外部リンクは、従来どおりリンクがあれば当てはまる", () => {
+    expect(hasExternalLink("https://mi.5ch.io/test/read.cgi/news/2/")).toBe(true);
+    expect(hasExternalLink("リンクなし")).toBe(false);
+  });
+
+  it("co.jp のような第2レベルは、別の組織を同じサイトとみなさない", () => {
+    expect(siteDomainOf("www.example.co.jp")).toBe("example.co.jp");
+    expect(siteDomainOf("a.example.co.jp")).not.toBe(siteDomainOf("a.other.co.jp"));
+    expect(siteDomainOf("mi.5ch.io")).toBe("5ch.io");
   });
 });

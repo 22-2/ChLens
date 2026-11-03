@@ -1,6 +1,11 @@
 import type { IRes } from "src/service-container/interfaces";
 import type { ThreadFilter, ThreadSearchTarget } from "src/view/browser/types";
-import { hasExternalLink, hasImage, hasVideo } from "src/view/browser/utils/message-filter";
+import {
+  hasExternalLink,
+  hasImage,
+  hasInternalLink,
+  hasVideo,
+} from "src/view/browser/utils/message-filter";
 import type { NgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 import {
   DEFAULT_SEARCH_OPTIONS,
@@ -17,6 +22,8 @@ export interface ThreadDerivedDataOptions {
   /** 省略すると従来どおり、大文字小文字・かなを区別しない部分一致。 */
   searchOptions?: SearchOptions;
   searchTarget: ThreadSearchTarget;
+  /** 「外部リンク」「内部リンク」の判定で、同じサイトかを決める基準になるスレッドURL。 */
+  threadUrl?: string;
   isNgTemporarilyDisabled: boolean;
   ngDisplayMode: NgDisplayMode;
 }
@@ -32,13 +39,15 @@ export interface ThreadDerivedData {
   idPositions: Map<number, number>;
 }
 
-const COUNTED_FILTERS = ["popular", "image", "video", "link"] as const;
+// 「自分のレス」は書き込み履歴から決まるため、ここでは数えない。画面側が絞り込みと件数を足す。
+const COUNTED_FILTERS = ["popular", "image", "video", "link", "internalLink"] as const;
 
 function matchesThreadFilter(
   res: IRes,
   filter: Exclude<ThreadFilter, "all">,
   repIndex: ReturnType<typeof buildIndexes>["repIndex"],
   popularReplyThreshold: number,
+  threadUrl: string | undefined,
 ): boolean {
   switch (filter) {
     case "popular":
@@ -48,7 +57,11 @@ function matchesThreadFilter(
     case "video":
       return hasVideo(res.message);
     case "link":
-      return hasExternalLink(res.message);
+      return hasExternalLink(res.message, threadUrl);
+    case "internalLink":
+      return threadUrl !== undefined && hasInternalLink(res.message, threadUrl);
+    case "own":
+      return true;
   }
 }
 
@@ -66,6 +79,7 @@ export function deriveThreadData(options: ThreadDerivedDataOptions): ThreadDeriv
     searchQuery,
     searchOptions = DEFAULT_SEARCH_OPTIONS,
     searchTarget,
+    threadUrl,
     isNgTemporarilyDisabled,
     ngDisplayMode,
   } = options;
@@ -79,15 +93,24 @@ export function deriveThreadData(options: ThreadDerivedDataOptions): ThreadDeriv
   let filteredResponses = visibleResponses;
   if (filter !== "all") {
     filteredResponses = filteredResponses.filter((res) =>
-      matchesThreadFilter(res, filter, indexes.repIndex, popularReplyThreshold),
+      matchesThreadFilter(res, filter, indexes.repIndex, popularReplyThreshold, threadUrl),
     );
   }
 
   // 件数は検索語に関係なくスレッド全体に対して数え、フィルタを選ぶ前に該当数を見られるようにする。
-  const filterCounts: ThreadFilterCounts = { popular: 0, image: 0, video: 0, link: 0 };
+  const filterCounts: ThreadFilterCounts = {
+    popular: 0,
+    image: 0,
+    video: 0,
+    link: 0,
+    internalLink: 0,
+    own: 0,
+  };
   for (const res of visibleResponses) {
     for (const countedFilter of COUNTED_FILTERS) {
-      if (matchesThreadFilter(res, countedFilter, indexes.repIndex, popularReplyThreshold)) {
+      if (
+        matchesThreadFilter(res, countedFilter, indexes.repIndex, popularReplyThreshold, threadUrl)
+      ) {
         filterCounts[countedFilter] += 1;
       }
     }

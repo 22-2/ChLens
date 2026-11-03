@@ -53,6 +53,8 @@ describe("機能コマンドの登録順", () => {
         "filter.toggle-image",
         "filter.toggle-video",
         "filter.toggle-link",
+        "filter.toggle-internal-link",
+        "filter.toggle-own",
         "auto-refresh.toggle",
         "next-thread.toggle-auto",
       ]);
