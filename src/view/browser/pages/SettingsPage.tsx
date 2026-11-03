@@ -9,6 +9,7 @@ import {
 } from "src/features/replacement/ui/ReplacementEditor";
 import { container } from "src/service-container/index";
 import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   groupSectionItems,
   isSettingsSectionId,
@@ -129,6 +130,8 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
   page,
 }) => {
   const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
+  // 別窓でも自分の窓の要素へフォーカスを移すため、グローバルのdocumentを使わない。
+  const { document: viewDocument } = useViewSurface();
   // 全タブ共通の保存値を使うと、閉じて開き直した設定タブにも前回の表示状態が残る。
   // タブセッションから初期値を読み、Chrome側の再読み込みでは同じタブの状態を復元する。
   const [initialUiState] = useState(() => persistedViewState.settingsPage ?? {});
@@ -661,7 +664,7 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
                         if (next) {
                           event.preventDefault();
                           setNgSettingsTab(next);
-                          document.getElementById(`rule-tab-${tabId}-${next}`)?.focus();
+                          viewDocument.getElementById(`rule-tab-${tabId}-${next}`)?.focus();
                         }
                       }}
                     >

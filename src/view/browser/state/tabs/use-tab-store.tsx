@@ -469,6 +469,21 @@ function scopeActionToViewTab(
   viewTabId: string | null,
 ): ScopedTabAction {
   const scopedAction = action.paneId === undefined ? { ...action, paneId } : action;
+  // 変更理由: 別窓で「新しいタブで開く」を本窓へ作ると、別窓から操作した結果が
+  // 見えない場所に出る。別窓は自タブ1枚を表示する場なので、同じタブ内の遷移
+  // (戻る/進むで辿れる)として開く。
+  if (
+    viewTabId != null &&
+    scopedAction.tabId === undefined &&
+    (scopedAction.type === TAB_ACTION_TYPES.OPEN_IN_NEW_TAB ||
+      scopedAction.type === TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE)
+  ) {
+    return {
+      ...tabActions.navigate(scopedAction.page),
+      paneId: scopedAction.paneId,
+      tabId: viewTabId,
+    };
+  }
   if (
     scopedAction.tabId !== undefined ||
     viewTabId == null ||

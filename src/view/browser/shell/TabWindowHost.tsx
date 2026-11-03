@@ -23,7 +23,7 @@ import {
   useTabPanes,
   useTabStore,
 } from "src/view/browser/state/tabs/use-tab-store";
-import { getCurrentPage, type Page, type Pane, type Tab } from "src/view/browser/types";
+import { getCurrentPage, type Pane, type Tab } from "src/view/browser/types";
 
 const logger = createLogger("view/browser");
 
@@ -40,10 +40,6 @@ function findTab(panes: readonly Pane[], tabId: string): { tab: Tab; paneId: str
     }
   }
   return null;
-}
-
-function isDetachablePage(page: Page): boolean {
-  return page.type === "thread" || page.type === "threadList";
 }
 
 function createTabWindowOptions(tab: Tab): AuxiliaryWindowOptions {
@@ -124,7 +120,9 @@ export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) =
   const detachTab = useCallback(
     (tabId: string) => {
       const located = findTab(panes, tabId);
-      if (!located || !isDetachablePage(getCurrentPage(located.tab))) {
+      // 変更理由: ページ種別ごとに別窓可否を持つと、ページを足すたびに判定の更新漏れが
+      // 起きる。どのページも同じ仕組みで切り離せるため、タブが存在すれば許可する。
+      if (!located) {
         return false;
       }
 

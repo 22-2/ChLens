@@ -16,6 +16,7 @@ import {
   MIN_THREAD_AUTO_REFRESH_SETTING_MS,
 } from "src/features/auto-refresh/browser/auto-refresh-config";
 import { container } from "src/service-container/index";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { SettingsGroup, SettingsGroupNote } from "src/view/browser/pages/settings/SettingsGroup";
 import { Button } from "src/view/browser/ui/Button";
 import { Dialog } from "src/view/browser/ui/Dialog";
@@ -229,9 +230,12 @@ export function SiteBoardSettingsPanel() {
   const [globalValues, setGlobalValues] =
     useState<Record<ScopedSettingKey, string>>(readGlobalSettingValues);
 
+  // 別窓で開いた設定画面のモーダルが本窓へ出ないよう、表示先の窓から探す。
+  const { document: viewDocument } = useViewSurface();
+
   useEffect(() => {
-    setDialogPortalContainer(globalThis.document.querySelector<HTMLElement>(".browser-shell"));
-  }, []);
+    setDialogPortalContainer(viewDocument.querySelector<HTMLElement>(".browser-shell"));
+  }, [viewDocument]);
 
   useEffect(() => {
     const sync = () => setDocument(readScopedSettings());

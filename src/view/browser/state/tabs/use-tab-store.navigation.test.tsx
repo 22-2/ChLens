@@ -133,7 +133,7 @@ describe("TabProvider auto refresh state", () => {
     const { tabActions } = await import("src/view/browser/state/tabs/tab-store-actions");
 
     function ScopedView() {
-      const { selectedTabId, viewTabId, selectedTab, viewPage, dispatch } = useTabStore();
+      const { state, selectedTabId, viewTabId, selectedTab, viewPage, dispatch } = useTabStore();
 
       return (
         <>
@@ -154,6 +154,20 @@ describe("TabProvider auto refresh state", () => {
           >
             別窓側へ移動
           </button>
+          <button
+            onClick={() =>
+              dispatch(
+                tabActions.openInNewTab({
+                  type: "thread",
+                  title: "別窓内で開いたスレ",
+                  threadUrl: "https://example.com/test/read.cgi/board/in-window/",
+                }),
+              )
+            }
+          >
+            別窓内で新規に開く
+          </button>
+          <output data-testid="scoped-tab-count">{String(state.tabs.length)}</output>
         </>
       );
     }
@@ -216,6 +230,14 @@ describe("TabProvider auto refresh state", () => {
     expect(screen.getByTestId("scoped-selected-id")).toHaveTextContent(mainSelectedId ?? "");
     expect(screen.getByTestId("scoped-view-id")).toHaveTextContent(scopedViewId ?? "");
     expect(screen.getByTestId("scoped-view-title")).toHaveTextContent("別窓で移動したスレ");
+    expect(screen.getByTestId("main-selected-id")).toHaveTextContent(mainSelectedId ?? "");
+
+    // 別窓内の「新しいタブで開く」は、本窓にタブを増やさず別窓のタブ内で遷移する。
+    const tabCountBefore = screen.getByTestId("scoped-tab-count").textContent;
+    fireEvent.click(screen.getByText("別窓内で新規に開く"));
+    expect(screen.getByTestId("scoped-tab-count")).toHaveTextContent(tabCountBefore ?? "");
+    expect(screen.getByTestId("scoped-view-id")).toHaveTextContent(scopedViewId ?? "");
+    expect(screen.getByTestId("scoped-view-title")).toHaveTextContent("別窓内で開いたスレ");
     expect(screen.getByTestId("main-selected-id")).toHaveTextContent(mainSelectedId ?? "");
   });
 

@@ -55,9 +55,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
 
   const currentPage = getCurrentPage(tab);
   const isThread = currentPage.type === "thread";
-  const isThreadList = currentPage.type === "threadList";
   const tabIsDetached = isDetachedTab(tab.id);
-  const canDetach = isThread || isThreadList || tabIsDetached;
 
   // 閉じたタブがあるか
   const hasClosedTabs = state.closedTabs.length > 0;
@@ -87,30 +85,29 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     // コマンドパレットへ集約する。スレッド固有のブックマーク・コピーだけは一覧メニュー
     // と同じ共通定義を使い、表示場所による操作差をなくす。
 
-    if (canDetach) {
-      result.push({
-        id: "detach-tab",
-        label: tabIsDetached ? "メイン画面へ戻す" : "別窓で開く",
-        icon: <ExternalLink />,
-        onSelect: () => {
-          if (tabIsDetached) {
-            reattachTab(tab.id);
-            return;
-          }
+    // 変更理由: ページ種別で別窓可否を分けず、どのタブも同じメニューで切り離せるようにする。
+    result.push({
+      id: "detach-tab",
+      label: tabIsDetached ? "メイン画面へ戻す" : "別窓で開く",
+      icon: <ExternalLink />,
+      onSelect: () => {
+        if (tabIsDetached) {
+          reattachTab(tab.id);
+          return;
+        }
 
-          const opened = detachTab(tab.id);
-          // 窓の生成に成功した時だけ同じペインの下部パネルを閉じ、
-          // ポップアップブロック時は入力中のパネルを残す。
-          if (!tabIsDetached && opened) {
-            bottomPanel?.closePanel();
-          } else if (!tabIsDetached && !opened) {
-            // ログだけでは操作結果が分からないため、利用者へも失敗理由を伝える。
-            toast.error("別窓を開けませんでした。ポップアップ設定を確認してください");
-          }
-        },
-      });
-      result.push({ id: "sep-detach", separator: true });
-    }
+        const opened = detachTab(tab.id);
+        // 窓の生成に成功した時だけ同じペインの下部パネルを閉じ、
+        // ポップアップブロック時は入力中のパネルを残す。
+        if (opened) {
+          bottomPanel?.closePanel();
+        } else {
+          // ログだけでは操作結果が分からないため、利用者へも失敗理由を伝える。
+          toast.error("別窓を開けませんでした。ポップアップ設定を確認してください");
+        }
+      },
+    });
+    result.push({ id: "sep-detach", separator: true });
 
     if (isThread) {
       const threadPage = currentPage as { threadUrl: string; title: string };
@@ -179,7 +176,6 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     });
     return result;
   }, [
-    canDetach,
     currentPage,
     dispatch,
     hasClosedTabs,

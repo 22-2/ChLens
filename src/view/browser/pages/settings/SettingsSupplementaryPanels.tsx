@@ -1,6 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { container } from "src/service-container/index";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { DebugLogPanel } from "src/view/browser/pages/settings/DebugLogPanel";
 import {
   buildDataExportFilename,
@@ -49,9 +50,12 @@ export function SettingsSupplementaryPanels({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(null);
 
+  // 別窓で開いた設定画面のモーダルが本窓へ出ないよう、表示先の窓から探す。
+  const { document: viewDocument } = useViewSurface();
+
   useEffect(() => {
-    setDialogPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
-  }, []);
+    setDialogPortalContainer(viewDocument.querySelector<HTMLElement>(".browser-shell"));
+  }, [viewDocument]);
 
   const loadBookmarkFolder = useCallback(async () => {
     if (!supportsBookmarkFolderSelection()) {

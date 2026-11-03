@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useState } from "react";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { Button } from "src/view/browser/ui/Button";
 import { Dialog } from "src/view/browser/ui/Dialog";
 
@@ -69,10 +70,13 @@ export const TitleBarButtonSettingsDialog: React.FC<TitleBarButtonSettingsDialog
   const descriptionId = useId();
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(null);
 
+  // 別窓で開いた設定画面のモーダルが本窓へ出ないよう、表示先の窓から探す。
+  const { document: viewDocument } = useViewSurface();
+
   useEffect(() => {
     // テーマトークンを継承したペイン内へPortalを置き、アプリのテーマとモーダルの色を揃える。
-    setDialogPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
-  }, []);
+    setDialogPortalContainer(viewDocument.querySelector<HTMLElement>(".browser-shell"));
+  }, [viewDocument]);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>

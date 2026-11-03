@@ -169,6 +169,23 @@ describe("TabWindowHost", () => {
     );
   });
 
+  it("スレ・スレ一覧以外のページも別窓へ切り離せる", () => {
+    const tab = createThreadTab("tab-1");
+    tab.history = [{ type: "settings", title: "設定" }];
+    mocks.panes = [{ id: "pane-1", tabs: [tab, createThreadTab("tab-2")], activeTabId: tab.id }];
+
+    render(
+      <TabWindowHost>
+        <Probe />
+      </TabWindowHost>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "開く" }));
+
+    expect(mocks.openAuxiliaryWindow).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("detached-state")).toHaveTextContent("true");
+  });
+
   it("切り離した別窓に、別窓用として下部パネルを配置する", () => {
     render(
       <TabWindowHost>
