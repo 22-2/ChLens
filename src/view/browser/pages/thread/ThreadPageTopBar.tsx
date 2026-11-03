@@ -1,8 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import {
-  getSearchError,
-  SearchOptionToggles,
-} from "src/view/browser/components/SearchOptionToggles";
+import { getSearchError, SearchOptionsMenu } from "src/view/browser/components/SearchOptionsMenu";
 import type { TopBarMode } from "src/view/browser/pages/thread/use-thread-top-bar";
 import type { ThreadFilter, ThreadSearchTarget } from "src/view/browser/types";
 import type { SearchOptions } from "src/view/browser/utils/search-normalize";
@@ -133,7 +130,7 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
             onClose();
           }}
         />
-        <SearchOptionToggles options={searchOptions} onChange={onSearchOptionsChange} />
+        <SearchOptionsMenu options={searchOptions} onChange={onSearchOptionsChange} />
       </div>
     </div>
   );

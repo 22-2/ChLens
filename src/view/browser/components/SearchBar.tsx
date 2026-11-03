@@ -1,8 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import {
-  getSearchError,
-  SearchOptionToggles,
-} from "src/view/browser/components/SearchOptionToggles";
+import { getSearchError, SearchOptionsMenu } from "src/view/browser/components/SearchOptionsMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import type { SearchOptions } from "src/view/browser/utils/search-normalize";
 
@@ -61,7 +58,7 @@ export const SearchBar: React.FC<Props> = ({
         }}
       />
       {searchOptions && onSearchOptionsChange ? (
-        <SearchOptionToggles options={searchOptions} onChange={onSearchOptionsChange} />
+        <SearchOptionsMenu options={searchOptions} onChange={onSearchOptionsChange} />
       ) : null}
       {loading ? (
         <Spinner size="xs" aria-label="検索中" />

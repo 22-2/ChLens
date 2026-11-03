@@ -7,10 +7,7 @@ import { useThreadMediaViewerScope } from "src/features/media/browser/use-thread
 import { ResMediaGallery } from "src/features/media/ui/ResMediaGallery";
 import { buildThreadFindIndex, findThreadMatches } from "src/features/thread/domain/thread-find";
 import { ResBody } from "src/features/thread/ui/ResBody";
-import {
-  getSearchError,
-  SearchOptionToggles,
-} from "src/view/browser/components/SearchOptionToggles";
+import { getSearchError, SearchOptionsMenu } from "src/view/browser/components/SearchOptionsMenu";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
 import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
@@ -269,7 +266,7 @@ export function SidePanelExtract({ tabId, page }: { tabId: string; page: ThreadP
           value={state.sidePanelExtractQuery ?? ""}
           onChange={(event) => update({ sidePanelExtractQuery: event.currentTarget.value })}
         />
-        <SearchOptionToggles
+        <SearchOptionsMenu
           options={searchOptions}
           onChange={(next) => update({ sidePanelExtractOptions: next })}
         />

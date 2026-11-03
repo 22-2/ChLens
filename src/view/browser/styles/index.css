@@ -23,7 +23,7 @@
 @import "./components/NextThreadSearchDialog.css";
 @import "./components/DataTable.css";
 @import "./components/SearchBar.css";
-@import "./components/SearchOptionToggles.css";
+@import "./components/SearchOptionsMenu.css";
 @import "./components/ThreadPopup.css";
 @import "./components/Toast.css";
 @import "../../../features/media/ui/MediaViewer.css";

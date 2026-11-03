@@ -1,10 +1,7 @@
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { UseThreadFindResult } from "src/features/thread/browser/use-thread-find";
-import {
-  getSearchError,
-  SearchOptionToggles,
-} from "src/view/browser/components/SearchOptionToggles";
+import { getSearchError, SearchOptionsMenu } from "src/view/browser/components/SearchOptionsMenu";
 
 interface ThreadFindBarProps {
   find: Pick<
@@ -69,7 +66,7 @@ export function ThreadFindBar({ find }: ThreadFindBarProps) {
           }
         }}
       />
-      <SearchOptionToggles options={options} onChange={onOptionsChange} />
+      <SearchOptionsMenu options={options} onChange={onOptionsChange} />
       <span
         className={`thread-find-bar__status${
           hasQuery && total === 0 ? " thread-find-bar__status--empty" : ""
