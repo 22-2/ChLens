@@ -195,3 +195,20 @@
 .browser-switch__thumb[data-state="checked"] {
   transform: translateX(calc(var(--sys-space-13) - var(--sys-space-8) - var(--sys-space-1)));
 }
+
+/* 変更理由: 320px前後のペインでは、名前と説明の横に選択肢や入力欄が並ぶと、左の列が数文字幅まで
+   潰れて読めなくなる。トグル以外の操作部品は名前の下へ回し、左右の余白も詰める。 */
+@container pane (max-width: 480px) {
+  .browser-setting-row {
+    padding: var(--sys-space-6) var(--sys-space-6);
+  }
+
+  .browser-setting-row:not(:has(.browser-switch)) {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .browser-setting-row:not(:has(.browser-switch)) .browser-setting-row__control {
+    justify-content: flex-start;
+  }
+}

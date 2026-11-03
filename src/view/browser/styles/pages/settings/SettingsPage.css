@@ -609,3 +609,15 @@
   outline: var(--sys-space-1) solid var(--sys-color-accent);
   outline-offset: var(--sys-space-1);
 }
+
+/* 変更理由: 本文の左右に12単位ずつ余白があると、320px前後のペインでは項目が窮屈になるため、狭いペインでは余白を詰める。 */
+@container pane (max-width: 480px) {
+  .settings-page__main {
+    padding: var(--sys-space-6) var(--sys-space-5);
+  }
+
+  .settings-page__group-note,
+  .settings-page__group-card > .settings-page__group-actions {
+    padding-inline: var(--sys-space-6);
+  }
+}
