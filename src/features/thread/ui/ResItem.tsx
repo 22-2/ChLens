@@ -300,6 +300,12 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                 e.stopPropagation();
                 onRepClick(res.num, e);
               }}
+              onContextMenu={(e) => {
+                // 右クリックはツリーではなく、そのレスへの直接返信だけを開く操作として扱う。
+                e.preventDefault();
+                e.stopPropagation();
+                onRepClick(res.num, e);
+              }}
             >
               返信({repCount})
             </span>

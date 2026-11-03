@@ -195,6 +195,13 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
                 e.stopPropagation();
                 onRepClick(res.num, e);
               }}
+              onContextMenu={(e) => {
+                // レス全体のメニューではなく、直接返信だけの表示を開く。
+                e.preventDefault();
+                e.stopPropagation();
+                if (disableRepClick) return;
+                onRepClick(res.num, e);
+              }}
             >
               返信({repCount})
             </span>

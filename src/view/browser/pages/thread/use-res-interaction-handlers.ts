@@ -25,6 +25,11 @@ interface UseResInteractionHandlersParams extends Pick<
   scrollToResponse: (resNum: number, options?: { highlight?: boolean; offset?: number }) => void;
 }
 
+/** 返信数ボタンの右クリックは、クリックと同じハンドラーへ contextmenu イベントのまま渡される。 */
+function isContextMenuEvent(e: MouseEvent): boolean {
+  return e.type === "contextmenu";
+}
+
 export function useResInteractionHandlers({
   indexes,
   addTreePopup,
@@ -90,13 +95,30 @@ export function useResInteractionHandlers({
   );
 
   // 返信クリック → 返信ツリーをポップアップ表示（スレッド本文から）
+  // 右クリック（contextmenu）の場合は、孫以降を含むツリーではなくそのレスへの直接返信だけを開く。
+  const openDirectReplyPopup = useCallback(
+    (resNum: number, e: MouseEvent, parentId?: string) => {
+      const items = Array.from(indexes.repIndex.get(resNum) ?? [])
+        .sort((a, b) => a - b)
+        .map((num) => indexes.resMap.get(num))
+        .filter((r): r is IRes => !!r);
+      if (items.length === 0) return;
+      addIdPopup(e.clientX, e.clientY, items, `>>${resNum} への返信 (${items.length}件)`, parentId);
+    },
+    [addIdPopup, indexes.repIndex, indexes.resMap],
+  );
+
   const handleRepClick = useCallback(
     (resNum: number, e: MouseEvent) => {
       hideAnchorPreviewImmediately();
       closeNonContextPopups();
+      if (isContextMenuEvent(e)) {
+        openDirectReplyPopup(resNum, e);
+        return;
+      }
       addTreePopup(resNum, e.clientX, e.clientY);
     },
-    [hideAnchorPreviewImmediately, closeNonContextPopups, addTreePopup],
+    [hideAnchorPreviewImmediately, closeNonContextPopups, addTreePopup, openDirectReplyPopup],
   );
 
   const closePopup = useCallback(() => {
@@ -110,11 +132,15 @@ export function useResInteractionHandlers({
     (parentId?: string, anchorPreviewDepth = 0) =>
       (resNum: number, e: MouseEvent) => {
         clearAnchorPreviewHideTimer();
+        if (isContextMenuEvent(e)) {
+          openDirectReplyPopup(resNum, e, parentId);
+          return;
+        }
         // アンカープレビュー配下で開いた返信ツリーは、その深さを持ち回って
         // 次のアンカーホバーでも親プレビューを巻き込んで閉じないようにする。
         addTreePopup(resNum, e.clientX, e.clientY, parentId, anchorPreviewDepth);
       },
-    [addTreePopup, clearAnchorPreviewHideTimer],
+    [addTreePopup, clearAnchorPreviewHideTimer, openDirectReplyPopup],
   );
 
   const handleOpenRootReplyTreeInPopup = useCallback(
