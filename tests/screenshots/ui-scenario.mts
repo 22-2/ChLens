@@ -338,3 +338,88 @@ export async function captureCommonScreens(
   await captureSettings(page, shooter);
   await captureSettingsAtHalfDisplay(page, shooter);
 }
+
+/**
+ * 画面が狭いときに撮影する表示領域の幅。
+ * 320pxは小型スマートフォン、390pxは一般的なスマートフォン、560pxはサイドバーなどを併用した狭いウィンドウを想定する。
+ */
+export const NARROW_VIEWPORT_WIDTHS = [320, 390, 560] as const;
+const NARROW_VIEWPORT_HEIGHT = 844;
+
+/**
+ * 画面が狭いときのホーム・板一覧・スレッド一覧・スレッド・設定を、幅ごとに撮る。
+ *
+ * 変更理由: 通常の撮影は1440pxと960pxだけで、狭い幅で崩れても気付けなかった。
+ * 横にはみ出す画面は撮影と同時に検出し、目視に頼らずテストを失敗させる。
+ * 事前に `seedScreenshotThreads` と `applyTheme` を済ませておく。
+ */
+export async function captureNarrowScreens(
+  page: Page,
+  shooter: Shooter,
+  rootUrl: string,
+): Promise<void> {
+  const overflowing: string[] = [];
+  const shoot = async (name: string) => {
+    await shooter.capture(page, name);
+    // ページ全体が横スクロールを持つ場合は、画面外へ操作部品がはみ出している。
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    if (overflow > 0) overflowing.push(`${name} (${overflow}px)`);
+  };
+
+  for (const width of NARROW_VIEWPORT_WIDTHS) {
+    await page.setViewportSize({ width, height: NARROW_VIEWPORT_HEIGHT });
+    await page.goto(rootUrl);
+    await expect(page.locator(".browser-shell")).toBeVisible();
+    const prefix = `narrow-${width}`;
+    // 直前の幅で開いたタブが復元されるため、新しいタブでホームを出して同じ状態から始める。
+    if (width !== NARROW_VIEWPORT_WIDTHS[0]) {
+      await page.getByRole("button", { name: "新しいタブ", exact: true }).click();
+    }
+    await shoot(`${prefix}-01-home`);
+
+    await page.getByRole("button", { name: "板一覧を開く", exact: true }).click();
+    const menu = page.getByRole("button", { name: "テスト板メニュー", exact: true });
+    if ((await menu.getAttribute("aria-expanded")) === "false") await menu.click();
+    const category = page.getByRole("button", { name: "テストカテゴリ", exact: true });
+    if ((await category.getAttribute("aria-expanded")) === "false") await category.click();
+    await expect(page.getByText("ローカルテスト板", { exact: true })).toBeVisible();
+    await shoot(`${prefix}-02-board-list`);
+
+    await page.getByText("ローカルテスト板", { exact: true }).click();
+    const panel = page.locator('.content-area__tab-panel[data-active="true"]');
+    await expect(panel.getByText(SCREENSHOT_THREAD_TITLE, { exact: true })).toBeVisible();
+    await shoot(`${prefix}-03-thread-list`);
+
+    await panel.getByText(SCREENSHOT_THREAD_TITLE, { exact: true }).click();
+    // 狭い幅では末尾のレスが仮想リストの描画範囲に入らないため、先頭のレスで表示完了を判断する。
+    await expect(panel.locator('.thread-page__responses [data-res-num="1"]')).toBeVisible({
+      timeout: 30_000,
+    });
+    await shoot(`${prefix}-04-thread`);
+
+    await page.getByTitle("メニュー", { exact: true }).click();
+    await shoot(`${prefix}-05-menu`);
+    await page.getByTitle("設定を開く", { exact: true }).click();
+    await expect(page.locator(".settings-page__shell")).toBeVisible();
+    await shoot(`${prefix}-06-settings`);
+    for (const [label, file] of SETTINGS.slice(0, 4)) {
+      // 狭い幅ではカテゴリ一覧が左端のホットゾーンに隠れているため、先に開く。
+      await page.getByRole("button", { name: "設定カテゴリメニューを開く" }).click();
+      const section = page
+        .locator(".settings-page__section-btn")
+        .filter({ hasText: label })
+        .first();
+      // 共通の撮影と同じく、この版に無いカテゴリは飛ばす。
+      if (!(await section.count())) continue;
+      await section.click();
+      await expect(page.locator(".settings-page__title")).toHaveText(label);
+      await page.locator('[aria-label$="読み込み中"]').waitFor({ state: "hidden" });
+      await page.waitForTimeout(200);
+      await shoot(`${prefix}-07-${file}`);
+    }
+  }
+
+  expect(overflowing, "横にはみ出した画面").toEqual([]);
+}

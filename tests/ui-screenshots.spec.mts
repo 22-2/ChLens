@@ -2,6 +2,7 @@ import { expect, test } from "./fixtures.mjs";
 import {
   applyTheme,
   captureCommonScreens,
+  captureNarrowScreens,
   seedScreenshotThreads,
   Shooter,
   UI_THEMES,
@@ -22,5 +23,23 @@ for (const theme of UI_THEMES) {
     await expect(page.locator(".browser-shell")).toBeVisible();
     await applyTheme(page, theme);
     await captureCommonScreens(page, shooter, localBoard);
+  });
+}
+
+for (const theme of UI_THEMES) {
+  test(`Chrome版の狭い画面を${theme}テーマで撮影する`, async ({
+    page,
+    extensionId,
+    localBoard,
+  }) => {
+    // 3つの幅で全画面を巡るため、通常の短いE2E上限を延長する。
+    test.setTimeout(300_000);
+    const shooter = await Shooter.create("chrome", theme);
+    seedScreenshotThreads(localBoard);
+    const rootUrl = `chrome-extension://${extensionId}/view/index.html`;
+    await page.goto(rootUrl);
+    await expect(page.locator(".browser-shell")).toBeVisible();
+    await applyTheme(page, theme);
+    await captureNarrowScreens(page, shooter, rootUrl);
   });
 }
