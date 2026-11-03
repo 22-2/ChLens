@@ -3,6 +3,7 @@ import React, { useCallback } from "react";
 import { PopupResCardScope } from "src/features/popup/browser/popup-res-card-context";
 import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
+import { usePopupResContextMenu } from "src/features/popup/browser/use-popup-res-context-menu";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
 import type { IRes } from "src/service-container";
@@ -171,16 +172,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
     },
   ];
 
-  const handleResContextMenu = useCallback(
-    (event: React.MouseEvent, targetRes: IRes) => {
-      event.stopPropagation();
-      // 右クリックの mousedown では選択保護のため子孫を畳まない設計なので、
-      // 選択が確定した contextmenu のこの時点で配下の子孫ポップアップを畳む。
-      onPopupMouseDown?.();
-      onResContextMenu(targetRes, event);
-    },
-    [onResContextMenu, onPopupMouseDown],
-  );
+  const handleResContextMenu = usePopupResContextMenu(onResContextMenu, onPopupMouseDown);
 
   const handleClose = useCallback(() => {
     // 変更理由: ピン留め時もヘッダーの閉じるボタンでは明示的に閉じられるようにし、

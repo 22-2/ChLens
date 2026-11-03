@@ -1,9 +1,10 @@
 import type React from "react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { buildReplyIndexes } from "src/core/thread/reply-index";
 import { PopupResCardScope } from "src/features/popup/browser/popup-res-card-context";
 import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
+import { usePopupResContextMenu } from "src/features/popup/browser/use-popup-res-context-menu";
 import { useReplyTreeMenus } from "src/features/popup/browser/use-reply-tree-menus";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
@@ -132,18 +133,7 @@ export const ReplyTreePopup: React.FC<{
     [sourceRes, resNum, treeRepIndex, resMap],
   );
 
-  const handleResContextMenu = useCallback(
-    (event: React.MouseEvent, targetRes: IRes) => {
-      event.stopPropagation();
-      // 右クリックで文脈メニューを開く前に、このポップアップ配下の子孫
-      // (アンカープレビュー/子ツリー)を畳む。テキスト選択を消さないため右クリックの
-      // mousedown では閉じない設計（button=2 をスキップ）になっており、選択が確定した
-      // contextmenu のこの時点で onPopupMouseDown(=子孫クローズ) を呼んで畳む。
-      onPopupMouseDown?.();
-      onResContextMenu(targetRes, event);
-    },
-    [onResContextMenu, onPopupMouseDown],
-  );
+  const handleResContextMenu = usePopupResContextMenu(onResContextMenu, onPopupMouseDown);
 
   return (
     <FloatingPopup
