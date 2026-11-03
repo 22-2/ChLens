@@ -3,26 +3,25 @@ interface KanaSensitiveIconProps {
 }
 
 /**
- * 「ひらがなとカタカナを区別する」のアイコン。lucide に該当するものがないため、
- * 「あ」と「ア」を並べ、間に区別を示す斜線を引いて自前で描く。色は文字色に従う。
+ * 「ひらがなとカタカナを区別する」のアイコン。lucide の CaseSensitive（Aa）に合わせ、
+ * 大きい「あ」と小さい「ア」を同じ基線で並べる。色は文字色に従う。
  */
 export function KanaSensitiveIcon({ size = 14 }: KanaSensitiveIconProps) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 16 16"
+      viewBox="0 0 24 24"
       aria-hidden="true"
       focusable="false"
       fill="currentColor"
     >
-      <text x="0" y="9.5" fontSize="9" fontWeight="700" fontFamily="sans-serif">
+      <text x="0.5" y="17.5" fontSize="14" fontWeight="500" fontFamily="sans-serif">
         あ
       </text>
-      <text x="7.5" y="15" fontSize="9" fontWeight="700" fontFamily="sans-serif">
+      <text x="13.5" y="17.5" fontSize="10.5" fontWeight="500" fontFamily="sans-serif">
         ア
       </text>
-      <path d="M13.5 1.5 4 14.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }

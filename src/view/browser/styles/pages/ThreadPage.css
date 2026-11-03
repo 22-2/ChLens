@@ -245,7 +245,9 @@
 
 .thread-page__filters {
   display: flex;
-  flex: 1 1 360px;
+  /* 変更理由: 検索欄に切り替えボタンが付いて幅が増えたため、フィルタ項目の基準幅を下げ、
+     同じ行に並べられる画面幅の下限を従来に近づける。項目は等分に縮む。 */
+  flex: 1 1 240px;
   align-items: stretch;
   min-width: 0;
 }
@@ -331,7 +333,10 @@
 }
 
 .thread-page__toolbar-search-input {
-  flex: 0 1 220px;
+  /* 変更理由: 右端に切り替えボタンが付いて検索欄の幅が増え、狭い画面で行が増えたため、
+     折り返しの判定に使う基準幅を小さくし、余白があるときだけ従来の幅まで広げる。 */
+  flex: 1 1 140px;
+  max-width: 220px;
   min-width: 0;
   height: 22px;
   padding: 0 var(--sys-space-3);
