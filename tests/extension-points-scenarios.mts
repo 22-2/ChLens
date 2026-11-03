@@ -51,19 +51,20 @@ export async function verifyTwoPaneFilters(page: Page, localBoard: LocalBoard): 
     await page.getByPlaceholder("コマンドを検索...").fill(">画像のフィルタ");
     await page.getByRole("option", { name: /画像のフィルタを切り替え/u }).click();
   };
-  const leftImage = left.locator(".thread-page__filter-btn").filter({ hasText: "画像" });
-  const rightImage = right.locator(".thread-page__filter-btn").filter({ hasText: "画像" });
+  // 種類は「絞り込み」メニューのボタンの表示になる（選択中は種類名、解除すると「絞り込み」）。
+  const leftMode = left.locator(".thread-page__toolbar .search-options-menu__button");
+  const rightMode = right.locator(".thread-page__toolbar .search-options-menu__button");
   await runImageFilter();
-  await expect(leftImage).toHaveAttribute("aria-pressed", "true");
-  await expect(rightImage).toHaveAttribute("aria-pressed", "false");
+  await expect(leftMode).toHaveText("画像");
+  await expect(rightMode).toHaveText("絞り込み");
   await rightCount.click();
   await expect(rightFilter).toHaveCount(0);
   await runImageFilter();
-  await expect(rightImage).toHaveAttribute("aria-pressed", "true");
-  await expect(leftImage).toHaveAttribute("aria-pressed", "true");
+  await expect(rightMode).toHaveText("画像");
+  await expect(leftMode).toHaveText("画像");
   await runImageFilter();
-  await expect(rightImage).toHaveAttribute("aria-pressed", "false");
-  await expect(leftImage).toHaveAttribute("aria-pressed", "true");
+  await expect(rightMode).toHaveText("絞り込み");
+  await expect(leftMode).toHaveText("画像");
 }
 
 /** 切り離しと復帰の前後で、それぞれの窓に表示されたタブだけを操作する。 */

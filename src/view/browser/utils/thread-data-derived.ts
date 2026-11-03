@@ -1,5 +1,5 @@
 import type { IRes } from "src/service-container/interfaces";
-import type { ThreadFilter, ThreadSearchTarget } from "src/view/browser/types";
+import type { ThreadFilter } from "src/view/browser/types";
 import {
   hasExternalLink,
   hasImage,
@@ -12,7 +12,10 @@ import {
   type SearchOptions,
 } from "src/view/browser/utils/search-normalize";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
-import { filterThreadResponses } from "src/view/browser/utils/thread-search";
+import {
+  compileThreadQuery,
+  type ThreadHighlightMatchers,
+} from "src/view/browser/utils/thread-query";
 
 export interface ThreadDerivedDataOptions {
   responses: IRes[];
@@ -21,7 +24,6 @@ export interface ThreadDerivedDataOptions {
   searchQuery: string;
   /** 省略すると従来どおり、大文字小文字・かなを区別しない部分一致。 */
   searchOptions?: SearchOptions;
-  searchTarget: ThreadSearchTarget;
   /** 「外部リンク」「内部リンク」の判定で、同じサイトかを決める基準になるスレッドURL。 */
   threadUrl?: string;
   isNgTemporarilyDisabled: boolean;
@@ -37,6 +39,10 @@ export interface ThreadDerivedData {
   /** 各フィルタに該当するレス数。フィルタ項目の横へ件数を出すために使う。 */
   filterCounts: ThreadFilterCounts;
   idPositions: Map<number, number>;
+  /** 検索語の強調に使う、欄ごとの判定器。 */
+  searchHighlight: ThreadHighlightMatchers;
+  /** 検索語の一部が読めないとき（不正な日付や正規表現）の理由。 */
+  searchError: string | null;
 }
 
 // 「自分のレス」は書き込み履歴から決まるため、ここでは数えない。画面側が絞り込みと件数を足す。
@@ -78,7 +84,6 @@ export function deriveThreadData(options: ThreadDerivedDataOptions): ThreadDeriv
     popularReplyThreshold,
     searchQuery,
     searchOptions = DEFAULT_SEARCH_OPTIONS,
-    searchTarget,
     threadUrl,
     isNgTemporarilyDisabled,
     ngDisplayMode,
@@ -116,13 +121,10 @@ export function deriveThreadData(options: ThreadDerivedDataOptions): ThreadDeriv
     }
   }
 
+  // 読めない語は条件から外れるため、入力の途中で全件が消えることはない。
+  const search = compileThreadQuery(searchQuery, searchOptions);
   if (searchQuery) {
-    filteredResponses = filterThreadResponses(
-      filteredResponses,
-      searchQuery,
-      searchTarget,
-      searchOptions,
-    );
+    filteredResponses = filteredResponses.filter(search.matches);
   }
 
   const idPositions = new Map<number, number>();
@@ -136,5 +138,13 @@ export function deriveThreadData(options: ThreadDerivedDataOptions): ThreadDeriv
     idPositions.set(res.num, count);
   }
 
-  return { visibleResponses, indexes, filteredResponses, filterCounts, idPositions };
+  return {
+    visibleResponses,
+    indexes,
+    filteredResponses,
+    filterCounts,
+    idPositions,
+    searchHighlight: search.highlight,
+    searchError: search.error,
+  };
 }

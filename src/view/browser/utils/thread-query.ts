@@ -184,6 +184,16 @@ export function parseThreadQuery(query: string): QueryNode | undefined {
   return new Parser(tokenize(query)).parse();
 }
 
+/**
+ * 旧版の「検索対象」セレクト（名前・ID）で保存された検索語を、検索構文に直す。
+ * 空白や記号を含んでもそのまま探せるよう、引用符で囲む。本文・すべては既定の本文なので変えない。
+ */
+export function applyLegacySearchTarget(query: string, target: string | undefined): string {
+  const trimmed = query.trim();
+  if ((target !== "name" && target !== "id") || trimmed === "") return query;
+  return `${target}:"${trimmed.replaceAll('"', "")}"`;
+}
+
 export type ThreadQueryTarget = Pick<IRes, "name" | "id" | "message" | "date" | "other">;
 
 export interface ThreadHighlightMatchers {

@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from "react";
-import { getSearchError, SearchOptionsMenu } from "src/view/browser/components/SearchOptionsMenu";
+import React, { useEffect, useMemo, useRef } from "react";
+import { checkIcon, SearchOptionsMenu } from "src/view/browser/components/SearchOptionsMenu";
 import type { TopBarMode } from "src/view/browser/pages/thread/use-thread-top-bar";
-import type { ThreadFilter, ThreadSearchTarget } from "src/view/browser/types";
+import type { ThreadFilter } from "src/view/browser/types";
+import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import type { SearchOptions } from "src/view/browser/utils/search-normalize";
 import type { ThreadFilterCounts } from "src/view/browser/utils/thread-data-derived";
 
@@ -11,30 +12,34 @@ interface ThreadPageTopBarProps {
   filterCounts: ThreadFilterCounts;
   onClose: () => void;
   onFilterChange: (filter: ThreadFilter) => void;
-  onSearchTargetChange: (searchTarget: ThreadSearchTarget) => void;
   onSearchQueryChange: (query: string) => void;
   onSearchOptionsChange: (options: SearchOptions) => void;
   searchFocusKey: number;
   suppressInitialFocus?: boolean;
   searchQuery: string;
   searchOptions: SearchOptions;
-  searchTarget: ThreadSearchTarget;
+  /** 検索語の一部が読めないとき（不正な日付や正規表現）の理由。 */
+  searchError?: string | null;
 }
 
-// 変更理由: 「全て」ボタンを置かず、選択中の項目をもう一度押すと解除する切り替え式にする。
-const FILTER_BUTTONS: { key: Exclude<ThreadFilter, "all">; label: string }[] = [
+// 変更理由: 種類は1つだけ選ぶ形にして、選んでいる種類が「絞り込み」ボタンの表示になる。
+const FILTER_ITEMS: { key: Exclude<ThreadFilter, "all">; label: string }[] = [
   { key: "popular", label: "人気" },
   { key: "image", label: "画像" },
   { key: "video", label: "動画" },
-  { key: "link", label: "外部" },
+  { key: "link", label: "外部リンク" },
+  { key: "internalLink", label: "内部リンク" },
+  { key: "own", label: "自分のレス" },
 ];
 
-const SEARCH_TARGETS: { key: ThreadSearchTarget; label: string }[] = [
-  { key: "all", label: "すべて" },
-  { key: "body", label: "本文" },
-  { key: "name", label: "名前" },
-  { key: "id", label: "ID" },
-];
+const DEFAULT_BUTTON_LABEL = "絞り込み";
+
+// 変更理由: 構文を知らなくても使えるよう、入力欄の説明は欄の上へ重ねるだけにする。
+const SEARCH_SYNTAX_HELP = [
+  "文字を入れると本文を絞り込みます。",
+  '空白: かつ / |: または / !: 除外 / "...": そのまま',
+  "id: ID / name: 名前 / date: 日付（例 date:2026/10/01~2026/10/05）",
+].join("\n");
 
 export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
   activeTopBar,
@@ -42,17 +47,15 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
   filterCounts,
   onClose,
   onFilterChange,
-  onSearchTargetChange,
   onSearchQueryChange,
   onSearchOptionsChange,
   searchFocusKey,
   suppressInitialFocus = false,
   searchQuery,
   searchOptions,
-  searchTarget,
+  searchError = null,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const searchError = getSearchError(searchQuery, searchOptions);
 
   useEffect(() => {
     if (activeTopBar === "none" || suppressInitialFocus) {
@@ -67,54 +70,46 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
     }
   }, [activeTopBar, searchFocusKey, suppressInitialFocus]);
 
+  const filterItems = useMemo<ContextMenuItem[]>(
+    () => [
+      { id: "filter-heading", label: "種類", disabled: true },
+      {
+        id: "filter-all",
+        label: "すべて",
+        checked: filter === "all",
+        icon: checkIcon(filter === "all"),
+        onSelect: () => onFilterChange("all"),
+      },
+      ...FILTER_ITEMS.map(({ key, label }) => ({
+        id: `filter-${key}`,
+        label: `${label} (${filterCounts[key]})`,
+        checked: filter === key,
+        icon: checkIcon(filter === key),
+        // 選んでいる種類をもう一度選ぶと解除する（従来の切り替えボタンと同じ）。
+        onSelect: () => onFilterChange(filter === key ? "all" : key),
+      })),
+    ],
+    [filter, filterCounts, onFilterChange],
+  );
+
   // ThreadPage本体は「バーを出すか」だけを判断し、
-  // 検索とフィルタの複合UIは専用コンポーネントへ閉じ込めて見通しを保つ。
+  // 検索と絞り込みの複合UIは専用コンポーネントへ閉じ込めて見通しを保つ。
   if (activeTopBar === "none") {
     return null;
   }
 
+  const selected = FILTER_ITEMS.find(({ key }) => key === filter);
   return (
     <div className="thread-page__top-bar thread-page__toolbar">
-      <div className="thread-page__filters">
-        {FILTER_BUTTONS.map(({ key, label }) => {
-          const isSelected = filter === key;
-          const count = filterCounts[key];
-          return (
-            <button
-              key={key}
-              type="button"
-              className={`thread-page__filter-btn${
-                isSelected ? " thread-page__filter-btn--active" : ""
-              }${count === 0 ? " thread-page__filter-btn--empty" : ""}`}
-              aria-pressed={isSelected}
-              onClick={() => onFilterChange(isSelected ? "all" : key)}
-            >
-              {label}
-              <span className="thread-page__filter-count">{count}</span>
-            </button>
-          );
-        })}
-      </div>
       <div className="thread-page__toolbar-search">
-        <select
-          className="thread-page__toolbar-search-target"
-          aria-label="検索対象"
-          value={searchTarget}
-          onChange={(event) => onSearchTargetChange(event.target.value as ThreadSearchTarget)}
-        >
-          {SEARCH_TARGETS.map(({ key, label }) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
         <input
           ref={inputRef}
           type="text"
           className="thread-page__toolbar-search-input"
           placeholder="フィルタする文字を入力"
+          aria-label="フィルタする文字"
           aria-invalid={searchError ? true : undefined}
-          title={searchError ?? undefined}
+          title={searchError ?? SEARCH_SYNTAX_HELP}
           value={searchQuery}
           onChange={(event) => onSearchQueryChange(event.target.value)}
           onKeyDown={(event) => {
@@ -130,7 +125,13 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
             onClose();
           }}
         />
-        <SearchOptionsMenu options={searchOptions} onChange={onSearchOptionsChange} />
+        <SearchOptionsMenu
+          options={searchOptions}
+          onChange={onSearchOptionsChange}
+          leadingItems={filterItems}
+          label={selected?.label ?? DEFAULT_BUTTON_LABEL}
+          active={filter !== "all"}
+        />
       </div>
     </div>
   );

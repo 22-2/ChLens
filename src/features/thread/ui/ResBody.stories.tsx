@@ -1,3 +1,6 @@
+import { DEFAULT_SEARCH_OPTIONS } from "src/view/browser/utils/search-normalize";
+import { compileThreadQuery } from "src/view/browser/utils/thread-query";
+
 import { ResBody } from "./ResBody";
 
 export default { title: "ChLens/スレッド/ResBody" };
@@ -44,7 +47,7 @@ export function SearchHighlights() {
     <div className="storybook-demo storybook-demo--narrow">
       <ResBody
         messageHtml="検索語の一致とページ内検索の現在位置を同時に確認します。"
-        searchQuery="検索"
+        searchHighlight={compileThreadQuery("検索", DEFAULT_SEARCH_OPTIONS).highlight}
         findQuery="現在位置"
         findActiveOccurrence={0}
         anchorPreviewDepth={0}

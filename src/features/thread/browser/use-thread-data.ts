@@ -26,11 +26,7 @@ import type { IRes, IThreadDetail } from "src/service-container/interfaces";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabDispatch, useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
-import type {
-  ThreadFilter,
-  ThreadPage as ThreadPageType,
-  ThreadSearchTarget,
-} from "src/view/browser/types";
+import type { ThreadFilter, ThreadPage as ThreadPageType } from "src/view/browser/types";
 import {
   captureRootSelection,
   restoreRootSelection,
@@ -55,6 +51,10 @@ import {
   type ThreadFilterCounts,
 } from "src/view/browser/utils/thread-data-derived";
 import { buildIndexes } from "src/view/browser/utils/thread-index";
+import {
+  applyLegacySearchTarget,
+  type ThreadHighlightMatchers,
+} from "src/view/browser/utils/thread-query";
 import { stripTrailingSyntheticAbobunResponses } from "src/view/browser/utils/thread-response-cache";
 
 const logger = createLogger("thread");
@@ -81,12 +81,12 @@ interface ThreadData {
   filterCounts: ThreadFilterCounts;
   filter: ThreadFilter;
   setFilter: Dispatch<SetStateAction<ThreadFilter>>;
-  searchTarget: ThreadSearchTarget;
-  setSearchTarget: Dispatch<SetStateAction<ThreadSearchTarget>>;
   searchQuery: string;
   setSearchQuery: Dispatch<SetStateAction<string>>;
   searchOptions: SearchOptions;
   setSearchOptions: Dispatch<SetStateAction<SearchOptions>>;
+  searchHighlight: ThreadHighlightMatchers;
+  searchError: string | null;
   showSearch: boolean;
   setShowSearch: Dispatch<SetStateAction<boolean>>;
   fetchThread: (forceUpdate?: boolean, options?: FetchThreadOptions) => Promise<void>;
@@ -137,19 +137,11 @@ export function useThreadData(
   const popularReplyThreshold = normalizePopularReplyThreshold(
     persistedViewState.popularReplyThreshold,
   );
-  const [searchTarget, setSearchTarget] = useState<ThreadSearchTarget>(() => {
-    const persistedSearchTarget = persistedViewState.searchTarget;
-    // 変更理由: 旧版は既定の「すべて」も自動保存していたため、移行前の値だけ本文へ直し、以後の明示選択は尊重する。
-    if (persistedSearchTarget === "all" && !persistedViewState.searchTargetDefaultMigrated) {
-      return "body";
-    }
-    return persistedSearchTarget === "body" ||
-      persistedSearchTarget === "name" ||
-      persistedSearchTarget === "id"
-      ? persistedSearchTarget
-      : "body";
-  });
-  const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
+  // 変更理由: 旧版の「検索対象」セレクト（名前・ID）は検索構文（name: / id:）へ置き換えたため、
+  // 保存済みの検索語は構文に直して引き継ぐ。「本文」「すべて」は既定の本文として扱う。
+  const [searchQuery, setSearchQuery] = useState(() =>
+    applyLegacySearchTarget(persistedViewState.searchQuery ?? "", persistedViewState.searchTarget),
+  );
   const [searchOptions, setSearchOptions] = useState<SearchOptions>(() => ({
     ...DEFAULT_SEARCH_OPTIONS,
     ...persistedViewState.searchOptions,
@@ -163,10 +155,11 @@ export function useThreadData(
       filter,
       searchQuery,
       searchOptions,
-      searchTarget,
-      searchTargetDefaultMigrated: true,
+      // 旧版の検索対象は構文へ移したので、保存からは消す。
+      searchTarget: undefined,
+      searchTargetDefaultMigrated: undefined,
     });
-  }, [filter, searchOptions, searchQuery, searchTarget, updateViewState]);
+  }, [filter, searchOptions, searchQuery, updateViewState]);
 
   const setResponses = useCallback<Dispatch<SetStateAction<IRes[]>>>(
     (nextResponses) => {
@@ -448,7 +441,15 @@ export function useThreadData(
     };
   }, [page.title, page.threadUrl, setResponses]);
 
-  const { visibleResponses, indexes, filteredResponses, filterCounts, idPositions } = useMemo(
+  const {
+    visibleResponses,
+    indexes,
+    filteredResponses,
+    filterCounts,
+    idPositions,
+    searchHighlight,
+    searchError,
+  } = useMemo(
     () =>
       deriveThreadData({
         responses,
@@ -456,7 +457,6 @@ export function useThreadData(
         popularReplyThreshold,
         searchQuery,
         searchOptions,
-        searchTarget,
         threadUrl: page.threadUrl,
         isNgTemporarilyDisabled,
         ngDisplayMode,
@@ -470,7 +470,6 @@ export function useThreadData(
       responses,
       searchOptions,
       searchQuery,
-      searchTarget,
     ],
   );
 
@@ -489,8 +488,8 @@ export function useThreadData(
     filterCounts,
     filter,
     setFilter,
-    searchTarget,
-    setSearchTarget,
+    searchHighlight,
+    searchError,
     searchQuery,
     setSearchQuery,
     searchOptions,

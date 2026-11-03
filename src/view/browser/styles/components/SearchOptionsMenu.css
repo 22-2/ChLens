@@ -27,10 +27,14 @@
   white-space: nowrap;
 }
 
-/* 正規表現や日付が不正なとき、入力欄の枠でそれを示す。 */
+/* 正規表現や日付が不正なとき、入力欄の枠でそれを示す。フォーカス中の枠の色より優先する。 */
 .search-bar__input[aria-invalid="true"],
+.search-bar__input[aria-invalid="true"]:focus,
 .thread-find-bar__input[aria-invalid="true"],
+.thread-find-bar__input[aria-invalid="true"]:focus,
 .thread-page__toolbar-search-input[aria-invalid="true"],
-.side-panel__search-row [aria-invalid="true"] {
+.thread-page__toolbar-search-input[aria-invalid="true"]:focus,
+.side-panel__search-row [aria-invalid="true"],
+.side-panel__search-row [aria-invalid="true"]:focus {
   border-color: var(--sys-color-error);
 }

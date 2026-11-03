@@ -229,13 +229,12 @@
 }
 
 /*
- * 変更理由: フィルタ項目をタブのように等分に並べて件数を添え、文字入力のフィルタ欄を同じ行の右端へ置く。
- * 1行にまとめて本文を押し下げる量を抑え、幅が足りないときだけ入力欄を次の行へ折り返す。
+ * 変更理由: スレフィルタは、文字を入れる検索欄を主役にして右端に「絞り込み」メニューを置く。
+ * 種類（人気・画像など）と検索の条件はメニューへ入れ、項目が増えても欄の見た目を変えない。
  */
 .thread-page__toolbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
+  align-items: center;
   /* 変更理由: タイトルバーと同じ面の色にして、上部の帯の色をそろえる。 */
   background: var(--sys-color-surface-muted);
   /* 変更理由: 色が近いため、上に並ぶタイトルバー側との境目を線で示す。 */
@@ -243,100 +242,17 @@
   border-bottom: 1px solid var(--sys-color-table-heading-border);
 }
 
-.thread-page__filters {
-  display: flex;
-  /* 変更理由: 検索欄に切り替えボタンが付いて幅が増えたため、フィルタ項目の基準幅を下げ、
-     同じ行に並べられる画面幅の下限を従来に近づける。項目は等分に縮む。 */
-  flex: 1 1 240px;
-  align-items: stretch;
-  min-width: 0;
-}
-
-.thread-page__filter-btn {
-  display: inline-flex;
-  flex: 1 1 0;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sys-space-2);
-  min-width: 0;
-  padding: var(--sys-space-2) var(--sys-space-2);
-  border: 0;
-  background: transparent;
-  font-family: inherit;
-  font-size: var(--sys-font-size-sm);
-  color: var(--sys-color-text);
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background var(--sys-duration-fast),
-    color var(--sys-duration-fast);
-}
-
-.thread-page__filter-btn:hover {
-  background: var(--sys-color-list-hover-bg);
-}
-
-/* 変更理由: 並んだフィルタ項目の境界を線で示し、どこまでが1つの項目か分かるようにする。 */
-.thread-page__filter-btn + .thread-page__filter-btn {
-  border-left: 1px solid var(--sys-color-border);
-}
-
-.thread-page__filter-btn--empty {
-  color: var(--sys-color-text-disabled);
-}
-
-.thread-page__filter-count {
-  font-size: var(--sys-font-size-xs);
-  color: var(--sys-color-text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.thread-page__filter-btn--empty .thread-page__filter-count {
-  color: inherit;
-}
-
-/* 選択中の項目はボタンごと青く塗り、どの絞り込みが効いているかを一目で分かるようにする。 */
-.thread-page__filter-btn--active {
-  background: var(--sys-color-accent);
-  color: var(--sys-color-accent-fg);
-}
-
-.thread-page__filter-btn--active:hover {
-  background: var(--sys-color-accent-hover);
-}
-
-.thread-page__filter-btn--active .thread-page__filter-count {
-  color: inherit;
-}
-
 .thread-page__toolbar-search {
   display: flex;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   align-items: center;
   gap: var(--sys-space-2);
-  /* 折り返して単独の行になったときも右端へ寄せる。 */
-  margin-left: auto;
-  /* 変更理由: 左は末尾の「外部」ボタンと検索対象のセレクトが接して見えないよう広めに取り、
-     右は入力欄の外側に余白が残りすぎないよう狭める。 */
-  padding: var(--sys-space-1) var(--sys-space-2) var(--sys-space-1) var(--sys-space-6);
-}
-
-.thread-page__toolbar-search-target {
-  height: 22px;
-  padding: 0 var(--sys-space-2);
-  border: 1px solid var(--sys-color-input-border);
-  border-radius: var(--sys-radius-sm);
-  font-size: var(--sys-font-size-xs);
-  font-family: inherit;
-  background: var(--sys-color-input-bg);
-  color: var(--sys-color-text);
+  min-width: 0;
+  padding: var(--sys-space-1) var(--sys-space-2);
 }
 
 .thread-page__toolbar-search-input {
-  /* 変更理由: 右端に切り替えボタンが付いて検索欄の幅が増え、狭い画面で行が増えたため、
-     折り返しの判定に使う基準幅を小さくし、余白があるときだけ従来の幅まで広げる。 */
-  flex: 1 1 140px;
-  max-width: 220px;
+  flex: 1 1 auto;
   min-width: 0;
   height: 22px;
   padding: 0 var(--sys-space-3);

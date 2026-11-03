@@ -4,7 +4,11 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { NgStatusProvider } from "src/features/ng/browser/use-ng-status";
 import { ResItem, type ResItemProps } from "src/features/thread/ui/ResItem";
 import type { IRes } from "src/service-container/interfaces";
+import { DEFAULT_SEARCH_OPTIONS } from "src/view/browser/utils/search-normalize";
+import { compileThreadQuery } from "src/view/browser/utils/thread-query";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+
+const highlightOf = (query: string) => compileThreadQuery(query, DEFAULT_SEARCH_OPTIONS).highlight;
 
 const ngMocks = vi.hoisted(() => ({
   configValue: "soft-ng",
@@ -212,19 +216,19 @@ describe("ResItem", () => {
       onAnchorHover: () => {},
       onAnchorLeave: () => {},
       onContextMenu: () => {},
-      searchQuery: "リンク",
+      searchHighlight: highlightOf("リンク"),
     };
-    const { container, rerender } = render(<ResItem {...props} searchTarget="body" />);
+    const { container, rerender } = render(<ResItem {...props} />);
 
     expect(container.querySelector(".res__body mark")).toHaveTextContent("リンク");
     expect(container.querySelector(".res__id mark")).not.toBeInTheDocument();
 
-    rerender(<ResItem {...props} searchTarget="id" />);
+    rerender(<ResItem {...props} searchHighlight={highlightOf("id:リンク")} />);
 
     expect(container.querySelector(".res__body mark")).not.toBeInTheDocument();
     expect(container.querySelector(".res__id mark")).toHaveTextContent("リンク");
 
-    rerender(<ResItem {...props} searchQuery="名無しさん" searchTarget="name" />);
+    rerender(<ResItem {...props} searchHighlight={highlightOf("name:名無しさん")} />);
 
     expect(container.querySelector(".res__name mark")).toHaveTextContent("名無しさん");
     expect(container.querySelector(".res__body mark")).not.toBeInTheDocument();
@@ -441,7 +445,7 @@ describe("ResItem", () => {
         imageBlurRadius={4}
         miniAa={false}
         messageProtocol="https:"
-        searchQuery="リンク"
+        searchHighlight={highlightOf("リンク")}
         onIdClick={() => {}}
         onRepClick={() => {}}
         onUrlClick={() => true}
@@ -467,7 +471,7 @@ describe("ResItem", () => {
         imageBlurRadius={4}
         miniAa={false}
         messageProtocol="https:"
-        searchQuery="名無しさん"
+        searchHighlight={highlightOf("name:名無しさん")}
         onIdClick={() => {}}
         onRepClick={() => {}}
         onUrlClick={() => true}
@@ -493,7 +497,7 @@ describe("ResItem", () => {
         imageBlurRadius={4}
         miniAa={false}
         messageProtocol="https:"
-        searchQuery="ABC"
+        searchHighlight={highlightOf("id:ABC")}
         onIdClick={() => {}}
         onRepClick={() => {}}
         onUrlClick={() => true}

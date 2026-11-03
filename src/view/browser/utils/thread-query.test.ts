@@ -3,6 +3,7 @@ import {
   type SearchOptions,
 } from "src/view/browser/utils/search-normalize";
 import {
+  applyLegacySearchTarget,
   compileThreadQuery,
   parseThreadQuery,
   type ThreadQueryTarget,
@@ -187,5 +188,30 @@ describe("強調に使う判定器", () => {
     expect(highlight.body?.find(highlight.body.normalize("猫と犬"))).toEqual([
       { start: 0, end: 2 },
     ]);
+  });
+});
+
+describe("旧版の検索対象の引き継ぎ", () => {
+  it("名前・IDを対象にしていた検索語は、欄を指定した構文へ直す", () => {
+    expect(applyLegacySearchTarget("abc", "id")).toBe('id:"abc"');
+    expect(applyLegacySearchTarget(" 名無し さん ", "name")).toBe('name:"名無し さん"');
+    expect(applyLegacySearchTarget('a"b', "name")).toBe('name:"ab"');
+  });
+
+  it("本文・すべて・未設定、空の検索語は変えない", () => {
+    expect(applyLegacySearchTarget("abc", "body")).toBe("abc");
+    expect(applyLegacySearchTarget("abc", "all")).toBe("abc");
+    expect(applyLegacySearchTarget("abc", undefined)).toBe("abc");
+    expect(applyLegacySearchTarget("  ", "id")).toBe("  ");
+  });
+
+  it("直した構文は元の語をそのまま探す", () => {
+    const compiled = compileThreadQuery(
+      applyLegacySearchTarget("a b", "name"),
+      DEFAULT_SEARCH_OPTIONS,
+      NOW,
+    );
+    expect(compiled.matches({ name: "xa bx", message: "", date: "" })).toBe(true);
+    expect(compiled.matches({ name: "a", message: "a b", date: "" })).toBe(false);
   });
 });

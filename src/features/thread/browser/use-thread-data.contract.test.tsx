@@ -494,9 +494,8 @@ describe("useThreadData Phase 0 contracts", () => {
 
     act(() => {
       result.current.setFilter("image");
-      // 既定は本文検索なので、名前・IDを含む組み合わせの検証では検索対象を明示する。
-      result.current.setSearchTarget("all");
-      result.current.setSearchQuery("image-user");
+      // 既定は本文検索なので、名前の検証では name: で欄を指定する。
+      result.current.setSearchQuery("name:image-user");
     });
     expect(result.current.filteredResponses.map((res) => res.num)).toEqual([2]);
 
@@ -504,7 +503,7 @@ describe("useThreadData Phase 0 contracts", () => {
     act(() => result.current.setSearchQuery("searchable"));
     expect(result.current.filteredResponses.map((res) => res.num)).toEqual([5]);
 
-    act(() => result.current.setSearchQuery("search-id"));
+    act(() => result.current.setSearchQuery("id:search-id"));
     expect(result.current.filteredResponses.map((res) => res.num)).toEqual([5]);
   });
 

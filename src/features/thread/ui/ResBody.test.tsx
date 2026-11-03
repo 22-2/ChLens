@@ -5,7 +5,11 @@ import { useState } from "react";
 import { ResBody } from "src/features/thread/ui/ResBody";
 import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { RESPECT_DEFAULT_EXTERNAL } from "src/view/browser/utils/link-routing";
+import { DEFAULT_SEARCH_OPTIONS } from "src/view/browser/utils/search-normalize";
+import { compileThreadQuery } from "src/view/browser/utils/thread-query";
 import { describe, expect, it, vi } from "vite-plus/test";
+
+const highlightOf = (query: string) => compileThreadQuery(query, DEFAULT_SEARCH_OPTIONS).highlight;
 
 // 変更理由: 既定値を安全側（外部リンク確認・画像の手動取得）へ変えたため、
 // リンクや画像の直接表示を前提にした本テストでは両設定を明示的にoffにする。
@@ -566,7 +570,7 @@ describe("ResBody anchor behavior", () => {
     const { container } = render(
       <ResBody
         messageHtml='<a class="anchor">&gt;&gt;5 見つかる</a> 見つかる'
-        searchQuery="見つかる"
+        searchHighlight={highlightOf("見つかる")}
         anchorPreviewDepth={0}
         onUrlClick={() => {}}
         onUrlContextMenu={() => {}}

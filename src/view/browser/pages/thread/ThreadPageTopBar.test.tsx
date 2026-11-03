@@ -9,8 +9,8 @@ import { DEFAULT_SEARCH_OPTIONS } from "src/view/browser/utils/search-normalize"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
 const COUNTS = {
-  internalLink: 0,
-  own: 0,
+  internalLink: 1,
+  own: 4,
   popular: 2,
   image: 3,
   video: 0,
@@ -19,85 +19,43 @@ const COUNTS = {
 
 const threadPageCss = readFileSync(resolve("src/view/browser/styles/pages/ThreadPage.css"), "utf8");
 
+type BarProps = React.ComponentProps<typeof ThreadPageTopBar>;
+
+function renderBar(overrides: Partial<BarProps> = {}) {
+  const props: BarProps = {
+    activeTopBar: "filter",
+    filter: "all",
+    filterCounts: COUNTS,
+    onClose: vi.fn(),
+    onFilterChange: vi.fn(),
+    onSearchQueryChange: vi.fn(),
+    onSearchOptionsChange: vi.fn(),
+    searchFocusKey: 0,
+    searchQuery: "",
+    searchOptions: DEFAULT_SEARCH_OPTIONS,
+    ...overrides,
+  };
+  render(<ThreadPageTopBar {...props} />);
+  return props;
+}
+
 describe("ThreadPageTopBar", () => {
   afterEach(() => {
     cleanup();
   });
 
-  it("検索欄の左端に検索対象を表示し、初期値をすべてにする", () => {
-    render(
-      <ThreadPageTopBar
-        activeTopBar="filter"
-        filter="all"
-        filterCounts={COUNTS}
-        onClose={vi.fn()}
-        onFilterChange={vi.fn()}
-        onSearchTargetChange={vi.fn()}
-        onSearchQueryChange={vi.fn()}
-        searchFocusKey={0}
-        searchQuery=""
-        searchOptions={DEFAULT_SEARCH_OPTIONS}
-        onSearchOptionsChange={vi.fn()}
-        searchTarget="all"
-      />,
-    );
+  it("検索欄と「絞り込み」メニューのボタンだけを出す", () => {
+    renderBar();
 
-    const searchTarget = screen.getByRole("combobox", { name: "検索対象" });
-    expect(searchTarget).toHaveValue("all");
-    expect(screen.getAllByRole("option").map((option) => option.textContent)).toEqual([
-      "すべて",
-      "本文",
-      "名前",
-      "ID",
-    ]);
+    expect(screen.getByPlaceholderText("フィルタする文字を入力")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "絞り込み" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
   it("初回フォーカスを抑える指定のときは入力欄へフォーカスしない", () => {
-    render(
-      <ThreadPageTopBar
-        activeTopBar="filter"
-        filter="all"
-        filterCounts={COUNTS}
-        onClose={vi.fn()}
-        onFilterChange={vi.fn()}
-        onSearchTargetChange={vi.fn()}
-        onSearchQueryChange={vi.fn()}
-        searchFocusKey={0}
-        suppressInitialFocus
-        searchQuery=""
-        searchOptions={DEFAULT_SEARCH_OPTIONS}
-        onSearchOptionsChange={vi.fn()}
-        searchTarget="all"
-      />,
-    );
+    renderBar({ suppressInitialFocus: true });
 
     expect(screen.getByPlaceholderText("フィルタする文字を入力")).not.toHaveFocus();
-  });
-
-  it("検索対象の変更を親へ通知する", () => {
-    const onSearchTargetChange = vi.fn();
-    render(
-      <ThreadPageTopBar
-        activeTopBar="filter"
-        filter="all"
-        filterCounts={COUNTS}
-        onClose={vi.fn()}
-        onFilterChange={vi.fn()}
-        onSearchTargetChange={onSearchTargetChange}
-        onSearchQueryChange={vi.fn()}
-        searchFocusKey={0}
-        searchQuery=""
-        searchOptions={DEFAULT_SEARCH_OPTIONS}
-        onSearchOptionsChange={vi.fn()}
-        searchTarget="all"
-      />,
-    );
-
-    fireEvent.change(screen.getByRole("combobox", { name: "検索対象" }), {
-      target: { value: "name" },
-    });
-
-    expect(onSearchTargetChange).toHaveBeenCalledWith("name");
   });
 
   it("ミニマップの予約幅で検索フィルタを狭めない", () => {
@@ -111,132 +69,83 @@ describe("ThreadPageTopBar", () => {
     expect(minimapReservationSelectors).not.toContain(".thread-page__toolbar");
   });
 
-  it("フィルタ項目に件数を添え、該当なしの項目は薄く表示する", () => {
-    render(
-      <ThreadPageTopBar
-        activeTopBar="filter"
-        filter="all"
-        filterCounts={COUNTS}
-        onClose={vi.fn()}
-        onFilterChange={vi.fn()}
-        onSearchTargetChange={vi.fn()}
-        onSearchQueryChange={vi.fn()}
-        searchFocusKey={0}
-        searchQuery=""
-        searchOptions={DEFAULT_SEARCH_OPTIONS}
-        onSearchOptionsChange={vi.fn()}
-        searchTarget="all"
-      />,
-    );
+  it("メニューに種類を件数つきで並べ、検索の条件のチェック項目を続ける", () => {
+    renderBar({ filter: "popular" });
 
-    expect(screen.getByRole("button", { name: /^画像\s*3$/u })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^外部\s*9$/u })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /^動画\s*0$/u })).toHaveClass(
-      "thread-page__filter-btn--empty",
+    fireEvent.click(screen.getByRole("button", { name: "人気" }));
+
+    const labels = screen.getAllByRole("menuitemcheckbox").map((item) => item.textContent);
+    expect(labels).toEqual([
+      "すべて",
+      "人気 (2)",
+      "画像 (3)",
+      "動画 (0)",
+      "外部リンク (9)",
+      "内部リンク (1)",
+      "自分のレス (4)",
+      "大文字と小文字を区別",
+      "ひらがなとカタカナを区別",
+      "正規表現",
+    ]);
+    expect(screen.getByRole("menuitemcheckbox", { name: "人気 (2)" })).toHaveAttribute(
+      "aria-checked",
+      "true",
     );
-    expect(screen.queryByRole("button", { name: /全て/u })).not.toBeInTheDocument();
+  });
+
+  it("種類を選ぶと親へ通知し、選んでいる種類をもう一度選ぶと解除する", () => {
+    const props = renderBar({ filter: "image" });
+
+    fireEvent.click(screen.getByRole("button", { name: "画像" }));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "自分のレス (4)" }));
+    expect(props.onFilterChange).toHaveBeenLastCalledWith("own");
+
+    fireEvent.click(screen.getByRole("button", { name: "画像" }));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "画像 (3)" }));
+    expect(props.onFilterChange).toHaveBeenLastCalledWith("all");
+  });
+
+  it("種類を選んでいる間は、閉じていても選んだ種類をボタンに出して強調する", () => {
+    renderBar({ filter: "video" });
+
+    expect(screen.getByRole("button", { name: "動画" })).toHaveAttribute("data-active", "true");
+  });
+
+  it("検索の条件の切り替えを親へ通知する", () => {
+    const props = renderBar();
+
+    fireEvent.click(screen.getByRole("button", { name: "絞り込み" }));
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "正規表現" }));
+
+    expect(props.onSearchOptionsChange).toHaveBeenCalledWith({
+      ...DEFAULT_SEARCH_OPTIONS,
+      regex: true,
+    });
+  });
+
+  it("検索語が読めないときは、入力欄に不正を示し、理由を説明に出す", () => {
+    renderBar({ searchQuery: "date:abc", searchError: "日付「abc」を読み取れません" });
+
+    const input = screen.getByPlaceholderText("フィルタする文字を入力");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAttribute("title", "日付「abc」を読み取れません");
   });
 
   it("入力中にEscapeを押すと入力欄を空にし、バーは開いたままにする", () => {
-    const onClose = vi.fn();
-    const onSearchQueryChange = vi.fn();
-    render(
-      <ThreadPageTopBar
-        activeTopBar="filter"
-        filter="all"
-        filterCounts={COUNTS}
-        onClose={onClose}
-        onFilterChange={vi.fn()}
-        onSearchTargetChange={vi.fn()}
-        onSearchQueryChange={onSearchQueryChange}
-        searchFocusKey={0}
-        searchQuery="abc"
-        searchOptions={DEFAULT_SEARCH_OPTIONS}
-        onSearchOptionsChange={vi.fn()}
-        searchTarget="all"
-      />,
-    );
+    const props = renderBar({ searchQuery: "abc" });
 
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
 
-    expect(onSearchQueryChange).toHaveBeenLastCalledWith("");
-    expect(onClose).not.toHaveBeenCalled();
+    expect(props.onSearchQueryChange).toHaveBeenLastCalledWith("");
+    expect(props.onClose).not.toHaveBeenCalled();
   });
 
   it("入力欄が空のままEscapeを押すとバーを閉じる", () => {
-    const onClose = vi.fn();
-    const onSearchQueryChange = vi.fn();
-    render(
-      <ThreadPageTopBar
-        activeTopBar="filter"
-        filter="all"
-        filterCounts={COUNTS}
-        onClose={onClose}
-        onFilterChange={vi.fn()}
-        onSearchTargetChange={vi.fn()}
-        onSearchQueryChange={onSearchQueryChange}
-        searchFocusKey={0}
-        searchQuery=""
-        searchOptions={DEFAULT_SEARCH_OPTIONS}
-        onSearchOptionsChange={vi.fn()}
-        searchTarget="all"
-      />,
-    );
+    const props = renderBar();
 
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
 
-    expect(onClose).toHaveBeenCalledTimes(1);
-    expect(onSearchQueryChange).not.toHaveBeenCalled();
-  });
-
-  it("選択中のフィルタ項目をもう一度押すと解除する", () => {
-    const onFilterChange = vi.fn();
-    render(
-      <ThreadPageTopBar
-        activeTopBar="filter"
-        filter="image"
-        filterCounts={COUNTS}
-        onClose={vi.fn()}
-        onFilterChange={onFilterChange}
-        onSearchTargetChange={vi.fn()}
-        onSearchQueryChange={vi.fn()}
-        searchFocusKey={0}
-        searchQuery=""
-        searchOptions={DEFAULT_SEARCH_OPTIONS}
-        onSearchOptionsChange={vi.fn()}
-        searchTarget="all"
-      />,
-    );
-
-    const image = screen.getByRole("button", { name: /^画像\s*3$/u });
-    expect(image).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(image);
-    expect(onFilterChange).toHaveBeenLastCalledWith("all");
-
-    fireEvent.click(screen.getByRole("button", { name: /^人気\s*2$/u }));
-    expect(onFilterChange).toHaveBeenLastCalledWith("popular");
-  });
-
-  it("文字入力欄でEscapeを押すとバーを閉じる", () => {
-    const onClose = vi.fn();
-    render(
-      <ThreadPageTopBar
-        activeTopBar="filter"
-        filter="all"
-        filterCounts={COUNTS}
-        onClose={onClose}
-        onFilterChange={vi.fn()}
-        onSearchTargetChange={vi.fn()}
-        onSearchQueryChange={vi.fn()}
-        searchFocusKey={0}
-        searchQuery=""
-        searchOptions={DEFAULT_SEARCH_OPTIONS}
-        onSearchOptionsChange={vi.fn()}
-        searchTarget="all"
-      />,
-    );
-
-    fireEvent.keyDown(screen.getByPlaceholderText("フィルタする文字を入力"), { key: "Escape" });
-    expect(onClose).toHaveBeenCalled();
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+    expect(props.onSearchQueryChange).not.toHaveBeenCalled();
   });
 });

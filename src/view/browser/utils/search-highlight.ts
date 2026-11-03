@@ -49,7 +49,7 @@ function normalizeWithOffsets(text: string, fold: SearchFold): NormalizedText {
   for (const unit of splitSearchUnits(text)) {
     const start = originalIndex;
     originalIndex += unit.length;
-    // フィルタ（thread-search）と同じ正規化を使い、一致範囲の表示がずれないようにする。
+    // フィルタ（thread-query）と同じ正規化を使い、一致範囲の表示がずれないようにする。
     // 正規化で長さが変わる（「ｶﾞ」→「が」、「㍻」→「平成」）ため、正規化後の各文字に
     // 元の単位の範囲を対応づけ、一致範囲を元の文字列の位置へ戻せるようにする。
     const normalizedUnit = normalizeSearchUnit(unit, fold);
@@ -154,9 +154,22 @@ export function highlightSearchMatches(
   query: string,
   options: HighlightOptions = {},
 ): string {
-  const className = options.className ?? SEARCH_HIGHLIGHT_CLASS;
   // 検索語が空なら元のHTMLをそのまま返し、通常表示時のDOM正規化や再描画差分を発生させない。
-  if (!html || !query || typeof DOMParser === "undefined") {
+  if (!html || !query) {
+    return html;
+  }
+  const { matcher } = compileSearch(query, options.searchOptions);
+  return matcher ? highlightMatcherMatches(html, matcher, options) : html;
+}
+
+/** 組み立て済みの判定器で一致箇所を強調する。複数の語をまとめた判定器も渡せる。 */
+export function highlightMatcherMatches(
+  html: string,
+  matcher: SearchMatcher,
+  options: HighlightOptions = {},
+): string {
+  const className = options.className ?? SEARCH_HIGHLIGHT_CLASS;
+  if (!html || typeof DOMParser === "undefined") {
     return html;
   }
 
@@ -164,7 +177,7 @@ export function highlightSearchMatches(
   // DOMのテキストノードだけをmarkで包み、既存の要素と操作対象を維持する。
   const document = new DOMParser().parseFromString(html, "text/html");
   const searchableText = collectSearchableText(document, className);
-  const ranges = findSearchMatchRanges(searchableText.text, query, options.searchOptions);
+  const ranges = findMatcherRanges(searchableText.text, matcher);
 
   let highlighted = false;
   for (const { node, start, end } of searchableText.nodes) {

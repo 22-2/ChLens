@@ -28,7 +28,6 @@ describe("スレッド表示用派生データ", () => {
       filter: "image",
       popularReplyThreshold: 1,
       searchQuery: "image",
-      searchTarget: "body",
       isNgTemporarilyDisabled: false,
       ngDisplayMode: "soft-ng",
     });
@@ -43,7 +42,6 @@ describe("スレッド表示用派生データ", () => {
       filter: "video",
       popularReplyThreshold: 1,
       searchQuery: "該当しない語",
-      searchTarget: "body",
       isNgTemporarilyDisabled: false,
       ngDisplayMode: "soft-ng",
     });
@@ -65,7 +63,6 @@ describe("スレッド表示用派生データ", () => {
       filter: "all",
       popularReplyThreshold: 1,
       searchQuery: "",
-      searchTarget: "all",
       isNgTemporarilyDisabled: false,
       ngDisplayMode: "soft-ng",
     });
@@ -87,7 +84,6 @@ describe("スレッド表示用派生データ", () => {
         filter,
         popularReplyThreshold: 1,
         searchQuery: "",
-        searchTarget: "all",
         threadUrl: "https://mi.5ch.io/test/read.cgi/news/2/",
         isNgTemporarilyDisabled: false,
         ngDisplayMode: "soft-ng",

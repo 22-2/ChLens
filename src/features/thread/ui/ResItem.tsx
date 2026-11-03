@@ -13,7 +13,6 @@ import type { ThreadFindField } from "src/features/thread/domain/thread-find";
 import { ResBody } from "src/features/thread/ui/ResBody";
 import type { IRes } from "src/service-container";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import type { ThreadSearchTarget } from "src/view/browser/types";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
 import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
@@ -21,10 +20,16 @@ import { resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
 import { decodeResponseHtml } from "src/view/browser/utils/response-format";
 import {
-  findSearchMatchRanges,
+  findMatcherRanges,
+  highlightMatcherMatches,
   highlightSearchMatches,
 } from "src/view/browser/utils/search-highlight";
-import type { SearchOptions } from "src/view/browser/utils/search-normalize";
+import {
+  compileSearch,
+  type SearchMatcher,
+  type SearchOptions,
+} from "src/view/browser/utils/search-normalize";
+import type { ThreadHighlightMatchers } from "src/view/browser/utils/thread-query";
 
 const SEARCH_MATCH_CLASS = "res__search-match";
 const FIND_MATCH_CLASS = "res__find-match";
@@ -32,12 +37,11 @@ const FIND_CURRENT_CLASS = "res__find-match--current";
 
 function renderHighlightedText(
   text: string,
-  searchQuery: string,
+  matcher: SearchMatcher | null,
   className = SEARCH_MATCH_CLASS,
   activeIndex = -1,
-  searchOptions?: SearchOptions,
 ): React.ReactNode {
-  const ranges = findSearchMatchRanges(text, searchQuery, searchOptions);
+  const ranges = matcher ? findMatcherRanges(text, matcher) : [];
   if (ranges.length === 0) {
     return text;
   }
@@ -93,9 +97,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     ngResNums,
     resMap,
     threadUrl,
-    searchQuery = "",
-    searchOptions,
-    searchTarget = "all",
+    searchHighlight,
     animateEntry = false,
     onEntryDisplayed,
     ngRevealed,
@@ -148,10 +150,9 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     // 検索判定と同じ語を表示層へ渡し、本文・名前・IDのどこでレスが一致したかを追えるようにする。
     // 本文と名前のHTMLはテキストノードだけを変換し、リンクやアンカーの操作対象を保つ。
     const highlightedNameHtml = useMemo(() => {
-      const searched =
-        searchTarget === "all" || searchTarget === "name"
-          ? highlightSearchMatches(decoded.nameHtml, searchQuery, { searchOptions })
-          : decoded.nameHtml;
+      const searched = searchHighlight?.name
+        ? highlightMatcherMatches(decoded.nameHtml, searchHighlight.name)
+        : decoded.nameHtml;
       // ページ内検索の一致は検索フィルタの強調に重ねて付け、どちらの一致も見えるようにする。
       return highlightSearchMatches(searched, findQuery, {
         className: FIND_MATCH_CLASS,
@@ -165,10 +166,12 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
       findActiveOccurrence,
       findOptions,
       findQuery,
-      searchOptions,
-      searchQuery,
-      searchTarget,
+      searchHighlight,
     ]);
+    const findMatcher = useMemo(
+      () => compileSearch(findQuery, findOptions).matcher,
+      [findOptions, findQuery],
+    );
     // React 19 は同じ名前HTMLでも wrapper object が毎回変わると innerHTML を再代入する。
     // 本文更新時に名前欄を選択している場合も、Text nodeを置換せず選択範囲を維持する。
     const nameMarkup = useMemo(() => ({ __html: highlightedNameHtml }), [highlightedNameHtml]);
@@ -285,21 +288,14 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
               }}
             >
               {/* IDは文字だけなので強調を重ねられない。ページ内検索中はその一致を優先して見せる。 */}
-              {findQuery
+              {findMatcher
                 ? renderHighlightedText(
                     res.id,
-                    findQuery,
+                    findMatcher,
                     FIND_MATCH_CLASS,
                     findActiveField === "id" ? findActiveOccurrence : -1,
-                    findOptions,
                   )
-                : renderHighlightedText(
-                    res.id,
-                    searchTarget === "all" || searchTarget === "id" ? searchQuery : "",
-                    undefined,
-                    undefined,
-                    searchOptions,
-                  )}
+                : renderHighlightedText(res.id, searchHighlight?.id ?? null)}
               {idCount >= 2 && `(${idPos}/${idCount})`}
             </span>
           )}
@@ -326,9 +322,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
           messageHtml={resolvedMedia.messageHtml}
           imageUrls={onToggleImage ? imageUrls : undefined}
           onSaveImage={onToggleImage ? saveImage : undefined}
-          searchQuery={searchQuery}
-          searchOptions={searchOptions}
-          searchTarget={searchTarget}
+          searchHighlight={searchHighlight}
           findQuery={findQuery}
           findOptions={findOptions}
           findActiveOccurrence={findActiveField === "body" ? findActiveOccurrence : -1}
@@ -397,9 +391,8 @@ export interface ResItemProps {
   resMap?: ReadonlyMap<number, unknown>;
   /** アルバムAPIの失敗抑止をスレッド単位で分離するためのキー */
   threadUrl?: string;
-  searchQuery?: string;
-  searchOptions?: SearchOptions;
-  searchTarget?: ThreadSearchTarget;
+  /** スレフィルタの検索語から作った、欄ごとの強調用の判定器。 */
+  searchHighlight?: ThreadHighlightMatchers;
   /** ページ内検索（Ctrl+F）の検索語。一致箇所を検索フィルタとは別の色で強調する。 */
   findQuery?: string;
   findOptions?: SearchOptions;

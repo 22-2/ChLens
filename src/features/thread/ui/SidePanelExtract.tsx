@@ -23,6 +23,7 @@ import {
   DEFAULT_SEARCH_OPTIONS,
   type SearchOptions,
 } from "src/view/browser/utils/search-normalize";
+import type { ThreadHighlightMatchers } from "src/view/browser/utils/thread-query";
 
 type ExtractResponse = ThreadSnapshot["responses"][number];
 type ExtractMenu = { x: number; y: number; items: ContextMenuItem[] };
@@ -36,8 +37,7 @@ interface ExtractEntryProps {
   threadUrl: string;
   response: ExtractResponse;
   snapshot: ThreadSnapshot;
-  query: string;
-  searchOptions: SearchOptions;
+  searchHighlight: ThreadHighlightMatchers;
   resMap: ReadonlyMap<number, unknown>;
   ngResNums: ReadonlySet<number>;
   urlHandlers: UrlHandlers;
@@ -51,8 +51,7 @@ function ExtractEntry({
   threadUrl,
   response,
   snapshot,
-  query,
-  searchOptions,
+  searchHighlight,
   resMap,
   ngResNums,
   urlHandlers,
@@ -90,9 +89,7 @@ function ExtractEntry({
       </span>
       <ResBody
         messageHtml={resolvedMedia.messageHtml}
-        searchQuery={query}
-        searchOptions={searchOptions}
-        searchTarget="body"
+        searchHighlight={searchHighlight}
         anchorPreviewDepth={0}
         ngResNums={ngResNums}
         resMap={resMap}
@@ -167,9 +164,17 @@ function ExtractResults({
       ),
     [snapshot.responses],
   );
+  // 正規表現が不正な間は判定器が無く、絞り込まない（入力欄の表示で不正を伝える）。
+  const matcher = useMemo(
+    () => compileSearch(query, searchOptions).matcher,
+    [query, searchOptions],
+  );
+  // 抽出は本文だけを探すので、強調も本文だけにする。
+  const searchHighlight = useMemo<ThreadHighlightMatchers>(
+    () => ({ body: matcher, name: null, id: null }),
+    [matcher],
+  );
   const results = useMemo(() => {
-    // 正規表現が不正な間は絞り込まず、入力欄の表示で不正を伝える。
-    const { matcher } = compileSearch(query, searchOptions);
     if (!matcher) return snapshot.visibleResponses;
     const matched = new Set(
       findThreadMatches(buildThreadFindIndex(snapshot.visibleResponses, searchOptions), matcher)
@@ -177,7 +182,7 @@ function ExtractResults({
         .map((match) => match.resNum),
     );
     return snapshot.visibleResponses.filter((response) => matched.has(response.num));
-  }, [snapshot, query, searchOptions]);
+  }, [matcher, searchOptions, snapshot]);
   // 本文の長さはレスごとに異なるため、表示した行を実測して後続の位置を補正する。
   const virtualizer = useVirtualizer({
     count: results.length,
@@ -210,8 +215,7 @@ function ExtractResults({
                     threadUrl={threadUrl}
                     response={response}
                     snapshot={snapshot}
-                    query={query}
-                    searchOptions={searchOptions}
+                    searchHighlight={searchHighlight}
                     resMap={resMap}
                     ngResNums={ngResNums}
                     urlHandlers={urlHandlers}

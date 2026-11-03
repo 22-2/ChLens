@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useRef } from "react";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useExternalLinkMenu } from "src/view/browser/hooks/use-external-link-menu";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import type { ThreadSearchTarget } from "src/view/browser/types";
 import { hasMissingAnchorTarget, parseAnchorDisplayTargets } from "src/view/browser/utils/anchor";
 import { ANCHOR_SELECTOR, ID_LINK_SELECTOR } from "src/view/browser/utils/constants";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
@@ -15,8 +14,12 @@ import {
   type UrlContextMenuHandler,
 } from "src/view/browser/utils/link-routing";
 import { normalizeIdLinkText } from "src/view/browser/utils/response-format";
-import { highlightSearchMatches } from "src/view/browser/utils/search-highlight";
+import {
+  highlightMatcherMatches,
+  highlightSearchMatches,
+} from "src/view/browser/utils/search-highlight";
 import type { SearchOptions } from "src/view/browser/utils/search-normalize";
+import type { ThreadHighlightMatchers } from "src/view/browser/utils/thread-query";
 
 const PRIMARY_MOUSE_BUTTON = 0 as const;
 const MIDDLE_MOUSE_BUTTON = 1 as const;
@@ -43,9 +46,8 @@ interface ResBodyProps {
   messageHtml: string;
   imageUrls?: readonly string[];
   onSaveImage?: (url: string) => void;
-  searchQuery?: string;
-  searchOptions?: SearchOptions;
-  searchTarget?: ThreadSearchTarget;
+  /** スレフィルタの検索語から作った、欄ごとの強調用の判定器。 */
+  searchHighlight?: ThreadHighlightMatchers;
   /** ページ内検索（Ctrl+F）の検索語と、本文の中で現在の一致が何番目か（なければ -1）。 */
   findQuery?: string;
   findOptions?: SearchOptions;
@@ -434,9 +436,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
     messageHtml,
     imageUrls,
     onSaveImage,
-    searchQuery = "",
-    searchOptions,
-    searchTarget = "all",
+    searchHighlight,
     findQuery = "",
     findOptions,
     findActiveOccurrence = -1,
@@ -468,10 +468,9 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
       onSaveImage,
     });
     const highlightedMessageHtml = useMemo(() => {
-      const searched =
-        searchTarget === "all" || searchTarget === "body"
-          ? highlightSearchMatches(messageHtml, searchQuery, { searchOptions })
-          : messageHtml;
+      const searched = searchHighlight?.body
+        ? highlightMatcherMatches(messageHtml, searchHighlight.body)
+        : messageHtml;
       // ページ内検索の一致は検索フィルタの強調に重ねて付け、どちらの一致も見えるようにする。
       return highlightSearchMatches(searched, findQuery, {
         className: "res__find-match",
@@ -479,15 +478,7 @@ export const ResBody: React.FC<ResBodyProps> = React.memo(
         activeClassName: "res__find-match--current",
         searchOptions: findOptions,
       });
-    }, [
-      findActiveOccurrence,
-      findOptions,
-      findQuery,
-      messageHtml,
-      searchOptions,
-      searchQuery,
-      searchTarget,
-    ]);
+    }, [findActiveOccurrence, findOptions, findQuery, messageHtml, searchHighlight]);
     const decoratedMessageHtml = useMemo(() => {
       if (
         !confirmExternal &&

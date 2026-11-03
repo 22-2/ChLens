@@ -169,12 +169,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     filterCounts: derivedCounts,
     filter,
     setFilter,
-    searchTarget,
-    setSearchTarget,
     searchQuery,
     setSearchQuery,
     searchOptions,
     setSearchOptions,
+    searchHighlight,
+    searchError,
     fetchThread,
     idPositions,
     setResponses,
@@ -799,9 +799,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         repCount={repCount}
         miniAa={res.isAA === true || miniAaResNums.has(res.num)}
         messageProtocol={messageProtocol}
-        searchQuery={searchQuery}
-        searchOptions={searchOptions}
-        searchTarget={searchTarget}
+        searchHighlight={searchHighlight}
         onIdClick={handleIdClick}
         onRepClick={handleRepClick}
         onUrlClick={handleUrlClick}
@@ -885,14 +883,13 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
               filterCounts={filterCounts}
               onClose={closeTopBar}
               onFilterChange={setFilter}
-              onSearchTargetChange={setSearchTarget}
               onSearchQueryChange={setSearchQuery}
               searchFocusKey={searchFocusKey}
               suppressInitialFocus={suppressInitialFocus}
               searchQuery={searchQuery}
               searchOptions={searchOptions}
               onSearchOptionsChange={setSearchOptions}
-              searchTarget={searchTarget}
+              searchError={searchError}
             />
 
             <ThreadPageNotices
