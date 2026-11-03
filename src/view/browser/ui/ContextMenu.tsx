@@ -11,6 +11,8 @@ export interface ContextMenuItem {
   accessKey?: string;
   allowMultilineLabel?: boolean;
   icon?: ReactNode;
+  /** `icon`（チェックの印など）の次、ラベルの前に置く、項目の意味を表すアイコン。 */
+  labelIcon?: ReactNode;
   disabled?: boolean;
   checked?: boolean;
   danger?: boolean;
@@ -252,6 +254,7 @@ export const ContextMenu: React.FC<Props> = ({
                 }}
               >
                 {item.icon && <span className="context-menu__icon">{item.icon}</span>}
+                {item.labelIcon && <span className="context-menu__icon">{item.labelIcon}</span>}
                 <span
                   className={`context-menu__label${
                     item.allowMultilineLabel ? " context-menu__label--multiline" : ""

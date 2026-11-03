@@ -74,7 +74,10 @@ describe("ThreadPageTopBar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "人気" }));
 
-    const labels = screen.getAllByRole("menuitemcheckbox").map((item) => item.textContent);
+    // アイコン（かなのアイコンは文字を含む）を除き、ラベルだけを比べる。
+    const labels = screen
+      .getAllByRole("menuitemcheckbox")
+      .map((item) => item.querySelector(".context-menu__label")?.textContent);
     expect(labels).toEqual([
       "すべて",
       "人気 (2)",

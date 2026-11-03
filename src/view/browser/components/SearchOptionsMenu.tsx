@@ -1,6 +1,8 @@
-import { Check, ChevronDown, Ellipsis } from "lucide-react";
+import { CaseSensitive, Check, ChevronDown, Ellipsis, Regex } from "lucide-react";
+import type { ReactNode } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
+import { KanaSensitiveIcon } from "src/view/browser/ui/KanaSensitiveIcon";
 import {
   compileSearch,
   DEFAULT_SEARCH_OPTIONS,
@@ -22,10 +24,14 @@ interface SearchOptionsMenuProps {
   className?: string;
 }
 
-const OPTION_LABELS: { key: keyof SearchOptions; label: string }[] = [
-  { key: "caseSensitive", label: "大文字と小文字を区別" },
-  { key: "kanaSensitive", label: "ひらがなとカタカナを区別" },
-  { key: "regex", label: "正規表現" },
+const OPTION_LABELS: { key: keyof SearchOptions; label: string; icon: ReactNode }[] = [
+  { key: "caseSensitive", label: "大文字と小文字を区別", icon: <CaseSensitive size={16} /> },
+  {
+    key: "kanaSensitive",
+    label: "ひらがなとカタカナを区別",
+    icon: <KanaSensitiveIcon size={16} />,
+  },
+  { key: "regex", label: "正規表現", icon: <Regex size={16} /> },
 ];
 
 function hasNonDefaultOption(options: SearchOptions): boolean {
@@ -62,16 +68,20 @@ export function SearchOptionsMenu({
   }, [position]);
 
   const items = useMemo<ContextMenuItem[]>(() => {
-    const optionItems = OPTION_LABELS.map(({ key, label: optionLabel }) => ({
+    const optionItems = OPTION_LABELS.map(({ key, label: optionLabel, icon }) => ({
       id: `option-${key}`,
       label: optionLabel,
       checked: options[key],
       icon: checkIcon(options[key]),
+      labelIcon: icon,
       onSelect: () => onChange({ ...options, [key]: !options[key] }),
     }));
-    return leadingItems?.length
-      ? [...leadingItems, { id: "options-separator", separator: true }, ...optionItems]
-      : optionItems;
+    if (!leadingItems?.length) return optionItems;
+    // 先頭の項目にも空のアイコン枠を足し、検索の条件の項目とラベルの位置をそろえる。
+    const alignedLeadingItems = leadingItems.map((item) =>
+      item.separator ? item : { ...item, labelIcon: item.labelIcon ?? <span /> },
+    );
+    return [...alignedLeadingItems, { id: "options-separator", separator: true }, ...optionItems];
   }, [leadingItems, onChange, options]);
 
   const highlighted = active || hasNonDefaultOption(options);
