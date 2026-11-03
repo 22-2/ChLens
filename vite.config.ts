@@ -557,6 +557,16 @@ export default defineConfig(async ({ mode, command }) => {
         "import/no-cycle": "error",
         // any を使うと型検査の恩恵が消えるため、明示的な any は禁止する（必要なら具体的な型か unknown で受ける）。
         "typescript/no-explicit-any": "error",
+        // React Compiler 由来の指摘は、コンパイラが最適化できるかを示すだけで動作の問題ではない。
+        // このプロジェクトは React Compiler を導入しておらず、直すには設計の組み直しが要るため off にする。
+        // 導入を検討するときは、この設定を戻してから perf:thread で効果を測る。
+        "react/set-state-in-effect": "off",
+        "react/refs": "off",
+        "react/purity": "off",
+        "react/globals": "off",
+        "react/immutability": "off",
+        "react/incompatible-library": "off",
+        "react/preserve-manual-memoization": "off",
       },
       // core は service-container に依存しない（計画: docs/plans/module-boundaries-plan.md Phase C-1）。
       // 依存は core/ports の型だけにする。実体は service-container の setup が引数で渡す。
