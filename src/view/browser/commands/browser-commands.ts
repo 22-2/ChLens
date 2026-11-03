@@ -666,8 +666,8 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
   },
   {
     id: "copy.page-title",
-    label: "現在のページタイトルをコピー",
-    englishLabel: "Copy Current Page Title",
+    label: "ページタイトルをコピー",
+    englishLabel: "Copy Page Title",
     keywords: ["スレタイ", "板名", "title"],
     group: "copy",
     icon: Clipboard,
@@ -680,8 +680,8 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
   },
   {
     id: "copy.page-url",
-    label: "現在のページURLをコピー",
-    englishLabel: "Copy Current Page URL",
+    label: "ページURLをコピー",
+    englishLabel: "Copy Page URL",
     keywords: ["アドレス", "link", "URL"],
     group: "copy",
     icon: Clipboard,
@@ -707,7 +707,7 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
     },
   },
   {
-    id: "copy.page-title-url-markdown",
+    id: "copy.thread-title-url-markdown",
     label: "スレタイとURLをMarkdownでコピー",
     englishLabel: "Copy Thread Title and URL as Markdown",
     description: "スレタイとURLをMarkdownリンク形式でコピーします",

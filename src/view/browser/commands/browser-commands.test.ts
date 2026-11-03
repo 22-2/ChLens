@@ -556,10 +556,10 @@ describe("browser commands", () => {
 
     expect(threadIds).toContain("copy.subject-url");
     expect(threadIds).toContain("copy.dat-url");
-    expect(threadIds).toContain("copy.page-title-url-markdown");
+    expect(threadIds).toContain("copy.thread-title-url-markdown");
     expect(threadIds).toContain("copy.thread-toon");
     expect(boardIds).toContain("copy.subject-url");
-    expect(boardIds).not.toContain("copy.page-title-url-markdown");
+    expect(boardIds).not.toContain("copy.thread-title-url-markdown");
     expect(boardIds).not.toContain("copy.dat-url");
     expect(boardIds).not.toContain("copy.thread-toon");
   });
@@ -669,7 +669,7 @@ describe("browser commands", () => {
       threadUrl: "https://example.test/thread/(1)?next=2)",
     });
 
-    await expect(executeBrowserCommand("copy.page-title-url-markdown", context)).resolves.toBe(
+    await expect(executeBrowserCommand("copy.thread-title-url-markdown", context)).resolves.toBe(
       true,
     );
 

@@ -23,6 +23,12 @@ describe("addRecentCommandId", () => {
     expect(next).not.toContain("command-19");
   });
 
+  it("改名前のコマンドIDを新しいIDへ読み替える", () => {
+    expect(
+      normalizeRecentCommandIds(["copy.page-title-url-markdown", "copy.thread-title-url-markdown"]),
+    ).toEqual(["copy.thread-title-url-markdown"]);
+  });
+
   it("保存値から不正値と重複を除く", () => {
     expect(normalizeRecentCommandIds(["first", null, "second", "first", 42])).toEqual([
       "first",
