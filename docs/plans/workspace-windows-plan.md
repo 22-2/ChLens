@@ -148,10 +148,13 @@ DOM イベントは窓ごとの `document` で発火するため、窓をまた�
 調査メモ（2026-11-05）:
 
 - Playwright の Chromium（ヘッドレス、Manifest V3 の独立した拡張）で、ユーザー操作なしに `chrome.windows.create` から拡張ページを開き、親ページの `chrome.extension.getViews({ windowId })` で取得した `Window` の DOM に React Portal を描画できた。`chrome.windows.remove` 後は取得済みの `Window.closed` が `true` になった。
+- 同じ Chromium で Playwright の `--disable-popup-blocking` 既定引数を外し、読み込みから 6 秒後に操作なしで `window.open` と `chrome.windows.create` を試すと両方とも成功した。これはヘッドレスの拡張ページでの結果で、ドラッグ終了時や製品版 Chrome の挙動を保証しない。
+- 同じ条件で CDP のマウス操作による HTML5 ドラッグを 6 秒以上続け、ページ外の座標で離した場合も `dragend` に到達し、`navigator.userActivation.isActive` が `false` でも `window.open` は成功した。CDP によるページ外の座標指定であり、OS の実際の窓外へのドラッグは未確認。
 - Firefox 157.0（Playwright 配布版、`web-ext` で一時的に読み込んだ Manifest V2 拡張）でも、ユーザー操作なしの `window.open` と `browser.windows.create`、`getViews` で取得した文書への React Portal の描画を確認した。作成した窓の再読み込み後も `getViews` で取得でき、`windows.remove` 時には `windows.onRemoved` が届いた。削除後に保持していた `Window.closed` を読むと dead object の例外になったため、Firefox では終了監視に `onRemoved` を使う候補がある。
 - Tauri の E2E ビルド（WebView2、既定設定）で、CDP のマウス操作による同一窓内の HTML5 ドラッグは `dragstart`・`dragover`・`drop`・`dragend` が届いた。ドラッグ開始時には `lostpointercapture` も発生した。別窓へ届くか、実際のマウス操作や `dragDropEnabled` 無効時の挙動は未確認。
 - インストール済み Chrome ではコマンドラインからの一時拡張の読み込みを試したが、拡張のサービスワーカーを検出できず調査を完了できなかった。Chromium で確認した結果を Chrome の結果としては扱わない。
 - 窓間ドラッグ、再起動時の復元、複数モニターと表示倍率の差は未確認。窓を開く方法とドラッグ方式の採用判断は保留し、以下の調査を続ける。
+- 調査環境にはモニターが 3 台あるが、Windows の `GetDpiForMonitor` で取得した DPI はいずれも 96 だった。倍率の異なる組み合わせはこの状態では確認できていない。
 
 - 窓をまたぐドラッグの案 A・B を、Chrome 拡張と Tauri の両方で試す。確認する項目:
   - 窓の間でイベントが届くか。窓の外でボタンを離したときの扱い。
