@@ -150,7 +150,9 @@ export type TabAction =
   | {
       type: typeof TAB_ACTION_TYPES.TRANSFER_TAB;
       tabId: string;
-      to: { newWindowId: string; newPaneId: string };
+      to:
+        | { newWindowId: string; newPaneId: string }
+        | { windowId: string; paneId: string; index: number };
     }
   | { type: typeof TAB_ACTION_TYPES.CLOSE_WORKSPACE_WINDOW; windowId: string }
   | { type: typeof TAB_ACTION_TYPES.RESTORE; state: TabStoreState };

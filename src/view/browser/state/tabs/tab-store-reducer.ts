@@ -316,7 +316,14 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
       return {
         ...updatePane(state, paneId, (p) => ({
           ...p,
-          tabs: [...p.tabs, restored],
+          // 窓の終了では固定タブも履歴に入るため、復元時も固定領域の後ろへ戻す。
+          tabs: restored.pinned
+            ? [
+                ...p.tabs.filter((tab) => tab.pinned),
+                restored,
+                ...p.tabs.filter((tab) => !tab.pinned),
+              ]
+            : [...p.tabs, restored],
           activeTabId: restored.id,
         })),
         activePaneId: paneId,
@@ -664,16 +671,25 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
     // --- ペイン操作 ---
 
     case TAB_ACTION_TYPES.TRANSFER_TAB: {
-      const { newWindowId, newPaneId } = action.to;
+      const to = action.to;
+      const creating = "newWindowId" in to;
       if (
-        newWindowId === MAIN_WINDOW_ID ||
-        state.windows.some((window) => window.id === newWindowId) ||
-        state.panes.some((pane) => pane.id === newPaneId)
+        creating &&
+        (to.newWindowId === MAIN_WINDOW_ID ||
+          state.windows.some((window) => window.id === to.newWindowId) ||
+          state.panes.some((pane) => pane.id === to.newPaneId))
       )
         return state;
+      const destination = creating
+        ? null
+        : state.panes.find(
+            (pane) => pane.id === to.paneId && getPaneWindowId(pane) === to.windowId,
+          );
+      if (!creating && !destination) return state;
       const source = state.panes.find((pane) => pane.tabs.some((tab) => tab.id === action.tabId));
       const tab = source?.tabs.find((candidate) => candidate.id === action.tabId);
       if (!source || !tab) return state;
+      if (destination?.id === source.id) return state;
       const sourceWindowId = getPaneWindowId(source);
       const remaining = source.tabs.filter((candidate) => candidate.id !== tab.id);
       const removeSourcePane =
@@ -683,7 +699,7 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
         removeSourcePane &&
         sourceWindowId !== MAIN_WINDOW_ID &&
         getWindowPanes(state, sourceWindowId).length === 1;
-      const replacement = remaining.length ? remaining : [createHomeTab()];
+      const replacement = remaining.length || removeSourcePane ? remaining : [createHomeTab()];
       const panes = state.panes.flatMap((pane) => {
         if (pane.id !== source.id) return [pane];
         if (removeSourcePane) return [];
@@ -699,11 +715,30 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
         ];
       });
       // タブそのものを移すため、履歴・スクロール位置や自動更新の状態を作り直さない。
-      panes.push({ id: newPaneId, windowId: newWindowId, tabs: [tab], activeTabId: tab.id });
+      let targetPaneId: string;
+      if (creating) {
+        targetPaneId = to.newPaneId;
+        panes.push({
+          id: to.newPaneId,
+          windowId: to.newWindowId,
+          tabs: [tab],
+          activeTabId: tab.id,
+        });
+      } else {
+        targetPaneId = to.paneId;
+        const targetIndex = panes.findIndex((pane) => pane.id === to.paneId);
+        const target = panes[targetIndex];
+        const pinnedCount = target.tabs.filter((candidate) => candidate.pinned).length;
+        const index = Math.max(0, Math.min(to.index, target.tabs.length));
+        const insertAt = tab.pinned ? Math.min(index, pinnedCount) : Math.max(index, pinnedCount);
+        const tabs = [...target.tabs];
+        tabs.splice(insertAt, 0, tab);
+        panes[targetIndex] = { ...target, tabs, activeTabId: tab.id };
+      }
       const windows = state.windows.filter(
         (window) => !removeSourceWindow || window.id !== sourceWindowId,
       );
-      windows.push({ id: newWindowId, kind: "aux", activePaneId: newPaneId });
+      if (creating) windows.push({ id: to.newWindowId, kind: "aux", activePaneId: to.newPaneId });
       const bottomPanels =
         state.bottomPanels && removeSourcePane
           ? Object.fromEntries(
@@ -714,7 +749,7 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
         ...state,
         panes,
         windows,
-        activePaneId: newPaneId,
+        activePaneId: targetPaneId,
         ...(bottomPanels ? { bottomPanels } : {}),
       };
     }

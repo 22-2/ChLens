@@ -131,6 +131,9 @@ describe("別窓へのタブ移動と終了", () => {
     expect(closed.panes).toHaveLength(1);
     expect(closed.activePaneId).toBe(initial.activePaneId);
     expect(closed.closedTabs[0]).toBe(original);
+    const reopened = tabReducer(closed, { type: "REOPEN_CLOSED_TAB" });
+    expect(reopened.panes[0].tabs[0].pinned).toBe(true);
+    expect(reopened.panes[0].tabs[1].pinned).toBe(false);
     expect(tabReducer(closed, { type: "CLOSE_WORKSPACE_WINDOW", windowId: "main" })).toBe(closed);
   });
 
@@ -150,6 +153,24 @@ describe("別窓へのタブ移動と終了", () => {
     expect(second.windows.map((window) => window.id)).toEqual(["main", "aux-2"]);
     expect(second.panes.map((pane) => pane.id)).toEqual([initial.activePaneId, "pane-2"]);
     expect(second.closedTabs).toEqual([]);
+  });
+
+  it("別窓のタブを本窓に戻すと固定順を保ち、空の別窓を閉じる", () => {
+    const pinned = { ...createHomeTab("pinned"), pinned: true };
+    const initial = createState([pinned, createHomeTab("ordinary")]);
+    const detached = tabReducer(initial, {
+      type: "TRANSFER_TAB",
+      tabId: pinned.id,
+      to: { newWindowId: "aux", newPaneId: "aux-pane" },
+    });
+    const restored = tabReducer(detached, {
+      type: "TRANSFER_TAB",
+      tabId: pinned.id,
+      to: { windowId: "main", paneId: initial.activePaneId, index: 99 },
+    });
+    expect(restored.panes[0].tabs.map((tab) => tab.id)).toEqual(["pinned", "ordinary"]);
+    expect(restored.windows.map((window) => window.id)).toEqual(["main"]);
+    expect(restored.closedTabs).toEqual([]);
   });
 });
 
