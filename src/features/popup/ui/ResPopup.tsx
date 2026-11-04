@@ -164,6 +164,8 @@ export const ResPopup: React.FC<{
                     res={res}
                     anchorPreviewDepth={0}
                     repIndex={repIndex}
+                    // IDから開いたポップアップでもhard-ngのレスを明示操作で確認できるようにする。
+                    allowHardNgReveal
                   />
                 ))}
               </div>
