@@ -36,6 +36,7 @@ import {
   TAB_ACTION_TYPES,
   type TabStoreState,
 } from "src/view/browser/state/tabs/tab-store-types";
+import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
 import { createHomeTab, getCurrentPage, type Pane, type Tab } from "src/view/browser/types";
 import { normalizePageLocation } from "src/view/browser/utils/page-location";
 
@@ -661,6 +662,93 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
     }
 
     // --- ペイン操作 ---
+
+    case TAB_ACTION_TYPES.TRANSFER_TAB: {
+      const { newWindowId, newPaneId } = action.to;
+      if (
+        newWindowId === MAIN_WINDOW_ID ||
+        state.windows.some((window) => window.id === newWindowId) ||
+        state.panes.some((pane) => pane.id === newPaneId)
+      )
+        return state;
+      const source = state.panes.find((pane) => pane.tabs.some((tab) => tab.id === action.tabId));
+      const tab = source?.tabs.find((candidate) => candidate.id === action.tabId);
+      if (!source || !tab) return state;
+      const sourceWindowId = getPaneWindowId(source);
+      const remaining = source.tabs.filter((candidate) => candidate.id !== tab.id);
+      const removeSourcePane =
+        remaining.length === 0 &&
+        (sourceWindowId !== MAIN_WINDOW_ID || getWindowPanes(state, sourceWindowId).length > 1);
+      const removeSourceWindow =
+        removeSourcePane &&
+        sourceWindowId !== MAIN_WINDOW_ID &&
+        getWindowPanes(state, sourceWindowId).length === 1;
+      const replacement = remaining.length ? remaining : [createHomeTab()];
+      const panes = state.panes.flatMap((pane) => {
+        if (pane.id !== source.id) return [pane];
+        if (removeSourcePane) return [];
+        return [
+          {
+            ...pane,
+            tabs: replacement,
+            activeTabId:
+              pane.activeTabId === tab.id
+                ? replacement[replacement.length - 1].id
+                : pane.activeTabId,
+          },
+        ];
+      });
+      // タブそのものを移すため、履歴・スクロール位置や自動更新の状態を作り直さない。
+      panes.push({ id: newPaneId, windowId: newWindowId, tabs: [tab], activeTabId: tab.id });
+      const windows = state.windows.filter(
+        (window) => !removeSourceWindow || window.id !== sourceWindowId,
+      );
+      windows.push({ id: newWindowId, kind: "aux", activePaneId: newPaneId });
+      const bottomPanels =
+        state.bottomPanels && removeSourcePane
+          ? Object.fromEntries(
+              Object.entries(state.bottomPanels).filter(([id]) => id !== source.id),
+            )
+          : state.bottomPanels;
+      return {
+        ...state,
+        panes,
+        windows,
+        activePaneId: newPaneId,
+        ...(bottomPanels ? { bottomPanels } : {}),
+      };
+    }
+
+    case TAB_ACTION_TYPES.CLOSE_WORKSPACE_WINDOW: {
+      const target = state.windows.find(
+        (window) => window.id === action.windowId && window.kind === "aux",
+      );
+      if (!target) return state;
+      const removed = getWindowPanes(state, target.id);
+      const panes = state.panes.filter((pane) => getPaneWindowId(pane) !== target.id);
+      const main = state.windows.find((window) => window.id === MAIN_WINDOW_ID);
+      const fallback =
+        panes.find((pane) => pane.id === main?.activePaneId) ??
+        panes.find((pane) => getPaneWindowId(pane) === MAIN_WINDOW_ID);
+      if (!fallback) return state;
+      // OSの終了では固定タブも含めて閉じた履歴へ残し、再度本窓から開けるようにする。
+      const closedTabs = removed.flatMap((pane) => pane.tabs).reduce(pushClosed, state.closedTabs);
+      const bottomPanels =
+        state.bottomPanels &&
+        Object.fromEntries(
+          Object.entries(state.bottomPanels).filter(([id]) => panes.some((pane) => pane.id === id)),
+        );
+      return {
+        ...state,
+        panes,
+        windows: state.windows.filter((window) => window.id !== target.id),
+        activePaneId: removed.some((pane) => pane.id === state.activePaneId)
+          ? fallback.id
+          : state.activePaneId,
+        closedTabs,
+        ...(bottomPanels ? { bottomPanels } : {}),
+      };
+    }
 
     case TAB_ACTION_TYPES.SPLIT_PANE: {
       // 最大ペイン数に達していれば分割しない（2ペイン固定運用）。

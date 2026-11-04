@@ -62,6 +62,8 @@ export const TAB_ACTION_TYPES = {
   SWAP_PANE_TABS: "SWAP_PANE_TABS",
   SET_ACTIVE_PANE: "SET_ACTIVE_PANE",
   MOVE_TAB_TO_PANE: "MOVE_TAB_TO_PANE",
+  TRANSFER_TAB: "TRANSFER_TAB",
+  CLOSE_WORKSPACE_WINDOW: "CLOSE_WORKSPACE_WINDOW",
   RESTORE: "RESTORE",
 } as const;
 
@@ -145,6 +147,12 @@ export type TabAction =
       toPaneId: string;
       toIndex: number;
     }
+  | {
+      type: typeof TAB_ACTION_TYPES.TRANSFER_TAB;
+      tabId: string;
+      to: { newWindowId: string; newPaneId: string };
+    }
+  | { type: typeof TAB_ACTION_TYPES.CLOSE_WORKSPACE_WINDOW; windowId: string }
   | { type: typeof TAB_ACTION_TYPES.RESTORE; state: TabStoreState };
 
 // ペインスコープ: 全アクションに「対象ペイン」を付与できる。

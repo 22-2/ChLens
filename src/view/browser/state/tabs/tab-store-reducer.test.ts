@@ -96,6 +96,63 @@ describe("窓ごとのペイン", () => {
   });
 });
 
+describe("別窓へのタブ移動と終了", () => {
+  it("タブの状態を維持して新しい窓へ移し、本窓にはホームを補う", () => {
+    const original = { ...createHomeTab("moving"), pinned: true, autoRefreshEnabled: true };
+    const state = createState([original]);
+    const next = tabReducer(state, {
+      type: "TRANSFER_TAB",
+      tabId: original.id,
+      to: { newWindowId: "aux", newPaneId: "aux-pane" },
+    });
+    expect(next.panes).toHaveLength(2);
+    expect(next.panes[0].tabs[0].id).not.toBe(original.id);
+    expect(next.panes[1]).toMatchObject({
+      id: "aux-pane",
+      windowId: "aux",
+      activeTabId: original.id,
+    });
+    expect(next.panes[1].tabs[0]).toBe(original);
+    expect(next.windows).toContainEqual({ id: "aux", kind: "aux", activePaneId: "aux-pane" });
+    expect(next.activePaneId).toBe("aux-pane");
+    expect(next.closedTabs).toEqual([]);
+  });
+
+  it("別窓を閉じると固定タブも履歴に積み、本窓の選択へ戻す", () => {
+    const original = { ...createHomeTab("moving"), pinned: true };
+    const initial = createState([original]);
+    const transferred = tabReducer(initial, {
+      type: "TRANSFER_TAB",
+      tabId: original.id,
+      to: { newWindowId: "aux", newPaneId: "aux-pane" },
+    });
+    const closed = tabReducer(transferred, { type: "CLOSE_WORKSPACE_WINDOW", windowId: "aux" });
+    expect(closed.windows).toHaveLength(1);
+    expect(closed.panes).toHaveLength(1);
+    expect(closed.activePaneId).toBe(initial.activePaneId);
+    expect(closed.closedTabs[0]).toBe(original);
+    expect(tabReducer(closed, { type: "CLOSE_WORKSPACE_WINDOW", windowId: "main" })).toBe(closed);
+  });
+
+  it("最後のタブを別窓から移すと元の窓だけを履歴に積まずに取り除く", () => {
+    const tab = createHomeTab("moving");
+    const initial = createState([tab]);
+    const first = tabReducer(initial, {
+      type: "TRANSFER_TAB",
+      tabId: tab.id,
+      to: { newWindowId: "aux-1", newPaneId: "pane-1" },
+    });
+    const second = tabReducer(first, {
+      type: "TRANSFER_TAB",
+      tabId: tab.id,
+      to: { newWindowId: "aux-2", newPaneId: "pane-2" },
+    });
+    expect(second.windows.map((window) => window.id)).toEqual(["main", "aux-2"]);
+    expect(second.panes.map((pane) => pane.id)).toEqual([initial.activePaneId, "pane-2"]);
+    expect(second.closedTabs).toEqual([]);
+  });
+});
+
 describe("タブの並べ替えとピン留め", () => {
   it("ピン留めしたタブは、ほかのタブより前に並ぶ", () => {
     const [a, b, c] = [1, 2, 3].map((n) => createTabWithHistory([thread(n)]));
