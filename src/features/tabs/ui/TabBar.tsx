@@ -1,8 +1,11 @@
 import React, { useCallback, useState } from "react";
 import type { TabBarOrientation } from "src/features/tabs/browser/tab-bar-layout";
+import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import { useTabBarModel } from "src/features/tabs/browser/use-tab-bar-model";
 import { TabBarView } from "src/features/tabs/ui/TabBarView";
 import { TabContextMenu } from "src/features/tabs/ui/TabContextMenu";
+import { useToast } from "src/view/browser/hooks/use-toast";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { Tab } from "src/view/browser/types";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 
@@ -36,6 +39,23 @@ export const TabBar: React.FC<{
   const { setCollapsed, setWidth } = model;
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] = useState<BarContextMenuState | null>(null);
+  const { dropTabAtScreenPoint } = useDetachedTabController();
+  const { window: viewWindow } = useViewSurface();
+  const toast = useToast();
+
+  const handleDragTabOut = useCallback(
+    (tabId: string, screenX: number, screenY: number) => {
+      const result = dropTabAtScreenPoint(tabId, screenX, screenY, viewWindow);
+      if (result === "failed") {
+        // 窓を開けなかったときはタブを元の位置に残し、代わりの操作を案内する。
+        toast.error(
+          "別窓を開けませんでした。ポップアップ設定を確認するか、タブのメニューから移動してください",
+        );
+      }
+      return result === "moved" || result === "opened";
+    },
+    [dropTabAtScreenPoint, toast, viewWindow],
+  );
 
   const handleTabContextMenu = useCallback((tab: Tab, x: number, y: number) => {
     setContextMenu({ tab, x, y });
@@ -91,6 +111,7 @@ export const TabBar: React.FC<{
       onCloseTab={model.onCloseTab}
       onAddTab={model.onAddTab}
       onMoveTab={model.onMoveTab}
+      onDragTabOut={handleDragTabOut}
       onStepTab={model.onStepTab}
       onSetCollapsed={setCollapsed}
       onCommitWidth={handleCommitWidth}

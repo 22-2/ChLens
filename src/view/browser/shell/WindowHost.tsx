@@ -21,8 +21,16 @@ import {
 import {
   type DetachedTabController,
   DetachedTabControllerContext,
+  type TabDropResult,
 } from "src/features/tabs/browser/detached-tab-controller";
 import { useTabBarOrientation } from "src/features/tabs/browser/use-tab-bar-orientation";
+import {
+  getNewWindowOrigin,
+  getWindowScreenRect,
+  isBeforeTabCenter,
+  isPointInRect,
+  screenToClientPoint,
+} from "src/features/tabs/browser/window-drop-target";
 import { WindowNavigationBridge } from "src/features/tabs/ui/WindowNavigationBridge";
 import { useZenMode } from "src/view/browser/commands/zen-mode-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
@@ -49,11 +57,17 @@ function locate(panes: readonly Pane[], tabId: string): { pane: Pane; tab: Tab }
   }
   return undefined;
 }
-function optionsFor(tab: Tab, windowId: string): AuxiliaryWindowOptions {
+function optionsFor(
+  tab: Tab,
+  windowId: string,
+  origin?: { left: number; top: number },
+): AuxiliaryWindowOptions {
   return {
     // 元のタブが別の窓へ移動しても、名前付き窓の再利用先が衝突しないようにする。
     name: `chlens-window-${encodeURIComponent(windowId)}`,
-    features: "popup,width=1180,height=820,resizable=yes",
+    features: `popup,width=1180,height=820,resizable=yes${
+      origin ? `,left=${origin.left},top=${origin.top}` : ""
+    }`,
     title: `${getCurrentPage(tab).title || "タブ"} - read.crx 2`,
     shellClassName: "workspace-window",
     logLabel: "WindowHost",
@@ -93,17 +107,17 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
   useLayoutEffect(() => {
     closeRef.current = closeWindow;
   }, [closeWindow]);
-  const detachTab = useCallback(
-    (tabId: string) => {
+  const openWindowForTab = useCallback(
+    (tabId: string, origin?: { left: number; top: number }, reuseOwnWindow = true) => {
       const found = locate(stateRef.current.panes, tabId);
       if (!found) return false;
       const existing = entriesRef.current.get(found.pane.windowId ?? MAIN_WINDOW_ID);
-      if (existing && !existing.window.closed) {
+      if (reuseOwnWindow && existing && !existing.window.closed) {
         existing.window.focus();
         return true;
       }
       const id = crypto.randomUUID();
-      const opened = openAuxiliaryWindow(optionsFor(found.tab, id));
+      const opened = openAuxiliaryWindow(optionsFor(found.tab, id, origin));
       if (!opened) return false;
       const paneId = crypto.randomUUID();
       const watcher = watchAuxiliaryWindow({
@@ -128,6 +142,7 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
     },
     [dispatch, setEntry, stateRef],
   );
+  const detachTab = useCallback((tabId: string) => openWindowForTab(tabId), [openWindowForTab]);
   const reattachTab = useCallback(
     (tabId: string) => {
       const main = stateRef.current.windows.find((item) => item.id === MAIN_WINDOW_ID);
@@ -156,9 +171,69 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
     },
     [closeWindow, stateRef],
   );
+  const dropTabAtScreenPoint = useCallback(
+    (tabId: string, screenX: number, screenY: number, originWindow: Window): TabDropResult => {
+      // 元の窓の中で離した場合は、タブバー内の並べ替えが扱う。
+      if (isPointInRect(getWindowScreenRect(originWindow), screenX, screenY)) return "ignored";
+      const state = stateRef.current;
+      const found = locate(state.panes, tabId);
+      if (!found) return "ignored";
+      // 変更理由: 窓の重なり順はブラウザから取れないため、後から開いた別窓を手前とみなし、
+      // 最後に本窓を調べる。重なっている場合の取り違えは、メニューの移動で直せる。
+      const candidates = [
+        ...[...entriesRef.current.values()]
+          .filter((entry) => !entry.window.closed)
+          .reverse()
+          .map((entry) => ({ id: entry.id, window: entry.window })),
+        { id: MAIN_WINDOW_ID, window },
+      ];
+      const target = candidates.find(
+        (candidate) =>
+          candidate.window !== originWindow &&
+          isPointInRect(getWindowScreenRect(candidate.window), screenX, screenY),
+      );
+      if (target) {
+        const client = screenToClientPoint(target.window, screenX, screenY);
+        const hovered = target.window.document
+          .elementFromPoint(client.x, client.y)
+          ?.closest<HTMLElement>("[data-tab-id]");
+        const hoveredTarget = hovered?.dataset.tabId
+          ? locate(state.panes, hovered.dataset.tabId)
+          : undefined;
+        const activePaneId = state.windows.find((item) => item.id === target.id)?.activePaneId;
+        const pane =
+          hoveredTarget?.pane ?? state.panes.find((candidate) => candidate.id === activePaneId);
+        if (!pane || pane.id === found.pane.id) return "ignored";
+        let index = pane.tabs.length;
+        if (hovered && hoveredTarget) {
+          const hoveredIndex = pane.tabs.findIndex((item) => item.id === hoveredTarget.tab.id);
+          const isVertical = Boolean(hovered.closest(".tab-bar--vertical"));
+          index = isBeforeTabCenter(hovered.getBoundingClientRect(), client, isVertical)
+            ? hoveredIndex
+            : hoveredIndex + 1;
+        }
+        dispatch({
+          type: "TRANSFER_TAB",
+          tabId,
+          to: { windowId: target.id, paneId: pane.id, index },
+        });
+        target.window.focus();
+        return "moved";
+      }
+      // 別窓に1つだけ残ったタブを空いた場所へ移しても、窓が入れ替わるだけになる。
+      const sourceWindowId = found.pane.windowId ?? MAIN_WINDOW_ID;
+      const sourceTabCount = state.panes
+        .filter((pane) => (pane.windowId ?? MAIN_WINDOW_ID) === sourceWindowId)
+        .reduce((count, pane) => count + pane.tabs.length, 0);
+      if (sourceWindowId !== MAIN_WINDOW_ID && sourceTabCount === 1) return "ignored";
+      const opened = openWindowForTab(tabId, getNewWindowOrigin(screenX, screenY), false);
+      return opened ? "opened" : "failed";
+    },
+    [dispatch, openWindowForTab, stateRef],
+  );
   const context = useMemo<DetachedTabController>(
-    () => ({ detachTab, reattachTab, focusTabWindow, closeDetachedTab }),
-    [detachTab, reattachTab, focusTabWindow, closeDetachedTab],
+    () => ({ detachTab, reattachTab, focusTabWindow, closeDetachedTab, dropTabAtScreenPoint }),
+    [detachTab, reattachTab, focusTabWindow, closeDetachedTab, dropTabAtScreenPoint],
   );
   useEffect(() => {
     const onPageHide = () => {

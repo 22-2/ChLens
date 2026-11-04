@@ -120,3 +120,26 @@ test("タブのメニューとコマンドパレットで本窓と別窓の間�
   await expect(popup.getByRole("tab")).toHaveCount(1);
   await expect(page.getByRole("tab")).toHaveCount(2);
 });
+
+test("タブを窓の外までドラッグすると新しい窓へ移る", async ({ page, extensionId, localBoard }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  await expect(page.locator('[data-res-num="2"]')).toBeVisible();
+  await page.getByRole("button", { name: "新しいタブ", exact: true }).click();
+  await expect(page.getByRole("tab")).toHaveCount(2);
+
+  const threadTab = page.getByRole("tab", { name: /ローカルテストスレッド/ });
+  const box = (await threadTab.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  // 距離の判定を越えてから、表示領域の外へ段階的に動かす。
+  await page.mouse.move(box.x + box.width / 2 + 20, box.y + box.height / 2 + 20, { steps: 5 });
+  await page.mouse.move(viewport.width / 2, viewport.height + 200, { steps: 10 });
+  const [popup] = await Promise.all([page.context().waitForEvent("page"), page.mouse.up()]);
+
+  await expect(popup.locator('[data-res-num="2"]')).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveCount(1);
+});

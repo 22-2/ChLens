@@ -56,8 +56,14 @@ vi.mock("src/features/auto-refresh/browser/use-auto-scroll-state", () => ({
   AutoScrollPaneStatesProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+const captured: { controller: ReturnType<typeof useDetachedTabController> | null } = {
+  controller: null,
+};
+
 function Controls() {
-  const { detachTab, reattachTab } = useDetachedTabController();
+  const controller = useDetachedTabController();
+  const { detachTab, reattachTab } = controller;
+  captured.controller = controller;
   return (
     <>
       <button onClick={() => detachTab("tab-1")}>開く</button>
@@ -67,7 +73,23 @@ function Controls() {
 }
 
 describe("WindowHost", () => {
+  /** jsdomの本窓に、位置と大きさを持たせる。 */
+  function setMainWindowGeometry(): void {
+    for (const [key, value] of Object.entries({
+      screenX: 0,
+      screenY: 0,
+      outerWidth: 1000,
+      outerHeight: 800,
+      innerWidth: 1000,
+      innerHeight: 800,
+    })) {
+      Object.defineProperty(window, key, { value, configurable: true });
+    }
+  }
   beforeEach(() => {
+    setMainWindowGeometry();
+    // jsdomにはelementFromPointがないため、タブの上ではない位置として扱う。
+    document.elementFromPoint = () => null;
     const tab = createHomeTab("tab-1");
     mocks.stateRef.current = {
       panes: [{ id: "pane-1", tabs: [tab], activeTabId: tab.id }],
@@ -159,5 +181,82 @@ describe("WindowHost", () => {
     });
     expect(mocks.stateRef.current.closedTabs).toEqual([]);
     expect(mocks.stateRef.current.windows).toHaveLength(2);
+  });
+  describe("画面上の位置へのドロップ", () => {
+    function setAuxWindowGeometry(): void {
+      Object.assign(mocks.fakeWindow as object, {
+        screenX: 2000,
+        screenY: 0,
+        outerWidth: 800,
+        outerHeight: 600,
+        innerWidth: 800,
+        innerHeight: 600,
+      });
+    }
+    it("別窓のタブを、離した位置にある本窓へ移し、空になった別窓は閉じる", () => {
+      render(
+        <WindowHost>
+          <Controls />
+        </WindowHost>,
+      );
+      fireEvent.click(screen.getByText("開く"));
+      setAuxWindowGeometry();
+      let result: unknown;
+      act(() => {
+        result = captured.controller?.dropTabAtScreenPoint("tab-1", 100, 100, mocks.fakeWindow!);
+      });
+      expect(result).toBe("moved");
+      expect(mocks.stateRef.current.windows.map((item) => item.id)).toEqual(["main"]);
+      expect(mocks.stateRef.current.panes[0].tabs.map((tab) => tab.id)).toContain("tab-1");
+    });
+    it("元の窓の中で離したときは何もしない", () => {
+      render(
+        <WindowHost>
+          <Controls />
+        </WindowHost>,
+      );
+      mocks.dispatch.mockClear();
+      expect(captured.controller?.dropTabAtScreenPoint("tab-1", 100, 100, window)).toBe("ignored");
+      expect(mocks.dispatch).not.toHaveBeenCalled();
+    });
+    it("どの窓にも当たらない位置では、その近くに新しい窓を開いて移す", () => {
+      render(
+        <WindowHost>
+          <Controls />
+        </WindowHost>,
+      );
+      let result: unknown;
+      act(() => {
+        result = captured.controller?.dropTabAtScreenPoint("tab-1", 5000, 5000, window);
+      });
+      expect(result).toBe("opened");
+      expect(mocks.open.mock.calls[0][0].features).toContain("left=4880,top=4984");
+      expect(mocks.stateRef.current.windows).toHaveLength(2);
+    });
+    it("新しい窓を開けなかったときはタブを元の位置に残す", () => {
+      mocks.open.mockReturnValue(null);
+      render(
+        <WindowHost>
+          <Controls />
+        </WindowHost>,
+      );
+      mocks.dispatch.mockClear();
+      expect(captured.controller?.dropTabAtScreenPoint("tab-1", 5000, 5000, window)).toBe("failed");
+      expect(mocks.dispatch).not.toHaveBeenCalled();
+    });
+    it("別窓に1つだけ残ったタブを空いた場所へ離しても窓を作り直さない", () => {
+      render(
+        <WindowHost>
+          <Controls />
+        </WindowHost>,
+      );
+      fireEvent.click(screen.getByText("開く"));
+      setAuxWindowGeometry();
+      mocks.open.mockClear();
+      expect(
+        captured.controller?.dropTabAtScreenPoint("tab-1", 5000, 5000, mocks.fakeWindow!),
+      ).toBe("ignored");
+      expect(mocks.open).not.toHaveBeenCalled();
+    });
   });
 });

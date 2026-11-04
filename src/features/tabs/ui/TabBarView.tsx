@@ -218,6 +218,11 @@ export interface TabBarViewProps {
   onAddTab: () => void;
   /** 表示中の並び順 visibleIndex へ移す。移動できなければ false を返す。 */
   onMoveTab: (tabId: string, visibleIndex: number) => boolean;
+  /**
+   * タブバーの外（窓の外を含む）でドラッグを終えたときに、離した画面上の位置を渡す。
+   * 窓をまたぐ移動として処理できたら true を返し、タブバー内の並べ替えは行わない。
+   */
+  onDragTabOut?: (tabId: string, screenX: number, screenY: number) => boolean;
   /** 選択中タブから delta 個ぶん前後へ切り替える。切り替えられなければ false を返す。 */
   onStepTab: (delta: 1 | -1) => boolean;
   onSetCollapsed: (collapsed: boolean) => void;
@@ -254,6 +259,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   onCloseTab,
   onAddTab,
   onMoveTab,
+  onDragTabOut,
   onStepTab,
   onSetCollapsed,
   onCommitWidth,
@@ -278,6 +284,13 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   const lastWheelSwitchAtRef = useRef(0);
   // ドラッグ終了直後の click イベントによるタブ選択を抑止するためのフラグ。
   const wasDraggingRef = useRef(false);
+  const lastDragScreenPointRef = useRef<{ x: number; y: number } | null>(null);
+  const stopDragTrackingRef = useRef<(() => void) | null>(null);
+  const stopTrackingDragPointer = useCallback(() => {
+    stopDragTrackingRef.current?.();
+    stopDragTrackingRef.current = null;
+    lastDragScreenPointRef.current = null;
+  }, []);
   const [tabListScrollState, setTabListScrollState] = useState<TabListScrollState>({
     canScrollLeft: false,
     canScrollRight: false,
@@ -490,6 +503,16 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      const lastPoint = lastDragScreenPointRef.current;
+      stopTrackingDragPointer();
+      const sourceId = event.operation.source?.id;
+      // 窓の外で離した場合だけ、窓をまたぐ移動を試す。
+      if (!event.canceled && lastPoint && sourceId != null && onDragTabOut) {
+        if (onDragTabOut(String(sourceId), lastPoint.x, lastPoint.y)) {
+          wasDraggingRef.current = true;
+          return;
+        }
+      }
       // 実際に位置が変わっていなければ、click 抑止も並べ替えも行わない。
       const move = readSortableMove(event);
       if (!move) return;
@@ -497,8 +520,22 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
       wasDraggingRef.current = true;
     },
-    [onMoveTab],
+    [onDragTabOut, onMoveTab, stopTrackingDragPointer],
   );
+
+  // 変更理由: ドラッグ中のポインタが窓の外へ出ても、ボタンを押している間は元の窓の
+  // documentへイベントが届く。その画面座標を覚えておき、離した位置の判定に使う。
+  const handleDragStart = useCallback(() => {
+    lastDragScreenPointRef.current = null;
+    const ownerDocument = tabListRef.current?.ownerDocument;
+    if (!ownerDocument) return;
+    const track = (event: PointerEvent) => {
+      lastDragScreenPointRef.current = { x: event.screenX, y: event.screenY };
+    };
+    ownerDocument.addEventListener("pointermove", track, { capture: true });
+    stopDragTrackingRef.current = () =>
+      ownerDocument.removeEventListener("pointermove", track, { capture: true });
+  }, []);
 
   const handleResizePointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -597,7 +634,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       onContextMenu={embedded ? handleBarContextMenu : undefined}
     >
       {sectionLabel ? <div className="tab-bar__pane-label">{sectionLabel}</div> : null}
-      <DragDropProvider onDragEnd={handleDragEnd}>
+      <DragDropProvider onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <div
           className={`tab-list-container${
             tabListScrollState.canScrollLeft ? " tab-list-container--can-scroll-left" : ""
