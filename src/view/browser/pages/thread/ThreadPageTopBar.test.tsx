@@ -69,7 +69,7 @@ describe("ThreadPageTopBar", () => {
     expect(minimapReservationSelectors).not.toContain(".thread-page__toolbar");
   });
 
-  it("メニューに種類を件数つきで並べ、検索の条件のチェック項目を続ける", () => {
+  it("絞り込みメニューに種類を件数つきで並べる", () => {
     renderBar({ filter: "popular" });
 
     fireEvent.click(screen.getByRole("button", { name: "人気" }));
@@ -86,9 +86,6 @@ describe("ThreadPageTopBar", () => {
       "外部リンク (9)",
       "内部リンク (1)",
       "自分のレス (4)",
-      "大文字と小文字を区別",
-      "ひらがなとカタカナを区別",
-      "正規表現",
     ]);
     expect(screen.getByRole("menuitemcheckbox", { name: "人気 (2)" })).toHaveAttribute(
       "aria-checked",
@@ -117,7 +114,7 @@ describe("ThreadPageTopBar", () => {
   it("検索の条件の切り替えを親へ通知する", () => {
     const props = renderBar();
 
-    fireEvent.click(screen.getByRole("button", { name: "絞り込み" }));
+    fireEvent.click(screen.getByRole("button", { name: "検索の条件" }));
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "正規表現" }));
 
     expect(props.onSearchOptionsChange).toHaveBeenCalledWith({
