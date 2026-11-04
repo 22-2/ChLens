@@ -17,6 +17,10 @@ interface SearchOptionsMenuProps {
    * 渡すと、ボタンは「絞り込み ▼」のように文字つきで出る。
    */
   leadingItems?: ContextMenuItem[];
+  /** 先頭項目をカテゴリ用のボタンへ分け、検索オプションは3点ボタンに残す。 */
+  separateLeadingItems?: boolean;
+  /** カテゴリボタンだけを表示する。 */
+  leadingItemsOnly?: boolean;
   /** 文字つきのボタンの表示。省略すると「⋯」だけのボタンにする。 */
   label?: string;
   /** メニューの中で既定から外れた条件があるとき true。閉じていても効いていると分かるよう強調する。 */
@@ -51,12 +55,16 @@ export function SearchOptionsMenu({
   options,
   onChange,
   leadingItems,
+  separateLeadingItems = false,
+  leadingItemsOnly = false,
   label,
   active = false,
   className,
 }: SearchOptionsMenuProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const leadingButtonRef = useRef<HTMLButtonElement>(null);
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [leadingPosition, setLeadingPosition] = useState<{ x: number; y: number } | null>(null);
 
   const toggle = useCallback(() => {
     if (position) {
@@ -76,49 +84,88 @@ export function SearchOptionsMenu({
       labelIcon: icon,
       onSelect: () => onChange({ ...options, [key]: !options[key] }),
     }));
-    if (!leadingItems?.length) return optionItems;
+    if (!leadingItems?.length || separateLeadingItems) return optionItems;
     // 先頭の項目にも空のアイコン枠を足し、検索の条件の項目とラベルの位置をそろえる。
     const alignedLeadingItems = leadingItems.map((item) =>
       item.separator ? item : { ...item, labelIcon: item.labelIcon ?? <span /> },
     );
     return [...alignedLeadingItems, { id: "options-separator", separator: true }, ...optionItems];
-  }, [leadingItems, onChange, options]);
+  }, [leadingItems, onChange, options, separateLeadingItems]);
 
-  const highlighted = active || hasNonDefaultOption(options);
-  const accessibleName = label ?? "検索の条件";
+  const highlighted = (!separateLeadingItems && active) || hasNonDefaultOption(options);
+  const accessibleName = separateLeadingItems ? "検索の条件" : (label ?? "検索の条件");
   return (
     <span className={["search-options-menu", className].filter(Boolean).join(" ")}>
-      <button
-        ref={buttonRef}
-        type="button"
-        className={`search-options-menu__button icon-button${
-          label ? " search-options-menu__button--labeled" : ""
-        }`}
-        aria-haspopup="menu"
-        aria-expanded={position !== null}
-        aria-label={accessibleName}
-        title={accessibleName}
-        data-active={highlighted ? "true" : undefined}
-        onClick={toggle}
-      >
-        {label ? (
-          <>
+      {separateLeadingItems && leadingItems?.length ? (
+        <>
+          <button
+            ref={leadingButtonRef}
+            type="button"
+            className="search-options-menu__button search-options-menu__button--labeled icon-button"
+            aria-haspopup="menu"
+            aria-expanded={leadingPosition !== null}
+            aria-label={label ?? "カテゴリ"}
+            title={label ?? "カテゴリ"}
+            data-active={active ? "true" : undefined}
+            onClick={() => {
+              if (leadingPosition) {
+                setLeadingPosition(null);
+                return;
+              }
+              const rect = leadingButtonRef.current?.getBoundingClientRect();
+              if (rect) setLeadingPosition({ x: rect.left, y: rect.bottom });
+            }}
+          >
             <span>{label}</span>
             <ChevronDown size={14} aria-hidden="true" />
-          </>
-        ) : (
-          <Ellipsis size={14} aria-hidden="true" />
-        )}
-      </button>
-      {position ? (
-        <ContextMenu
-          x={position.x}
-          y={position.y}
-          items={items}
-          onClose={() => setPosition(null)}
-          triggerRef={buttonRef}
-          enableKeyboardNavigation
-        />
+          </button>
+          {leadingPosition ? (
+            <ContextMenu
+              x={leadingPosition.x}
+              y={leadingPosition.y}
+              items={leadingItems}
+              onClose={() => setLeadingPosition(null)}
+              triggerRef={leadingButtonRef}
+              enableKeyboardNavigation
+            />
+          ) : null}
+        </>
+      ) : null}
+      {!leadingItemsOnly ? (
+        <>
+          <button
+            ref={buttonRef}
+            type="button"
+            className={`search-options-menu__button icon-button${
+              label && !separateLeadingItems ? " search-options-menu__button--labeled" : ""
+            }`}
+            aria-haspopup="menu"
+            aria-expanded={position !== null}
+            aria-label={accessibleName}
+            title={accessibleName}
+            data-active={highlighted ? "true" : undefined}
+            onClick={toggle}
+          >
+            {label && !separateLeadingItems ? (
+              <>
+                <span>{label}</span>
+                <ChevronDown size={14} aria-hidden="true" />
+              </>
+            ) : (
+              <Ellipsis size={14} aria-hidden="true" />
+            )}
+          </button>
+          {position ? (
+            <ContextMenu
+              x={position.x}
+              y={position.y}
+              items={items}
+              onClose={() => setPosition(null)}
+              triggerRef={buttonRef}
+              enableKeyboardNavigation
+            />
+          ) : null}
+        </>
       ) : null}
     </span>
   );

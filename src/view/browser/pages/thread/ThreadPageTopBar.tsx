@@ -102,6 +102,15 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
   return (
     <div className="thread-page__top-bar thread-page__toolbar">
       <div className="thread-page__toolbar-search">
+        <SearchOptionsMenu
+          options={searchOptions}
+          onChange={onSearchOptionsChange}
+          leadingItems={filterItems}
+          separateLeadingItems
+          leadingItemsOnly
+          label={selected?.label ?? DEFAULT_BUTTON_LABEL}
+          active={filter !== "all"}
+        />
         <input
           ref={inputRef}
           type="text"
@@ -128,9 +137,7 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
         <SearchOptionsMenu
           options={searchOptions}
           onChange={onSearchOptionsChange}
-          leadingItems={filterItems}
-          label={selected?.label ?? DEFAULT_BUTTON_LABEL}
-          active={filter !== "all"}
+          separateLeadingItems
         />
       </div>
     </div>
