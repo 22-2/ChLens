@@ -10,6 +10,7 @@ import {
 } from "src/test-support/navigation-bar-test-support";
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
 import { commandPalette } from "src/view/browser/commands/command-palette-store";
+import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { NavigationBar } from "src/view/browser/shell/NavigationBar";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -104,6 +105,28 @@ describe("NavigationBar titlebar slot", () => {
     expect(slot.querySelector(".nav-bar--titlebar")).not.toBeNull();
     expect(slot.querySelector('[title="URLバーを表示"]')).toBeNull();
     expect(slot.querySelector('[title="メニュー"]')).not.toBeNull();
+  });
+
+  it("同じペインIDの受け口が複数の文書にあっても表示先の窓を使う", () => {
+    const iframe = document.createElement("iframe");
+    document.body.appendChild(iframe);
+    const targetDocument = iframe.contentDocument!;
+    const targetSlot = targetDocument.createElement("div");
+    targetSlot.className = "title-bar__nav-slot";
+    targetSlot.dataset.paneId = "pane-1";
+    targetDocument.body.appendChild(targetSlot);
+    try {
+      render(
+        <ViewSurfaceProvider surface={{ window: iframe.contentWindow!, document: targetDocument }}>
+          <NavigationBar />
+        </ViewSurfaceProvider>,
+      );
+      expect(targetSlot.querySelector(".nav-bar--titlebar")).not.toBeNull();
+      expect(slot.querySelector(".nav-bar--titlebar")).toBeNull();
+    } finally {
+      cleanup();
+      iframe.remove();
+    }
   });
 
   it("垂直でも非アクティブペインの操作欄を表示しない", () => {

@@ -153,22 +153,25 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   // 変更理由: オムニバーの入力欄はボタン群とは別に、タイトルバー中央のピルと同じ位置へ出す。
   const [commandCenterSlot, setCommandCenterSlot] = useState<HTMLElement | null>(null);
 
+  // 窓ごとの受け口を使い、別の文書にある同じペインIDの要素へ描画しない。
   // oxlint-disable-next-line react/set-state-in-effect -- shellはReactのcommit後にDOMへ接続されるため、DOMの受け口をstateへ同期する。
   useEffect(() => {
-    setPortalContainer(document.querySelector<HTMLElement>(".browser-shell"));
-  }, []);
+    setPortalContainer(viewSurface.document.querySelector<HTMLElement>(".browser-shell"));
+  }, [viewSurface.document]);
 
   // oxlint-disable-next-line react/set-state-in-effect -- pane別の受け口はReactのcommit後にDOMへ接続されるため、DOMの受け口をstateへ同期する。
   useEffect(() => {
     setTitleBarSlot(
-      document.querySelector<HTMLElement>(`.title-bar__nav-slot[data-pane-id="${paneId}"]`),
+      viewSurface.document.querySelector<HTMLElement>(
+        `.title-bar__nav-slot[data-pane-id="${paneId}"]`,
+      ),
     );
     setCommandCenterSlot(
-      document.querySelector<HTMLElement>(
+      viewSurface.document.querySelector<HTMLElement>(
         `.title-bar__command-center-slot[data-pane-id="${paneId}"]`,
       ),
     );
-  }, [paneId, tabBarOrientation, activePaneId]);
+  }, [paneId, tabBarOrientation, activePaneId, viewSurface.document]);
   // 変更理由: 受け口へポータルしてペイン上部の高さを本文へ返す。
   // スロットが無い環境（テスト等）では従来どおりインライン表示する。
   // blur処理からも参照するため、描画部より前で定義する。
