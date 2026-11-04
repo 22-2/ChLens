@@ -48,8 +48,8 @@ import {
   TabProvider,
   useBottomPanelLayout,
   useTabDispatch,
-  useTabPanes,
   useTabStore,
+  useWindowPanes,
 } from "src/view/browser/state/tabs/use-tab-store";
 import { ToastProvider } from "src/view/browser/ui/Toast";
 import { TooltipProvider } from "src/view/browser/ui/Tooltip";
@@ -102,7 +102,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const { viewPage, viewTab, paneId } = useTabStore();
   const initialBottomPanel = useBottomPanelLayout(paneId);
   const tabBarOrientation = useTabBarOrientation();
-  const { panes } = useTabPanes();
+  const { panes } = useWindowPanes();
   // 変更理由: タブバーは全ペイン共通にする。垂直は画面左端、水平は2ペイン以上のときだけ
   // タイトルバーの下へ出す。1ペインの水平は従来どおりペインの操作欄と同じ行に置く。
   const hasSharedTabBar = tabBarOrientation === "vertical" || panes.length > 1;
@@ -231,7 +231,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
 
 // ペイン群を横に並べる行。
 const PaneRow: React.FC = () => {
-  const { panes, activePaneId } = useTabPanes();
+  const { panes, activePaneId } = useWindowPanes();
 
   return (
     <div className="pane-row">
@@ -246,7 +246,7 @@ const PaneRow: React.FC = () => {
 // タイトルバーの上端まで伸ばし、タイトルバー以下を右へ押しのける。
 const ShellFrame: React.FC = () => {
   const orientation = useTabBarOrientation();
-  const { panes } = useTabPanes();
+  const { panes } = useWindowPanes();
   const main = (
     <>
       <TitleBar />

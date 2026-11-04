@@ -38,7 +38,7 @@ import {
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
-import { useTabPanes, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import { useTabStore, useWindowPanes } from "src/view/browser/state/tabs/use-tab-store";
 import { canGoBack, canGoForward, getCurrentPage } from "src/view/browser/types";
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
@@ -92,7 +92,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   const toast = useToast();
   const runTabCommand = useTabCommandRunner(viewTab.id);
   // 2ペイン表示中かどうか（トグルボタンの状態に使う）。
-  const { panes, activePaneId } = useTabPanes();
+  const { panes, activePaneId } = useWindowPanes();
   const isTwoPane = panes.length >= 2;
   const isActivePane = activePaneId === paneId;
   const { isOpen: isPanelOpen, activePanelTabId, togglePanel } = useBottomPanel();

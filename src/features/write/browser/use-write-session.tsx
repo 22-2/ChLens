@@ -17,8 +17,8 @@ import {
 import { showSidePanelView } from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import {
+  useAllPanes,
   useSidePanelState,
-  useTabPanes,
   useTabStore,
 } from "src/view/browser/state/tabs/use-tab-store";
 import type { Page, Tab } from "src/view/browser/types";
@@ -186,7 +186,7 @@ const WriteDraftContext = createContext<WriteDraftContextValue>(defaultDraftCont
  * 更新を伝播させないよう、操作用Contextと本文用Contextを分離している。
  */
 export const WriteSessionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { panes, activePaneId } = useTabPanes();
+  const { panes, activePaneId } = useAllPanes();
   const { viewPage } = useTabStore();
   const { state: sidePanel, dispatch } = useSidePanelState();
   // 変更理由: パネルの幅変更などで操作用Contextを更新しないよう、開く時点の状態だけを参照する。

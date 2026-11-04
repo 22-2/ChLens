@@ -1,7 +1,7 @@
 import React from "react";
 import type { TabBarOrientation } from "src/features/tabs/browser/tab-bar-layout";
 import { TabBar } from "src/features/tabs/ui/TabBar";
-import { PaneProvider, useTabPanes } from "src/view/browser/state/tabs/use-tab-store";
+import { PaneProvider, useWindowPanes } from "src/view/browser/state/tabs/use-tab-store";
 
 function getPaneLabel(index: number, paneCount: number): string {
   if (paneCount === 2) return index === 0 ? "左" : "右";
@@ -17,7 +17,7 @@ function getPaneLabel(index: number, paneCount: number): string {
  * 1つのバーで全ペインのタブを扱えるようにする。
  */
 export const SharedTabBar: React.FC<{ orientation: TabBarOrientation }> = ({ orientation }) => {
-  const { panes, activePaneId } = useTabPanes();
+  const { panes, activePaneId } = useWindowPanes();
   const [first, ...rest] = panes;
   if (!first) return null;
   const showLabels = panes.length > 1;

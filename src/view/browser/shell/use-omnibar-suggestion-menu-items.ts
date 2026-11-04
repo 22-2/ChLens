@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import type { useToast } from "src/view/browser/hooks/use-toast";
 import type { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import type { useTabPanes, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import type { useTabStore, useWindowPanes } from "src/view/browser/state/tabs/use-tab-store";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import type { OmnibarSuggestion } from "src/view/browser/utils/omnibar";
 
@@ -48,7 +48,7 @@ export function useOmnibarSuggestionMenuItems({
   suggestionMenuState: SuggestionMenuState | null;
   openSuggestion: ReturnType<typeof useOmnibarNavigation>["openSuggestion"];
   dispatch: ReturnType<typeof useTabStore>["dispatch"];
-  panes: ReturnType<typeof useTabPanes>["panes"];
+  panes: ReturnType<typeof useWindowPanes>["panes"];
   runTabCommand: ReturnType<typeof useTabCommandRunner>;
   toast: ReturnType<typeof useToast>;
   viewSurface: ReturnType<typeof useViewSurface>;

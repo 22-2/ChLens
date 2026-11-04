@@ -31,7 +31,7 @@ vi.mock("src/app/platform", () => ({
 }));
 
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
-  useTabPanes: () => tabState,
+  useAllPanes: () => tabState,
   useTabStore: () => ({ viewPage }),
   useSidePanelState: () => ({ state: undefined, dispatch: sidePanelDispatch }),
 }));

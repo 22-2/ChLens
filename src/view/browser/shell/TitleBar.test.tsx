@@ -59,7 +59,7 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
     },
   }),
   useSidePanelState: () => ({ state: undefined, dispatch: dispatchMock }),
-  useTabPanes: () => ({ panes: [{ id: "pane-1" }], activePaneId: "pane-1" }),
+  useWindowPanes: () => ({ panes: [{ id: "pane-1" }], activePaneId: "pane-1" }),
 }));
 
 vi.mock("src/features/tabs/ui/TabContextMenu", () => ({

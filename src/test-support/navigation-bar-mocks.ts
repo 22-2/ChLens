@@ -83,7 +83,7 @@ export function createTabStoreModule() {
       paneId: "pane-1",
     }),
     // NavigationBar は複数ペイン時のみ「ペインを閉じる」を出すため、単一ペインを返す。
-    useTabPanes: () => ({ panes: paneHolder.panes, activePaneId: paneHolder.activePaneId }),
+    useWindowPanes: () => ({ panes: paneHolder.panes, activePaneId: paneHolder.activePaneId }),
   };
 }
 

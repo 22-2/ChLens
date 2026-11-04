@@ -98,10 +98,10 @@ describe("ペイン（横分割）", () => {
     vi.unstubAllGlobals();
   });
 
-  // 各ペインの状態を読み出す共通ハーネス。useTabPanes でグローバルな panes を観測する。
+  // 各ペインの状態を読み出す共通ハーネス。useAllPanes でグローバルな panes を観測する。
   async function setup() {
     vi.resetModules();
-    const { TabProvider, PaneProvider, useTabPanes, useTabStore, useTabDispatch } =
+    const { TabProvider, PaneProvider, useAllPanes, useTabStore, useTabDispatch } =
       await import("src/view/browser/state/tabs/use-tab-store");
 
     // グローバルな dispatch（paneId 注入なし）= アクティブペインに作用。
@@ -155,7 +155,7 @@ describe("ペイン（横分割）", () => {
     }
 
     function Observer() {
-      const { panes, activePaneId } = useTabPanes();
+      const { panes, activePaneId } = useAllPanes();
       return (
         <>
           <output data-testid="pane-count">{panes.length}</output>

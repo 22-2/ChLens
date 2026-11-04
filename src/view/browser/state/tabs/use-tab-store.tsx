@@ -618,13 +618,18 @@ export function useTabViewState(
   };
 }
 
-// App レイアウト用: ペイン配列とアクティブペインを取得する。
-export function useTabPanes(): { panes: Pane[]; activePaneId: string } {
+// 窓をまたぐ処理は全ペインと全体のアクティブペインを取得する。
+export function useAllPanes(): { panes: Pane[]; activePaneId: string } {
   const ctx = useContext(TabContext);
   if (!ctx) {
-    throw new Error("useTabPanes must be used within TabProvider");
+    throw new Error("useAllPanes must be used within TabProvider");
   }
   return { panes: ctx.state.panes, activePaneId: ctx.state.activePaneId };
+}
+
+// 本窓だけの段階では全体と一致する。窓の導入後は文脈の窓に絞る。
+export function useWindowPanes(): { panes: Pane[]; activePaneId: string } {
+  return useAllPanes();
 }
 
 export function useActivePaneId(): string {

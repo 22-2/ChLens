@@ -7,7 +7,7 @@ import {
   getAutoRefreshThreadPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/state/tabs/auto-refresh-pages";
-import { useActivePaneId, usePaneId, useTabPanes } from "src/view/browser/state/tabs/use-tab-store";
+import { useActivePaneId, useAllPanes, usePaneId } from "src/view/browser/state/tabs/use-tab-store";
 import { getCurrentPage } from "src/view/browser/types";
 
 interface UseThreadListReadStateSyncOptions {
@@ -33,7 +33,7 @@ export function useThreadListReadStateSync({
   // タイマー実行自体は止めない（フォーカス外でも自動更新は継続する）。
   const ownPaneId = usePaneId();
   const focusedPaneId = useActivePaneId();
-  const { panes } = useTabPanes();
+  const { panes } = useAllPanes();
   const isForeground = isActive && ownPaneId === focusedPaneId;
   const isForegroundRef = useRef(isForeground);
   useLayoutEffect(() => {

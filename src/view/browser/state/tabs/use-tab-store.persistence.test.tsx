@@ -57,14 +57,14 @@ const afterTestPageTypes: Array<() => void> = [];
 async function renderViewer() {
   const { registerTestPageTypes } = await import("src/test-support/page-types-test-setup");
   afterTestPageTypes.push(registerTestPageTypes());
-  const { TabProvider, useTabStore, useTabPanes } =
+  const { TabProvider, useTabStore, useAllPanes } =
     await import("src/view/browser/state/tabs/use-tab-store");
   let dispatchForTest: (action: ScopedTabAction) => void = () => {
     throw new Error("未マウントです");
   };
   function State() {
     const { state, viewPage, dispatch } = useTabStore();
-    const panes = useTabPanes();
+    const panes = useAllPanes();
     dispatchForTest = dispatch;
     return (
       <>

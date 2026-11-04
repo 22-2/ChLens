@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
-  useTabPanes: () => ({ panes: mocks.panes, activePaneId: mocks.activePaneId }),
+  useWindowPanes: () => ({ panes: mocks.panes, activePaneId: mocks.activePaneId }),
   PaneProvider: ({ paneId, children }: { paneId: string; children: React.ReactNode }) => (
     <div data-pane-provider={paneId}>{children}</div>
   ),

@@ -3,7 +3,7 @@ import {
   buildOmnibarSuggestionMenuEntries,
   type OmnibarSuggestionMenuEntry,
 } from "src/view/browser/shell/omnibar-suggestion-menu";
-import type { useTabPanes } from "src/view/browser/state/tabs/use-tab-store";
+import type { useWindowPanes } from "src/view/browser/state/tabs/use-tab-store";
 import { getBoardUrlFromThreadUrl } from "src/view/browser/utils/link-routing";
 import type { OmnibarSuggestion } from "src/view/browser/utils/omnibar";
 import { createBoardPage } from "src/view/browser/utils/tab-pages";
@@ -14,7 +14,7 @@ const OTHER_THREAD_URL = "https://example.com/test/read.cgi/board/1000000002/";
 const BOARD_URL = "https://example.com/test/";
 const EXTERNAL_URL = "https://example.org/some/page";
 
-type Panes = ReturnType<typeof useTabPanes>["panes"];
+type Panes = ReturnType<typeof useWindowPanes>["panes"];
 
 function createSuggestion(overrides: Partial<OmnibarSuggestion> = {}): OmnibarSuggestion {
   return {

@@ -3,7 +3,7 @@ import {
   type CommandRequest,
   type CommandTarget,
 } from "src/view/browser/commands/command-runtime";
-import type { useTabPanes } from "src/view/browser/state/tabs/use-tab-store";
+import type { useWindowPanes } from "src/view/browser/state/tabs/use-tab-store";
 import { getCurrentPage, type Page } from "src/view/browser/types";
 import {
   getBoardUrlFromThreadUrl,
@@ -68,7 +68,7 @@ function copyEntries(target: CommandTarget): OmnibarSuggestionMenuEntry[] {
 
 /** 開いているスレッドのタブのうち、ピン留めされていないものを閉じ対象として集める。 */
 function findOpenThreadTabIds(
-  panes: ReturnType<typeof useTabPanes>["panes"],
+  panes: ReturnType<typeof useWindowPanes>["panes"],
   threadUrl: string,
 ): string[] {
   return panes
@@ -83,7 +83,7 @@ function findOpenThreadTabIds(
 /** オムニバーの候補を右クリックしたときのメニュー項目を、候補の種類に応じて組み立てる。副作用は持たない。 */
 export function buildOmnibarSuggestionMenuEntries(
   suggestion: OmnibarSuggestion,
-  panes: ReturnType<typeof useTabPanes>["panes"],
+  panes: ReturnType<typeof useWindowPanes>["panes"],
 ): OmnibarSuggestionMenuEntry[] {
   const resolvedPage = parseInternalBrowserPage(suggestion.url);
   const targetPage =

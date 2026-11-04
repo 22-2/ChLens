@@ -27,8 +27,8 @@ import type { ViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { DetachedTabWindowContent } from "src/view/browser/shell/DetachedTabWindowContent";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import {
+  useAllPanes,
   useTabDispatch,
-  useTabPanes,
   useTabStore,
 } from "src/view/browser/state/tabs/use-tab-store";
 import { getCurrentPage, type Pane, type Tab } from "src/view/browser/types";
@@ -70,7 +70,7 @@ function createTabWindowOptions(tab: Tab): AuxiliaryWindowOptions {
  * TabPanelだけをPortalすることで、タブ状態はTabStoreへ残したまま表示場所を移す。
  */
 export const TabWindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { panes } = useTabPanes();
+  const { panes } = useAllPanes();
   const { stateRef } = useTabStore();
   const dispatch = useTabDispatch();
   const theme = useTheme();

@@ -25,7 +25,7 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   PaneProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useTabDispatch: () => mocks.tabDispatch,
   useTabDispatchForTab: () => vi.fn(),
-  useTabPanes: () => ({ panes: mocks.panes, activePaneId: "pane-1" }),
+  useAllPanes: () => ({ panes: mocks.panes, activePaneId: "pane-1" }),
   // 別窓の共通タイトル・ステータスを描画するため、テスト用にも表示タブのスライスを渡す。
   useTabStore: () => {
     const tab = mocks.panes[0]?.tabs[0];

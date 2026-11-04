@@ -36,7 +36,7 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", async () => {
     PaneProvider: ({ paneId, children }: { paneId: string; children: React.ReactNode }) => (
       <PaneContext.Provider value={paneId}>{children}</PaneContext.Provider>
     ),
-    useTabPanes: () => ({ panes, activePaneId: "first" }),
+    useWindowPanes: () => ({ panes, activePaneId: "first" }),
     useTabStore: () => {
       const paneId = useContext(PaneContext);
       const pane = panes.find((item) => item.id === paneId)!;

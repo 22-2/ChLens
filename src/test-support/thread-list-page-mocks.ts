@@ -115,6 +115,6 @@ export function createUseTabStoreModule() {
     useTabViewState: () => ({ state: viewStateRef.current, update: updateViewStateMock }),
     usePaneId: () => "pane-1",
     useActivePaneId: () => focusedPaneIdRef.current,
-    useTabPanes: () => ({ panes: panesRef.current }),
+    useAllPanes: () => ({ panes: panesRef.current }),
   };
 }
