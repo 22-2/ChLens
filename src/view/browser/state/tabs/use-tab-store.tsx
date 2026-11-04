@@ -52,6 +52,7 @@ import {
   type TabStoreState,
 } from "src/view/browser/state/tabs/tab-store-types";
 import { useTabViewScope } from "src/view/browser/state/tabs/use-tab-view-scope";
+import { MAIN_WINDOW_ID, useWindowId } from "src/view/browser/state/tabs/use-window-scope";
 import { getCurrentPage, type Page, type Pane, type TabViewState } from "src/view/browser/types";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
@@ -627,9 +628,20 @@ export function useAllPanes(): { panes: Pane[]; activePaneId: string } {
   return { panes: ctx.state.panes, activePaneId: ctx.state.activePaneId };
 }
 
-// 本窓だけの段階では全体と一致する。窓の導入後は文脈の窓に絞る。
+// 別窓のペインを本窓のタブバーやレイアウトに混ぜない。
 export function useWindowPanes(): { panes: Pane[]; activePaneId: string } {
-  return useAllPanes();
+  const { panes, activePaneId } = useAllPanes();
+  const windowId = useWindowId();
+  const windowPanes = useMemo(
+    () => panes.filter((pane) => (pane.windowId ?? MAIN_WINDOW_ID) === windowId),
+    [panes, windowId],
+  );
+  return {
+    panes: windowPanes,
+    activePaneId: windowPanes.some((pane) => pane.id === activePaneId)
+      ? activePaneId
+      : (windowPanes[0]?.id ?? activePaneId),
+  };
 }
 
 export function useActivePaneId(): string {

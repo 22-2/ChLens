@@ -194,6 +194,8 @@ export function createTabRuntimeState(): TabRuntimeState {
 // 配列順がそのまま画面上の横並び順になる。
 export interface Pane {
   id: string;
+  // 旧セッションに窓IDがないペインは本窓に所属する。
+  windowId?: string;
   tabs: Tab[];
   activeTabId: string;
 }
