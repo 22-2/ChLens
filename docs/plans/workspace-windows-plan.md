@@ -152,7 +152,7 @@ DOM イベントは窓ごとの `document` で発火するため、窓をまた�
 - 同じ条件で CDP のマウス操作による HTML5 ドラッグを 6 秒以上続け、ページ外の座標で離した場合も `dragend` に到達し、`navigator.userActivation.isActive` が `false` でも `window.open` は成功した。CDP によるページ外の座標指定であり、OS の実際の窓外へのドラッグは未確認。
 - Firefox 157.0（Playwright 配布版、`web-ext` で一時的に読み込んだ Manifest V2 拡張）でも、ユーザー操作なしの `window.open` と `browser.windows.create`、`getViews` で取得した文書への React Portal の描画を確認した。作成した窓の再読み込み後も `getViews` で取得でき、`windows.remove` 時には `windows.onRemoved` が届いた。削除後に保持していた `Window.closed` を読むと dead object の例外になったため、Firefox では終了監視に `onRemoved` を使う候補がある。
 - Tauri の E2E ビルド（WebView2、既定設定）では、CDP からユーザー操作なしで `window.open` による空の別窓を作り、親からその文書を変更できた。同一窓内の HTML5 ドラッグでは `dragstart`・`dragover`・`drop`・`dragend` が届いた。ドラッグ開始時には `lostpointercapture` も発生した。別窓へ届くか、実際のマウス操作や `dragDropEnabled` 無効時の挙動は未確認。
-- 利用者が通常のブラウザページの調査用サンプルを手動操作し、別窓への `dragenter` と `drop`、元窓の `dragend` を複数回確認した。ドラッグ開始後に元窓で `pointercancel` も発生した。ブラウザの種類はログからは特定できず、拡張ページや Tauri での動作はこの結果には含まれない。
+- 利用者が Chrome の通常ページで調査用サンプルを手動操作し、別窓への `dragenter` と `drop`、元窓の `dragend` を複数回確認した。ドラッグ開始後に元窓で `pointercancel` も発生した。拡張ページや Tauri での動作はこの結果には含まれない。
 - [Tauri の設定リファレンス](https://v2.tauri.app/reference/config/#dragdropenabled)は、Windows で HTML5 ドラッグ＆ドロップを使うにはネイティブのドロップ処理を無効にする必要があると説明している。上記の CDP 操作は OS を経由したドロップの代わりにならないため、この記述を覆す根拠にはしない。
 - インストール済み Chrome ではコマンドラインからの一時拡張の読み込みを試したが、拡張のサービスワーカーを検出できず調査を完了できなかった。Chromium で確認した結果を Chrome の結果としては扱わない。
 - 拡張ページと Tauri での窓間ドラッグ、再起動時の復元、複数モニターでの座標は未確認。窓を開く方法とドラッグ方式の採用判断は保留し、以下の調査を続ける。
