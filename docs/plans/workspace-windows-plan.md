@@ -145,6 +145,11 @@ DOM イベントは窓ごとの `document` で発火するため、窓をまた�
 
 ### Phase 0: 調査（コードはサンプルのみ・製品には入れない）
 
+調査メモ（2026-11-05）:
+
+- Playwright の Chromium（ヘッドレス、Manifest V3 の独立した拡張）で、ユーザー操作なしに `chrome.windows.create` から拡張ページを開き、親ページの `chrome.extension.getViews({ windowId })` で取得した `Window` の DOM に React Portal を描画できた。`chrome.windows.remove` 後は取得済みの `Window.closed` が `true` になった。
+- 再読み込み時の挙動・実際の Chrome や Firefox での動作は未確認。窓を開く方法の採用判断には使わず、以下の調査を続ける。
+
 - 窓をまたぐドラッグの案 A・B を、Chrome 拡張と Tauri の両方で試す。確認する項目:
   - 窓の間でイベントが届くか。窓の外でボタンを離したときの扱い。
   - 窓の重なり順、マルチモニター、表示倍率が異なる環境での座標。
