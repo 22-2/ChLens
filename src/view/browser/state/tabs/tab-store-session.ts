@@ -6,6 +6,7 @@ import {
 } from "src/view/browser/state/tabs/browser-session-storage";
 import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import type { TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
+import { MAIN_WINDOW_ID, type WorkspaceWindow } from "src/view/browser/state/tabs/window-model";
 import type { Page, Pane, PersistedTab, Tab, TabViewStates } from "src/view/browser/types";
 import { createTabRuntimeState, ensurePaneHasTab } from "src/view/browser/types";
 
@@ -14,11 +15,14 @@ const logger = createLogger("view/browser");
 // セッションJSONに書き出す形。タブは保存対象の項目だけを持つ。
 interface PersistedPane {
   id: string;
+  windowId: string;
   tabs: PersistedTab[];
   activeTabId: string;
 }
 
 interface PersistedTabStoreState {
+  version: 2;
+  windows: WorkspaceWindow[];
   panes: PersistedPane[];
   activePaneId: string;
   closedTabs: PersistedTab[];
@@ -66,11 +70,24 @@ export function toPersistedTab(tab: PersistedTab): PersistedTab {
 
 function toPersistedTabStoreState(state: TabStoreState): PersistedTabStoreState {
   return {
+    version: 2,
+    windows: (
+      state.windows ?? [
+        { id: MAIN_WINDOW_ID, kind: "main" as const, activePaneId: state.activePaneId },
+      ]
+    ).map((window) =>
+      state.panes.some(
+        (pane) => pane.id === state.activePaneId && (pane.windowId ?? MAIN_WINDOW_ID) === window.id,
+      )
+        ? { ...window, activePaneId: state.activePaneId }
+        : window,
+    ),
     // 空になったペインだけ補い、保存のたびにホームタブを増やさない。
     panes: state.panes.map((pane) => {
       const ensured = ensurePaneHasTab(pane);
       return {
         id: ensured.id,
+        windowId: ensured.windowId ?? MAIN_WINDOW_ID,
         tabs: ensured.tabs.map(toPersistedTab),
         activeTabId: ensured.activeTabId,
       };
@@ -99,6 +116,7 @@ export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
   const persisted = toPersistedTabStoreState(state);
   return {
     panes: persisted.panes.map((pane) => ({ ...pane, tabs: pane.tabs.map(fromPersistedTab) })),
+    ...(state.windows ? { windows: persisted.windows } : {}),
     activePaneId: persisted.activePaneId,
     closedTabs: persisted.closedTabs.map(fromPersistedTab),
     ...(persisted.sidePanel ? { sidePanel: persisted.sidePanel } : {}),
@@ -148,6 +166,7 @@ type LoadedTabStoreState = {
   tabs?: LoadedTab[];
   activeTabId?: string;
   closedTabs?: LoadedTab[];
+  windows?: WorkspaceWindow[];
 };
 
 /**
@@ -176,12 +195,31 @@ export function loadTabStoreSession(): TabStoreState | null {
           }),
         );
       if (panes.length === 0) return null;
-      const activePaneId = panes.some((p) => p.id === parsed.activePaneId)
-        ? parsed.activePaneId
-        : panes[0].id;
+      // 別窓の復元を実装するまでは、別窓のタブを本窓へ集めて失わないようにする。
+      const mainPanes = panes.filter(
+        (pane) => (pane.windowId ?? MAIN_WINDOW_ID) === MAIN_WINDOW_ID,
+      );
+      const auxiliaryPanes = panes.filter(
+        (pane) => (pane.windowId ?? MAIN_WINDOW_ID) !== MAIN_WINDOW_ID,
+      );
+      if (mainPanes.length === 0) {
+        const first = auxiliaryPanes.shift()!;
+        mainPanes.push({ ...first, windowId: MAIN_WINDOW_ID });
+      }
+      const mainWindow = parsed.windows?.find((item) => item.id === MAIN_WINDOW_ID);
+      const preferredPaneId = mainWindow?.activePaneId ?? parsed.activePaneId;
+      const activePaneId = mainPanes.some((pane) => pane.id === preferredPaneId)
+        ? preferredPaneId
+        : mainPanes[0].id;
+      const restoredPanes = mainPanes.map((pane) =>
+        pane.id === activePaneId
+          ? { ...pane, tabs: [...pane.tabs, ...auxiliaryPanes.flatMap((aux) => aux.tabs)] }
+          : pane,
+      );
       return {
-        panes,
+        panes: restoredPanes,
         activePaneId,
+        windows: [{ id: MAIN_WINDOW_ID, kind: "main", activePaneId }],
         closedTabs: (parsed.closedTabs ?? []).map((tab) => normalizeLoadedTab(tab)),
         ...(parsed.sidePanel ? { sidePanel: normalizeSidePanel(parsed.sidePanel) } : {}),
         ...(parsed.bottomPanels &&
@@ -190,7 +228,7 @@ export function loadTabStoreSession(): TabStoreState | null {
           ? {
               bottomPanels: Object.fromEntries(
                 Object.entries(parsed.bottomPanels).filter(([id]) =>
-                  panes.some((pane) => pane.id === id),
+                  restoredPanes.some((pane) => pane.id === id),
                 ),
               ),
             }
@@ -212,6 +250,7 @@ export function loadTabStoreSession(): TabStoreState | null {
       return {
         panes: [pane],
         activePaneId: pane.id,
+        windows: [{ id: MAIN_WINDOW_ID, kind: "main", activePaneId: pane.id }],
         closedTabs: (parsed.closedTabs ?? []).map((tab) => normalizeLoadedTab(tab)),
       };
     }

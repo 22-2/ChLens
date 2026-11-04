@@ -1,5 +1,9 @@
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
-import { loadTabStoreSession } from "src/view/browser/state/tabs/tab-store-session";
+import { setBrowserSessionJson } from "src/view/browser/state/tabs/browser-session-storage";
+import {
+  loadTabStoreSession,
+  saveTabStoreSession,
+} from "src/view/browser/state/tabs/tab-store-session";
 import { createHomeTab, getCurrentPage, type Tab } from "src/view/browser/types";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -19,6 +23,47 @@ const boardPage = {
 describe("ホーム統合後のセッション移行", () => {
   beforeEach(() => {
     storage.json = "";
+  });
+
+  it("窓付き形式を保存し、別窓のタブを本窓の選択ペインへ復元する", () => {
+    const main = createHomeTab("main-tab");
+    const aux = createHomeTab("aux-tab");
+    saveTabStoreSession({
+      panes: [
+        { id: "main-pane", tabs: [main], activeTabId: main.id },
+        { id: "aux-pane", windowId: "aux", tabs: [aux], activeTabId: aux.id },
+      ],
+      windows: [
+        { id: "main", kind: "main", activePaneId: "main-pane" },
+        { id: "aux", kind: "aux", activePaneId: "aux-pane" },
+      ],
+      activePaneId: "aux-pane",
+      closedTabs: [],
+    });
+    storage.json = vi.mocked(setBrowserSessionJson).mock.lastCall![0];
+    expect(JSON.parse(storage.json)).toMatchObject({
+      version: 2,
+      panes: [{ windowId: "main" }, { windowId: "aux" }],
+      windows: [{ id: "main" }, { id: "aux" }],
+    });
+    const restored = loadTabStoreSession()!;
+    expect(restored.panes.map((pane) => pane.id)).toEqual(["main-pane"]);
+    expect(restored.panes[0].tabs.map((tab) => tab.id)).toEqual(["main-tab", "aux-tab"]);
+    expect(restored.activePaneId).toBe("main-pane");
+    expect(restored.windows).toEqual([{ id: "main", kind: "main", activePaneId: "main-pane" }]);
+  });
+
+  it("本窓のペインがない保存状態でもタブを失わずに復元する", () => {
+    storage.json = JSON.stringify({
+      panes: [
+        { id: "aux-pane", windowId: "aux", activeTabId: "tab", tabs: [createHomeTab("tab")] },
+      ],
+      activePaneId: "aux-pane",
+    });
+    expect(loadTabStoreSession()).toMatchObject({
+      panes: [{ id: "aux-pane", windowId: "main", tabs: [{ id: "tab" }] }],
+      activePaneId: "aux-pane",
+    });
   });
 
   it("旧セッションのタブ単位の表示形式は読み捨て、自動更新は開始しない", () => {

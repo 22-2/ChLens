@@ -142,7 +142,11 @@ describe("タブセッションの操作時保存と再読み込み", () => {
     cleanup();
     vi.resetModules();
     await renderViewer();
-    expect(JSON.parse(screen.getByTestId("state").textContent!)).toMatchObject(state);
+    expect(JSON.parse(screen.getByTestId("state").textContent!)).toMatchObject({
+      panes: state.panes,
+      activePaneId: state.activePaneId,
+      closedTabs: state.closedTabs,
+    });
   });
 
   it("起動先が保存済みタブと同じなら重複追加せず、保存済みの板名を使う", async () => {

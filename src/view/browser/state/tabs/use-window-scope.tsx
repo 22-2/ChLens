@@ -1,7 +1,5 @@
 import { createContext, type ReactNode, useContext } from "react";
-
-// 旧セッションと Provider のない本窓で共通の識別子を使う。
-export const MAIN_WINDOW_ID = "main";
+import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
 
 const WindowScopeContext = createContext(MAIN_WINDOW_ID);
 

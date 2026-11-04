@@ -52,7 +52,8 @@ import {
   type TabStoreState,
 } from "src/view/browser/state/tabs/tab-store-types";
 import { useTabViewScope } from "src/view/browser/state/tabs/use-tab-view-scope";
-import { MAIN_WINDOW_ID, useWindowId } from "src/view/browser/state/tabs/use-window-scope";
+import { useWindowId } from "src/view/browser/state/tabs/use-window-scope";
+import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
 import { getCurrentPage, type Page, type Pane, type TabViewState } from "src/view/browser/types";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";

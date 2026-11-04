@@ -99,26 +99,37 @@ describe("ペイン（横分割）", () => {
   });
 
   it("窓の文脈ごとにペインを分け、旧形式のペインを本窓に含める", async () => {
-    const tab = (id: string) => ({
-      id,
-      history: [{ type: "home", title: "ホーム" }],
-      currentIndex: 0,
-      pinned: false,
-    });
-    localStorage.setItem(
-      SESSION_KEY,
-      JSON.stringify({
-        panes: [
-          { id: "main-pane", tabs: [tab("main-tab")], activeTabId: "main-tab" },
-          { id: "aux-pane", windowId: "aux", tabs: [tab("aux-tab")], activeTabId: "aux-tab" },
-        ],
-        activePaneId: "aux-pane",
-        closedTabs: [],
-      }),
-    );
-    const { TabProvider, useAllPanes, useWindowPanes } =
+    const { createHomeTab } = await import("src/view/browser/types");
+    const { TabProvider, useAllPanes, useTabDispatch, useWindowPanes } =
       await import("src/view/browser/state/tabs/use-tab-store");
     const { WindowScopeProvider } = await import("src/view/browser/state/tabs/use-window-scope");
+    function Restore() {
+      const dispatch = useTabDispatch();
+      return (
+        <button
+          onClick={() =>
+            dispatch({
+              type: "RESTORE",
+              state: {
+                panes: [
+                  { id: "main-pane", tabs: [createHomeTab("main-tab")], activeTabId: "main-tab" },
+                  {
+                    id: "aux-pane",
+                    windowId: "aux",
+                    tabs: [createHomeTab("aux-tab")],
+                    activeTabId: "aux-tab",
+                  },
+                ],
+                activePaneId: "aux-pane",
+                closedTabs: [],
+              },
+            })
+          }
+        >
+          状態を設定
+        </button>
+      );
+    }
     function Observer({ label }: { label: string }) {
       const { panes, activePaneId } = useWindowPanes();
       const all = useAllPanes();
@@ -130,12 +141,14 @@ describe("ペイン（横分割）", () => {
     }
     render(
       <TabProvider>
+        <Restore />
         <Observer label="main" />
         <WindowScopeProvider windowId="aux">
           <Observer label="aux" />
         </WindowScopeProvider>
       </TabProvider>,
     );
+    fireEvent.click(screen.getByText("状態を設定"));
     expect(screen.getByTestId("main")).toHaveTextContent("main-pane:main-pane:2");
     expect(screen.getByTestId("aux")).toHaveTextContent("aux-pane:aux-pane:2");
   });

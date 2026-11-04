@@ -1,4 +1,5 @@
 import type { Dispatch, RefObject } from "react";
+import type { WorkspaceWindow } from "src/view/browser/state/tabs/window-model";
 import type { Page, Pane, Tab, TabViewState } from "src/view/browser/types";
 
 export interface SidePanelState {
@@ -16,6 +17,8 @@ export interface BottomPanelLayoutState {
 }
 
 export interface TabStoreState {
+  // 既存の状態生成箇所は窓モデル導入の間、本窓だけとして扱う。
+  windows?: WorkspaceWindow[];
   bottomPanels?: Record<string, BottomPanelLayoutState>;
   sidePanel?: SidePanelState;
   // 横並びのペイン群。配列順がそのまま画面上の左→右の並び。
