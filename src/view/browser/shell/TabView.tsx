@@ -1,6 +1,10 @@
 import { memo, type RefObject, useEffect, useRef, useState } from "react";
 import { registerPageTarget } from "src/view/browser/extension/page-actions";
-import { type ViewSurface, ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
+import {
+  useViewSurface,
+  type ViewSurface,
+  ViewSurfaceProvider,
+} from "src/view/browser/hooks/use-view-surface";
 import { getPageRenderKey, getPageViewStateKey } from "src/view/browser/page-type-definitions";
 import { renderPage } from "src/view/browser/shell/page-renderers";
 import { TabErrorBoundary } from "src/view/browser/shell/TabErrorBoundary";
@@ -58,7 +62,9 @@ export const TabPanel = memo(function TabPanel({
 }: TabPanelProps) {
   const page = getCurrentPage(tab);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const targetWindow = viewSurface?.window ?? window;
+  const inheritedSurface = useViewSurface();
+  // 共通シェルから描画する別窓では、親の文脈の窓へページ操作を登録する。
+  const targetWindow = (viewSurface ?? inheritedSurface).window;
   useEffect(() => {
     if (!isActive) return;
     return registerPageTarget(targetWindow, tab.id);

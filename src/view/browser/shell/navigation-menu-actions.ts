@@ -5,6 +5,7 @@ import type { QuickAccessPage } from "src/view/browser/utils/tab-pages";
 import type { NavigationMenuAction } from "./navigation-menu";
 
 export interface NavigationMenuDeps {
+  viewWindow: Window;
   toggleFilterFromMenu: () => void;
   togglePanel: ReturnType<typeof useBottomPanel>["togglePanel"];
   openQuickAccessPage: (page: QuickAccessPage) => void;
@@ -18,7 +19,7 @@ export function runNavigationMenuAction(
 ): void {
   switch (action.type) {
     case "open-command-palette":
-      commandPalette.open("command");
+      commandPalette.open("command", deps.viewWindow);
       return;
     case "toggle-filter":
       deps.toggleFilterFromMenu();

@@ -161,7 +161,7 @@ describe("useNavigationMenuItems", () => {
 
     selectItem(result.current, "open-command-palette");
 
-    expect(openCommandPaletteMock).toHaveBeenCalledWith("command");
+    expect(openCommandPaletteMock).toHaveBeenCalledWith("command", window);
   });
 
   it("一覧の項目を選ぶと、そのページを現在のタブに開く", () => {

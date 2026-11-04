@@ -1,5 +1,4 @@
 import { type Dispatch, type FC, useEffect, useLayoutEffect, useRef } from "react";
-import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import {
@@ -43,9 +42,8 @@ const MainWindowNavigationBridge: FC<{ manageBrowserHistory: boolean }> = ({
   manageBrowserHistory,
 }) => {
   const { selectedTab, dispatch } = useTabStore();
-  const { isDetachedTab } = useDetachedTabController();
   const { window: viewWindow } = useViewSurface();
-  const targetTabId = isDetachedTab(selectedTab.id) ? null : selectedTab.id;
+  const targetTabId = selectedTab.id;
   useWindowNavigationEvents({ dispatch, manageBrowserHistory, targetTabId, viewWindow });
   return null;
 };

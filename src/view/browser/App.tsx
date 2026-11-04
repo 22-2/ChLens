@@ -12,7 +12,7 @@ import { container } from "src/service-container/index";
 import { useZenMode } from "src/view/browser/commands/zen-mode-store";
 import { useNotificationListener } from "src/view/browser/hooks/use-notification-listener";
 import { useTheme } from "src/view/browser/hooks/use-theme";
-import { TabWindowHost } from "src/view/browser/shell/TabWindowHost";
+import { WindowHost } from "src/view/browser/shell/WindowHost";
 import { WindowShell } from "src/view/browser/shell/WindowShell";
 import { TabProvider } from "src/view/browser/state/tabs/use-tab-store";
 import { WindowScopeProvider } from "src/view/browser/state/tabs/use-window-scope";
@@ -49,7 +49,7 @@ export const BrowserApp: React.FC = () => {
         <WriteSessionProvider>
           {/* 実況の表示位置調整窓は、各ペインと切り離したタブの両方から開けるよう外側に置く。 */}
           <OverlayPlacementWindowProvider>
-            <TabWindowHost>
+            <WindowHost>
               <CommentOverlayJumpBridge />
               <WriteWindowHost />
               <ArchiveReplayMainThreadSyncBridge />
@@ -81,7 +81,7 @@ export const BrowserApp: React.FC = () => {
                   <BookmarkRootSelectorDialog />
                 </div>
               </WindowScopeProvider>
-            </TabWindowHost>
+            </WindowHost>
           </OverlayPlacementWindowProvider>
         </WriteSessionProvider>
       </TabProvider>

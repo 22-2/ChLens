@@ -1,7 +1,6 @@
 import { createContext } from "react";
 
 export interface DetachedTabController {
-  isDetachedTab: (tabId: string) => boolean;
   detachTab: (tabId: string) => boolean;
   /** 別窓だけを閉じ、タブを元ペインへ戻す。 */
   reattachTab: (tabId: string) => void;
@@ -11,7 +10,6 @@ export interface DetachedTabController {
 }
 
 export const defaultDetachedTabController: DetachedTabController = {
-  isDetachedTab: () => false,
   detachTab: () => false,
   reattachTab: () => {},
   closeDetachedTab: () => {},

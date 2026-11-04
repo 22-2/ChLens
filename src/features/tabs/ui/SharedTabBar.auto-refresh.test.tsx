@@ -49,9 +49,6 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", async () => {
     },
   };
 });
-vi.mock("src/features/tabs/browser/use-detached-tab-controller", () => ({
-  useDetachedTabController: () => ({ isDetachedTab: () => false }),
-}));
 vi.mock("src/features/tabs/browser/use-tab-bar-orientation", () => ({
   TAB_BAR_ORIENTATION_CONFIG_KEY: "orientation",
   useVerticalTabBarLayout: () => ({

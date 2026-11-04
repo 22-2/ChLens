@@ -18,12 +18,6 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabDispatchForTab: () => mocks.detachedDispatch,
 }));
 
-vi.mock("src/features/tabs/browser/use-detached-tab-controller", () => ({
-  useDetachedTabController: () => ({
-    isDetachedTab: (tabId: string) => tabId === "tab-detached",
-  }),
-}));
-
 describe("WindowNavigationBridge", () => {
   beforeEach(() => {
     mocks.activeTabId = "tab-main";
@@ -49,16 +43,6 @@ describe("WindowNavigationBridge", () => {
       type: "GO_FORWARD",
       tabId: "tab-main",
     });
-  });
-
-  it("アクティブタブが別窓へ移った本窓では入力を無視する", () => {
-    mocks.activeTabId = "tab-detached";
-    render(<WindowNavigationBridge />);
-
-    fireEvent.mouseUp(window, { button: 3 });
-    fireEvent.keyDown(window, { key: "ArrowLeft", altKey: true });
-
-    expect(mocks.mainDispatch).not.toHaveBeenCalled();
   });
 
   it("固定tabIdの別窓入力は別窓のdispatchへ送る", () => {

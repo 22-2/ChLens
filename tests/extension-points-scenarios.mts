@@ -52,8 +52,8 @@ export async function verifyTwoPaneFilters(page: Page, localBoard: LocalBoard): 
     await page.getByRole("option", { name: /画像のフィルタを切り替え/u }).click();
   };
   // 種類は「絞り込み」メニューのボタンの表示になる（選択中は種類名、解除すると「絞り込み」）。
-  const leftMode = left.locator(".thread-page__toolbar .search-options-menu__button");
-  const rightMode = right.locator(".thread-page__toolbar .search-options-menu__button");
+  const leftMode = left.locator(".thread-page__toolbar .search-options-menu__button--labeled");
+  const rightMode = right.locator(".thread-page__toolbar .search-options-menu__button--labeled");
   await runImageFilter();
   await expect(leftMode).toHaveText("画像");
   await expect(rightMode).toHaveText("絞り込み");
@@ -72,7 +72,7 @@ export async function verifyDetachedFilters(page: Page, localBoard: LocalBoard):
   const second = localBoard.addLargeThread(3, { id: "1000000002", title: "別窓のテストスレ" });
   const registrationErrors: string[] = [];
   page.on("console", (message) => {
-    if (message.type() === "error" && message.text().includes("ページ操作の二重登録")) {
+    if (message.type() === "error" && /ページ操作の(?:対象の)?二重登録/u.test(message.text())) {
       registrationErrors.push(message.text());
     }
   });

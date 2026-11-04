@@ -9,7 +9,6 @@ const mocks = vi.hoisted(() => ({
   setHeight: vi.fn(),
   canAutoScroll: false,
   isAutoScrolling: false,
-  detached: false,
   activePanelTabId: "write",
   viewPage: {
     type: "thread",
@@ -24,10 +23,6 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
     viewPage: mocks.viewPage,
     viewTab: mocks.viewTab,
   }),
-}));
-
-vi.mock("src/features/tabs/browser/use-detached-tab-controller", () => ({
-  useDetachedTabController: () => ({ isDetachedTab: () => mocks.detached }),
 }));
 
 vi.mock("src/view/browser/hooks/use-bottom-panel", () => ({
@@ -73,7 +68,6 @@ describe("BottomPanel", () => {
     mocks.setHeight.mockReset();
     mocks.canAutoScroll = false;
     mocks.isAutoScrolling = false;
-    mocks.detached = false;
     mocks.activePanelTabId = "write";
     mocks.viewPage = {
       type: "thread",
@@ -119,34 +113,14 @@ describe("BottomPanel", () => {
     expect(screen.queryByText("write panel")).not.toBeInTheDocument();
   });
 
-  it("表示中のスレッドを別窓へ移したらパネルを閉じる", async () => {
-    mocks.detached = true;
-
-    render(<BottomPanel />);
-
-    await waitFor(() => {
-      expect(mocks.closePanel).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it("別窓内に置いたパネルは、自タブが切り離し中でも閉じない", () => {
-    mocks.detached = true;
-
-    render(<BottomPanel hostedInTabWindow />);
-
-    expect(screen.getByText("write panel")).toBeInTheDocument();
-    expect(mocks.closePanel).not.toHaveBeenCalled();
-  });
-
-  it("別窓内に置いたパネルも、スレッド以外へ移動したら閉じる", async () => {
-    mocks.detached = true;
+  it("スレッド以外のページでは下部パネルを閉じる", async () => {
     mocks.viewPage = {
       type: "boardList" as const,
       title: "ホーム",
       threadUrl: "",
     };
 
-    render(<BottomPanel hostedInTabWindow />);
+    render(<BottomPanel />);
 
     await waitFor(() => {
       expect(mocks.closePanel).toHaveBeenCalledTimes(1);

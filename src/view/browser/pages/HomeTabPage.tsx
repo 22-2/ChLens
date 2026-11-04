@@ -1,8 +1,10 @@
 import { commandPalette } from "src/view/browser/commands/command-palette-store";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { BoardStartPage } from "src/view/browser/pages/BoardStartPage";
 
 // 新規タブも同じホームを表示し、URL入力の導線を既存のomnibarへ接続する。
 export function HomeTabPage() {
+  const { window: viewWindow } = useViewSurface();
   return (
     <BoardStartPage
       intro={
@@ -12,7 +14,7 @@ export function HomeTabPage() {
             <button
               type="button"
               className="board-start-page__url-link"
-              onClick={() => commandPalette.open("navigation")}
+              onClick={() => commandPalette.open("navigation", viewWindow)}
             >
               URLを入力
             </button>

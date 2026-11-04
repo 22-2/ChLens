@@ -1,7 +1,6 @@
 import { X } from "lucide-react";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAutoScrollState } from "src/features/auto-refresh/browser/use-auto-scroll-state";
-import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import { ThreadListPanel } from "src/features/thread-list/ui/ThreadListPanel";
 import { WritePanelContent } from "src/features/write/ui/WritePanelContent";
 import {
@@ -16,20 +15,8 @@ import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
-interface BottomPanelProps {
-  /**
-   * 切り離したタブ自身の別窓の中に置かれたパネルか。
-   *
-   * 変更理由: 本窓のパネルは、表示中のタブが別窓へ移ったら操作対象を失うため閉じる。
-   * 一方、別窓内のパネルは固定された自タブ(常に切り離し中)を操作するので、
-   * 同じ判定を使うと開いた直後に閉じてしまう。
-   */
-  hostedInTabWindow?: boolean;
-}
-
-export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = false }) => {
-  const { viewTab, viewPage } = useTabStore();
-  const { isDetachedTab } = useDetachedTabController();
+export const BottomPanel: React.FC = () => {
+  const { viewPage } = useTabStore();
   // 変更理由: 下部パネルを別窓へ移しても、開閉直後の追従を
   // 元のWindowへ登録しないよう、表示先のイベント境界を揃える。
   const { window: viewWindow, document: viewDocument } = useViewSurface();
@@ -45,13 +32,10 @@ export const BottomPanel: React.FC<BottomPanelProps> = ({ hostedInTabWindow = fa
   useEffect(() => {
     // スレ一覧・書き込みのどちらも現在スレを操作対象にするため、別ページへ移動したら
     // 下部パネルを閉じて、板・スレの文脈がない状態で誤操作できないようにする。
-    if (
-      isOpen &&
-      (viewPage.type !== "thread" || (!hostedInTabWindow && isDetachedTab(viewTab.id)))
-    ) {
+    if (isOpen && viewPage.type !== "thread") {
       closePanel();
     }
-  }, [closePanel, hostedInTabWindow, isDetachedTab, isOpen, viewPage.type, viewTab.id]);
+  }, [closePanel, isOpen, viewPage.type]);
 
   useEffect(() => {
     if (!isOpen) {

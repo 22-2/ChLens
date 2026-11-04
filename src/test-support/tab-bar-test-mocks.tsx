@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { afterEach, vi } from "vite-plus/test";
+import { vi } from "vite-plus/test";
 
 // TabBar の表示テストで共通に使うモック。
 // vi.mock の工場関数から遅延して読み込むため、テストファイルが import の順序に依存しない。
@@ -39,7 +39,6 @@ export const mocks = {
     isAutoScrolling: false,
     isPaused: false,
   },
-  detachedTabIds: new Set<string>(),
 };
 
 // DragDropProvider はテスト環境ではシムで置き換え、onDragEnd を外部から呼べるようにする。
@@ -55,13 +54,6 @@ export class ResizeObserverStub {
   observe() {}
   disconnect() {}
   unobserve() {}
-}
-
-/** テストごとに、切り離し中のタブの一覧を空に戻す。 */
-export function setupTabBarTest(): void {
-  afterEach(() => {
-    mocks.detachedTabIds.clear();
-  });
 }
 
 export function createContextMenuModule() {
@@ -125,14 +117,6 @@ export function createTabStoreModule() {
 export function createAutoScrollStateModule() {
   return {
     usePaneAutoScrollState: () => mocks.autoScrollState,
-  };
-}
-
-export function createDetachedTabControllerModule() {
-  return {
-    useDetachedTabController: () => ({
-      isDetachedTab: (tabId: string) => mocks.detachedTabIds.has(tabId),
-    }),
   };
 }
 

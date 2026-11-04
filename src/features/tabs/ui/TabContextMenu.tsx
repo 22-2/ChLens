@@ -20,6 +20,8 @@ import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import { useWindowId } from "src/view/browser/state/tabs/use-window-scope";
+import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import { ContextMenu, ContextMenuItem } from "src/view/browser/ui/ContextMenu";
@@ -40,7 +42,7 @@ interface Props {
 export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   const { state, dispatch } = useTabStore();
   const runTabCommand = useTabCommandRunner(tab.id);
-  const { isDetachedTab, detachTab, reattachTab } = useDetachedTabController();
+  const { detachTab, reattachTab } = useDetachedTabController();
   const bottomPanel = useOptionalBottomPanel();
   const toast = useToast();
   const viewSurface = useViewSurface();
@@ -55,7 +57,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
 
   const currentPage = getCurrentPage(tab);
   const isThread = currentPage.type === "thread";
-  const tabIsDetached = isDetachedTab(tab.id);
+  const tabIsDetached = useWindowId() !== MAIN_WINDOW_ID;
 
   // 閉じたタブがあるか
   const hasClosedTabs = state.closedTabs.length > 0;

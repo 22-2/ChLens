@@ -5,6 +5,7 @@ import {
   commandPaletteStore,
 } from "src/view/browser/commands/command-palette-store";
 import type { OmnibarInputMode } from "src/view/browser/hooks/use-omnibar";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 
 interface UseCommandPaletteFocusParams {
   isActivePane: boolean;
@@ -31,11 +32,14 @@ export function useCommandPaletteFocus({
   omnibarMode,
   isOmnibarOpen,
 }: UseCommandPaletteFocusParams) {
+  const { window: viewWindow } = useViewSurface();
   const paletteState = useSyncExternalStore(
     commandPaletteStore.subscribe,
     commandPaletteStore.getState,
     commandPaletteStore.getState,
   );
+  // 一つの状態を共有しても、入力欄を開くのは操作元の窓だけにする。
+  const openedHere = paletteState.opened && paletteState.owner === viewWindow;
 
   useLayoutEffect(() => {
     if (!isActivePane) {
@@ -54,40 +58,43 @@ export function useCommandPaletteFocus({
         // 変更理由: Zen切替直後など、再描画後にeffectが再登録される前のキー入力でも、
         // 古い開閉状態でショートカットを処理しないようイベント時点の状態を読む。
         const currentPaletteState = commandPaletteStore.getState();
-        if (currentPaletteState.opened && currentPaletteState.mode === "command") {
+        if (
+          currentPaletteState.opened &&
+          currentPaletteState.owner === viewWindow &&
+          currentPaletteState.mode === "command"
+        ) {
           commandPalette.close();
         } else {
-          commandPalette.open("command");
+          commandPalette.open("command", viewWindow);
         }
       }
     };
 
-    window.addEventListener("keydown", handleShortcut);
-    return () => window.removeEventListener("keydown", handleShortcut);
-  }, [isActivePane]);
+    viewWindow.addEventListener("keydown", handleShortcut);
+    return () => viewWindow.removeEventListener("keydown", handleShortcut);
+  }, [isActivePane, viewWindow]);
 
   useEffect(() => {
-    if (!paletteState.opened || !isActivePane) {
+    if (!openedHere || !isActivePane) {
       return;
     }
 
     setIsUrlEditing(true);
     activate(paletteState.mode);
-  }, [activate, isActivePane, paletteState.mode, paletteState.opened, setIsUrlEditing]);
+  }, [activate, isActivePane, paletteState.mode, openedHere, setIsUrlEditing]);
 
   useEffect(() => {
-    if (!paletteState.opened || !isActivePane || !isUrlEditing) {
+    if (!openedHere || !isActivePane || !isUrlEditing) {
       return;
     }
 
     // 変更理由: 入力欄はピルと入れ替わって現れるため、現れた直後に操作を引き継ぎ、
     // 候補取得を開始してそのまま入力できるようにする。
     urlInputRef.current?.focus();
-  }, [isActivePane, isUrlEditing, paletteState.opened, urlInputRef]);
+  }, [isActivePane, isUrlEditing, openedHere, urlInputRef]);
 
   useEffect(() => {
-    const isCommandPaletteActive =
-      paletteState.opened || (omnibarMode === "command" && isOmnibarOpen);
+    const isCommandPaletteActive = openedHere || (omnibarMode === "command" && isOmnibarOpen);
     if (!isActivePane || !isCommandPaletteActive) {
       return;
     }
@@ -98,9 +105,9 @@ export function useCommandPaletteFocus({
       handleBlur();
       commandPalette.close();
     };
-    window.addEventListener("blur", handleWindowBlur);
-    return () => window.removeEventListener("blur", handleWindowBlur);
-  }, [handleBlur, isActivePane, isOmnibarOpen, omnibarMode, paletteState.opened]);
+    viewWindow.addEventListener("blur", handleWindowBlur);
+    return () => viewWindow.removeEventListener("blur", handleWindowBlur);
+  }, [handleBlur, isActivePane, isOmnibarOpen, omnibarMode, openedHere, viewWindow]);
 
-  return paletteState;
+  return { ...paletteState, opened: openedHere };
 }

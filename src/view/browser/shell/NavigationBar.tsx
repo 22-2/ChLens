@@ -43,6 +43,7 @@ import { canGoBack, canGoForward, getCurrentPage } from "src/view/browser/types"
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu, type ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import { Dialog } from "src/view/browser/ui/Dialog";
+import { getEventTargetElement } from "src/view/browser/utils/dom";
 import {
   useFilterToolbarOpen,
   useFilterToolbarPinned,
@@ -314,8 +315,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
 
   const handleOmnibarBlur = useCallback(
     (event: React.FocusEvent<HTMLDivElement>) => {
-      const nextFocusedElement = event.relatedTarget;
-      if (nextFocusedElement instanceof Node && event.currentTarget.contains(nextFocusedElement)) {
+      const nextFocusedElement = getEventTargetElement(event.relatedTarget, viewSurface.window);
+      if (nextFocusedElement && event.currentTarget.contains(nextFocusedElement)) {
         return;
       }
 
@@ -326,7 +327,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       // 変更理由: 入力欄はピルと入れ替わる一時的な表示のため、フォーカスが外れたらピルへ戻す。
       setIsUrlEditing(false);
     },
-    [handleBlur, omnibarMode, paletteState.opened],
+    [handleBlur, omnibarMode, paletteState.opened, viewSurface.window],
   );
 
   const handleRefresh = useCallback(() => {

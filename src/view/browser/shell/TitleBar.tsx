@@ -13,6 +13,7 @@ import {
 import { commandPalette } from "src/view/browser/commands/command-palette-store";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { useTitleBarButtonSettings } from "src/view/browser/hooks/use-title-bar-navigation-setting";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { normalizeSidePanel } from "src/view/browser/state/tabs/side-panel-state";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import { useSidePanelState, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
@@ -35,6 +36,7 @@ const logger = createLogger("view/browser");
 export interface TitleBarProps {
   /** タイトルバー左端の戻る・進む・更新を表示するかどうか。 */
   showNavigationButtons?: boolean;
+  showSidePanel?: boolean;
   /**
    * タイトルをクリックでURL入力へ切り替えるピルにするかどうか。
    * 変更理由: オムニバーの状態を持つ NavigationBar がない画面（切り離したタブの別窓）では、
@@ -45,9 +47,11 @@ export interface TitleBarProps {
 
 export const TitleBar: React.FC<TitleBarProps> = ({
   showNavigationButtons = true,
+  showSidePanel = true,
   omnibarEnabled = true,
 }) => {
   const { viewTab, viewPage, paneId } = useTabStore();
+  const { window: viewWindow } = useViewSurface();
   const { state: savedPanel, dispatch: dispatchPanel } = useSidePanelState();
   const panel = normalizeSidePanel(savedPanel);
   const title = viewPage.title || "read.crx 2";
@@ -192,7 +196,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
             data-testid="title-bar-title"
             data-page-type={viewPage.type}
             title={title}
-            onClick={() => commandPalette.open("navigation")}
+            onClick={() => commandPalette.open("navigation", viewWindow)}
             onContextMenu={handleTitleContextMenu}
           >
             <Search size={14} aria-hidden="true" className="title-bar__title-icon" />
@@ -220,21 +224,23 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         role="toolbar"
         aria-label="レイアウト操作"
       >
-        <button
-          type="button"
-          className="title-bar__navigation icon-button"
-          title={panel.isOpen ? "サイドパネルを閉じる" : "サイドパネルを開く"}
-          aria-label={panel.isOpen ? "サイドパネルを閉じる" : "サイドパネルを開く"}
-          aria-expanded={panel.isOpen}
-          onClick={() =>
-            dispatchPanel({
-              type: TAB_ACTION_TYPES.UPDATE_SIDE_PANEL,
-              sidePanel: { ...panel, isOpen: !panel.isOpen },
-            })
-          }
-        >
-          <PanelRight size={16} aria-hidden="true" />
-        </button>
+        {showSidePanel ? (
+          <button
+            type="button"
+            className="title-bar__navigation icon-button"
+            title={panel.isOpen ? "サイドパネルを閉じる" : "サイドパネルを開く"}
+            aria-label={panel.isOpen ? "サイドパネルを閉じる" : "サイドパネルを開く"}
+            aria-expanded={panel.isOpen}
+            onClick={() =>
+              dispatchPanel({
+                type: TAB_ACTION_TYPES.UPDATE_SIDE_PANEL,
+                sidePanel: { ...panel, isOpen: !panel.isOpen },
+              })
+            }
+          >
+            <PanelRight size={16} aria-hidden="true" />
+          </button>
+        ) : null}
         {/* 変更理由: 垂直モードではアクティブペインではなく自ペインの NavigationBar が
             ここへポータルする。ペイン単位の data-pane-id で描画先を区別する。 */}
         <div

@@ -4,12 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { TabBar } from "src/features/tabs/ui/TabBar";
 import { container } from "src/service-container/index";
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
-import {
-  dispatchMock,
-  mocks,
-  ResizeObserverStub,
-  setupTabBarTest,
-} from "src/test-support/tab-bar-test-mocks";
+import { dispatchMock, mocks, ResizeObserverStub } from "src/test-support/tab-bar-test-mocks";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("src/view/browser/ui/ContextMenu", async () =>
@@ -24,17 +19,12 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", async () =>
 vi.mock("src/features/auto-refresh/browser/use-auto-scroll-state", async () =>
   (await import("src/test-support/tab-bar-test-mocks")).createAutoScrollStateModule(),
 );
-vi.mock("src/features/tabs/browser/use-detached-tab-controller", async () =>
-  (await import("src/test-support/tab-bar-test-mocks")).createDetachedTabControllerModule(),
-);
 vi.mock("@dnd-kit/react", async () =>
   (await import("src/test-support/tab-bar-test-mocks")).createDndKitModule(),
 );
 vi.mock("@dnd-kit/react/sortable", async () =>
   (await import("src/test-support/tab-bar-test-mocks")).createDndKitSortableModule(),
 );
-
-setupTabBarTest();
 
 describe("TabBar vertical", () => {
   const configSetMock = vi.fn();

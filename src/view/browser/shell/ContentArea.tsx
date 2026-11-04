@@ -1,5 +1,4 @@
 import { type FC } from "react";
-import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import { TabPanel } from "src/view/browser/shell/TabView";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 
@@ -19,14 +18,11 @@ export const ContentArea: FC<ContentAreaProps> = ({
   onSearchRelatedThreads,
 }) => {
   const { state } = useTabStore();
-  const { isDetachedTab } = useDetachedTabController();
   const selectedTabId = state.selectedTabId;
-  // 切り離し中のタブは別窓のPortalだけで描画し、元窓にプレースホルダーを残さない。
-  const visibleTabs = state.tabs.filter((tab) => !isDetachedTab(tab.id));
 
   return (
     <div className="content-area">
-      {visibleTabs.map((tab) => (
+      {state.tabs.map((tab) => (
         // 変更理由: 2ペイン時はフォーカス外のペインも表示中のため、自動更新の
         // 実行判定はペイン単位の selectedTab で行いフォーカスでは絞らない。
         // 非表示タブ・ドキュメント非表示時の停止は各ページ側の判定に任せる。

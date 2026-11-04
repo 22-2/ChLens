@@ -10,7 +10,6 @@ import {
   usePaneAutoScrollState,
 } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import type { TabBarItem } from "src/features/tabs/browser/tab-bar-layout";
-import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import {
   TAB_BAR_ORIENTATION_CONFIG_KEY,
   useVerticalTabBarLayout,
@@ -53,7 +52,6 @@ function getMoveTargetIndex(
   pane: { tabs: Tab[] },
   dragTabId: string,
   visibleIndex: number,
-  isDetachedTab: (tabId: string) => boolean,
 ): number | null {
   const dragTab = pane.tabs.find((tab) => tab.id === dragTabId);
   // 表示中のタブだけを基準に、同じピン留めグループ内で移動先を計算する。
@@ -63,7 +61,7 @@ function getMoveTargetIndex(
 
   const group = pane.tabs.filter((tab) => tab.pinned === dragTab.pinned);
   const groupWithoutDrag = group.filter((tab) => tab.id !== dragTabId);
-  const visibleGroup = groupWithoutDrag.filter((tab) => !isDetachedTab(tab.id));
+  const visibleGroup = groupWithoutDrag;
   const clampedVisibleIndex = Math.max(0, Math.min(visibleIndex, visibleGroup.length));
   const referenceTab = visibleGroup[clampedVisibleIndex];
   if (referenceTab) {
@@ -104,13 +102,7 @@ export interface TabBarModel {
 export function useTabBarModel(isVertical: boolean): TabBarModel {
   const { state, stateRef, dispatch, paneId } = useTabStore();
   const selectedTabId = state.selectedTabId;
-  const { isDetachedTab } = useDetachedTabController();
-  // 切り離し中のタブはTabStoreに保持したまま、元窓の操作対象からだけ除外する。
-  // 別窓を明示的に戻した時に同じタブを復元できるよう、ここで削除は行わない。
-  const visibleTabs = useMemo(
-    () => state.tabs.filter((tab) => !isDetachedTab(tab.id)),
-    [isDetachedTab, state.tabs],
-  );
+  const visibleTabs = state.tabs;
   const { canAutoScroll, isAutoScrolling, isPaused } = usePaneAutoScrollState(paneId);
   const archiveReplayPosition = useArchiveReplayPositionStore((state) => state.position);
   const { collapsed, width, setCollapsed, setWidth } = useVerticalTabBarLayout();
@@ -159,12 +151,12 @@ export function useTabBarModel(isVertical: boolean): TabBarModel {
     (tabId: string, visibleIndex: number) => {
       const pane = stateRef.current.panes.find((candidate) => candidate.id === paneId);
       if (!pane) return false;
-      const fullTargetIndex = getMoveTargetIndex(pane, tabId, visibleIndex, isDetachedTab);
+      const fullTargetIndex = getMoveTargetIndex(pane, tabId, visibleIndex);
       if (fullTargetIndex == null) return false;
       dispatch(tabActions.moveTab(tabId, fullTargetIndex));
       return true;
     },
-    [dispatch, isDetachedTab, paneId, stateRef],
+    [dispatch, paneId, stateRef],
   );
 
   const onStepTab = useCallback(
@@ -174,7 +166,7 @@ export function useTabBarModel(isVertical: boolean): TabBarModel {
         stateRef.current.panes.find((p) => p.id === paneId) ??
         stateRef.current.panes.find((p) => p.id === stateRef.current.activePaneId);
       if (!pane) return false;
-      const tabs = pane.tabs.filter((tab) => !isDetachedTab(tab.id));
+      const tabs = pane.tabs;
       const currentIdx = tabs.findIndex((t) => t.id === pane.activeTabId);
       if (currentIdx === -1) return false;
 
@@ -185,7 +177,7 @@ export function useTabBarModel(isVertical: boolean): TabBarModel {
       dispatch(tabActions.selectTab(tabs[nextIdx].id));
       return true;
     },
-    [dispatch, isDetachedTab, paneId, stateRef],
+    [dispatch, paneId, stateRef],
   );
 
   const barMenuItems = useMemo<ContextMenuItem[]>(

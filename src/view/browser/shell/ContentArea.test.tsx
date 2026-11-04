@@ -13,16 +13,9 @@ const threadPageLifecycle = vi.hoisted(() => ({
   unmountCount: 0,
   renderCount: 0,
 }));
-const detachedTabIds = vi.hoisted(() => new Set<string>());
 
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
-}));
-
-vi.mock("src/features/tabs/browser/use-detached-tab-controller", () => ({
-  useDetachedTabController: () => ({
-    isDetachedTab: (tabId: string) => detachedTabIds.has(tabId),
-  }),
 }));
 
 vi.mock("src/view/browser/pages/HomeTabPage", () => ({
@@ -136,7 +129,6 @@ describe("ContentArea tab switching", () => {
     threadPageLifecycle.mountCount = 0;
     threadPageLifecycle.unmountCount = 0;
     threadPageLifecycle.renderCount = 0;
-    detachedTabIds.clear();
   });
 
   it("アクティブでないタブは display:none で隠す", () => {
@@ -311,13 +303,8 @@ describe("ContentArea tab switching", () => {
       type: "home",
       title: "ホーム",
     });
-    const detachedTab = createTabWithPage("tab-2", {
-      type: "boardList",
-      title: "板一覧",
-    });
-    detachedTabIds.add(detachedTab.id);
-
-    mockState([mainTab, detachedTab], mainTab.id);
+    // 窓への移動でペインから取り除かれたタブは、本窓へ描画しない。
+    mockState([mainTab], mainTab.id);
     const { container } = render(<ContentArea />);
 
     expect(container.querySelector('[data-tab-panel-id="tab-1"]')).toBeInTheDocument();

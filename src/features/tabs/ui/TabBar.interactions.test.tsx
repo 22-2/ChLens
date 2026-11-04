@@ -4,12 +4,7 @@ import { cleanup, fireEvent, render } from "@testing-library/react";
 import { TabBar } from "src/features/tabs/ui/TabBar";
 import { container } from "src/service-container/index";
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
-import {
-  dispatchMock,
-  dragState,
-  mocks,
-  setupTabBarTest,
-} from "src/test-support/tab-bar-test-mocks";
+import { dispatchMock, dragState, mocks } from "src/test-support/tab-bar-test-mocks";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("src/view/browser/ui/ContextMenu", async () =>
@@ -24,17 +19,12 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", async () =>
 vi.mock("src/features/auto-refresh/browser/use-auto-scroll-state", async () =>
   (await import("src/test-support/tab-bar-test-mocks")).createAutoScrollStateModule(),
 );
-vi.mock("src/features/tabs/browser/use-detached-tab-controller", async () =>
-  (await import("src/test-support/tab-bar-test-mocks")).createDetachedTabControllerModule(),
-);
 vi.mock("@dnd-kit/react", async () =>
   (await import("src/test-support/tab-bar-test-mocks")).createDndKitModule(),
 );
 vi.mock("@dnd-kit/react/sortable", async () =>
   (await import("src/test-support/tab-bar-test-mocks")).createDndKitSortableModule(),
 );
-
-setupTabBarTest();
 
 describe("TabBar drag-to-reorder", () => {
   beforeEach(() => {
@@ -142,22 +132,13 @@ describe("TabBar drag-to-reorder", () => {
   });
 });
 
-describe("TabBar detached tabs", () => {
+describe("TabBar 別窓へタブを移動した後", () => {
   beforeEach(() => {
     mocks.tabStore.state = {
       tabs: [
         {
           id: "tab-1",
           history: [{ type: "boardList", title: "ホーム" }],
-          currentIndex: 0,
-          pinned: false,
-          reloadKey: 0,
-          autoRefreshEnabled: false,
-          autoRefreshPageKey: null,
-        },
-        {
-          id: "tab-2",
-          history: [{ type: "boardList", title: "板一覧" }],
           currentIndex: 0,
           pinned: false,
           reloadKey: 0,
@@ -177,7 +158,6 @@ describe("TabBar detached tabs", () => {
       selectedTabId: "tab-1",
       closedTabs: [],
     };
-    mocks.detachedTabIds.add("tab-2");
     dispatchMock.mockReset();
     dragState.onDragEnd = undefined;
   });
@@ -186,7 +166,7 @@ describe("TabBar detached tabs", () => {
     cleanup();
   });
 
-  it("切り離し中のタブをタブバーとホイール切り替えから除外する", () => {
+  it("移動済みのタブをタブバーとホイール切り替えに含めない", () => {
     const { container } = render(<TabBar />);
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
 
@@ -197,7 +177,7 @@ describe("TabBar detached tabs", () => {
     expect(dispatchMock).toHaveBeenCalledWith({ type: "SELECT_TAB", tabId: "tab-3" });
   });
 
-  it("表示中の並び順を不可視タブ込みの保存位置へ変換する", () => {
+  it("残ったタブの並び順を移動する", () => {
     render(<TabBar />);
 
     dragState.onDragEnd?.({
@@ -211,7 +191,7 @@ describe("TabBar detached tabs", () => {
     expect(dispatchMock).toHaveBeenCalledWith({
       type: "MOVE_TAB",
       dragTabId: "tab-1",
-      toIndex: 2,
+      toIndex: 1,
     });
   });
 });

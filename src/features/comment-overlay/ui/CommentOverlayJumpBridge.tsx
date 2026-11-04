@@ -7,6 +7,7 @@ import { useDetachedTabController } from "src/features/tabs/browser/use-detached
 import { getPageViewStateKey } from "src/view/browser/page-type-definitions";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabDispatch, useTabStore } from "src/view/browser/state/tabs/use-tab-store";
+import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
 import { getCurrentPage } from "src/view/browser/types";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
@@ -16,7 +17,7 @@ const logger = createLogger("comment-overlay");
 export function CommentOverlayJumpBridge() {
   const { stateRef } = useTabStore();
   const dispatch = useTabDispatch();
-  const { isDetachedTab, focusTabWindow } = useDetachedTabController();
+  const { focusTabWindow } = useDetachedTabController();
 
   useEffect(() => {
     if (!isTauriRuntime()) return;
@@ -45,11 +46,11 @@ export function CommentOverlayJumpBridge() {
         responseNumber,
         target?.tab.id,
         true,
-        target ? isDetachedTab(target.tab.id) : false,
+        target ? (target.pane.windowId ?? MAIN_WINDOW_ID) !== MAIN_WINDOW_ID : false,
       );
       if (target) {
         dispatch({ ...tabActions.selectTab(target.tab.id), paneId: target.pane.id });
-        if (isDetachedTab(target.tab.id)) {
+        if ((target.pane.windowId ?? MAIN_WINDOW_ID) !== MAIN_WINDOW_ID) {
           focusTabWindow(target.tab.id);
           return;
         }
@@ -82,7 +83,7 @@ export function CommentOverlayJumpBridge() {
       disposed = true;
       unsubscribe?.();
     };
-  }, [dispatch, focusTabWindow, isDetachedTab, stateRef]);
+  }, [dispatch, focusTabWindow, stateRef]);
 
   return null;
 }

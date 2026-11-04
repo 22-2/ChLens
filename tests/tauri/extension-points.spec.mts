@@ -130,16 +130,49 @@ test("別窓への移動と復帰後もフィルター操作が対象のスレ�
   expect(registrationErrors).toEqual([]);
 });
 
-test("本窓の再読み込みで切り離したOS窓も閉じる", async ({ page, localBoard }) => {
+test("本窓の再読み込みで別窓を閉じ、複数タブを本窓へ戻す", async ({ page, localBoard }) => {
   await page.getByTestId("title-bar-title").click();
   await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
   await page.getByPlaceholder("URLを入力").press("Enter");
   await expect(page.locator('[data-res-num="2"]')).toBeVisible();
+  await page.evaluate(() => {
+    const originalOpen = window.open;
+    window.open = (...args) => {
+      const child = originalOpen.apply(window, args);
+      (window as typeof window & { __e2eTabWindow?: Window | null }).__e2eTabWindow = child;
+      window.open = originalOpen;
+      return child;
+    };
+  });
   await page.getByTestId("title-bar-title").click({ button: "right" });
   await page.getByRole("button", { name: "別窓で開く", exact: true }).click();
   await expect.poll(() => nativePopupLabels(page)).toHaveLength(1);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const child = (window as typeof window & { __e2eTabWindow?: Window }).__e2eTabWindow;
+        return child?.document.querySelectorAll('[role="tab"]').length ?? 0;
+      }),
+    )
+    .toBe(1);
+  await page.evaluate(() => {
+    const child = (window as typeof window & { __e2eTabWindow: Window }).__e2eTabWindow;
+    const button = child.document.querySelector<HTMLButtonElement>('button[title="新しいタブ"]');
+    if (!button) throw new Error("別窓の新しいタブボタンが見つかりません");
+    button.click();
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const child = (window as typeof window & { __e2eTabWindow?: Window }).__e2eTabWindow;
+        return child?.document.querySelectorAll('[role="tab"]').length ?? 0;
+      }),
+    )
+    .toBe(2);
 
   await page.reload();
   await expect(page.locator(".browser-shell")).toBeVisible();
   await expect.poll(() => nativePopupLabels(page)).toEqual([]);
+  await expect(page.getByRole("tab", { name: /ローカルテストスレッド/u })).toBeVisible();
+  await expect(page.getByRole("tab")).toHaveCount(3);
 });

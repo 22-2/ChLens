@@ -50,7 +50,7 @@ test("板からスレへの遷移と再読み込み後もフィルターが対�
   };
   await runImageFilter();
   // 種類は「絞り込み」メニューのボタンの表示になる（選択中は種類名、解除すると「絞り込み」）。
-  const modeButton = panel.locator(".thread-page__toolbar .search-options-menu__button");
+  const modeButton = panel.locator(".thread-page__toolbar .search-options-menu__button--labeled");
   await expect(modeButton).toHaveText("画像");
   await runImageFilter();
   await expect(modeButton).toHaveText("絞り込み");

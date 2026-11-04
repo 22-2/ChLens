@@ -9,7 +9,6 @@ import {
   mocks,
   resizeObserverState,
   ResizeObserverStub,
-  setupTabBarTest,
 } from "src/test-support/tab-bar-test-mocks";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -25,17 +24,12 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", async () =>
 vi.mock("src/features/auto-refresh/browser/use-auto-scroll-state", async () =>
   (await import("src/test-support/tab-bar-test-mocks")).createAutoScrollStateModule(),
 );
-vi.mock("src/features/tabs/browser/use-detached-tab-controller", async () =>
-  (await import("src/test-support/tab-bar-test-mocks")).createDetachedTabControllerModule(),
-);
 vi.mock("@dnd-kit/react", async () =>
   (await import("src/test-support/tab-bar-test-mocks")).createDndKitModule(),
 );
 vi.mock("@dnd-kit/react/sortable", async () =>
   (await import("src/test-support/tab-bar-test-mocks")).createDndKitSortableModule(),
 );
-
-setupTabBarTest();
 
 // 変更理由: HTMLElement.prototype のメソッドを直接参照すると unbound-method に当たるため、
 // 退避する元の値は Reflect 経由で読み、差し替えと復元は defineProperty で行う。

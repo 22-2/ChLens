@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 import type { QuickAccessPage } from "src/view/browser/utils/tab-pages";
@@ -48,8 +49,10 @@ export function useNavigationMenuItems({
   openQuickAccessPage: (page: QuickAccessPage) => void;
   openQuickAccessPageInNewTab: (page: QuickAccessPage) => void;
 }): ContextMenuItem[] {
+  const { window: viewWindow } = useViewSurface();
   return useMemo<ContextMenuItem[]>(() => {
     const deps: NavigationMenuDeps = {
+      viewWindow,
       toggleFilterFromMenu,
       togglePanel,
       openQuickAccessPage,
@@ -72,5 +75,6 @@ export function useNavigationMenuItems({
     togglePanel,
     openQuickAccessPage,
     openQuickAccessPageInNewTab,
+    viewWindow,
   ]);
 }

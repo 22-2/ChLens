@@ -184,6 +184,18 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
       }
       // 2ペイン時は最後のタブを閉じる操作で空ペインを残さず、もう片方へ戻す。
       const windowPanes = getWindowPanes(state, getPaneWindowId(pane));
+      if (
+        pane.tabs.length === 1 &&
+        windowPanes.length === 1 &&
+        getPaneWindowId(pane) !== MAIN_WINDOW_ID &&
+        !action.replaceLastTab
+      ) {
+        // 別窓の最後のタブを閉じたら窓ごと履歴に残して終了する。
+        return reduceTabState(state, {
+          type: TAB_ACTION_TYPES.CLOSE_WORKSPACE_WINDOW,
+          windowId: getPaneWindowId(pane),
+        });
+      }
       if (pane.tabs.length <= 1 && windowPanes.length > 1 && !action.replaceLastTab) {
         const panes = state.panes.filter((candidate) => candidate.id !== paneId);
         return {

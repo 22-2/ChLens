@@ -21,6 +21,7 @@ import { container } from "src/service-container/index";
 import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
 import { BottomPanelProvider } from "src/view/browser/hooks/use-bottom-panel";
 import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-status";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { BottomPanel } from "src/view/browser/shell/BottomPanel";
 import { ContentArea } from "src/view/browser/shell/ContentArea";
 import { NavigationBar } from "src/view/browser/shell/NavigationBar";
@@ -31,6 +32,7 @@ import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { TAB_ACTION_TYPES } from "src/view/browser/state/tabs/tab-store-types";
 import {
   PaneProvider,
+  useActivePaneId,
   useBottomPanelLayout,
   useTabDispatch,
   useTabStore,
@@ -81,6 +83,8 @@ const PaneColumn: React.FC<{ paneId: string; isActive: boolean }> = ({ paneId, i
 const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const dispatch = useTabDispatch();
   const { viewPage, viewTab, paneId } = useTabStore();
+  const focusedPaneId = useActivePaneId();
+  const isFocusedPane = isActive && paneId === focusedPaneId;
   const initialBottomPanel = useBottomPanelLayout(paneId);
   const tabBarOrientation = useTabBarOrientation();
   const { panes } = useWindowPanes();
@@ -123,8 +127,8 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   );
   const paneBody = (
     <>
-      <ActiveThreadBridgeState isActive={isActive} />
-      <ContentArea isOverlayTarget={isActive} onSearchRelatedThreads={searchRelatedThreads} />
+      <ActiveThreadBridgeState isActive={isFocusedPane} />
+      <ContentArea isOverlayTarget={isFocusedPane} onSearchRelatedThreads={searchRelatedThreads} />
       <BottomPanel />
       {/* コマンドとナビゲーションを同じオムニバーへ集約し、
           操作元のペイン状態を使うためアクティブペインだけが起動を担当する。 */}
@@ -142,7 +146,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
       <IkioiStatusItem />
       <PopularFilterStatusItem />
       <AutoRefreshStatusItem />
-      <CommentOverlayStatusItem isActive={isActive} />
+      <CommentOverlayStatusItem isActive={isFocusedPane} />
       <PageCountStatusItem />
       <ThreadListLoadedStatusItem />
       <ThreadListPanelToggleItem />
@@ -227,10 +231,19 @@ const PaneRow: React.FC = () => {
 // タイトルバーの上端まで伸ばし、タイトルバー以下を右へ押しのける。
 export const WindowShell: React.FC<{ showSidePanel?: boolean }> = ({ showSidePanel = true }) => {
   const orientation = useTabBarOrientation();
-  const { panes } = useWindowPanes();
+  const { panes, activePaneId } = useWindowPanes();
+  const dispatch = useTabDispatch();
+  const { window: viewWindow } = useViewSurface();
+  useEffect(() => {
+    // 窓を前面に戻したときは、その窓で最後に選んだペインを全体の操作先へ戻す。
+    const onFocus = () =>
+      dispatch({ type: TAB_ACTION_TYPES.SET_ACTIVE_PANE, paneId: activePaneId });
+    viewWindow.addEventListener("focus", onFocus);
+    return () => viewWindow.removeEventListener("focus", onFocus);
+  }, [viewWindow, dispatch, activePaneId]);
   const main = (
     <>
-      <TitleBar />
+      <TitleBar showSidePanel={showSidePanel} />
       {orientation === "horizontal" && panes.length > 1 ? (
         <SharedTabBar orientation="horizontal" />
       ) : null}
