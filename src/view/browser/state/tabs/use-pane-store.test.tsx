@@ -100,7 +100,7 @@ describe("ペイン（横分割）", () => {
 
   it("窓の文脈ごとにペインを分け、旧形式のペインを本窓に含める", async () => {
     const { createHomeTab } = await import("src/view/browser/types");
-    const { TabProvider, useAllPanes, useTabDispatch, useWindowPanes } =
+    const { TabProvider, useAllPanes, useTabDispatch, useTabStore, useWindowPanes } =
       await import("src/view/browser/state/tabs/use-tab-store");
     const { WindowScopeProvider } = await import("src/view/browser/state/tabs/use-window-scope");
     function Restore() {
@@ -137,24 +137,27 @@ describe("ペイン（横分割）", () => {
     function Observer({ label }: { label: string }) {
       const { panes, activePaneId } = useWindowPanes();
       const all = useAllPanes();
+      const { paneId } = useTabStore();
       return (
         <output data-testid={label}>
-          {panes.map((pane) => pane.id).join(",")}:{activePaneId}:{all.panes.length}
+          {panes.map((pane) => pane.id).join(",")}:{activePaneId}:{all.panes.length}:{paneId}
         </output>
       );
     }
     render(
       <TabProvider>
         <Restore />
-        <Observer label="main" />
+        <WindowScopeProvider windowId="main">
+          <Observer label="main" />
+        </WindowScopeProvider>
         <WindowScopeProvider windowId="aux">
           <Observer label="aux" />
         </WindowScopeProvider>
       </TabProvider>,
     );
     fireEvent.click(screen.getByText("状態を設定"));
-    expect(screen.getByTestId("main")).toHaveTextContent("main-pane:main-pane:2");
-    expect(screen.getByTestId("aux")).toHaveTextContent("aux-pane:aux-pane:2");
+    expect(screen.getByTestId("main")).toHaveTextContent("main-pane:main-pane:2:main-pane");
+    expect(screen.getByTestId("aux")).toHaveTextContent("aux-pane:aux-pane:2:aux-pane");
   });
 
   // 各ペインの状態を読み出す共通ハーネス。useAllPanes でグローバルな panes を観測する。

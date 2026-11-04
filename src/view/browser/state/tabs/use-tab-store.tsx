@@ -55,7 +55,7 @@ import {
   type TabStoreState,
 } from "src/view/browser/state/tabs/tab-store-types";
 import { useTabViewScope } from "src/view/browser/state/tabs/use-tab-view-scope";
-import { useWindowId } from "src/view/browser/state/tabs/use-window-scope";
+import { useOptionalWindowId, useWindowId } from "src/view/browser/state/tabs/use-window-scope";
 import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
 import { getCurrentPage, type Page, type Pane, type TabViewState } from "src/view/browser/types";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
@@ -440,10 +440,12 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 // 注入された paneId を解決する（無効/未提供ならアクティブペイン）。
 function usePaneIdFromContext(state: TabStoreState): string {
   const paneCtx = useContext(PaneContext);
+  const windowId = useOptionalWindowId();
   if (paneCtx && state.panes.some((p) => p.id === paneCtx.paneId)) {
     return paneCtx.paneId;
   }
-  return state.activePaneId;
+  // ペインの指定がない窓内UIは、その窓で選択中のペインを操作する。
+  return state.windows.find((window) => window.id === windowId)?.activePaneId ?? state.activePaneId;
 }
 
 /**
@@ -564,8 +566,7 @@ export function useTabDispatch(): Dispatch<ScopedTabAction> {
     throw new Error("useTabDispatch must be used within TabProvider");
   }
   const viewScope = useTabViewScope();
-  const paneCtx = useContext(PaneContext);
-  const paneId = paneCtx?.paneId ?? tabContext.state.activePaneId;
+  const paneId = usePaneIdFromContext(tabContext.state);
   const scopeTabId = viewScope
     ? (findTabAcrossPanes(tabContext.state, viewScope.tabId)?.id ?? null)
     : null;

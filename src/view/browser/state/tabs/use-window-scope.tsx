@@ -1,7 +1,7 @@
 import { createContext, type ReactNode, useContext } from "react";
 import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
 
-const WindowScopeContext = createContext(MAIN_WINDOW_ID);
+const WindowScopeContext = createContext<string | null>(null);
 
 export function WindowScopeProvider({
   windowId,
@@ -14,5 +14,9 @@ export function WindowScopeProvider({
 }
 
 export function useWindowId(): string {
+  return useContext(WindowScopeContext) ?? MAIN_WINDOW_ID;
+}
+
+export function useOptionalWindowId(): string | null {
   return useContext(WindowScopeContext);
 }

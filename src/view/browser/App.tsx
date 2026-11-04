@@ -15,6 +15,8 @@ import { useTheme } from "src/view/browser/hooks/use-theme";
 import { TabWindowHost } from "src/view/browser/shell/TabWindowHost";
 import { WindowShell } from "src/view/browser/shell/WindowShell";
 import { TabProvider } from "src/view/browser/state/tabs/use-tab-store";
+import { WindowScopeProvider } from "src/view/browser/state/tabs/use-window-scope";
+import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
 import { ToastProvider } from "src/view/browser/ui/Toast";
 import { TooltipProvider } from "src/view/browser/ui/Tooltip";
 import { useAnyFilterToolbarOpen } from "src/view/browser/utils/filter-toolbar-open-state";
@@ -56,27 +58,29 @@ export const BrowserApp: React.FC = () => {
               シェル直下には全ペイン共通のグローバル UI（トースト・ダイアログ）だけを残す。
             */}
               {/* data-theme を使ってダークモード CSS 変数を切り替える */}
-              <div
-                className="browser-shell"
-                data-theme={theme}
-                data-tab-orientation={shellTabBarOrientation}
-                data-zen-mode={isZenMode ? "true" : "false"}
-              >
-                <WindowNavigationBridge />
-                {/* 変更理由: 本文を覆う範囲を減らし、通知を上部バー直下の右端へ寄せる。
+              <WindowScopeProvider windowId={MAIN_WINDOW_ID}>
+                <div
+                  className="browser-shell"
+                  data-theme={theme}
+                  data-tab-orientation={shellTabBarOrientation}
+                  data-zen-mode={isZenMode ? "true" : "false"}
+                >
+                  <WindowNavigationBridge />
+                  {/* 変更理由: 本文を覆う範囲を減らし、通知を上部バー直下の右端へ寄せる。
                     URL入力はタイトルバー内でピルと入れ替わるだけで行が増えないため、
                     入力中でも通知の位置は変えない。 */}
-                <ShellToastProvider />
-                {/*
+                  <ShellToastProvider />
+                  {/*
                 水平モードではタイトルと必須のレイアウト操作はペインの外に置く。
                 これにより2ペイン時も操作が重複せず、アクティブペインのタイトルだけを表示できる。
                 垂直モードでも操作対象をアクティブペインに揃え、タイトルバーを共有する。
               */}
-                <AutoScrollPaneStatesProvider>
-                  <WindowShell />
-                </AutoScrollPaneStatesProvider>
-                <BookmarkRootSelectorDialog />
-              </div>
+                  <AutoScrollPaneStatesProvider>
+                    <WindowShell />
+                  </AutoScrollPaneStatesProvider>
+                  <BookmarkRootSelectorDialog />
+                </div>
+              </WindowScopeProvider>
             </TabWindowHost>
           </OverlayPlacementWindowProvider>
         </WriteSessionProvider>
