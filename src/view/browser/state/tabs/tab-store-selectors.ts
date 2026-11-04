@@ -76,3 +76,68 @@ export function canOpenInRightPane(state: TabStoreState, paneId: string): boolea
   // 右隣が既にあればそこへ移動でき、なければペイン上限まで新設できる。
   return panes[paneIndex + 1] !== undefined || panes.length < MAX_PANES;
 }
+
+/** タブの移動先として選べるペイン。 */
+export interface TabMoveDestination {
+  readonly windowId: string;
+  readonly paneId: string;
+  /** メニューとコマンドで表示する名前。 */
+  readonly label: string;
+}
+
+function listOrderedPanes(state: TabStoreState): Pane[] {
+  const auxWindowIds = state.windows
+    .filter((window) => window.kind === "aux")
+    .map((window) => window.id);
+  return [MAIN_WINDOW_ID, ...auxWindowIds].flatMap((windowId) => getWindowPanes(state, windowId));
+}
+
+/**
+ * タブを移せるペインを、本窓→別窓、窓内は左→右の順に並べて返す。
+ *
+ * 変更理由: メニューとコマンドパレットで移動先の並びと名前がずれないよう、
+ * 状態から一度だけ組み立てる。元のペイン自身は移動先に含めない。
+ */
+export function listTabMoveDestinations(state: TabStoreState, tabId: string): TabMoveDestination[] {
+  const source = state.panes.find((pane) => pane.tabs.some((tab) => tab.id === tabId));
+  if (!source) return [];
+  const sourceWindowId = getPaneWindowId(source);
+  const auxWindowIds = state.windows
+    .filter((window) => window.kind === "aux")
+    .map((window) => window.id);
+  const destinations: TabMoveDestination[] = [];
+  for (const windowId of [MAIN_WINDOW_ID, ...auxWindowIds]) {
+    const panes = getWindowPanes(state, windowId);
+    panes.forEach((pane, index) => {
+      if (pane.id === source.id) return;
+      let label: string;
+      if (windowId === sourceWindowId) {
+        // 同じ窓の2ペインは左右が自明なので、番号を付けずに反対側と呼ぶ。
+        label = panes.length === 2 ? "反対側のペインへ移動" : `ペイン${index + 1}へ移動`;
+      } else {
+        const windowName =
+          windowId === MAIN_WINDOW_ID ? "メイン画面" : `別窓${auxWindowIds.indexOf(windowId) + 1}`;
+        label =
+          panes.length === 1 ? `${windowName}へ移動` : `${windowName}のペイン${index + 1}へ移動`;
+      }
+      destinations.push({ windowId, paneId: pane.id, label });
+    });
+  }
+  return destinations;
+}
+
+/** 元のペインの次にあたる移動先。末尾なら先頭へ戻る。 */
+export function findNextTabMoveDestination(
+  state: TabStoreState,
+  tabId: string,
+): TabMoveDestination | null {
+  const destinations = listTabMoveDestinations(state, tabId);
+  if (destinations.length === 0) return null;
+  const order = listOrderedPanes(state).map((pane) => pane.id);
+  const source = state.panes.find((pane) => pane.tabs.some((tab) => tab.id === tabId));
+  const sourceIndex = source ? order.indexOf(source.id) : -1;
+  return (
+    destinations.find((destination) => order.indexOf(destination.paneId) > sourceIndex) ??
+    destinations[0]
+  );
+}

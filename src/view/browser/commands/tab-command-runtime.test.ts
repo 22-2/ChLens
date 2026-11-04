@@ -282,6 +282,95 @@ describe("tab-command-runtime", () => {
     ).toBe(false);
     expect(runtime.dispatch).not.toHaveBeenCalled();
   });
+
+  describe("ペインと窓への移動", () => {
+    function createMultiWindowRuntime(): TabCommandRuntime {
+      const moving = createTab({ id: "moving-tab" });
+      const stay = createTab({ id: "stay-tab" });
+      const other = createTab({ id: "other-tab" });
+      const state: TabStoreState = {
+        panes: [
+          { id: "main-1", tabs: [moving, stay], activeTabId: moving.id },
+          { id: "main-2", tabs: [other], activeTabId: other.id },
+          {
+            id: "aux-1",
+            windowId: "aux",
+            tabs: [createTab({ id: "aux-tab" })],
+            activeTabId: "aux-tab",
+          },
+        ],
+        activePaneId: "main-1",
+        windows: [
+          { id: "main", kind: "main", activePaneId: "main-1" },
+          { id: "aux", kind: "aux", activePaneId: "aux-1" },
+        ],
+        closedTabs: [],
+      };
+      return { state, dispatch: vi.fn() };
+    }
+
+    it("指定した窓とペインの末尾へタブを移す", () => {
+      const runtime = createMultiWindowRuntime();
+
+      expect(
+        executeTabCommandRequest(
+          {
+            id: TAB_COMMAND_IDS.MOVE,
+            args: { tabId: "moving-tab", windowId: "aux", paneId: "aux-1" },
+          },
+          runtime,
+        ),
+      ).toBe(true);
+      expect(runtime.dispatch).toHaveBeenCalledWith(
+        tabActions.transferTab("moving-tab", { windowId: "aux", paneId: "aux-1", index: 1 }),
+      );
+    });
+
+    it("元のペインや存在しない移動先にはdispatchしない", () => {
+      const runtime = createMultiWindowRuntime();
+
+      for (const args of [
+        { tabId: "moving-tab", windowId: "main", paneId: "main-1" },
+        { tabId: "moving-tab", windowId: "aux", paneId: "main-2" },
+        { tabId: "moving-tab", windowId: "closed", paneId: "closed-pane" },
+      ]) {
+        expect(executeTabCommandRequest({ id: TAB_COMMAND_IDS.MOVE, args }, runtime)).toBe(false);
+      }
+      expect(runtime.dispatch).not.toHaveBeenCalled();
+    });
+
+    it("次の移動先は本窓の次のペイン、窓の末尾なら先頭へ戻る", () => {
+      const runtime = createMultiWindowRuntime();
+
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.MOVE_NEXT, args: { tabId: "moving-tab" } },
+        runtime,
+      );
+      expect(runtime.dispatch).toHaveBeenLastCalledWith(
+        tabActions.transferTab("moving-tab", { windowId: "main", paneId: "main-2", index: 1 }),
+      );
+
+      executeTabCommandRequest(
+        { id: TAB_COMMAND_IDS.MOVE_NEXT, args: { tabId: "aux-tab" } },
+        runtime,
+      );
+      expect(runtime.dispatch).toHaveBeenLastCalledWith(
+        tabActions.transferTab("aux-tab", { windowId: "main", paneId: "main-1", index: 2 }),
+      );
+    });
+
+    it("移動先が1つもない時はfalseを返す", () => {
+      const runtime = createRuntime(createTab());
+
+      expect(
+        executeTabCommandRequest(
+          { id: TAB_COMMAND_IDS.MOVE_NEXT, args: { tabId: "tab-1" } },
+          runtime,
+        ),
+      ).toBe(false);
+      expect(runtime.dispatch).not.toHaveBeenCalled();
+    });
+  });
 });
 
 setupTestPageTypes();

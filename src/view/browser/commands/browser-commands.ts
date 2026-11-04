@@ -11,6 +11,7 @@ import {
   History,
   Import,
   List,
+  MoveRight,
   PanelLeft,
   PanelRight,
   PenLine,
@@ -498,6 +499,23 @@ const CORE_COMMAND_DEFINITIONS: readonly BrowserCommandDefinition[] = [
         return;
       }
       dispatch(tabActions.openInRightPane(viewTab.id));
+    },
+  },
+  {
+    id: "tab.move-to-next-pane",
+    label: "次のペイン・窓へ移動",
+    englishLabel: "Move Tab to Next Pane or Window",
+    description: "表示中のタブを、次のペインまたは窓へ移動します",
+    keywords: ["ペイン", "窓", "移動", "move", "window", "pane"],
+    group: "tab",
+    icon: MoveRight,
+    when: ({ runTabCommand }) => runTabCommand != null,
+    run: (context) => {
+      // 変更理由: 移動先がない状態でも黙って終わらず、押した結果を利用者へ伝える。
+      if (context.runTabCommand?.(TAB_COMMAND_IDS.MOVE_NEXT)) {
+        return;
+      }
+      getCommandToast(context).info("移動先のペインや窓がありません");
     },
   },
   {

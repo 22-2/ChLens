@@ -56,6 +56,7 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
       current: {
         panes: [{ id: "pane-1", tabs: [threadTab, secondTab], activeTabId: threadTab.id }],
         activePaneId: "pane-1",
+        windows: [{ id: "main", kind: "main", activePaneId: "pane-1" }],
         closedTabs: [],
       },
     },

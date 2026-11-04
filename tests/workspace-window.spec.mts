@@ -90,3 +90,33 @@ test("別窓の最後のタブを閉じると窓も閉じる", async ({ page, ex
     )
     .toBe(1);
 });
+
+test("タブのメニューとコマンドパレットで本窓と別窓の間を移動できる", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  await expect(page.locator('[data-res-num="2"]')).toBeVisible();
+  await page.getByTestId("title-bar-title").click({ button: "right" });
+  const [popup] = await Promise.all([
+    page.context().waitForEvent("page"),
+    page.getByRole("button", { name: "別窓で開く", exact: true }).click(),
+  ]);
+  await expect(popup.locator('[data-res-num="2"]')).toBeVisible();
+
+  // 本窓に残ったホームのタブを、メニューから別窓へ移す。
+  await page.getByRole("tab").first().click({ button: "right" });
+  await page.getByRole("button", { name: "別窓1へ移動", exact: true }).click();
+  await expect(popup.getByRole("tab")).toHaveCount(2);
+
+  // 別窓の選択タブを、コマンドパレットから本窓へ戻す。
+  await popup.keyboard.press("Control+Shift+P");
+  await popup.getByPlaceholder("コマンドを検索...").pressSequentially("次のペイン");
+  await popup.getByText("次のペイン・窓へ移動", { exact: true }).click();
+  await expect(popup.getByRole("tab")).toHaveCount(1);
+  await expect(page.getByRole("tab")).toHaveCount(2);
+});

@@ -61,7 +61,6 @@ export const TAB_ACTION_TYPES = {
   CLOSE_PANE: "CLOSE_PANE",
   SWAP_PANE_TABS: "SWAP_PANE_TABS",
   SET_ACTIVE_PANE: "SET_ACTIVE_PANE",
-  MOVE_TAB_TO_PANE: "MOVE_TAB_TO_PANE",
   TRANSFER_TAB: "TRANSFER_TAB",
   CLOSE_WORKSPACE_WINDOW: "CLOSE_WORKSPACE_WINDOW",
   RESTORE: "RESTORE",
@@ -140,13 +139,6 @@ export type TabAction =
   | { type: typeof TAB_ACTION_TYPES.CLOSE_PANE }
   | { type: typeof TAB_ACTION_TYPES.SWAP_PANE_TABS }
   | { type: typeof TAB_ACTION_TYPES.SET_ACTIVE_PANE }
-  | {
-      type: typeof TAB_ACTION_TYPES.MOVE_TAB_TO_PANE;
-      tabId: string;
-      fromPaneId: string;
-      toPaneId: string;
-      toIndex: number;
-    }
   | {
       type: typeof TAB_ACTION_TYPES.TRANSFER_TAB;
       tabId: string;

@@ -1,4 +1,4 @@
-import { ExternalLink, List, Pin, PinOff, RotateCcw, Trash2, X } from "lucide-react";
+import { ExternalLink, List, MoveRight, Pin, PinOff, RotateCcw, Trash2, X } from "lucide-react";
 import React, { useCallback, useMemo } from "react";
 import {
   readBookmarkStatus,
@@ -19,6 +19,7 @@ import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel"
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
+import { listTabMoveDestinations } from "src/view/browser/state/tabs/tab-store-selectors";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { useWindowId } from "src/view/browser/state/tabs/use-window-scope";
 import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
@@ -40,7 +41,7 @@ interface Props {
 }
 
 export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
-  const { state, dispatch } = useTabStore();
+  const { state, dispatch, stateRef } = useTabStore();
   const runTabCommand = useTabCommandRunner(tab.id);
   const { detachTab, reattachTab } = useDetachedTabController();
   const bottomPanel = useOptionalBottomPanel();
@@ -63,6 +64,19 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
   const hasClosedTabs = state.closedTabs.length > 0;
 
   const items = useMemo(() => {
+    // 移動先は、メニューを開いた時点のストア全体から求める。
+    const allDestinations = stateRef?.current
+      ? listTabMoveDestinations(stateRef.current, tab.id)
+      : [];
+    const mainDestinations = allDestinations.filter(
+      (destination) => destination.windowId === MAIN_WINDOW_ID,
+    );
+    // 変更理由: 別窓のタブは「メイン画面へ戻す」が元のペインへ戻すので、
+    // 本窓のペインが1つだけなら同じ操作を重ねて出さない。
+    const moveDestinations =
+      tabIsDetached && mainDestinations.length === 1
+        ? allDestinations.filter((destination) => destination.windowId !== MAIN_WINDOW_ID)
+        : allDestinations;
     const result: ContextMenuItem[] = [
       {
         id: "close",
@@ -110,6 +124,21 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       },
     });
     result.push({ id: "sep-detach", separator: true });
+
+    for (const destination of moveDestinations) {
+      result.push({
+        id: `move-to-${destination.paneId}`,
+        label: destination.label,
+        icon: <MoveRight />,
+        onSelect: () =>
+          runTabCommand(TAB_COMMAND_IDS.MOVE, {
+            destination: { windowId: destination.windowId, paneId: destination.paneId },
+          }),
+      });
+    }
+    if (moveDestinations.length > 0) {
+      result.push({ id: "sep-move", separator: true });
+    }
 
     if (isThread) {
       const threadPage = currentPage as { threadUrl: string; title: string };
@@ -184,6 +213,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     bookmarkRevision,
     tabIsDetached,
     isThread,
+    stateRef,
     bottomPanel,
     toast,
     viewWindow,

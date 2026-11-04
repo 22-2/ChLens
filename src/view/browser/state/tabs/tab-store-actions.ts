@@ -60,12 +60,7 @@ export interface TabActionCreators {
   closePane(): ActionOf<"CLOSE_PANE">;
   swapPaneTabs(): ActionOf<"SWAP_PANE_TABS">;
   setActivePane(): ActionOf<"SET_ACTIVE_PANE">;
-  moveTabToPane(
-    tabId: string,
-    fromPaneId: string,
-    toPaneId: string,
-    toIndex: number,
-  ): ActionOf<"MOVE_TAB_TO_PANE">;
+  transferTab(tabId: string, to: ActionOf<"TRANSFER_TAB">["to"]): ActionOf<"TRANSFER_TAB">;
   restore(state: TabStoreState): ActionOf<"RESTORE">;
 }
 
@@ -138,12 +133,6 @@ export const tabActions: TabActionCreators = {
   closePane: () => ({ type: TAB_ACTION_TYPES.CLOSE_PANE }),
   swapPaneTabs: () => ({ type: TAB_ACTION_TYPES.SWAP_PANE_TABS }),
   setActivePane: () => ({ type: TAB_ACTION_TYPES.SET_ACTIVE_PANE }),
-  moveTabToPane: (tabId, fromPaneId, toPaneId, toIndex) => ({
-    type: TAB_ACTION_TYPES.MOVE_TAB_TO_PANE,
-    tabId,
-    fromPaneId,
-    toPaneId,
-    toIndex,
-  }),
+  transferTab: (tabId, to) => ({ type: TAB_ACTION_TYPES.TRANSFER_TAB, tabId, to }),
   restore: (state) => ({ type: TAB_ACTION_TYPES.RESTORE, state }),
 };

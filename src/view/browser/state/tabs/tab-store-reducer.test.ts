@@ -515,7 +515,11 @@ describe("タブのペイン間移動", () => {
 
     const next = tabReducer(
       withTarget,
-      tabActions.moveTabToPane(moving.id, split.panes[0]!.id, split.panes[1]!.id, 0),
+      tabActions.transferTab(moving.id, {
+        windowId: "main",
+        paneId: split.panes[1]!.id,
+        index: 0,
+      }),
     );
 
     expect(next.panes[1]!.tabs.map((tab) => tab.id)).toEqual([moving.id, target.id]);

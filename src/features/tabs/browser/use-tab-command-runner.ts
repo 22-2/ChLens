@@ -11,6 +11,8 @@ export interface TabCommandRunnerOptions {
   readonly tabId?: string;
   /** 固定状態を設定するコマンドの目標値。 */
   readonly pinned?: boolean;
+  /** 移動コマンドの移動先。 */
+  readonly destination?: { readonly windowId: string; readonly paneId: string };
 }
 
 /**
@@ -57,6 +59,15 @@ export function useTabCommandRunner(
         }
         return executeTabCommandRequest(
           { id, args: { tabId: targetTabId, pinned: options.pinned } },
+          { state: currentState, dispatch },
+        );
+      }
+      if (id === TAB_COMMAND_IDS.MOVE) {
+        if (!options?.destination) {
+          return false;
+        }
+        return executeTabCommandRequest(
+          { id, args: { tabId: targetTabId, ...options.destination } },
           { state: currentState, dispatch },
         );
       }

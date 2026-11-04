@@ -933,39 +933,6 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
       return { ...state, panes, activePaneId: newPane.id };
     }
 
-    case TAB_ACTION_TYPES.MOVE_TAB_TO_PANE: {
-      // ペイン間でタブを移動する（将来のドラッグ&ドロップ用の土台）。
-      const fromPane = state.panes.find((p) => p.id === action.fromPaneId);
-      const toPane = state.panes.find((p) => p.id === action.toPaneId);
-      if (!fromPane || !toPane || fromPane.id === toPane.id) return state;
-      const movingTab = fromPane.tabs.find((t) => t.id === action.tabId);
-      // ホームも通常タブとして移動し、空になったペインは更新時に補う。
-      if (!movingTab) return state;
-
-      let remainingFrom = fromPane.tabs.filter((t) => t.id !== action.tabId);
-      if (remainingFrom.length === 0) {
-        remainingFrom = [createTab()];
-      }
-      const newFromActiveId =
-        fromPane.activeTabId === action.tabId
-          ? remainingFrom[remainingFrom.length - 1].id
-          : fromPane.activeTabId;
-      const toIndex = Math.max(0, Math.min(action.toIndex, toPane.tabs.length));
-      const newToTabs = [...toPane.tabs];
-      newToTabs.splice(toIndex, 0, movingTab);
-      return {
-        ...state,
-        panes: state.panes.map((p) =>
-          p.id === action.fromPaneId
-            ? { ...p, tabs: remainingFrom, activeTabId: newFromActiveId }
-            : p.id === action.toPaneId
-              ? { ...p, tabs: newToTabs, activeTabId: movingTab.id }
-              : p,
-        ),
-        activePaneId: action.toPaneId,
-      };
-    }
-
     case TAB_ACTION_TYPES.RESTORE:
       return sanitizeTabStoreState(action.state);
 

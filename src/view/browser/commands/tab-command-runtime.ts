@@ -4,9 +4,11 @@ import {
   canCloseTab,
   canOpenInRightPane,
   canReopenClosedTab,
+  findNextTabMoveDestination,
   findTabLocation,
   hasClosableOtherTabs,
   hasClosableRightTabs,
+  listTabMoveDestinations,
   type TabLocation,
 } from "src/view/browser/state/tabs/tab-store-selectors";
 import type { ScopedTabAction, TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
@@ -25,6 +27,8 @@ export const TAB_COMMAND_IDS = {
   CLOSE_ALL: "tab.close-all",
   REOPEN: "tab.reopen",
   OPEN_RIGHT: "tab.open-right",
+  MOVE: "tab.move",
+  MOVE_NEXT: "tab.move-next",
 } as const;
 
 export type TabCommandId = (typeof TAB_COMMAND_IDS)[keyof typeof TAB_COMMAND_IDS];
@@ -38,7 +42,18 @@ export type TabCommandRequest =
       };
     }
   | {
-      readonly id: Exclude<TabCommandId, typeof TAB_COMMAND_IDS.PIN_SET>;
+      readonly id: typeof TAB_COMMAND_IDS.MOVE;
+      readonly args: {
+        readonly tabId: string;
+        readonly windowId: string;
+        readonly paneId: string;
+      };
+    }
+  | {
+      readonly id: Exclude<
+        TabCommandId,
+        typeof TAB_COMMAND_IDS.PIN_SET | typeof TAB_COMMAND_IDS.MOVE
+      >;
       readonly args: {
         readonly tabId: string;
       };
@@ -155,5 +170,43 @@ export function executeTabCommandRequest(
       }
       dispatchForTab(runtime, location, tabActions.openInRightPane(location.tab.id), true);
       return true;
+    case TAB_COMMAND_IDS.MOVE: {
+      // 変更理由: 移動先は一覧に載っているペインだけに限り、閉じた窓やペインの
+      // 古いIDが渡されても状態を壊さない。
+      const destination = listTabMoveDestinations(runtime.state, location.tab.id).find(
+        (candidate) =>
+          candidate.windowId === request.args.windowId && candidate.paneId === request.args.paneId,
+      );
+      if (!destination) {
+        return false;
+      }
+      const target = runtime.state.panes.find((pane) => pane.id === destination.paneId);
+      // 末尾へ追加する。固定タブの位置はreducerが補正する。
+      runtime.dispatch(
+        tabActions.transferTab(location.tab.id, {
+          windowId: destination.windowId,
+          paneId: destination.paneId,
+          index: target?.tabs.length ?? 0,
+        }),
+      );
+      return true;
+    }
+    case TAB_COMMAND_IDS.MOVE_NEXT: {
+      const destination = findNextTabMoveDestination(runtime.state, location.tab.id);
+      if (!destination) {
+        return false;
+      }
+      return executeTabCommandRequest(
+        {
+          id: TAB_COMMAND_IDS.MOVE,
+          args: {
+            tabId: location.tab.id,
+            windowId: destination.windowId,
+            paneId: destination.paneId,
+          },
+        },
+        runtime,
+      );
+    }
   }
 }
