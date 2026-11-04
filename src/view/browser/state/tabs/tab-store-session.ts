@@ -71,11 +71,7 @@ export function toPersistedTab(tab: PersistedTab): PersistedTab {
 function toPersistedTabStoreState(state: TabStoreState): PersistedTabStoreState {
   return {
     version: 2,
-    windows: (
-      state.windows ?? [
-        { id: MAIN_WINDOW_ID, kind: "main" as const, activePaneId: state.activePaneId },
-      ]
-    ).map((window) =>
+    windows: state.windows.map((window) =>
       state.panes.some(
         (pane) => pane.id === state.activePaneId && (pane.windowId ?? MAIN_WINDOW_ID) === window.id,
       )
@@ -116,7 +112,7 @@ export function sanitizeTabStoreState(state: TabStoreState): TabStoreState {
   const persisted = toPersistedTabStoreState(state);
   return {
     panes: persisted.panes.map((pane) => ({ ...pane, tabs: pane.tabs.map(fromPersistedTab) })),
-    ...(state.windows ? { windows: persisted.windows } : {}),
+    windows: persisted.windows,
     activePaneId: persisted.activePaneId,
     closedTabs: persisted.closedTabs.map(fromPersistedTab),
     ...(persisted.sidePanel ? { sidePanel: persisted.sidePanel } : {}),

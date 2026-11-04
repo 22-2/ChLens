@@ -19,6 +19,7 @@ describe("実行元に結び付いたワークスペース", () => {
           { id: "right", activeTabId: right.id, tabs: [right] },
         ],
         activePaneId: "left",
+        windows: [{ id: "main", kind: "main" as const, activePaneId: "left" }],
         closedTabs: [],
       },
     };

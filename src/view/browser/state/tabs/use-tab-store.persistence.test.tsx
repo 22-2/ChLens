@@ -48,6 +48,7 @@ function savedState(): TabStoreState {
       { id: "right", tabs: [createHomeTab("right-home")], activeTabId: "right-home" },
     ],
     activePaneId: "left",
+    windows: [{ id: "main", kind: "main" as const, activePaneId: "left" }],
     closedTabs: [{ ...boardTab, id: "closed-tab" }],
   };
 }

@@ -18,7 +18,12 @@ const threadPage: Extract<Page, { type: "thread" }> = {
 function createState(stoppedPageKey: string | null): TabStoreState {
   const tab = { ...createTabFromPage(threadPage), autoRefreshStoppedPageKey: stoppedPageKey };
   const pane = createPane(tab);
-  return { panes: [pane], activePaneId: pane.id, closedTabs: [] };
+  return {
+    panes: [pane],
+    activePaneId: pane.id,
+    windows: [{ id: "main", kind: "main", activePaneId: pane.id }],
+    closedTabs: [],
+  };
 }
 
 function dispatchAndRecord(state: TabStoreState, action: Parameters<typeof tabReducer>[1]) {

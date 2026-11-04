@@ -31,7 +31,10 @@ import {
   readInitialPageFromLocation,
 } from "src/view/browser/state/tabs/tab-store-new-tab";
 import { tabReducer } from "src/view/browser/state/tabs/tab-store-reducer";
-import { findTabAcrossPanes } from "src/view/browser/state/tabs/tab-store-selectors";
+import {
+  findTabAcrossPanes,
+  getPaneWindowId,
+} from "src/view/browser/state/tabs/tab-store-selectors";
 import {
   loadTabStoreSession,
   saveTabStoreSession,
@@ -103,6 +106,7 @@ function createInitialState(initialPageFromLocation: Page | null): TabStoreState
   return {
     panes: [pane],
     activePaneId: pane.id,
+    windows: [{ id: MAIN_WINDOW_ID, kind: "main", activePaneId: pane.id }],
     closedTabs: [],
   };
 }
@@ -632,16 +636,19 @@ export function useAllPanes(): { panes: Pane[]; activePaneId: string } {
 // 別窓のペインを本窓のタブバーやレイアウトに混ぜない。
 export function useWindowPanes(): { panes: Pane[]; activePaneId: string } {
   const { panes, activePaneId } = useAllPanes();
+  const ctx = useContext(TabContext)!;
   const windowId = useWindowId();
   const windowPanes = useMemo(
-    () => panes.filter((pane) => (pane.windowId ?? MAIN_WINDOW_ID) === windowId),
+    () => panes.filter((pane) => getPaneWindowId(pane) === windowId),
     [panes, windowId],
   );
   return {
     panes: windowPanes,
-    activePaneId: windowPanes.some((pane) => pane.id === activePaneId)
-      ? activePaneId
-      : (windowPanes[0]?.id ?? activePaneId),
+    activePaneId:
+      ctx.state.windows.find((window) => window.id === windowId)?.activePaneId ??
+      (windowPanes.some((pane) => pane.id === activePaneId)
+        ? activePaneId
+        : (windowPanes[0]?.id ?? activePaneId)),
   };
 }
 

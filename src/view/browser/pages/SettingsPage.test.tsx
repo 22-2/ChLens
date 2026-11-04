@@ -171,6 +171,7 @@ describe("設定画面のタブ単位の表示状態", () => {
         },
       ],
       activePaneId: "pane",
+      windows: [{ id: "main", kind: "main" as const, activePaneId: "pane" }],
       closedTabs: [],
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(state));

@@ -41,6 +41,7 @@ function createState(): TabStoreState {
       },
     ],
     activePaneId: "pane-1",
+    windows: [{ id: "main", kind: "main" as const, activePaneId: "pane-1" }],
     closedTabs: [],
   };
 }

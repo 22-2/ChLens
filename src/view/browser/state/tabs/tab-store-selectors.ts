@@ -1,8 +1,17 @@
 import type { TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
-import type { Tab } from "src/view/browser/types";
+import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
+import type { Pane, Tab } from "src/view/browser/types";
 
 /** 横分割を現状2ペイン固定で扱うための上限。 */
 export const MAX_PANES = 2;
+
+export function getPaneWindowId(pane: Pane): string {
+  return pane.windowId ?? MAIN_WINDOW_ID;
+}
+
+export function getWindowPanes(state: TabStoreState, windowId: string): Pane[] {
+  return state.panes.filter((pane) => getPaneWindowId(pane) === windowId);
+}
 
 export interface TabLocation {
   readonly paneId: string;
@@ -56,11 +65,14 @@ export function canReopenClosedTab(state: TabStoreState): boolean {
 
 /** 対象ペインから右ペインへタブを移動できるかを判定する。 */
 export function canOpenInRightPane(state: TabStoreState, paneId: string): boolean {
-  const paneIndex = state.panes.findIndex((pane) => pane.id === paneId);
+  const pane = state.panes.find((candidate) => candidate.id === paneId);
+  if (!pane) return false;
+  const panes = getWindowPanes(state, getPaneWindowId(pane));
+  const paneIndex = panes.findIndex((candidate) => candidate.id === paneId);
   if (paneIndex === -1) {
     return false;
   }
 
   // 右隣が既にあればそこへ移動でき、なければペイン上限まで新設できる。
-  return state.panes[paneIndex + 1] !== undefined || state.panes.length < MAX_PANES;
+  return panes[paneIndex + 1] !== undefined || panes.length < MAX_PANES;
 }

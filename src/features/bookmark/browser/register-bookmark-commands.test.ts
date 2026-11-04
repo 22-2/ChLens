@@ -47,6 +47,7 @@ function createContext(page: Page): BrowserCommandContext {
     current: {
       panes: [{ id: "bookmark-pane", tabs: [tab], activeTabId: tab.id }],
       activePaneId: "bookmark-pane",
+      windows: [{ id: "main", kind: "main" as const, activePaneId: "bookmark-pane" }],
       closedTabs: [],
     },
   };

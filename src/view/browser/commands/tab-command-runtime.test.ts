@@ -33,6 +33,7 @@ function createRuntime(tab: Tab): TabCommandRuntime {
       },
     ],
     activePaneId: "pane-1",
+    windows: [{ id: "main", kind: "main" as const, activePaneId: "pane-1" }],
     closedTabs: [],
   };
   return { state, dispatch: vi.fn() };

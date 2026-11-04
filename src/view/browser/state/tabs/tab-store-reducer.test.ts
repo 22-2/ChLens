@@ -4,7 +4,7 @@ import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { createPane, createTabFromPage } from "src/view/browser/state/tabs/tab-store-new-tab";
 import { tabReducer } from "src/view/browser/state/tabs/tab-store-reducer";
 import type { TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
-import type { Page, Pane, Tab } from "src/view/browser/types";
+import { createHomeTab, type Page, type Pane, type Tab } from "src/view/browser/types";
 import { createBoardPage } from "src/view/browser/utils/tab-pages";
 import { beforeEach, describe, expect, it } from "vite-plus/test";
 
@@ -29,6 +29,7 @@ function createState(tabs: Tab[]): TabStoreState {
   return {
     panes: [{ ...pane, tabs, activeTabId: tabs[0]!.id }],
     activePaneId: pane.id,
+    windows: [{ id: "main", kind: "main" as const, activePaneId: pane.id }],
     closedTabs: [],
   };
 }
@@ -43,6 +44,57 @@ function activeTabOf(state: TabStoreState): Tab {
 }
 
 setupTestPageTypes();
+
+describe("窓ごとのペイン", () => {
+  function twoWindows(): TabStoreState {
+    const main = { ...createPane(createHomeTab("main-tab")), id: "main-pane" };
+    const aux = { ...createPane(createHomeTab("aux-tab")), id: "aux-pane", windowId: "aux" };
+    return {
+      panes: [main, aux],
+      activePaneId: main.id,
+      windows: [
+        { id: "main", kind: "main", activePaneId: main.id },
+        { id: "aux", kind: "aux", activePaneId: aux.id },
+      ],
+      closedTabs: [],
+    };
+  }
+
+  it("別窓のペインを上限に数えず、分割先を同じ窓に作る", () => {
+    const state = twoWindows();
+    const split = tabReducer(state, { type: "SPLIT_PANE", paneId: "main-pane" });
+    expect(split.panes).toHaveLength(3);
+    expect(split.panes[1].windowId).toBe("main");
+    expect(split.windows?.[0].activePaneId).toBe(split.panes[1].id);
+    expect(tabReducer(split, { type: "SPLIT_PANE", paneId: "main-pane" })).toBe(split);
+    const auxSplit = tabReducer(split, { type: "SPLIT_PANE", paneId: "aux-pane" });
+    expect(auxSplit.panes).toHaveLength(4);
+    expect(auxSplit.windows?.[0].activePaneId).toBe(split.panes[1].id);
+    expect(auxSplit.windows?.[1].activePaneId).toBe(auxSplit.activePaneId);
+  });
+
+  it("隣の別窓を右ペインと誤認せず、統合でも別窓を残す", () => {
+    const state = twoWindows();
+    const moved = tabReducer(state, {
+      type: "OPEN_IN_RIGHT_PANE",
+      paneId: "main-pane",
+      tabId: "main-tab",
+    });
+    expect(moved.panes).toHaveLength(3);
+    expect(moved.panes[1].tabs.map((tab) => tab.id)).toContain("main-tab");
+    expect(moved.panes[2].tabs.map((tab) => tab.id)).toEqual(["aux-tab"]);
+    const merged = tabReducer(moved, { type: "CLOSE_PANE", paneId: "main-pane" });
+    expect(merged.panes.map((pane) => pane.id)).toEqual(["main-pane", "aux-pane"]);
+    expect(merged.panes[1].tabs.map((tab) => tab.id)).toEqual(["aux-tab"]);
+  });
+
+  it("窓ごとの最後のペインは、他窓があってもタブを閉じる際に削除しない", () => {
+    const state = twoWindows();
+    const next = tabReducer(state, { type: "CLOSE_TAB", paneId: "main-pane", tabId: "main-tab" });
+    expect(next.panes.map((pane) => pane.id)).toEqual(["main-pane", "aux-pane"]);
+    expect(next.closedTabs.map((tab) => tab.id)).toEqual(["main-tab"]);
+  });
+});
 
 describe("タブの並べ替えとピン留め", () => {
   it("ピン留めしたタブは、ほかのタブより前に並ぶ", () => {

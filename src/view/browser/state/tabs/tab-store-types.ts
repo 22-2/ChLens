@@ -17,8 +17,7 @@ export interface BottomPanelLayoutState {
 }
 
 export interface TabStoreState {
-  // 既存の状態生成箇所は窓モデル導入の間、本窓だけとして扱う。
-  windows?: WorkspaceWindow[];
+  windows: WorkspaceWindow[];
   bottomPanels?: Record<string, BottomPanelLayoutState>;
   sidePanel?: SidePanelState;
   // 横並びのペイン群。配列順がそのまま画面上の左→右の並び。

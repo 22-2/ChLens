@@ -175,6 +175,7 @@ describe("通常タブのホームと閲覧履歴", () => {
     await mount({
       panes: [{ id: "pane", tabs: [oldHome, oldBlank], activeTabId: oldBlank.id }],
       activePaneId: "pane",
+      windows: [{ id: "main", kind: "main" as const, activePaneId: "pane" }],
       closedTabs: [],
     });
     expect(stateRef.current.panes[0].tabs.map((tab) => tab.id)).toEqual([oldHome.id, oldBlank.id]);
@@ -198,6 +199,7 @@ describe("通常タブのホームと閲覧履歴", () => {
         { id: "right", tabs: [tab], activeTabId: tab.id },
       ],
       activePaneId: "left",
+      windows: [{ id: "main", kind: "main" as const, activePaneId: "left" }],
       closedTabs: [],
     });
     act(() => dispatch({ type: "GO_BACK", paneId: "right", tabId: tab.id }));
@@ -221,6 +223,7 @@ describe("通常タブのホームと閲覧履歴", () => {
     await mount({
       panes: [{ id: "pane", tabs: [threadTab], activeTabId: threadTab.id }],
       activePaneId: "pane",
+      windows: [{ id: "main", kind: "main" as const, activePaneId: "pane" }],
       closedTabs: [],
     });
 

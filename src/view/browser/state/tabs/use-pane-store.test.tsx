@@ -121,6 +121,10 @@ describe("ペイン（横分割）", () => {
                   },
                 ],
                 activePaneId: "aux-pane",
+                windows: [
+                  { id: "main", kind: "main", activePaneId: "main-pane" },
+                  { id: "aux", kind: "aux", activePaneId: "aux-pane" },
+                ],
                 closedTabs: [],
               },
             })
