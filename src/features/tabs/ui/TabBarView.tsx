@@ -700,7 +700,8 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
             {/* 変更理由: 水平モードでは従来どおり溢れたときだけ外へ固定する。
                 垂直モードでは最終タブの直後に置き、一覧と一緒にスクロールさせる。 */}
             {!isVertical && !isTabListScrollable ? addTabButton : null}
-            {isVertical ? addTabButton : null}
+            {/* 共通の縦レーンでは、フォーカス中のペインにだけ追加ボタンを置く。 */}
+            {isVertical && (!sectionLabel || isPaneFocused) ? addTabButton : null}
           </div>
         </div>
       </DragDropProvider>

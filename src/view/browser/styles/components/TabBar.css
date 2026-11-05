@@ -419,6 +419,7 @@
 
 .tab-bar--vertical.tab-bar--multiple-panes .tab-bar__add {
   grid-column: 1 / -1;
+  order: 1;
 }
 
 .tab-bar__pane-label {
