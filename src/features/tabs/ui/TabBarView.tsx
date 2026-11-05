@@ -38,8 +38,6 @@ interface SortableTabProps {
   canClose: boolean;
   isVertical: boolean;
   compact: boolean;
-  /** 共通タブバーで、各ペインが今表示しているタブに付ける「左」「右」などの印。 */
-  paneBadge?: string;
   /** 表示中だがフォーカスのないペインのタブかどうか。 */
   isPaneUnfocused?: boolean;
   wasDraggingRef: React.MutableRefObject<boolean>;
@@ -61,7 +59,6 @@ const SortableTab: React.FC<SortableTabProps> = ({
   canClose,
   isVertical,
   compact,
-  paneBadge,
   isPaneUnfocused = false,
   wasDraggingRef,
   onSelect,
@@ -166,13 +163,6 @@ const SortableTab: React.FC<SortableTabProps> = ({
         {isArchiveReplayThread && (!compact || tab.pinned) ? (
           <span className="tab__archive-replay-indicator" title="過去実況の再生対象">
             <Play size={13} fill="currentColor" aria-hidden="true" />
-          </span>
-        ) : null}
-        {/* 変更理由: 共通タブバーでは2つのペインが同時に表示中のタブを持つため、
-            どのタブが同じ画面に並んでいるか（左右の組）をタブ上の印で示す。 */}
-        {paneBadge ? (
-          <span className="tab__pane-badge" title={`${paneBadge}ペインに表示中`}>
-            {paneBadge}
           </span>
         ) : null}
         {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、
@@ -687,7 +677,6 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
                   canClose={canCloseTab}
                   isVertical={isVertical}
                   compact={isVertical && collapsed}
-                  paneBadge={isActive && sectionLabel ? sectionLabel : undefined}
                   isPaneUnfocused={isActive && Boolean(sectionLabel) && !isPaneFocused}
                   wasDraggingRef={wasDraggingRef}
                   onSelect={onSelectTab}
