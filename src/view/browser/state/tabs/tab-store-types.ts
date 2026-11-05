@@ -146,6 +146,7 @@ export type TabAction =
       tabId: string;
       to:
         | { newWindowId: string; newPaneId: string }
+        | { windowId: string; splitPaneId: string; newPaneId: string; side: "left" | "right" }
         | { windowId: string; paneId: string; index: number };
     }
   | { type: typeof TAB_ACTION_TYPES.CLOSE_WORKSPACE_WINDOW; windowId: string }
