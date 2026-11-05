@@ -1,4 +1,4 @@
-import { DragDropProvider, type DragEndEvent, KeyboardSensor } from "@dnd-kit/react";
+import { DragDropProvider, type DragEndEvent, DragOverlay, KeyboardSensor } from "@dnd-kit/react";
 import { PanelLeftClose, PanelLeftOpen, Pin, Play, Plus, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -651,6 +651,14 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
+        {/* 分割時は元タブの幅が変わるため、ドロップ後に旧位置へ戻るアニメーションを行わない。 */}
+        {isVertical ? (
+          <div hidden>
+            <DragOverlay disabled dropAnimation={null}>
+              {null}
+            </DragOverlay>
+          </div>
+        ) : null}
         <div
           className={`tab-list-container${
             tabListScrollState.canScrollLeft ? " tab-list-container--can-scroll-left" : ""
