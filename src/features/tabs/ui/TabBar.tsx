@@ -39,7 +39,7 @@ export const TabBar: React.FC<{
   const { setCollapsed, setWidth } = model;
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] = useState<BarContextMenuState | null>(null);
-  const { dropTabAtScreenPoint } = useDetachedTabController();
+  const { dropTabAtScreenPoint, previewTabDrop, clearTabDropPreview } = useDetachedTabController();
   const { window: viewWindow } = useViewSurface();
   const toast = useToast();
 
@@ -112,6 +112,8 @@ export const TabBar: React.FC<{
       onAddTab={model.onAddTab}
       onMoveTab={model.onMoveTab}
       onDragTabOut={handleDragTabOut}
+      onDragTabPreview={(tabId, x, y) => previewTabDrop(tabId, x, y, viewWindow)}
+      onDragTabPreviewEnd={clearTabDropPreview}
       onStepTab={model.onStepTab}
       onSetCollapsed={setCollapsed}
       onCommitWidth={handleCommitWidth}

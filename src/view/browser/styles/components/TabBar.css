@@ -521,3 +521,20 @@
   border-color: var(--sys-color-border);
   color: var(--sys-color-text-muted);
 }
+
+/* 操作先を示しつつ、元の画面やポインタの判定を妨げない。 */
+.workspace-tab-drop-preview {
+  position: fixed;
+  z-index: var(--sys-z-tooltip);
+  pointer-events: none;
+  background: color-mix(in srgb, var(--sys-color-accent) 28%, transparent);
+  outline: var(--sys-border-width-strong) solid var(--sys-color-accent);
+}
+
+.workspace-tab-drop-preview--vertical {
+  width: var(--sys-border-width-strong);
+}
+
+.workspace-tab-drop-preview--horizontal {
+  height: var(--sys-border-width-strong);
+}

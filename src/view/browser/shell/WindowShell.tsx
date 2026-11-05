@@ -158,6 +158,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   return (
     <section
       className="pane-column"
+      data-workspace-pane-id={paneId}
       data-active={isActive ? "true" : "false"}
       data-tab-orientation={tabBarOrientation}
       // ペイン内のどこかを操作したらそのペインをフォーカスする。

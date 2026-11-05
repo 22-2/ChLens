@@ -18,6 +18,8 @@ export interface DetachedTabController {
   /** 別窓とタブを一緒に閉じる。 */
   closeDetachedTab: (tabId: string) => void;
   focusTabWindow: (tabId: string) => void;
+  previewTabDrop: (tabId: string, screenX: number, screenY: number, originWindow: Window) => void;
+  clearTabDropPreview: () => void;
   /**
    * ドラッグしたタブを画面上の位置 (screenX, screenY) で離したときの移動先を決めて移す。
    * 元の窓の中で離した場合は何もせず、タブバー内の並べ替えに任せる。
@@ -35,6 +37,8 @@ export const defaultDetachedTabController: DetachedTabController = {
   reattachTab: () => {},
   closeDetachedTab: () => {},
   focusTabWindow: () => {},
+  previewTabDrop: () => {},
+  clearTabDropPreview: () => {},
   dropTabAtScreenPoint: () => "ignored",
 };
 

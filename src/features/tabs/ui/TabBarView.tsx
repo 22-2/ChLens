@@ -223,6 +223,8 @@ export interface TabBarViewProps {
    * 窓をまたぐ移動として処理できたら true を返し、タブバー内の並べ替えは行わない。
    */
   onDragTabOut?: (tabId: string, screenX: number, screenY: number) => boolean;
+  onDragTabPreview?: (tabId: string, screenX: number, screenY: number) => void;
+  onDragTabPreviewEnd?: () => void;
   /** 選択中タブから delta 個ぶん前後へ切り替える。切り替えられなければ false を返す。 */
   onStepTab: (delta: 1 | -1) => boolean;
   onSetCollapsed: (collapsed: boolean) => void;
@@ -260,6 +262,8 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   onAddTab,
   onMoveTab,
   onDragTabOut,
+  onDragTabPreview,
+  onDragTabPreviewEnd,
   onStepTab,
   onSetCollapsed,
   onCommitWidth,
@@ -505,6 +509,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
     (event: DragEndEvent) => {
       const lastPoint = lastDragScreenPointRef.current;
       stopTrackingDragPointer();
+      onDragTabPreviewEnd?.();
       const sourceId = event.operation.source?.id;
       // 窓の外で離した場合だけ、窓をまたぐ移動を試す。
       if (!event.canceled && lastPoint && sourceId != null && onDragTabOut) {
@@ -520,22 +525,35 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
       wasDraggingRef.current = true;
     },
-    [onDragTabOut, onMoveTab, stopTrackingDragPointer],
+    [onDragTabOut, onDragTabPreviewEnd, onMoveTab, stopTrackingDragPointer],
   );
 
   // 変更理由: ドラッグ中のポインタが窓の外へ出ても、ボタンを押している間は元の窓の
   // documentへイベントが届く。その画面座標を覚えておき、離した位置の判定に使う。
-  const handleDragStart = useCallback(() => {
-    lastDragScreenPointRef.current = null;
-    const ownerDocument = tabListRef.current?.ownerDocument;
-    if (!ownerDocument) return;
-    const track = (event: PointerEvent) => {
-      lastDragScreenPointRef.current = { x: event.screenX, y: event.screenY };
-    };
-    ownerDocument.addEventListener("pointermove", track, { capture: true });
-    stopDragTrackingRef.current = () =>
-      ownerDocument.removeEventListener("pointermove", track, { capture: true });
-  }, []);
+  const handleDragStart = useCallback(
+    (event: { operation: { source: { id: string | number } | null } }) => {
+      lastDragScreenPointRef.current = null;
+      const ownerDocument = tabListRef.current?.ownerDocument;
+      if (!ownerDocument) return;
+      const tabId = event.operation.source?.id;
+      const track = (event: PointerEvent) => {
+        lastDragScreenPointRef.current = { x: event.screenX, y: event.screenY };
+        if (tabId != null) onDragTabPreview?.(String(tabId), event.screenX, event.screenY);
+      };
+      ownerDocument.addEventListener("pointermove", track, { capture: true });
+      stopDragTrackingRef.current = () =>
+        ownerDocument.removeEventListener("pointermove", track, { capture: true });
+    },
+    [onDragTabPreview],
+  );
+
+  useEffect(
+    () => () => {
+      stopTrackingDragPointer();
+      onDragTabPreviewEnd?.();
+    },
+    [stopTrackingDragPointer, onDragTabPreviewEnd],
+  );
 
   const handleResizePointerDown = useCallback(
     (e: React.PointerEvent) => {

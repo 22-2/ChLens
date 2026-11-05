@@ -99,6 +99,7 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [entries, setEntries] = useState<Map<string, WindowEntry>>(() => new Map());
   const entriesRef = useRef(entries);
   const parentClosing = useRef(false);
+  const previewRef = useRef<HTMLElement | null>(null);
   const closeRef = useRef<(id: string) => void>(() => {});
   // 変更理由: 監視の効果は窓の寿命と同じにするため、変わりうる値は参照から読む。
   const dispatchRef = useRef(dispatch);
@@ -197,6 +198,74 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
     },
     [closeWindow, stateRef],
   );
+  const clearTabDropPreview = useCallback(() => {
+    previewRef.current?.remove();
+    previewRef.current = null;
+  }, []);
+  const previewTabDrop = useCallback(
+    (tabId: string, screenX: number, screenY: number, originWindow: Window) => {
+      clearTabDropPreview();
+      if (isPointInRect(getWindowScreenRect(originWindow), screenX, screenY)) return;
+      const state = stateRef.current;
+      const source = locate(state.panes, tabId);
+      if (!source) return;
+      // ドロップ処理と同じ窓の順序で判定し、表示先と実際の移動先を揃える。
+      const candidates = [
+        ...[...entriesRef.current.values()]
+          .filter((entry) => !entry.window.closed)
+          .reverse()
+          .map((entry) => ({ id: entry.id, window: entry.window })),
+        { id: MAIN_WINDOW_ID, window },
+      ];
+      const target = candidates.find(
+        (candidate) =>
+          candidate.window !== originWindow &&
+          isPointInRect(getWindowScreenRect(candidate.window), screenX, screenY),
+      );
+      if (!target) return;
+      const client = screenToClientPoint(target.window, screenX, screenY);
+      const hovered = target.window.document
+        .elementFromPoint(client.x, client.y)
+        ?.closest<HTMLElement>("[data-tab-id]");
+      const hoveredTarget = hovered?.dataset.tabId
+        ? locate(state.panes, hovered.dataset.tabId)
+        : undefined;
+      const activePaneId = state.windows.find((item) => item.id === target.id)?.activePaneId;
+      const pane = hoveredTarget?.pane ?? state.panes.find((item) => item.id === activePaneId);
+      if (!pane || pane.id === source.pane.id) return;
+      const paneElement = [
+        ...target.window.document.querySelectorAll<HTMLElement>("[data-workspace-pane-id]"),
+      ].find((element) => element.dataset.workspacePaneId === pane.id);
+      const element = hoveredTarget && hovered ? hovered : paneElement;
+      if (!element) return;
+      const rect = element.getBoundingClientRect();
+      const preview = target.window.document.createElement("div");
+      preview.className = "workspace-tab-drop-preview";
+      if (hoveredTarget && hovered) {
+        const vertical = Boolean(hovered.closest(".tab-bar--vertical"));
+        const before = isBeforeTabCenter(rect, client, vertical);
+        preview.classList.add(
+          vertical
+            ? "workspace-tab-drop-preview--horizontal"
+            : "workspace-tab-drop-preview--vertical",
+        );
+        preview.style.left = `${vertical ? rect.left : before ? rect.left : rect.right}px`;
+        preview.style.top = `${vertical ? (before ? rect.top : rect.bottom) : rect.top}px`;
+        if (vertical) preview.style.width = `${rect.width}px`;
+        else preview.style.height = `${rect.height}px`;
+      } else {
+        preview.style.left = `${rect.left}px`;
+        preview.style.top = `${rect.top}px`;
+        preview.style.width = `${rect.width}px`;
+        preview.style.height = `${rect.height}px`;
+      }
+      // テーマの変数を引き継げるよう、対象ペインと同じテーマの内側へ置く。
+      (element.closest("[data-theme]") ?? target.window.document.body).appendChild(preview);
+      previewRef.current = preview;
+    },
+    [clearTabDropPreview, stateRef],
+  );
+  useEffect(() => clearTabDropPreview, [clearTabDropPreview]);
   const dropTabAtScreenPoint = useCallback(
     (tabId: string, screenX: number, screenY: number, originWindow: Window): TabDropResult => {
       // 元の窓の中で離した場合は、タブバー内の並べ替えが扱う。
@@ -258,8 +327,24 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
     [dispatch, openWindowForTab, stateRef],
   );
   const context = useMemo<DetachedTabController>(
-    () => ({ detachTab, reattachTab, focusTabWindow, closeDetachedTab, dropTabAtScreenPoint }),
-    [detachTab, reattachTab, focusTabWindow, closeDetachedTab, dropTabAtScreenPoint],
+    () => ({
+      detachTab,
+      reattachTab,
+      focusTabWindow,
+      closeDetachedTab,
+      dropTabAtScreenPoint,
+      previewTabDrop,
+      clearTabDropPreview,
+    }),
+    [
+      detachTab,
+      reattachTab,
+      focusTabWindow,
+      closeDetachedTab,
+      dropTabAtScreenPoint,
+      previewTabDrop,
+      clearTabDropPreview,
+    ],
   );
   useEffect(() => {
     // 変更理由: セッションから読み込んだ別窓を、起動時に同じ構成で開き直す。
