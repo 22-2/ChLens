@@ -146,3 +146,49 @@ test("タブを窓の外までドラッグすると新しい窓へ移る", async
   await expect(popup.locator('[data-res-num="2"]')).toBeVisible();
   await expect(page.getByRole("tab")).toHaveCount(1);
 });
+
+test("同じ窓のペイン端へタブをドラッグして分割する", async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByRole("button", { name: "新しいタブ", exact: true }).click();
+  const tab = page.getByRole("tab").first();
+  const tabBox = (await tab.boundingBox())!;
+  const paneBox = (await page.locator("[data-workspace-pane-id]").first().boundingBox())!;
+  await page.mouse.move(tabBox.x + tabBox.width / 2, tabBox.y + tabBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(tabBox.x + tabBox.width / 2 + 20, tabBox.y + tabBox.height / 2 + 20, {
+    steps: 5,
+  });
+  await page.mouse.move(paneBox.x + paneBox.width * 0.9, paneBox.y + paneBox.height / 2, {
+    steps: 10,
+  });
+  await expect(page.locator(".workspace-tab-drop-preview")).toBeVisible();
+  await page.mouse.up();
+  await expect(page.locator("[data-workspace-pane-id]")).toHaveCount(2);
+  await expect(page.locator(".workspace-tab-drop-preview")).toHaveCount(0);
+});
+
+test("別窓内でタブをドラッグして分割した後も操作できる", async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByRole("tab").first().click({ button: "right" });
+  const [popup] = await Promise.all([
+    page.context().waitForEvent("page"),
+    page.getByRole("button", { name: "別窓で開く", exact: true }).click(),
+  ]);
+  await popup.getByRole("button", { name: "新しいタブ", exact: true }).click();
+  const tab = popup.getByRole("tab").first();
+  const tabBox = (await tab.boundingBox())!;
+  const paneBox = (await popup.locator("[data-workspace-pane-id]").first().boundingBox())!;
+  await popup.mouse.move(tabBox.x + tabBox.width / 2, tabBox.y + tabBox.height / 2);
+  await popup.mouse.down();
+  await popup.mouse.move(tabBox.x + tabBox.width / 2 + 20, tabBox.y + tabBox.height / 2 + 20, {
+    steps: 5,
+  });
+  await popup.mouse.move(paneBox.x + paneBox.width * 0.9, paneBox.y + paneBox.height / 2, {
+    steps: 10,
+  });
+  await expect(popup.locator(".workspace-tab-drop-preview")).toBeVisible();
+  await popup.mouse.up();
+  await expect(popup.locator("[data-workspace-pane-id]")).toHaveCount(2);
+  await popup.getByRole("tab").last().click();
+  await expect(popup.getByRole("tab").last()).toHaveAttribute("aria-selected", "true");
+});

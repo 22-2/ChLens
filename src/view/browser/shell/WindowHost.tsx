@@ -37,6 +37,8 @@ import { useZenMode } from "src/view/browser/commands/zen-mode-store";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { ViewSurfaceProvider } from "src/view/browser/hooks/use-view-surface";
 import { WindowShell } from "src/view/browser/shell/WindowShell";
+import { getWindowPanes, MAX_PANES } from "src/view/browser/state/tabs/tab-store-selectors";
+import type { TabStoreState } from "src/view/browser/state/tabs/tab-store-types";
 import {
   useAllPanes,
   useTabDispatch,
@@ -70,6 +72,103 @@ function locate(panes: readonly Pane[], tabId: string): { pane: Pane; tab: Tab }
     if (tab) return { pane, tab };
   }
   return undefined;
+}
+
+type ExistingDrop = {
+  window: Window;
+  windowId: string;
+  pane: Pane;
+  element: HTMLElement;
+  kind: "split-left" | "split-right" | "insert" | "append";
+  index: number;
+};
+
+/** プレビューと確定で同じドロップ先を使う。 */
+function resolveExistingDrop(
+  state: TabStoreState,
+  candidates: { id: string; window: Window }[],
+  origin: Window,
+  tabId: string,
+  screenX: number,
+  screenY: number,
+): ExistingDrop | null {
+  const source = locate(state.panes, tabId);
+  if (!source) return null;
+  const inOrigin = isPointInRect(getWindowScreenRect(origin), screenX, screenY);
+  const target = candidates.find(
+    (candidate) =>
+      (inOrigin ? candidate.window === origin : candidate.window !== origin) &&
+      isPointInRect(getWindowScreenRect(candidate.window), screenX, screenY),
+  );
+  if (!target) return null;
+  const point = screenToClientPoint(target.window, screenX, screenY);
+  const hit = target.window.document.elementFromPoint(point.x, point.y);
+  const tabElement = hit?.closest<HTMLElement>("[data-tab-id]");
+  const hovered = tabElement?.dataset.tabId
+    ? locate(state.panes, tabElement.dataset.tabId)
+    : undefined;
+  if (tabElement && hovered && (hovered.pane.windowId ?? MAIN_WINDOW_ID) === target.id) {
+    if (hovered.pane.id === source.pane.id) return null;
+    const before = isBeforeTabCenter(
+      tabElement.getBoundingClientRect(),
+      point,
+      Boolean(tabElement.closest(".tab-bar--vertical")),
+    );
+    return {
+      window: target.window,
+      windowId: target.id,
+      pane: hovered.pane,
+      element: tabElement,
+      kind: "insert",
+      index: hovered.pane.tabs.indexOf(hovered.tab) + (before ? 0 : 1),
+    };
+  }
+  let paneElement = hit?.closest<HTMLElement>("[data-workspace-pane-id]") ?? null;
+  let pane = state.panes.find(
+    (item) =>
+      item.id === paneElement?.dataset.workspacePaneId &&
+      (item.windowId ?? MAIN_WINDOW_ID) === target.id,
+  );
+  // 別窓の枠や共通バーに落とした場合は、従来どおり選択中ペインへ追加する。
+  if ((!pane || !paneElement) && target.window !== origin) {
+    const activePaneId = state.windows.find((item) => item.id === target.id)?.activePaneId;
+    pane = state.panes.find((item) => item.id === activePaneId);
+    if (!pane || pane.id === source.pane.id) return null;
+    paneElement =
+      [...target.window.document.querySelectorAll<HTMLElement>("[data-workspace-pane-id]")].find(
+        (element) => element.dataset.workspacePaneId === pane?.id,
+      ) ?? target.window.document.body;
+    return {
+      window: target.window,
+      windowId: target.id,
+      pane,
+      element: paneElement,
+      kind: "append",
+      index: pane.tabs.length,
+    };
+  }
+  if (!pane || !paneElement) return null;
+  const rect = paneElement.getBoundingClientRect();
+  const fraction = (point.x - rect.left) / rect.width;
+  if (getWindowPanes(state, target.id).length < MAX_PANES && (fraction < 0.2 || fraction > 0.8)) {
+    return {
+      window: target.window,
+      windowId: target.id,
+      pane,
+      element: paneElement,
+      kind: fraction < 0.2 ? "split-left" : "split-right",
+      index: 0,
+    };
+  }
+  if (pane.id === source.pane.id) return null;
+  return {
+    window: target.window,
+    windowId: target.id,
+    pane,
+    element: paneElement,
+    kind: "append",
+    index: pane.tabs.length,
+  };
 }
 function optionsFor(
   tab: Tab,
@@ -202,14 +301,8 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
     previewRef.current?.remove();
     previewRef.current = null;
   }, []);
-  const previewTabDrop = useCallback(
+  const resolveDrop = useCallback(
     (tabId: string, screenX: number, screenY: number, originWindow: Window) => {
-      clearTabDropPreview();
-      if (isPointInRect(getWindowScreenRect(originWindow), screenX, screenY)) return;
-      const state = stateRef.current;
-      const source = locate(state.panes, tabId);
-      if (!source) return;
-      // ドロップ処理と同じ窓の順序で判定し、表示先と実際の移動先を揃える。
       const candidates = [
         ...[...entriesRef.current.values()]
           .filter((entry) => !entry.window.closed)
@@ -217,33 +310,29 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
           .map((entry) => ({ id: entry.id, window: entry.window })),
         { id: MAIN_WINDOW_ID, window },
       ];
-      const target = candidates.find(
-        (candidate) =>
-          candidate.window !== originWindow &&
-          isPointInRect(getWindowScreenRect(candidate.window), screenX, screenY),
+      return resolveExistingDrop(
+        stateRef.current,
+        candidates,
+        originWindow,
+        tabId,
+        screenX,
+        screenY,
       );
+    },
+    [stateRef],
+  );
+  const previewTabDrop = useCallback(
+    (tabId: string, screenX: number, screenY: number, originWindow: Window) => {
+      clearTabDropPreview();
+      const target = resolveDrop(tabId, screenX, screenY, originWindow);
       if (!target) return;
-      const client = screenToClientPoint(target.window, screenX, screenY);
-      const hovered = target.window.document
-        .elementFromPoint(client.x, client.y)
-        ?.closest<HTMLElement>("[data-tab-id]");
-      const hoveredTarget = hovered?.dataset.tabId
-        ? locate(state.panes, hovered.dataset.tabId)
-        : undefined;
-      const activePaneId = state.windows.find((item) => item.id === target.id)?.activePaneId;
-      const pane = hoveredTarget?.pane ?? state.panes.find((item) => item.id === activePaneId);
-      if (!pane || pane.id === source.pane.id) return;
-      const paneElement = [
-        ...target.window.document.querySelectorAll<HTMLElement>("[data-workspace-pane-id]"),
-      ].find((element) => element.dataset.workspacePaneId === pane.id);
-      const element = hoveredTarget && hovered ? hovered : paneElement;
-      if (!element) return;
-      const rect = element.getBoundingClientRect();
+      const rect = target.element.getBoundingClientRect();
       const preview = target.window.document.createElement("div");
       preview.className = "workspace-tab-drop-preview";
-      if (hoveredTarget && hovered) {
-        const vertical = Boolean(hovered.closest(".tab-bar--vertical"));
-        const before = isBeforeTabCenter(rect, client, vertical);
+      if (target.kind === "insert") {
+        const point = screenToClientPoint(target.window, screenX, screenY);
+        const vertical = Boolean(target.element.closest(".tab-bar--vertical"));
+        const before = isBeforeTabCenter(rect, point, vertical);
         preview.classList.add(
           vertical
             ? "workspace-tab-drop-preview--horizontal"
@@ -254,68 +343,47 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
         if (vertical) preview.style.width = `${rect.width}px`;
         else preview.style.height = `${rect.height}px`;
       } else {
-        preview.style.left = `${rect.left}px`;
+        const split = target.kind === "split-left" || target.kind === "split-right";
+        preview.style.left = `${rect.left + (target.kind === "split-right" ? rect.width / 2 : 0)}px`;
         preview.style.top = `${rect.top}px`;
-        preview.style.width = `${rect.width}px`;
+        preview.style.width = `${split ? rect.width / 2 : rect.width}px`;
         preview.style.height = `${rect.height}px`;
       }
-      // テーマの変数を引き継げるよう、対象ペインと同じテーマの内側へ置く。
-      (element.closest("[data-theme]") ?? target.window.document.body).appendChild(preview);
+      (target.element.closest("[data-theme]") ?? target.window.document.body).appendChild(preview);
       previewRef.current = preview;
     },
-    [clearTabDropPreview, stateRef],
+    [clearTabDropPreview, resolveDrop],
   );
   useEffect(() => clearTabDropPreview, [clearTabDropPreview]);
   const dropTabAtScreenPoint = useCallback(
     (tabId: string, screenX: number, screenY: number, originWindow: Window): TabDropResult => {
-      // 元の窓の中で離した場合は、タブバー内の並べ替えが扱う。
-      if (isPointInRect(getWindowScreenRect(originWindow), screenX, screenY)) return "ignored";
       const state = stateRef.current;
       const found = locate(state.panes, tabId);
       if (!found) return "ignored";
-      // 変更理由: 窓の重なり順はブラウザから取れないため、後から開いた別窓を手前とみなし、
-      // 最後に本窓を調べる。重なっている場合の取り違えは、メニューの移動で直せる。
-      const candidates = [
-        ...[...entriesRef.current.values()]
-          .filter((entry) => !entry.window.closed)
-          .reverse()
-          .map((entry) => ({ id: entry.id, window: entry.window })),
-        { id: MAIN_WINDOW_ID, window },
-      ];
-      const target = candidates.find(
-        (candidate) =>
-          candidate.window !== originWindow &&
-          isPointInRect(getWindowScreenRect(candidate.window), screenX, screenY),
-      );
+      const target = resolveDrop(tabId, screenX, screenY, originWindow);
       if (target) {
-        const client = screenToClientPoint(target.window, screenX, screenY);
-        const hovered = target.window.document
-          .elementFromPoint(client.x, client.y)
-          ?.closest<HTMLElement>("[data-tab-id]");
-        const hoveredTarget = hovered?.dataset.tabId
-          ? locate(state.panes, hovered.dataset.tabId)
-          : undefined;
-        const activePaneId = state.windows.find((item) => item.id === target.id)?.activePaneId;
-        const pane =
-          hoveredTarget?.pane ?? state.panes.find((candidate) => candidate.id === activePaneId);
-        if (!pane || pane.id === found.pane.id) return "ignored";
-        let index = pane.tabs.length;
-        if (hovered && hoveredTarget) {
-          const hoveredIndex = pane.tabs.findIndex((item) => item.id === hoveredTarget.tab.id);
-          const isVertical = Boolean(hovered.closest(".tab-bar--vertical"));
-          index = isBeforeTabCenter(hovered.getBoundingClientRect(), client, isVertical)
-            ? hoveredIndex
-            : hoveredIndex + 1;
-        }
-        dispatch({
-          type: "TRANSFER_TAB",
-          tabId,
-          to: { windowId: target.id, paneId: pane.id, index },
-        });
+        const to =
+          target.kind === "split-left" || target.kind === "split-right"
+            ? {
+                windowId: target.windowId,
+                splitPaneId: target.pane.id,
+                newPaneId: crypto.randomUUID(),
+                side: target.kind === "split-left" ? ("left" as const) : ("right" as const),
+              }
+            : { windowId: target.windowId, paneId: target.pane.id, index: target.index };
+        dispatch({ type: "TRANSFER_TAB", tabId, to });
         target.window.focus();
         return "moved";
       }
-      // 別窓に1つだけ残ったタブを空いた場所へ移しても、窓が入れ替わるだけになる。
+      // 既存の窓の内部では並べ替えを優先し、新しい窓を開かない。
+      const windows = [window, ...[...entriesRef.current.values()].map((entry) => entry.window)];
+      if (
+        windows.some(
+          (candidate) =>
+            !candidate.closed && isPointInRect(getWindowScreenRect(candidate), screenX, screenY),
+        )
+      )
+        return "ignored";
       const sourceWindowId = found.pane.windowId ?? MAIN_WINDOW_ID;
       const sourceTabCount = state.panes
         .filter((pane) => (pane.windowId ?? MAIN_WINDOW_ID) === sourceWindowId)
@@ -324,7 +392,7 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
       const opened = openWindowForTab(tabId, getNewWindowOrigin(screenX, screenY), false);
       return opened ? "opened" : "failed";
     },
-    [dispatch, openWindowForTab, stateRef],
+    [dispatch, openWindowForTab, resolveDrop, stateRef],
   );
   const context = useMemo<DetachedTabController>(
     () => ({

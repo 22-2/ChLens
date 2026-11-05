@@ -51,6 +51,35 @@ describe("タブの移動先", () => {
 });
 
 describe("移動してもタブの状態が失われない", () => {
+  it.each(["left", "right"] as const)("同じペインのタブを%s側へ分割して移す", (side) => {
+    const moving = tab("moving", { autoRefreshEnabled: true });
+    const state: TabStoreState = {
+      ...createState(),
+      panes: [{ id: "main-1", tabs: [moving, tab("stay")], activeTabId: "moving" }],
+      windows: [{ id: "main", kind: "main", activePaneId: "main-1" }],
+    };
+    const next = tabReducer(state, {
+      type: "TRANSFER_TAB",
+      tabId: "moving",
+      to: { windowId: "main", splitPaneId: "main-1", newPaneId: "new", side },
+    });
+    expect(next.panes.map((pane) => pane.id)).toEqual(
+      side === "left" ? ["new", "main-1"] : ["main-1", "new"],
+    );
+    expect(next.panes.find((pane) => pane.id === "new")?.tabs[0]).toBe(moving);
+    expect(next.activePaneId).toBe("new");
+  });
+
+  it("分割数の上限に達している場合はタブを動かさない", () => {
+    const state = createState();
+    expect(
+      tabReducer(state, {
+        type: "TRANSFER_TAB",
+        tabId: "a",
+        to: { windowId: "main", splitPaneId: "main-1", newPaneId: "new", side: "right" },
+      }),
+    ).toBe(state);
+  });
   it("ペイン、別窓、別のペインへ移しても同じタブ実体のまま保たれる", () => {
     const original = tab("moving", {
       autoRefreshEnabled: true,
