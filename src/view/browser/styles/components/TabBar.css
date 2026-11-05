@@ -382,6 +382,28 @@
   border-top: 1px solid var(--sys-color-border);
 }
 
+/* 縦タブバーの位置を保ったまま、各ペインのタブ一覧を横に並べる。 */
+.tab-bar--vertical.tab-bar--multiple-panes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.tab-bar--multiple-panes .tab-bar__vertical-header {
+  grid-column: 1 / -1;
+}
+
+.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__pane-section {
+  min-width: 0;
+}
+
+.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__pane-section + .tab-bar__pane-section {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+  border-left: var(--sys-border-width-thin) solid var(--sys-color-border);
+}
+
 .tab-bar__pane-label {
   flex-shrink: 0;
   padding: var(--sys-space-1) var(--sys-space-2);

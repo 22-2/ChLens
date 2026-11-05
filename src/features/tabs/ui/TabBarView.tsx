@@ -723,7 +723,9 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       ref={barRef}
       className={`tab-bar${isVertical ? " tab-bar--vertical" : ""}${
         isVertical && collapsed ? " tab-bar--collapsed" : ""
-      }${isVertical && dragWidth != null ? " tab-bar--resizing" : ""}`}
+      }${isVertical && dragWidth != null ? " tab-bar--resizing" : ""}${
+        isVertical && sectionLabel ? " tab-bar--multiple-panes" : ""
+      }`}
       // 変更理由: 簡易表示では幅をCSSの固定値に任せ、展開表示とドラッグ中だけ操作幅を使う。
       // ドラッグ中のタブがバー幅以上に広がらないよう、実幅をCSS変数でも共有する。
       style={
