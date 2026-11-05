@@ -111,6 +111,8 @@ export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) 
       setError(null);
       try {
         const records = await container.history.getAll();
+        // 変更理由: 更新通知が連続したとき、古い読み込みの全履歴を集計しても結果は使われない。
+        if (cancelled || revision !== requestRevision) return;
         // 旧スレ履歴も残しつつ、板だけを開いた日時と解決済みの表示名を板単位で統合する。
         const grouped = new Map<string, RecentBoard>();
         const addBoard = (rawUrl: string, boardTitle: string, date: number) => {
@@ -207,14 +209,13 @@ export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) 
     container.message.on("history_updated", handleHistoryUpdated);
     // 他の画面で取得・保存された板名だけを取り込み、ホームからの追加取得は行わない。
     container.message.on("bbs_menu_updated", handleHistoryUpdated);
-    container.message.on("bookmark_updated", handleHistoryUpdated);
+    // お気に入り板は専用の区画で更新する。ブックマーク走査の各通知で履歴全件を再集計しない。
     void loadBoards();
     return () => {
       cancelled = true;
       container.message.off("config_updated", handleConfigUpdated);
       container.message.off("history_updated", handleHistoryUpdated);
       container.message.off("bbs_menu_updated", handleHistoryUpdated);
-      container.message.off("bookmark_updated", handleHistoryUpdated);
     };
   }, [viewPage.type]);
 

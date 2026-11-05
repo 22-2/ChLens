@@ -419,6 +419,47 @@ describe("ホームの板項目のミドルクリック", () => {
     await screen.findByRole("heading", { name: "それ以前" });
   });
 
+  it("ブックマーク更新ではお気に入り板だけを再読込し、履歴を再集計しない", async () => {
+    await renderPage();
+    await screen.findByRole("heading", { name: "それ以前" });
+    historyGetAllMock.mockClear();
+    favoriteBoards.push({ url: "https://example.com/other/", title: "追加した板" });
+
+    act(() => {
+      for (let index = 0; index < 10; index++) {
+        listeners.get("bookmark_updated")?.forEach((handler) => handler({}));
+      }
+    });
+
+    await screen.findByRole("button", { name: "追加した板" });
+    expect(historyGetAllMock).not.toHaveBeenCalled();
+  });
+
+  it("新しい履歴取得が始まったら、古い取得結果を集計しない", async () => {
+    const old = Promise.withResolvers<typeof historyRecords>();
+    const next = Promise.withResolvers<typeof historyRecords>();
+    historyGetAllMock
+      .mockImplementationOnce(() => old.promise)
+      .mockImplementationOnce(() => next.promise);
+    await renderPage();
+    act(() => listeners.get("history_updated")?.forEach((handler) => handler({})));
+    await act(async () => next.resolve(historyRecords));
+    const readOldUrl = vi.fn(() => "https://example.com/test/read.cgi/sample/1/");
+    await act(async () =>
+      old.resolve([
+        {
+          ...historyRecords[0],
+          get url() {
+            return readOldUrl();
+          },
+        },
+      ]),
+    );
+    expect(readOldUrl).not.toHaveBeenCalled();
+    const section = screen.getByRole("heading", { name: "最近開いた板" }).closest("section")!;
+    expect(within(section).getByRole("button", { name: /サンプル板/ })).toBeInTheDocument();
+  });
+
   it("古い板名の取得を待たず今日へ移し、遅い読み込みで日時や表示名を巻き戻さない", async () => {
     const pending = Promise.withResolvers<Map<string, string>>();
     getCachedTitlesMock.mockImplementation(() => pending.promise);
