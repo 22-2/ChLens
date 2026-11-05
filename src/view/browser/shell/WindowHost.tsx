@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { createLogger } from "src/app/logger";
 import { AutoScrollPaneStatesProvider } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import {
   type AuxiliaryWindowWatcher,
@@ -46,6 +47,19 @@ import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
 import { getCurrentPage, type Pane, type Tab } from "src/view/browser/types";
 import { ToastProvider } from "src/view/browser/ui/Toast";
 
+const logger = createLogger("view/browser");
+
+/** 位置と大きさを保存できる形に読み取る。最小化中などで読めない場合は null を返す。 */
+function readWindowBounds(
+  win: Window,
+): { left: number; top: number; width: number; height: number } | null {
+  const { screenX, screenY, outerWidth, outerHeight } = win;
+  if (![screenX, screenY, outerWidth, outerHeight].every(Number.isFinite)) return null;
+  // 最小化中のWindowsは (-32000, -32000) 付近の位置を返すため、保存すると復元位置が壊れる。
+  if (outerWidth <= 0 || outerHeight <= 0 || screenX <= -30000 || screenY <= -30000) return null;
+  return { left: screenX, top: screenY, width: outerWidth, height: outerHeight };
+}
+
 interface WindowEntry extends AuxiliaryWindowHandle {
   id: string;
   watcher: AuxiliaryWindowWatcher;
@@ -60,13 +74,13 @@ function locate(panes: readonly Pane[], tabId: string): { pane: Pane; tab: Tab }
 function optionsFor(
   tab: Tab,
   windowId: string,
-  origin?: { left: number; top: number },
+  bounds?: { left: number; top: number; width?: number; height?: number },
 ): AuxiliaryWindowOptions {
   return {
     // 元のタブが別の窓へ移動しても、名前付き窓の再利用先が衝突しないようにする。
     name: `chlens-window-${encodeURIComponent(windowId)}`,
-    features: `popup,width=1180,height=820,resizable=yes${
-      origin ? `,left=${origin.left},top=${origin.top}` : ""
+    features: `popup,width=${bounds?.width ?? 1180},height=${bounds?.height ?? 820},resizable=yes${
+      bounds ? `,left=${bounds.left},top=${bounds.top}` : ""
     }`,
     title: `${getCurrentPage(tab).title || "タブ"} - read.crx 2`,
     shellClassName: "workspace-window",
@@ -86,6 +100,11 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
   const entriesRef = useRef(entries);
   const parentClosing = useRef(false);
   const closeRef = useRef<(id: string) => void>(() => {});
+  // 変更理由: 監視の効果は窓の寿命と同じにするため、変わりうる値は参照から読む。
+  const dispatchRef = useRef(dispatch);
+  useLayoutEffect(() => {
+    dispatchRef.current = dispatch;
+  }, [dispatch]);
   const setEntry = useCallback((id: string, entry: WindowEntry | null) => {
     const next = new Map(entriesRef.current);
     if (entry) next.set(id, entry);
@@ -107,6 +126,28 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
   useLayoutEffect(() => {
     closeRef.current = closeWindow;
   }, [closeWindow]);
+  /** 開いた窓を寿命の管理対象にし、閉じる・再読み込みを監視する。 */
+  const registerWindow = useCallback(
+    (id: string, opened: AuxiliaryWindowHandle) => {
+      const watcher = watchAuxiliaryWindow({
+        window: opened.window,
+        sourceDocument: document,
+        isCurrent: () => entriesRef.current.get(id)?.window === opened.window,
+        getReconnectOptions: () => {
+          const pane = stateRef.current.panes.find((item) => item.windowId === id);
+          const tab = pane?.tabs.find((item) => item.id === pane.activeTabId);
+          return tab ? optionsFor(tab, id, readWindowBounds(opened.window) ?? undefined) : null;
+        },
+        onClosed: () => closeRef.current(id),
+        onReconnect: (root) => {
+          const entry = entriesRef.current.get(id);
+          if (entry?.window === opened.window) setEntry(id, { ...entry, root });
+        },
+      });
+      setEntry(id, { ...opened, id, watcher });
+    },
+    [setEntry, stateRef],
+  );
   const openWindowForTab = useCallback(
     (tabId: string, origin?: { left: number; top: number }, reuseOwnWindow = true) => {
       const found = locate(stateRef.current.panes, tabId);
@@ -120,27 +161,12 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
       const opened = openAuxiliaryWindow(optionsFor(found.tab, id, origin));
       if (!opened) return false;
       const paneId = crypto.randomUUID();
-      const watcher = watchAuxiliaryWindow({
-        window: opened.window,
-        sourceDocument: document,
-        isCurrent: () => entriesRef.current.get(id)?.window === opened.window,
-        getReconnectOptions: () => {
-          const pane = stateRef.current.panes.find((item) => item.windowId === id);
-          const tab = pane?.tabs.find((item) => item.id === pane.activeTabId);
-          return tab ? optionsFor(tab, id) : null;
-        },
-        onClosed: () => closeRef.current(id),
-        onReconnect: (root) => {
-          const entry = entriesRef.current.get(id);
-          if (entry?.window === opened.window) setEntry(id, { ...entry, root });
-        },
-      });
-      setEntry(id, { ...opened, id, watcher });
+      registerWindow(id, opened);
       dispatch({ type: "TRANSFER_TAB", tabId, to: { newWindowId: id, newPaneId: paneId } });
       opened.window.focus();
       return true;
     },
-    [dispatch, setEntry, stateRef],
+    [dispatch, registerWindow, stateRef],
   );
   const detachTab = useCallback((tabId: string) => openWindowForTab(tabId), [openWindowForTab]);
   const reattachTab = useCallback(
@@ -236,18 +262,61 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
     [detachTab, reattachTab, focusTabWindow, closeDetachedTab, dropTabAtScreenPoint],
   );
   useEffect(() => {
+    // 変更理由: セッションから読み込んだ別窓を、起動時に同じ構成で開き直す。
+    // 窓を開けない環境（ポップアップのブロックなど）では、タブを失わないよう本窓へ集める。
+    for (const windowState of stateRef.current.windows) {
+      if (windowState.kind !== "aux" || entriesRef.current.has(windowState.id)) continue;
+      const windowPanes = stateRef.current.panes.filter(
+        (pane) => (pane.windowId ?? MAIN_WINDOW_ID) === windowState.id,
+      );
+      const pane =
+        windowPanes.find((item) => item.id === windowState.activePaneId) ?? windowPanes[0];
+      const tab = pane?.tabs.find((item) => item.id === pane.activeTabId) ?? pane?.tabs[0];
+      const opened = tab
+        ? openAuxiliaryWindow(optionsFor(tab, windowState.id, windowState.bounds))
+        : null;
+      if (opened) {
+        registerWindow(windowState.id, opened);
+      } else {
+        logger.error(`[WindowHost] 別窓を復元できなかったため本窓へ集めます: ${windowState.id}`);
+        dispatch({ type: "COLLAPSE_WORKSPACE_WINDOW", windowId: windowState.id });
+      }
+    }
+    // 起動時の1回だけ実行する。以後の窓の増減は利用者の操作で扱う。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
     const onPageHide = () => {
       parentClosing.current = true;
     };
     window.addEventListener("pagehide", onPageHide, { capture: true });
     const monitor = window.setInterval(() => {
-      for (const [id, entry] of entriesRef.current) if (entry.window.closed) closeRef.current(id);
+      for (const [id, entry] of entriesRef.current) {
+        if (entry.window.closed) {
+          closeRef.current(id);
+          continue;
+        }
+        // 変更理由: 窓の移動と大きさの変更にはイベントがないため、定期監視で保存対象へ反映する。
+        const bounds = readWindowBounds(entry.window);
+        const saved = stateRef.current.windows.find((item) => item.id === id)?.bounds;
+        if (
+          bounds &&
+          (saved?.left !== bounds.left ||
+            saved?.top !== bounds.top ||
+            saved?.width !== bounds.width ||
+            saved?.height !== bounds.height)
+        ) {
+          dispatchRef.current({ type: "SET_WORKSPACE_WINDOW_BOUNDS", windowId: id, bounds });
+        }
+      }
     }, 250);
     return () => {
       window.removeEventListener("pagehide", onPageHide, { capture: true });
       window.clearInterval(monitor);
       for (const entry of entriesRef.current.values()) entry.watcher.release();
     };
+    // stateRef は安定した参照のため、窓の監視は起動時の1回だけ設定する。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     for (const [id, entry] of entriesRef.current) {

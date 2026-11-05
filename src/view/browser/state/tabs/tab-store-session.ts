@@ -154,6 +154,26 @@ function normalizeLoadedTab(tab: LoadedTab): Tab {
 }
 
 // 保存済みJSONの形。旧形状（単一タブリスト）のセッションも読めるようにする。
+/** 保存済みの窓の位置と大きさのうち、数値として使えるものだけを取り出す。 */
+function normalizeLoadedBounds(bounds: unknown): WorkspaceWindow["bounds"] | undefined {
+  if (!bounds || typeof bounds !== "object") return undefined;
+  const { left, top, width, height } = bounds as Record<string, unknown>;
+  if (
+    ![left, top, width, height].every(
+      (value) => typeof value === "number" && Number.isFinite(value),
+    )
+  )
+    return undefined;
+  // 大きさが0以下の窓は開けないため、保存された位置ごと使わない。
+  if ((width as number) <= 0 || (height as number) <= 0) return undefined;
+  return {
+    left: left as number,
+    top: top as number,
+    width: width as number,
+    height: height as number,
+  };
+}
+
 type LoadedTabStoreState = {
   panes?: (Omit<Pane, "tabs"> & { tabs: LoadedTab[] })[];
   activePaneId?: string;
@@ -191,15 +211,27 @@ export function loadTabStoreSession(): TabStoreState | null {
           }),
         );
       if (panes.length === 0) return null;
-      // 別窓の復元を実装するまでは、別窓のタブを本窓へ集めて失わないようにする。
+      // 変更理由: 別窓の構成を保ったまま読み込み、窓を開く処理（WindowHost）に復元を任せる。
+      // 窓の定義がない別窓のペインだけは、タブを失わないよう本窓へ集める。
+      const savedAuxWindows = (parsed.windows ?? []).filter(
+        (item) => item.kind === "aux" && item.id !== MAIN_WINDOW_ID,
+      );
+      const isRestorableWindowId = (windowId: string) =>
+        savedAuxWindows.some((item) => item.id === windowId);
       const mainPanes = panes.filter(
         (pane) => (pane.windowId ?? MAIN_WINDOW_ID) === MAIN_WINDOW_ID,
       );
+      const restoredAuxPanes = panes.filter((pane) =>
+        isRestorableWindowId(pane.windowId ?? MAIN_WINDOW_ID),
+      );
       const auxiliaryPanes = panes.filter(
-        (pane) => (pane.windowId ?? MAIN_WINDOW_ID) !== MAIN_WINDOW_ID,
+        (pane) =>
+          (pane.windowId ?? MAIN_WINDOW_ID) !== MAIN_WINDOW_ID &&
+          !isRestorableWindowId(pane.windowId ?? MAIN_WINDOW_ID),
       );
       if (mainPanes.length === 0) {
-        const first = auxiliaryPanes.shift()!;
+        // 本窓のペインがないセッションでは、先頭の別窓のペインを本窓にする。
+        const first = (restoredAuxPanes.shift() ?? auxiliaryPanes.shift())!;
         mainPanes.push({ ...first, windowId: MAIN_WINDOW_ID });
       }
       const mainWindow = parsed.windows?.find((item) => item.id === MAIN_WINDOW_ID);
@@ -207,15 +239,30 @@ export function loadTabStoreSession(): TabStoreState | null {
       const activePaneId = mainPanes.some((pane) => pane.id === preferredPaneId)
         ? preferredPaneId
         : mainPanes[0].id;
-      const restoredPanes = mainPanes.map((pane) =>
+      const restoredMainPanes = mainPanes.map((pane) =>
         pane.id === activePaneId
           ? { ...pane, tabs: [...pane.tabs, ...auxiliaryPanes.flatMap((aux) => aux.tabs)] }
           : pane,
       );
+      const restoredPanes = [...restoredMainPanes, ...restoredAuxPanes];
+      const restoredAuxWindows: WorkspaceWindow[] = savedAuxWindows.flatMap((item) => {
+        const windowPanes = restoredAuxPanes.filter((pane) => pane.windowId === item.id);
+        if (windowPanes.length === 0) return [];
+        const savedActive = windowPanes.find((pane) => pane.id === item.activePaneId);
+        const bounds = normalizeLoadedBounds(item.bounds);
+        return [
+          {
+            id: item.id,
+            kind: "aux" as const,
+            activePaneId: (savedActive ?? windowPanes[0]).id,
+            ...(bounds ? { bounds } : {}),
+          },
+        ];
+      });
       return {
         panes: restoredPanes,
         activePaneId,
-        windows: [{ id: MAIN_WINDOW_ID, kind: "main", activePaneId }],
+        windows: [{ id: MAIN_WINDOW_ID, kind: "main", activePaneId }, ...restoredAuxWindows],
         closedTabs: (parsed.closedTabs ?? []).map((tab) => normalizeLoadedTab(tab)),
         ...(parsed.sidePanel ? { sidePanel: normalizeSidePanel(parsed.sidePanel) } : {}),
         ...(parsed.bottomPanels &&

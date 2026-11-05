@@ -130,7 +130,7 @@ test("別窓への移動と復帰後もフィルター操作が対象のスレ�
   expect(registrationErrors).toEqual([]);
 });
 
-test("本窓の再読み込みで別窓を閉じ、複数タブを本窓へ戻す", async ({ page, localBoard }) => {
+test("本窓の再読み込み後に別窓を復元し、複数タブを別窓に残す", async ({ page, localBoard }) => {
   await page.getByTestId("title-bar-title").click();
   await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
   await page.getByPlaceholder("URLを入力").press("Enter");
@@ -172,7 +172,9 @@ test("本窓の再読み込みで別窓を閉じ、複数タブを本窓へ戻�
 
   await page.reload();
   await expect(page.locator(".browser-shell")).toBeVisible();
-  await expect.poll(() => nativePopupLabels(page)).toEqual([]);
-  await expect(page.getByRole("tab", { name: /ローカルテストスレッド/u })).toBeVisible();
-  await expect(page.getByRole("tab")).toHaveCount(3);
+  // 再読み込みで閉じた別窓と入れ替わる形で、別窓が1つだけ復元される。
+  await expect.poll(() => nativePopupLabels(page)).toHaveLength(1);
+  // 別窓のタブは本窓へ混ざらず、本窓には補われたホームだけが残る。
+  await expect(page.getByRole("tab")).toHaveCount(1);
+  await expect(page.getByRole("tab", { name: /ローカルテストスレッド/u })).toHaveCount(0);
 });

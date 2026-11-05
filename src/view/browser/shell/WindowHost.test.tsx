@@ -259,4 +259,60 @@ describe("WindowHost", () => {
       expect(mocks.open).not.toHaveBeenCalled();
     });
   });
+  describe("起動時の別窓の復元", () => {
+    function setRestoredState(): void {
+      const main = createHomeTab("main-tab");
+      const aux = createHomeTab("aux-tab");
+      mocks.stateRef.current = {
+        panes: [
+          { id: "main-pane", tabs: [main], activeTabId: main.id },
+          { id: "aux-pane", windowId: "aux", tabs: [aux], activeTabId: aux.id },
+        ],
+        activePaneId: "main-pane",
+        windows: [
+          { id: "main", kind: "main", activePaneId: "main-pane" },
+          {
+            id: "aux",
+            kind: "aux",
+            activePaneId: "aux-pane",
+            bounds: { left: -1200, top: 40, width: 900, height: 700 },
+          },
+        ],
+        closedTabs: [],
+      };
+    }
+    it("保存した位置と大きさで別窓を開き直す", () => {
+      setRestoredState();
+      render(
+        <WindowHost>
+          <Controls />
+        </WindowHost>,
+      );
+      expect(mocks.open).toHaveBeenCalledTimes(1);
+      expect(mocks.open.mock.calls[0][0].features).toContain("width=900,height=700");
+      expect(mocks.open.mock.calls[0][0].features).toContain("left=-1200,top=40");
+      expect(screen.getByTestId("window-shell")).toBeInTheDocument();
+      // タブは別窓のペインに残り、移動は起きない。
+      expect(mocks.dispatch).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: "TRANSFER_TAB" }),
+      );
+      expect(mocks.stateRef.current.windows.map((item) => item.id)).toEqual(["main", "aux"]);
+    });
+    it("窓を開けない環境では、閉じた履歴に積まずタブを本窓へ集める", () => {
+      setRestoredState();
+      mocks.open.mockReturnValue(null);
+      render(
+        <WindowHost>
+          <Controls />
+        </WindowHost>,
+      );
+      expect(mocks.stateRef.current.windows.map((item) => item.id)).toEqual(["main"]);
+      expect(mocks.stateRef.current.panes).toHaveLength(1);
+      expect(mocks.stateRef.current.panes[0].tabs.map((tab) => tab.id)).toEqual([
+        "main-tab",
+        "aux-tab",
+      ]);
+      expect(mocks.stateRef.current.closedTabs).toEqual([]);
+    });
+  });
 });

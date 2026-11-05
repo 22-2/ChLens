@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures.mjs";
 
-test("別窓に複数のタブを開き、本窓の再読み込みでタブを本窓へ戻す", async ({
+test("別窓に複数のタブを開き、本窓の再読み込み後に別窓を同じ構成で復元する", async ({
   page,
   extensionId,
   localBoard,
@@ -30,10 +30,13 @@ test("別窓に複数のタブを開き、本窓の再読み込みでタブを�
   await popup.getByPlaceholder("URLを入力").fill(second.threadUrl);
   await popup.getByPlaceholder("URLを入力").press("Enter");
   await expect(popup.getByTestId("title-bar-title")).toHaveText(second.title);
-  await page.reload();
+  const [restored] = await Promise.all([page.context().waitForEvent("page"), page.reload()]);
   await expect.poll(() => popup.isClosed()).toBe(true);
-  await expect(page.getByRole("tab", { name: /復元するスレ/ })).toBeVisible();
-  await expect(page.getByRole("tab", { name: /ローカルテストスレッド/ })).toBeVisible();
+  await expect(restored.getByRole("tab", { name: /復元するスレ/ })).toBeVisible();
+  await expect(restored.getByRole("tab", { name: /ローカルテストスレッド/ })).toBeVisible();
+  // 本窓には別窓のタブが混ざらない。
+  await expect(page.getByRole("tab", { name: /復元するスレ/ })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: /ローカルテストスレッド/ })).toHaveCount(0);
 });
 
 test("OSで別窓を閉じると窓内のタブを閉じた履歴から開き直せる", async ({

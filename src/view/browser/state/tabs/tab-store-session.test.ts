@@ -25,7 +25,7 @@ describe("ホーム統合後のセッション移行", () => {
     storage.json = "";
   });
 
-  it("窓付き形式を保存し、別窓のタブを本窓の選択ペインへ復元する", () => {
+  it("窓付き形式を保存し、別窓の構成と位置を保ったまま復元する", () => {
     const main = createHomeTab("main-tab");
     const aux = createHomeTab("aux-tab");
     saveTabStoreSession({
@@ -35,7 +35,12 @@ describe("ホーム統合後のセッション移行", () => {
       ],
       windows: [
         { id: "main", kind: "main", activePaneId: "main-pane" },
-        { id: "aux", kind: "aux", activePaneId: "aux-pane" },
+        {
+          id: "aux",
+          kind: "aux",
+          activePaneId: "aux-pane",
+          bounds: { left: -1200, top: 40, width: 900, height: 700 },
+        },
       ],
       activePaneId: "aux-pane",
       closedTabs: [],
@@ -47,10 +52,63 @@ describe("ホーム統合後のセッション移行", () => {
       windows: [{ id: "main" }, { id: "aux" }],
     });
     const restored = loadTabStoreSession()!;
-    expect(restored.panes.map((pane) => pane.id)).toEqual(["main-pane"]);
-    expect(restored.panes[0].tabs.map((tab) => tab.id)).toEqual(["main-tab", "aux-tab"]);
+    expect(restored.panes.map((pane) => [pane.id, pane.windowId ?? "main"])).toEqual([
+      ["main-pane", "main"],
+      ["aux-pane", "aux"],
+    ]);
+    expect(restored.panes[0].tabs.map((tab) => tab.id)).toEqual(["main-tab"]);
+    expect(restored.panes[1].tabs.map((tab) => tab.id)).toEqual(["aux-tab"]);
     expect(restored.activePaneId).toBe("main-pane");
-    expect(restored.windows).toEqual([{ id: "main", kind: "main", activePaneId: "main-pane" }]);
+    expect(restored.windows).toEqual([
+      { id: "main", kind: "main", activePaneId: "main-pane" },
+      {
+        id: "aux",
+        kind: "aux",
+        activePaneId: "aux-pane",
+        bounds: { left: -1200, top: 40, width: 900, height: 700 },
+      },
+    ]);
+  });
+
+  it("使えない位置情報は捨て、窓の定義がない別窓のペインは本窓へ集める", () => {
+    const main = createHomeTab("main-tab");
+    storage.json = JSON.stringify({
+      version: 2,
+      panes: [
+        { id: "main-pane", windowId: "main", tabs: [main], activeTabId: main.id },
+        {
+          id: "aux-pane",
+          windowId: "aux",
+          tabs: [createHomeTab("aux-tab")],
+          activeTabId: "aux-tab",
+        },
+        {
+          id: "lost-pane",
+          windowId: "lost",
+          tabs: [createHomeTab("lost-tab")],
+          activeTabId: "lost-tab",
+        },
+      ],
+      windows: [
+        { id: "main", kind: "main", activePaneId: "main-pane" },
+        {
+          id: "aux",
+          kind: "aux",
+          activePaneId: "aux-pane",
+          bounds: { left: 0, top: 0, width: 0, height: 10 },
+        },
+      ],
+      activePaneId: "main-pane",
+      closedTabs: [],
+    });
+    const restored = loadTabStoreSession()!;
+    expect(restored.windows.find((item) => item.id === "aux")).toEqual({
+      id: "aux",
+      kind: "aux",
+      activePaneId: "aux-pane",
+    });
+    expect(restored.panes.map((pane) => pane.id)).toEqual(["main-pane", "aux-pane"]);
+    expect(restored.panes[0].tabs.map((tab) => tab.id)).toEqual(["main-tab", "lost-tab"]);
   });
 
   it("本窓のペインがない保存状態でもタブを失わずに復元する", () => {

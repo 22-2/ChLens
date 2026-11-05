@@ -797,6 +797,61 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
       };
     }
 
+    case TAB_ACTION_TYPES.COLLAPSE_WORKSPACE_WINDOW: {
+      const target = state.windows.find(
+        (window) => window.id === action.windowId && window.kind === "aux",
+      );
+      if (!target) return state;
+      const removed = getWindowPanes(state, target.id);
+      const main = state.windows.find((window) => window.id === MAIN_WINDOW_ID);
+      const destination =
+        state.panes.find((pane) => pane.id === main?.activePaneId) ??
+        state.panes.find((pane) => getPaneWindowId(pane) === MAIN_WINDOW_ID);
+      if (!destination) return state;
+      // 変更理由: 窓を開けない環境でもタブを失わないよう、履歴へ積まずに本窓の末尾へ集める。
+      const movedTabs = removed.flatMap((pane) => pane.tabs);
+      const panes = state.panes
+        .filter((pane) => getPaneWindowId(pane) !== target.id)
+        .map((pane) =>
+          pane.id === destination.id ? { ...pane, tabs: [...pane.tabs, ...movedTabs] } : pane,
+        );
+      const bottomPanels =
+        state.bottomPanels &&
+        Object.fromEntries(
+          Object.entries(state.bottomPanels).filter(([id]) => panes.some((pane) => pane.id === id)),
+        );
+      return {
+        ...state,
+        panes,
+        windows: state.windows.filter((window) => window.id !== target.id),
+        activePaneId: removed.some((pane) => pane.id === state.activePaneId)
+          ? destination.id
+          : state.activePaneId,
+        ...(bottomPanels ? { bottomPanels } : {}),
+      };
+    }
+
+    case TAB_ACTION_TYPES.SET_WORKSPACE_WINDOW_BOUNDS: {
+      const target = state.windows.find((window) => window.id === action.windowId);
+      const current = target?.bounds;
+      if (
+        !target ||
+        (current &&
+          current.left === action.bounds.left &&
+          current.top === action.bounds.top &&
+          current.width === action.bounds.width &&
+          current.height === action.bounds.height)
+      ) {
+        return state;
+      }
+      return {
+        ...state,
+        windows: state.windows.map((window) =>
+          window.id === target.id ? { ...window, bounds: action.bounds } : window,
+        ),
+      };
+    }
+
     case TAB_ACTION_TYPES.SPLIT_PANE: {
       // 最大ペイン数に達していれば分割しない（2ペイン固定運用）。
       // 操作元ペインの右隣に、新規タブの設定（new_tab_page_mode）に従ったページのペインを作成してフォーカスする。

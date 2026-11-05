@@ -63,6 +63,8 @@ export const TAB_ACTION_TYPES = {
   SET_ACTIVE_PANE: "SET_ACTIVE_PANE",
   TRANSFER_TAB: "TRANSFER_TAB",
   CLOSE_WORKSPACE_WINDOW: "CLOSE_WORKSPACE_WINDOW",
+  COLLAPSE_WORKSPACE_WINDOW: "COLLAPSE_WORKSPACE_WINDOW",
+  SET_WORKSPACE_WINDOW_BOUNDS: "SET_WORKSPACE_WINDOW_BOUNDS",
   RESTORE: "RESTORE",
 } as const;
 
@@ -147,6 +149,13 @@ export type TabAction =
         | { windowId: string; paneId: string; index: number };
     }
   | { type: typeof TAB_ACTION_TYPES.CLOSE_WORKSPACE_WINDOW; windowId: string }
+  /** 別窓を開けないとき、窓内のタブを閉じた履歴に積まず本窓へ集める。 */
+  | { type: typeof TAB_ACTION_TYPES.COLLAPSE_WORKSPACE_WINDOW; windowId: string }
+  | {
+      type: typeof TAB_ACTION_TYPES.SET_WORKSPACE_WINDOW_BOUNDS;
+      windowId: string;
+      bounds: NonNullable<WorkspaceWindow["bounds"]>;
+    }
   | { type: typeof TAB_ACTION_TYPES.RESTORE; state: TabStoreState };
 
 // ペインスコープ: 全アクションに「対象ペイン」を付与できる。
