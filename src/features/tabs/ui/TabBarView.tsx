@@ -1,4 +1,4 @@
-import { DragDropProvider, type DragEndEvent } from "@dnd-kit/react";
+import { DragDropProvider, type DragEndEvent, KeyboardSensor } from "@dnd-kit/react";
 import { PanelLeftClose, PanelLeftOpen, Pin, Play, Plus, X } from "lucide-react";
 import normalizeWheel from "normalize-wheel";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -10,7 +10,11 @@ import {
 } from "src/features/tabs/browser/tab-bar-layout";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
-import { readSortableMove, useSortableTab } from "src/view/browser/components/sortable-tab";
+import {
+  readSortableMove,
+  useSortableTab,
+  WindowPointerSensor,
+} from "src/view/browser/components/sortable-tab";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 
@@ -652,7 +656,11 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       onContextMenu={embedded ? handleBarContextMenu : undefined}
     >
       {sectionLabel ? <div className="tab-bar__pane-label">{sectionLabel}</div> : null}
-      <DragDropProvider onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <DragDropProvider
+        sensors={[WindowPointerSensor, KeyboardSensor]}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
         <div
           className={`tab-list-container${
             tabListScrollState.canScrollLeft ? " tab-list-container--can-scroll-left" : ""
