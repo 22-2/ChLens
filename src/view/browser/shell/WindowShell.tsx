@@ -233,6 +233,8 @@ const PaneRow: React.FC = () => {
 export const WindowShell: React.FC<{ showSidePanel?: boolean }> = ({ showSidePanel = true }) => {
   const orientation = useTabBarOrientation();
   const { panes, activePaneId } = useWindowPanes();
+  // ２ペインでは、それぞれのタブを画面上部に横並びで表示する。
+  const effectiveOrientation = panes.length > 1 ? "horizontal" : orientation;
   const dispatch = useTabDispatch();
   const { window: viewWindow } = useViewSurface();
   useEffect(() => {
@@ -245,7 +247,7 @@ export const WindowShell: React.FC<{ showSidePanel?: boolean }> = ({ showSidePan
   const main = (
     <>
       <TitleBar showSidePanel={showSidePanel} />
-      {orientation === "horizontal" && panes.length > 1 ? (
+      {effectiveOrientation === "horizontal" && panes.length > 1 ? (
         <SharedTabBar orientation="horizontal" />
       ) : null}
       <div className="browser-shell__workspace">
@@ -255,7 +257,7 @@ export const WindowShell: React.FC<{ showSidePanel?: boolean }> = ({ showSidePan
     </>
   );
 
-  if (orientation !== "vertical") {
+  if (effectiveOrientation !== "vertical") {
     return main;
   }
 
