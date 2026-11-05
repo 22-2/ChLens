@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { NgStatusProvider, useNgStatus } from "src/features/ng/browser/use-ng-status";
 import { useThreadVirtualList } from "src/features/thread/browser/use-thread-virtual-list";
+import * as heightEstimate from "src/features/thread/domain/res-height-estimate";
 import type { IRes } from "src/service-container/interfaces";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -109,6 +110,43 @@ describe("TanStack Virtualを使ったレス一覧", () => {
     expect(virtualizer.options.measureElement(element, undefined, virtualizer)).toBe(240);
     const entry = { borderBoxSize: [{ blockSize: 260.4 }] } as unknown as ResizeObserverEntry;
     expect(virtualizer.options.measureElement(element, entry, virtualizer)).toBe(260);
+  });
+  it("推定高さを再利用し、本文や表示幅が変わったら計算し直す", () => {
+    let notifyResize: ResizeObserverCallback | undefined;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          notifyResize = callback;
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    const panel = document.createElement("div");
+    let width = 400;
+    Object.defineProperty(panel, "clientWidth", { get: () => width });
+    scrollContainerRef.current = panel;
+    const estimate = vi.spyOn(heightEstimate, "estimateResHeight");
+    const { result, rerender } = setup();
+    estimate.mockClear();
+
+    const initial = result.current.list.virtualizer.options.estimateSize(2);
+    expect(result.current.list.virtualizer.options.estimateSize(2)).toBe(initial);
+    expect(estimate.mock.calls.length).toBeLessThanOrEqual(1);
+
+    const updated = responses.map((res) =>
+      res.num === 3 ? { ...res, message: "あ".repeat(100) } : res,
+    );
+    rerender({ items: updated });
+    const longHeight = result.current.list.virtualizer.options.estimateSize(2);
+    expect(longHeight).toBeGreaterThan(initial);
+
+    width = 200;
+    act(() => notifyResize?.([], {} as ResizeObserver));
+    expect(result.current.list.virtualizer.options.estimateSize(2)).toBeGreaterThan(longHeight);
+    estimate.mockRestore();
   });
   it("NG解除後も非表示レスが実測できるよう、推定高さを確保する", () => {
     const { result } = setup();

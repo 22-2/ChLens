@@ -113,7 +113,13 @@ export function useThreadVirtualList({
     }
     return nums;
   }, [readBoundary, replayBoundary, responses]);
-  const estimateInput = useLatestRef({ resByNum, metrics });
+  // 同じレスの推定値はスクロール中に繰り返し求められるため、本文と幅が変わるまで再利用する。
+  // レス配列が入れ替わったときも捨て、本文の変更や削除を古い値へ反映しない。
+  const estimateValues = useMemo(
+    () => ({ resByNum, metrics, estimateCache: new Map<number, number>() }),
+    [resByNum, metrics],
+  );
+  const estimateInput = useLatestRef(estimateValues);
   const keyIndex = useMemo(() => new Map(keys.map((key, index) => [key, index])), [keys]);
   const estimateSize = useCallback(
     (index: number) => {
@@ -121,9 +127,13 @@ export function useThreadVirtualList({
       if (typeof key !== "number") return estimateInput.current.metrics.chromeHeight;
       const res = estimateInput.current.resByNum.get(key);
       if (!res) return estimateInput.current.metrics.chromeHeight;
+      const cached = estimateInput.current.estimateCache.get(key);
+      if (cached !== undefined) return cached;
       // NG非表示も最初は推定高さを持たせ、DOMにマウントして実測0を得る。
       // 推定から0にすると描画されず、NG解除後も要素を再計測できない。
-      return estimateResHeight(res, estimateInput.current.metrics);
+      const height = estimateResHeight(res, estimateInput.current.metrics);
+      estimateInput.current.estimateCache.set(key, height);
+      return height;
     },
     [estimateInput, keys],
   );
