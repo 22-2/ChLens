@@ -382,26 +382,43 @@
   border-top: 1px solid var(--sys-color-border);
 }
 
-/* 縦タブバーの位置を保ったまま、各ペインのタブ一覧を横に並べる。 */
+/* 各ペインの表示中タブだけを横に並べ、それ以外は同じ縦のレーンに置く。 */
 .tab-bar--vertical.tab-bar--multiple-panes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-auto-rows: min-content;
+  align-content: start;
+  overflow-y: auto;
 }
 
 .tab-bar--multiple-panes .tab-bar__vertical-header {
   grid-column: 1 / -1;
+  order: -2;
 }
 
-.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__pane-section {
-  min-width: 0;
+.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__pane-section,
+.tab-bar--vertical.tab-bar--multiple-panes .tab-list-container,
+.tab-bar--vertical.tab-bar--multiple-panes .tab-list {
+  display: contents;
 }
 
-.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__pane-section + .tab-bar__pane-section {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-  border-left: var(--sys-border-width-thin) solid var(--sys-color-border);
+.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__pane-label,
+.tab-bar--vertical.tab-bar--multiple-panes .tab-list-container::before,
+.tab-bar--vertical.tab-bar--multiple-panes .tab-list-container::after {
+  display: none;
+}
+
+.tab-bar--vertical.tab-bar--multiple-panes .tab {
+  grid-column: 1 / -1;
+}
+
+.tab-bar--vertical.tab-bar--multiple-panes .tab--active {
+  grid-column: auto;
+  order: -1;
+}
+
+.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__add {
+  grid-column: 1 / -1;
 }
 
 .tab-bar__pane-label {
