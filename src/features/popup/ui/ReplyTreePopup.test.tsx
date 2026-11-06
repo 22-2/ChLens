@@ -484,18 +484,21 @@ describe("ReplyTreePopup", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("参照元レスの返信リンクは無効化されていてクリックしても開かない", () => {
+  it("参照元レスの返信は左クリックを抑止し右クリックで直接返信を開く", () => {
     const onRepClick = vi.fn();
     render(<ReplyTreePopup {...BASE_PROPS} onRepClick={onRepClick} />);
 
     const sourceSection = screen.getByText("参照元レス").closest("section") as HTMLElement;
     const sourceReplyLink = within(sourceSection).getByText("返信(1)");
 
-    expect(sourceReplyLink).toHaveAttribute("aria-disabled", "true");
+    expect(sourceReplyLink).not.toHaveClass("res__rep--disabled");
 
     fireEvent.click(sourceReplyLink);
 
     expect(onRepClick).not.toHaveBeenCalled();
+    fireEvent.contextMenu(sourceReplyLink);
+    expect(onRepClick).toHaveBeenCalledOnce();
+    expect(onRepClick.mock.calls[0]?.[0]).toBe(1);
   });
 });
 

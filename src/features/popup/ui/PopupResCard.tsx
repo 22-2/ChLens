@@ -182,11 +182,8 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           <span className="res__date">{res.date ?? res.other}</span>
           {repCount > 0 && onRepClick && (
             <span
-              className={`${repClassName}${disableRepClick ? " res__rep--disabled" : ""}`}
-              aria-disabled={disableRepClick ? true : undefined}
-              title={
-                disableRepClick ? "参照元レスの返信はこのポップアップ内では開けません" : undefined
-              }
+              className={repClassName}
+              title={disableRepClick ? "右クリックで直接返信を表示" : undefined}
               onClick={(e) => {
                 // 参照元レスの「返信」は同一ツリーを再帰的に開いてしまうため、
                 // 返信ポップアップ内では明示的に無効化する。
@@ -201,7 +198,6 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
                 // レス全体のメニューではなく、直接返信だけの表示を開く。
                 e.preventDefault();
                 e.stopPropagation();
-                if (disableRepClick) return;
                 onRepClick(res.num, e);
               }}
             >
