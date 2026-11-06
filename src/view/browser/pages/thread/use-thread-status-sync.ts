@@ -5,14 +5,15 @@ import {
   getThreadPageCountKey,
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
+import { type NgDisplayMode, resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 
 interface UseThreadStatusSyncParams {
   tabId: string;
   threadUrl: string;
   loading: boolean;
   responses: IRes[];
-  /** 検索・フィルタで絞り込んでいるときの表示件数。絞り込みなしなら null。 */
-  filteredCount: number | null;
+  /** フィルタとライブ表示を適用した、画面に並ぶレス。 */
+  displayedResponses: IRes[];
   ownResNums: Set<number>;
   replyToOwnResNums: Set<number>;
 }
@@ -24,6 +25,17 @@ interface UseThreadStatusSyncResult {
 
 const isNgResponse = (res: IRes): boolean => res.ng != null || Boolean(res.class?.includes("ng"));
 
+export function countDisplayedResponses(
+  responses: readonly IRes[],
+  mode: NgDisplayMode,
+  ngDisabled: boolean,
+): number {
+  // 折りたたみは行として表示されるが、hard-ngは行自体が存在しない。
+  return responses.filter(
+    (res) => ngDisabled || !isNgResponse(res) || resolveNgDisplayMode(mode, res.ng) !== "hard-ng",
+  ).length;
+}
+
 /**
  * ステータスバーはページ外で描画されるため、スレッドのレス数・NG数・自分関連のハイライト数を
  * 共有ストアへ反映する。アンマウント時には値を戻し、別タブの結果が混ざらないようにする。
@@ -33,11 +45,11 @@ export function useThreadStatusSync({
   threadUrl,
   loading,
   responses,
-  filteredCount,
+  displayedResponses,
   ownResNums,
   replyToOwnResNums,
 }: UseThreadStatusSyncParams): UseThreadStatusSyncResult {
-  const { setThreadStats } = useNgStatus();
+  const { setThreadStats, ngDisplayMode, isNgTemporarilyDisabled } = useNgStatus();
   const { setPageCount } = usePageCountStatus();
   const pageCountKey = getThreadPageCountKey(tabId, threadUrl);
 
@@ -46,6 +58,10 @@ export function useThreadStatusSync({
     [responses],
   );
   const threadNgCount = ngResNums.size;
+  const displayedCount = useMemo(
+    () => countDisplayedResponses(displayedResponses, ngDisplayMode, isNgTemporarilyDisabled),
+    [displayedResponses, ngDisplayMode, isNgTemporarilyDisabled],
+  );
 
   const ownHighlightCount = useMemo(() => {
     const highlightedResNums = new Set<number>(ownResNums);
@@ -61,11 +77,11 @@ export function useThreadStatusSync({
     setPageCount(pageCountKey, {
       kind: "thread",
       count: loading && responses.length === 0 ? null : responses.length,
-      // 変更理由: 検索・フィルタバーから件数表示をなくしたため、絞り込み中の件数はステータスバーで示す。
-      filteredCount,
+      // フィルタ・NG・ライブ表示のいずれで減っても、同じ基準で実際の件数を示す。
+      filteredCount: displayedCount === responses.length ? null : displayedCount,
     });
     return () => setPageCount(pageCountKey, null);
-  }, [filteredCount, loading, pageCountKey, responses.length, setPageCount]);
+  }, [displayedCount, loading, pageCountKey, responses.length, setPageCount]);
 
   useEffect(() => {
     // ステータスバーの件数はページ外コンポーネントから参照するため、

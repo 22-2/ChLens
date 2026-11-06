@@ -682,7 +682,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     threadUrl: page.threadUrl,
     loading,
     responses,
-    filteredCount: isFilterEnabled ? filteredResponses.length : null,
+    displayedResponses,
     ownResNums,
     replyToOwnResNums,
   });
