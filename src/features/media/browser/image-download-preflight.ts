@@ -7,6 +7,7 @@ import {
 } from "src/features/media/domain/media-settings";
 import { readConfigValue } from "src/view/browser/utils/config-setting";
 
+import { acquireImageSlot } from "./image-request-limiter";
 import { useMediaImageStore } from "./use-media-image-store";
 
 const logger = createLogger("media");
@@ -82,14 +83,18 @@ async function startImagePreflight(key: string, sourceUrl: string): Promise<void
   const activeRequest = preflightRequests.get(key);
   if (activeRequest?.sourceUrl === sourceUrl) return activeRequest.promise;
 
-  const promise = Promise.resolve()
-    .then(loadPlatform)
-    .then(({ platform }) =>
-      platform.http.fetch(sourceUrl, {
-        method: "HEAD",
-        headers: { Accept: "image/*" },
-        timeout: IMAGE_SIZE_CHECK_TIMEOUT_MS,
-      }),
+  // 変更理由: 画像が多いスレでサイズ確認が一斉に走らないよう、本体の取得と同じ枠を使って同時数を絞る。
+  const promise = acquireImageSlot()
+    .then((releaseSlot) =>
+      loadPlatform()
+        .then(({ platform }) =>
+          platform.http.fetch(sourceUrl, {
+            method: "HEAD",
+            headers: { Accept: "image/*" },
+            timeout: IMAGE_SIZE_CHECK_TIMEOUT_MS,
+          }),
+        )
+        .finally(releaseSlot),
     )
     .then((response) => {
       if (response.status < 200 || response.status >= 300) {

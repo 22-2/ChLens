@@ -20,6 +20,7 @@ import {
   allowImageWithinCurrentLimit,
   requestMediaImageDownload,
 } from "../browser/image-download-preflight";
+import { IMAGE_VISIBLE_DWELL_MS, imageRequestLimiter } from "../browser/image-request-limiter";
 import { useMediaImageStore } from "../browser/use-media-image-store";
 import {
   DEFAULT_IMAGE_AUTO_DOWNLOAD_LIMIT_MB,
@@ -132,6 +133,20 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
       currentSrcRef.current = src;
     }, [src]);
     const placeholderRef = useRef<HTMLElement | null>(null);
+    // 取得を始めた画像は、同時数の枠が取れてから <img> を描画する（待機中に外れたら取得しない）。
+    const isLoadRequested = imageState?.status === "requested" || imageState?.status === "loaded";
+    const slotKey = `${src}\0${requestVersion}`;
+    const [grantedSlotKey, setGrantedSlotKey] = useState<string | null>(null);
+    const releaseSlotRef = useRef<(() => void) | null>(null);
+    useEffect(() => {
+      if (!isLoadRequested) return;
+      const ticket = imageRequestLimiter.acquire(() => setGrantedSlotKey(slotKey));
+      releaseSlotRef.current = ticket.release;
+      return () => {
+        ticket.release();
+        releaseSlotRef.current = null;
+      };
+    }, [isLoadRequested, slotKey]);
 
     useEffect(() => {
       const decision = decidePreflight({
@@ -160,17 +175,30 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
       if (!placeholder) return;
 
       // 表示領域へ近づいてからサイズを確認する。ブラウザーのlazy loadingと同じ扱いにする。
+      // 変更理由: 高速スクロールで通り過ぎただけの画像まで確認・取得を始めていたため、
+      // 一定時間とどまった画像だけを対象にする。
+      let dwellTimer: number | undefined;
       const observer = new IntersectionObserver(
         (entries) => {
-          if (entries.some((entry) => entry.isIntersecting)) {
+          const isVisible = entries.at(-1)?.isIntersecting ?? false;
+          if (!isVisible) {
+            if (dwellTimer !== undefined) viewWindow.clearTimeout(dwellTimer);
+            dwellTimer = undefined;
+            return;
+          }
+          if (dwellTimer !== undefined) return;
+          dwellTimer = viewWindow.setTimeout(() => {
             observer.disconnect();
             beginPreflight();
-          }
+          }, IMAGE_VISIBLE_DWELL_MS);
         },
         { rootMargin: "200px" },
       );
       observer.observe(placeholder);
-      return () => observer.disconnect();
+      return () => {
+        if (dwellTimer !== undefined) viewWindow.clearTimeout(dwellTimer);
+        observer.disconnect();
+      };
     }, [
       imageAutoDownloadLimitMb,
       imageKey,
@@ -248,8 +276,7 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
         });
     };
 
-    const isImageLoadStarted =
-      imageState?.status === "requested" || imageState?.status === "loaded";
+    const isImageLoadStarted = isLoadRequested && grantedSlotKey === slotKey;
     if (imageState?.status === "discarded" || !isImageLoadStarted) {
       const alt = props.alt?.trim();
       const placeholderText = getExternalImagePlaceholderText({
@@ -341,8 +368,12 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
         {...props}
         ref={ref}
         src={renderedSrc ?? undefined}
-        onError={handleError}
+        onError={(event) => {
+          releaseSlotRef.current?.();
+          handleError(event);
+        }}
         onLoad={(event) => {
+          releaseSlotRef.current?.();
           if (
             shouldMarkImageLoaded({
               renderedSrc,
