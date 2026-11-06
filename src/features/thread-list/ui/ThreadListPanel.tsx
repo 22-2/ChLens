@@ -203,7 +203,6 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
   );
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [searchOptions, setSearchOptions] = useState<SearchOptions>(() => ({
@@ -242,50 +241,45 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
     viewDocument.visibilityState === "visible",
   );
 
-  const fetchThreads = useCallback(
-    async (initial = false) => {
-      const requestId = ++requestIdRef.current;
-      setLoading(true);
-      setIsInitialLoading(initial);
-      setError(null);
-      try {
-        const result = await container.board.getThreads(descriptor.boardUrl);
-        if (requestId !== requestIdRef.current) {
-          return;
-        }
-        initialFetchFinishedRef.current = true;
-        setThreads(result.threads);
-        void setThreadListCache(descriptor.boardUrl, result.threads);
-        if (result.threads.length > 0 || !result.message) {
-          // 下部パネルからの更新も同じ板の履歴に残す。
-          void saveThreadListSnapshot(descriptor.boardUrl, result.threads);
-        }
-        if (result.message && result.threads.length === 0) {
-          setError(result.message);
-        }
-      } catch (fetchError) {
-        if (requestId !== requestIdRef.current) {
-          return;
-        }
-        initialFetchFinishedRef.current = true;
-        const message =
-          fetchError instanceof Error ? fetchError.message : "スレッド一覧の取得に失敗しました";
-        logger.error("thread list fetch failed:", fetchError);
-        setError(message);
-      } finally {
-        if (requestId === requestIdRef.current) {
-          setLoading(false);
-        }
+  const fetchThreads = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await container.board.getThreads(descriptor.boardUrl);
+      if (requestId !== requestIdRef.current) {
+        return;
       }
-    },
-    [descriptor.boardUrl],
-  );
+      initialFetchFinishedRef.current = true;
+      setThreads(result.threads);
+      void setThreadListCache(descriptor.boardUrl, result.threads);
+      if (result.threads.length > 0 || !result.message) {
+        // 下部パネルからの更新も同じ板の履歴に残す。
+        void saveThreadListSnapshot(descriptor.boardUrl, result.threads);
+      }
+      if (result.message && result.threads.length === 0) {
+        setError(result.message);
+      }
+    } catch (fetchError) {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+      initialFetchFinishedRef.current = true;
+      const message =
+        fetchError instanceof Error ? fetchError.message : "スレッド一覧の取得に失敗しました";
+      logger.error("thread list fetch failed:", fetchError);
+      setError(message);
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [descriptor.boardUrl]);
 
   useEffect(() => {
     let cancelled = false;
     setThreads([]);
     setLoading(true);
-    setIsInitialLoading(true);
     setError(null);
     initialFetchFinishedRef.current = false;
 
@@ -294,7 +288,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
         setThreads(cached);
       }
     });
-    void fetchThreads(true);
+    void fetchThreads();
 
     return () => {
       cancelled = true;
@@ -680,7 +674,7 @@ export const ThreadListPanel: React.FC<ThreadListPanelProps> = ({ threadUrl }) =
       )}
       <div className="thread-list-panel__table-scroller">
         {error && threads.length > 0 && <div className="thread-list-page__notice">{error}</div>}
-        {loading && (isInitialLoading || threads.length === 0) ? (
+        {loading && threads.length === 0 ? (
           <div className="thread-list-panel__status">読み込み中...</div>
         ) : error && threads.length === 0 ? (
           <div className="thread-list-panel__status thread-list-panel__status--error" role="alert">

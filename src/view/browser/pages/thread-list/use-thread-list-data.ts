@@ -44,7 +44,6 @@ export function useThreadListData({
   const initialFetchFinishedRef = useRef(false);
   const [threads, setThreads] = useState<IThread[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [showRefreshOverlay, setShowRefreshOverlay] = useState(false);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,7 +66,6 @@ export function useThreadListData({
     autoRefreshRequestRef.current = null;
     previousRefreshKeyRef.current = refreshKey;
     setLoading(true);
-    setIsInitialLoading(!isRefresh);
     setIsAutoRefreshing(isAutoRefresh);
     setShowRefreshOverlay(isRefresh && !isAutoRefresh);
     setError(null);
@@ -209,7 +207,6 @@ export function useThreadListData({
     threads,
     setThreads,
     loading,
-    isInitialLoading,
     isAutoRefreshing,
     showRefreshOverlay,
     error,

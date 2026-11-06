@@ -52,7 +52,7 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", async () =>
 describe("ThreadListPage", () => {
   const pageState = setupThreadListPageTest();
 
-  it("キャッシュが先に届いても最新の一覧を適用するまで読み込み画面を表示する", async () => {
+  it("キャッシュが先に届いたら読み込み中でも一覧を残し、最新の取得結果で差し替える", async () => {
     vi.useRealTimers();
     cacheGetMock.mockResolvedValue(THREADS);
     let finishFetch: (result: { threads: IThread[]; message: null }) => void = () => {};
@@ -70,12 +70,12 @@ describe("ThreadListPage", () => {
     };
     render(<ThreadListPage tabId="tab-1" page={page} refreshKey={0} isActive />);
     await act(flushAsyncRender);
-    expect(screen.getByLabelText("スレ一覧を読み込み中")).toBeVisible();
-    expect(getRenderedThreadTitles()).toHaveLength(0);
+    expect(screen.queryByLabelText("スレ一覧を読み込み中")).toBeNull();
+    expect(getRenderedThreadTitles()).toHaveLength(3);
     await act(async () => {
-      finishFetch({ threads: THREADS, message: null });
+      finishFetch({ threads: THREADS.slice(0, 1), message: null });
     });
-    await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(3));
+    await waitFor(() => expect(getRenderedThreadTitles()).toHaveLength(1));
     expect(screen.queryByLabelText("スレ一覧を読み込み中")).toBeNull();
   });
 
