@@ -103,16 +103,18 @@ export default class MessageProcessor {
     }
     parts.otherHtml = otherHtml;
 
-    // 本文の意味解析は共有ライブラリに集約し、ここではアプリ固有のHTML表示だけを担当する。
-    // 意図: chlib はタグをそのままトークン化するため、描画前に許可リストでサニタイズする。
-    parts.messageHtml = sanitizeMessageHtml(
-      renderMessageTokens(
-        parseMessage(res.message || "", {
-          protocol,
-        }),
-      ),
-    );
+    parts.messageHtml = MessageProcessor.decodeMessage(res.message || "", protocol);
 
     return parts;
+  }
+
+  /**
+   * 本文だけをHTML化する。名前欄などが不要な呼び出し（画像URLの抽出など）で、余計なサニタイズを避ける。
+   *
+   * 本文の意味解析は共有ライブラリに集約し、ここではアプリ固有のHTML表示だけを担当する。
+   * 意図: chlib はタグをそのままトークン化するため、描画前に許可リストでサニタイズする。
+   */
+  static decodeMessage(message: string, protocol: string): string {
+    return sanitizeMessageHtml(renderMessageTokens(parseMessage(message, { protocol })));
   }
 }

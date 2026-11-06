@@ -2,7 +2,7 @@ import { isDirectVideoUrl } from "src/core/util/external-media";
 import { stripHtml } from "src/core/util/strip-html";
 import { extractUrlsFromMessage, toViewerImageUrl } from "src/core/util/url-media";
 import type { IRes } from "src/service-container/interfaces";
-import { decodeResponseHtml } from "src/view/browser/utils/response-format";
+import { decodeResponseMessageHtml } from "src/view/browser/utils/response-format";
 
 export interface ThreadImageItem {
   resNum: number;
@@ -15,11 +15,22 @@ export interface ThreadImageItem {
 
 // 自動更新のたびに全レスの HTML を解析し直さないよう、レスごとに取り出した URL を覚える。
 const urlCache = new WeakMap<IRes, { protocol: string; urls: string[] }>();
+// 変更理由: NG判定などでレスのオブジェクトが作り直されると、本文が同じでも上のキャッシュが外れ、
+// 1000レスのスレで全レスのサニタイズをやり直していた。本文の文字列でも覚えて、作り直しに耐える。
+const MESSAGE_URL_CACHE_LIMIT = 5000;
+const messageUrlCache = new Map<string, string[]>();
 
 function getResUrls(res: IRes, protocol: string): string[] {
   const cached = urlCache.get(res);
   if (cached?.protocol === protocol) return cached.urls;
-  const urls = extractUrlsFromMessage(decodeResponseHtml(res, protocol).messageHtml);
+  const key = `${protocol}\0${res.message}`;
+  let urls = messageUrlCache.get(key);
+  if (!urls) {
+    urls = extractUrlsFromMessage(decodeResponseMessageHtml(res.message || "", protocol));
+    // 上限を超えたら全部捨てる。再計算は安価で、古い順の管理より単純で確実。
+    if (messageUrlCache.size >= MESSAGE_URL_CACHE_LIMIT) messageUrlCache.clear();
+    messageUrlCache.set(key, urls);
+  }
   urlCache.set(res, { protocol, urls });
   return urls;
 }

@@ -44,3 +44,8 @@ export function decodeResponseHtml(res: IRes, protocol: string): DecodedMessageP
   // React版でも旧ビューと同じHTML化を通しておかないと、>>アンカーが文字列のまま残ってホバー対象を拾えない。
   return MessageProcessor.decode(res, protocol) as DecodedMessageParts;
 }
+
+/** 本文だけをHTML化する。名前欄のサニタイズが不要な呼び出し向け。 */
+export function decodeResponseMessageHtml(message: string, protocol: string): string {
+  return MessageProcessor.decodeMessage(message, protocol);
+}
