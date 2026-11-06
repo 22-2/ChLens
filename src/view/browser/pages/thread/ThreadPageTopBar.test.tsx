@@ -44,11 +44,12 @@ describe("ThreadPageTopBar", () => {
     cleanup();
   });
 
-  it("検索欄と「絞り込み」メニューのボタンだけを出す", () => {
+  it("絞り込み前は人気ボタンと種類メニューを出す", () => {
     renderBar();
 
     expect(screen.getByPlaceholderText("フィルタする文字を入力")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "絞り込み" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "人気" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "フィルタの種類" })).toBeInTheDocument();
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
 
@@ -72,7 +73,7 @@ describe("ThreadPageTopBar", () => {
   it("絞り込みメニューに種類を件数つきで並べる", () => {
     renderBar({ filter: "popular" });
 
-    fireEvent.click(screen.getByRole("button", { name: "人気" }));
+    fireEvent.click(screen.getByRole("button", { name: "フィルタの種類" }));
 
     // アイコン（かなのアイコンは文字を含む）を除き、ラベルだけを比べる。
     const labels = screen
@@ -96,13 +97,38 @@ describe("ThreadPageTopBar", () => {
   it("種類を選ぶと親へ通知し、選んでいる種類をもう一度選ぶと解除する", () => {
     const props = renderBar({ filter: "image" });
 
-    fireEvent.click(screen.getByRole("button", { name: "画像" }));
+    fireEvent.click(screen.getByRole("button", { name: "フィルタの種類" }));
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "自分のレス (4)" }));
     expect(props.onFilterChange).toHaveBeenLastCalledWith("own");
 
-    fireEvent.click(screen.getByRole("button", { name: "画像" }));
+    fireEvent.click(screen.getByRole("button", { name: "フィルタの種類" }));
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "画像 (3)" }));
     expect(props.onFilterChange).toHaveBeenLastCalledWith("all");
+  });
+
+  it("種類ボタンを一度押すと有効になり、再度押すと解除し、種類を記憶する", () => {
+    const onFilterChange = vi.fn();
+    const props: BarProps = {
+      activeTopBar: "filter",
+      filter: "all",
+      filterCounts: COUNTS,
+      onClose: vi.fn(),
+      onFilterChange,
+      onSearchQueryChange: vi.fn(),
+      onSearchOptionsChange: vi.fn(),
+      searchFocusKey: 0,
+      searchQuery: "",
+      searchOptions: DEFAULT_SEARCH_OPTIONS,
+    };
+    const { rerender } = render(<ThreadPageTopBar {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "人気" }));
+    expect(onFilterChange).toHaveBeenLastCalledWith("popular");
+    rerender(<ThreadPageTopBar {...props} filter="image" />);
+    fireEvent.click(screen.getByRole("button", { name: "画像" }));
+    expect(onFilterChange).toHaveBeenLastCalledWith("all");
+    rerender(<ThreadPageTopBar {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "画像" }));
+    expect(onFilterChange).toHaveBeenLastCalledWith("image");
   });
 
   it("種類を選んでいる間は、閉じていても選んだ種類をボタンに出して強調する", () => {

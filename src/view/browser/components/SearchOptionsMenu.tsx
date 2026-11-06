@@ -25,6 +25,8 @@ interface SearchOptionsMenuProps {
   label?: string;
   /** メニューの中で既定から外れた条件があるとき true。閉じていても効いていると分かるよう強調する。 */
   active?: boolean;
+  /** 指定時は種類名で絞り込みを切り替え、隣の矢印で種類を選ぶ。 */
+  onLeadingToggle?: () => void;
   className?: string;
 }
 
@@ -59,6 +61,7 @@ export function SearchOptionsMenu({
   leadingItemsOnly = false,
   label,
   active = false,
+  onLeadingToggle,
   className,
 }: SearchOptionsMenuProps) {
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -98,14 +101,25 @@ export function SearchOptionsMenu({
     <span className={["search-options-menu", className].filter(Boolean).join(" ")}>
       {separateLeadingItems && leadingItems?.length ? (
         <>
+          {onLeadingToggle && (
+            <button
+              type="button"
+              className="search-options-menu__button search-options-menu__button--labeled icon-button"
+              aria-pressed={active}
+              data-active={active ? "true" : undefined}
+              onClick={onLeadingToggle}
+            >
+              {label}
+            </button>
+          )}
           <button
             ref={leadingButtonRef}
             type="button"
             className="search-options-menu__button search-options-menu__button--labeled icon-button"
             aria-haspopup="menu"
             aria-expanded={leadingPosition !== null}
-            aria-label={label ?? "カテゴリ"}
-            title={label ?? "カテゴリ"}
+            aria-label={onLeadingToggle ? "フィルタの種類" : (label ?? "カテゴリ")}
+            title={onLeadingToggle ? "フィルタの種類" : (label ?? "カテゴリ")}
             data-active={active ? "true" : undefined}
             onClick={() => {
               if (leadingPosition) {
@@ -116,7 +130,7 @@ export function SearchOptionsMenu({
               if (rect) setLeadingPosition({ x: rect.left, y: rect.bottom });
             }}
           >
-            <span>{label}</span>
+            {!onLeadingToggle && <span>{label}</span>}
             <ChevronDown size={14} aria-hidden="true" />
           </button>
           {leadingPosition ? (

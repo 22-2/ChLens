@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { checkIcon, SearchOptionsMenu } from "src/view/browser/components/SearchOptionsMenu";
 import type { TopBarMode } from "src/view/browser/pages/thread/use-thread-top-bar";
 import type { ThreadFilter } from "src/view/browser/types";
@@ -32,8 +32,6 @@ const FILTER_ITEMS: { key: Exclude<ThreadFilter, "all">; label: string }[] = [
   { key: "own", label: "自分のレス" },
 ];
 
-const DEFAULT_BUTTON_LABEL = "絞り込み";
-
 // 変更理由: 構文を知らなくても使えるよう、入力欄の説明は欄の上へ重ねるだけにする。
 const SEARCH_SYNTAX_HELP = [
   "文字を入れると本文を絞り込みます。",
@@ -56,6 +54,13 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
   searchError = null,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [lastFilter, setLastFilter] = useState<Exclude<ThreadFilter, "all">>(
+    filter === "all" ? "popular" : filter,
+  );
+  // 外部コマンドで選んだ種類も、解除後のワンクリック対象として記憶する。
+  useEffect(() => {
+    if (filter !== "all") setLastFilter(filter);
+  }, [filter]);
 
   useEffect(() => {
     if (activeTopBar === "none" || suppressInitialFocus) {
@@ -98,7 +103,8 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
     return null;
   }
 
-  const selected = FILTER_ITEMS.find(({ key }) => key === filter);
+  const selectedFilter = filter === "all" ? lastFilter : filter;
+  const selected = FILTER_ITEMS.find(({ key }) => key === selectedFilter)!;
   return (
     <div className="thread-page__top-bar thread-page__toolbar">
       <div className="thread-page__toolbar-search">
@@ -108,8 +114,9 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
           leadingItems={filterItems}
           separateLeadingItems
           leadingItemsOnly
-          label={selected?.label ?? DEFAULT_BUTTON_LABEL}
+          label={selected.label}
           active={filter !== "all"}
+          onLeadingToggle={() => onFilterChange(filter === "all" ? selectedFilter : "all")}
         />
         <input
           ref={inputRef}
