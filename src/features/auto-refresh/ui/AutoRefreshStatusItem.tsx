@@ -348,11 +348,12 @@ export const AutoRefreshStatusItem: React.FC = () => {
                   aria-hidden="true"
                 />
               )}
-              <CirclePause
-                size={13}
-                className={manuallyPaused ? undefined : "auto-refresh-pause__hover"}
-                aria-hidden="true"
-              />
+              {/* 一時停止中は押すと再開するので、停止の記号ではなく再生の記号を出す。 */}
+              {manuallyPaused ? (
+                <CirclePlay size={13} aria-hidden="true" />
+              ) : (
+                <CirclePause size={13} className="auto-refresh-pause__hover" aria-hidden="true" />
+              )}
             </button>
           )}
           {/* OFFでも設定を開けるため、無効な操作に見える薄い色にはしない。 */}

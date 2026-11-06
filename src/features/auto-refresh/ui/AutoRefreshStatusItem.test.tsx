@@ -162,7 +162,7 @@ describe("AutoRefreshStatusItem", () => {
     expect(mocks.autoRefreshPanel.toggle).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "自動更新を再開" })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "自動更新を再開" }).querySelector(".lucide-circle-pause"),
+      screen.getByRole("button", { name: "自動更新を再開" }).querySelector(".lucide-circle-play"),
     ).toBeInTheDocument();
     expect(view.container.querySelector(".icon--spinning")).not.toBeInTheDocument();
     expect(view.container.querySelector(".status-bar")).toHaveClass("status-bar--active");
