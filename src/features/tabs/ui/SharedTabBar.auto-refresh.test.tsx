@@ -63,7 +63,10 @@ vi.mock("src/features/tabs/browser/use-tab-command-runner", () => ({
 }));
 vi.mock("src/features/tabs/ui/TabContextMenu", () => ({ TabContextMenu: () => null }));
 vi.mock("@dnd-kit/react", () => ({
+  PointerSensor: class {},
+  KeyboardSensor: class {},
   DragDropProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DragOverlay: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("@dnd-kit/react/sortable", () => ({
   useSortable: () => ({

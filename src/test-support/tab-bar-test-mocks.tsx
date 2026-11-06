@@ -122,6 +122,9 @@ export function createAutoScrollStateModule() {
 
 export function createDndKitModule() {
   return {
+    // このテストではドラッグ処理を実行せず、コンポーネントの読み込みに必要な形だけ用意する。
+    PointerSensor: class {},
+    KeyboardSensor: class {},
     DragDropProvider: ({
       children,
       onDragEnd,
@@ -132,6 +135,7 @@ export function createDndKitModule() {
       dragState.onDragEnd = onDragEnd;
       return <>{children}</>;
     },
+    DragOverlay: ({ children }: { children: ReactNode }) => <>{children}</>,
   };
 }
 
