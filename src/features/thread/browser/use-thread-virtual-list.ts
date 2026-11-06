@@ -183,6 +183,13 @@ export function useThreadVirtualList({
     },
   });
 
+  // 変更理由: 既定では、初めて計測した時に上端が画面の上にあるレスの高さの差を、スクロール位置へ足していた。
+  // 画面の上端をまたぐレス自身の上端は動かないため、保存した読み位置（レスの上端からのずれ）を
+  // 復元した直後に、そのレスの推定と実測の差（10px前後）だけ位置がずれていた。
+  // 全体が画面の上に出ているレスだけを補正の対象にして、読んでいるレスの位置を保つ。
+  virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (item, _delta, instance) =>
+    item.end <= (instance.scrollOffset ?? 0) + instance.scrollAdjustments;
+
   useLayoutEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
