@@ -104,6 +104,9 @@ describe("PageCountStatusItem", () => {
     await waitFor(() => {
       expect(screen.getByText("128レス")).toBeInTheDocument();
       expect(screen.getByLabelText("現在のレス数: 128レス")).toBeInTheDocument();
+      expect(screen.getByLabelText("現在のレス数: 128レス").querySelector("svg")).toHaveClass(
+        "lucide-messages-square",
+      );
     });
   });
 

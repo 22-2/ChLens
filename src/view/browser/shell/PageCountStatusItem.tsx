@@ -1,3 +1,4 @@
+import { MessagesSquare } from "lucide-react";
 import React from "react";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
@@ -74,6 +75,7 @@ export const PageCountStatusItem: React.FC = () => {
           aria-label={accessibleLabel}
           title={`${accessibleLabel}（クリックでフィルターを開閉）`}
         >
+          <MessagesSquare size={13} aria-hidden="true" />
           <span className="status-bar__count" aria-hidden="true">
             {label}
           </span>
