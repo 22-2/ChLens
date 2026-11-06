@@ -6,6 +6,7 @@ import {
   findStartIndex,
   findThreadMatches,
   stepMatchIndex,
+  type ThreadFindIndexEntry,
   type ThreadFindMatch,
 } from "src/features/thread/domain/thread-find";
 import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
@@ -49,6 +50,7 @@ export interface UseThreadFindResult {
 }
 
 const CURRENT_MATCH_SELECTOR = ".res__find-match--current";
+const EMPTY_FIND_INDEX: ThreadFindIndexEntry[] = [];
 
 /**
  * スレッドのページ内検索（Ctrl+F の置き換え）。
@@ -72,7 +74,13 @@ export function useThreadFind({
   const [focusKey, setFocusKey] = useState(0);
   // 打鍵ごとに全レスを探すと入力が重くなるため、探す処理は入力より後回しにしてよい。
   const deferredQuery = useDeferredValue(isOpen ? query.trim() : "");
-  const index = useMemo(() => buildThreadFindIndex(responses, options), [options, responses]);
+  // 変更理由: 検索を開いていなくても、レスが増えるたびに全レスを正規化し直していた。
+  // ライブ実況では1レスずつ表示するため、1000レス近いスレで再描画のたびに数十msの無駄が出る。
+  // 検索バーを開いている間だけ索引を作る。
+  const index = useMemo(
+    () => (isOpen ? buildThreadFindIndex(responses, options) : EMPTY_FIND_INDEX),
+    [isOpen, options, responses],
+  );
   const matcher = useMemo(
     () => compileSearch(deferredQuery, options).matcher,
     [deferredQuery, options],
