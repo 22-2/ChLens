@@ -111,7 +111,7 @@ describe("TanStack Virtualを使ったレス一覧", () => {
     const entry = { borderBoxSize: [{ blockSize: 260.4 }] } as unknown as ResizeObserverEntry;
     expect(virtualizer.options.measureElement(element, entry, virtualizer)).toBe(260);
   });
-  it("推定高さを再利用し、本文や表示幅が変わったら計算し直す", () => {
+  it("推定高さを再利用し、本文や表示幅が変わったら計算し直す", async () => {
     let notifyResize: ResizeObserverCallback | undefined;
     vi.stubGlobal(
       "ResizeObserver",
@@ -145,6 +145,9 @@ describe("TanStack Virtualを使ったレス一覧", () => {
 
     width = 200;
     act(() => notifyResize?.([], {} as ResizeObserver));
+    await act(async () => {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
     expect(result.current.list.virtualizer.options.estimateSize(2)).toBeGreaterThan(longHeight);
     estimate.mockRestore();
   });

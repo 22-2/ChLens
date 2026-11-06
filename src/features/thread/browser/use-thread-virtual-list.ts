@@ -216,14 +216,25 @@ export function useThreadVirtualList({
       }
     };
     update();
-    const observer = new ResizeObserver(update);
+    // 監視通知中に幅を更新すると、レスの再計測が通知を連鎖させる。
+    let frame: number | undefined;
+    const observer = new ResizeObserver(() => {
+      if (frame !== undefined) return;
+      frame = viewWindow.requestAnimationFrame(() => {
+        frame = undefined;
+        update();
+      });
+    });
     observer.observe(container);
     const list = container.querySelector<HTMLElement>(".thread-page__responses");
     if (list) observer.observe(list);
     const stickyHeader = container.querySelector<HTMLElement>(".thread-page__sticky-header");
     if (stickyHeader) observer.observe(stickyHeader);
-    return () => observer.disconnect();
-  }, [scrollContainerRef, keys.length]);
+    return () => {
+      observer.disconnect();
+      if (frame !== undefined) viewWindow.cancelAnimationFrame(frame);
+    };
+  }, [scrollContainerRef, keys.length, viewWindow]);
 
   // NG表示方式や本文幅が変わったとき、以前の条件で測った高さを再利用しない。
   const displaySignature = useMemo(
@@ -264,6 +275,10 @@ export function useThreadVirtualList({
         if (index >= 0 && index < keys.length && keys[index] === key) {
           virtualizer.resizeItem(index, element.offsetHeight);
         }
+      }
+      if (stickToEnd && container) {
+        // 遅らせた幅の再計測で末尾が動く前の追従意図を維持する。
+        virtualizer.scrollToEnd();
       }
       if (anchor && typeof anchor.key === "number" && container) {
         const index = keyIndex.get(anchor.key);

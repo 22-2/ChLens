@@ -72,7 +72,7 @@ test("ウィンドウを広い状態から狭くしても自動更新の追従�
   await page.addInitScript(() => {
     localStorage.setItem("config_auto_load_second", "5000");
     // ブラウザが例外ではなく window の error イベントとして配る通知も捕捉する。
-    const target = window as Window & { resizeWarnings: string[] };
+    const target = window as unknown as Window & { resizeWarnings: string[] };
     target.resizeWarnings = [];
     window.addEventListener("error", (event) => {
       if (
@@ -105,7 +105,7 @@ test("ウィンドウを広い状態から狭くしても自動更新の追従�
     .getByRole("textbox", { name: "本文" })
     .fill("これは幅が狭くなると折り返して本文欄が伸びる長い入力です。".repeat(8));
   const detectorWorks = await page.evaluate(() => {
-    const target = window as Window & { resizeWarnings: string[] };
+    const target = window as unknown as Window & { resizeWarnings: string[] };
     target.resizeWarnings.length = 0;
     window.dispatchEvent(
       new ErrorEvent("error", {
@@ -135,6 +135,8 @@ test("ウィンドウを広い状態から狭くしても自動更新の追従�
   expect(atBottom).not.toBeNull();
   expect(atBottom!).toBeLessThanOrEqual(2);
   expect(
-    await page.evaluate(() => (window as Window & { resizeWarnings: string[] }).resizeWarnings),
+    await page.evaluate(
+      () => (window as unknown as Window & { resizeWarnings: string[] }).resizeWarnings,
+    ),
   ).toEqual([]);
 });

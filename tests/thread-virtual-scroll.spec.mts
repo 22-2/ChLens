@@ -83,6 +83,23 @@ test.describe("大きなスレッドのスクロール位置", () => {
       .toBeLessThan(3);
   });
 
+  test("途中のレスを読んでいるとき幅を変えても同じ位置を保つ", async ({
+    page,
+    extensionId,
+    localBoard,
+  }) => {
+    await page.setViewportSize({ width: 1200, height: 700 });
+    const thread = localBoard.addLargeThread(500);
+    await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+    await waitForThreadLoaded(page, thread.threadUrl, 500);
+    await scrollActivePanelToRatio(page, 0.5);
+    const before = await readViewportAnchor(page);
+    expect(before).not.toBeNull();
+    await page.setViewportSize({ width: 750, height: 700 });
+    await waitForScrollSettled(page);
+    await expectViewportAnchor(page, before!, 2);
+  });
+
   test("自動追従中に拡大と縮小を繰り返しても、表示範囲に空白を作らず末尾を維持する", async ({
     page,
     extensionId,
