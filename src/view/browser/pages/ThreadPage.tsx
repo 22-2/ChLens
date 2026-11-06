@@ -91,6 +91,7 @@ import { useThreadReadPositionMode } from "src/view/browser/pages/thread/use-thr
 import { useThreadReadState } from "src/view/browser/pages/thread/use-thread-read-state";
 import { useThreadReplyNotification } from "src/view/browser/pages/thread/use-thread-reply-notification";
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
+import { useThreadSmoothScroll } from "src/view/browser/pages/thread/use-thread-smooth-scroll";
 import { useThreadStatusSync } from "src/view/browser/pages/thread/use-thread-status-sync";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import { useThreadTopScrollOpenFilter } from "src/view/browser/pages/thread/use-thread-top-scroll-open-filter";
@@ -216,7 +217,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const isCommentOverlayVisible =
     commentOverlaySnapshot.state.status === "running" && commentOverlaySnapshot.visible;
   const isCommentOverlayFlowing = isCommentOverlayTarget && commentOverlaySnapshot.visible;
-
   useCommentOverlaySync({
     controller: commentOverlayController,
     threadUrl: page.threadUrl,
@@ -227,7 +227,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     isAutoRefreshEnabled,
     ownResponseNumbers: ownResNums,
   });
-
   useCommentOverlayHandoff({
     page,
     responses,
@@ -261,7 +260,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     () => responses.map((response) => response.message),
     [responses],
   );
-
   const isFilterDefaultOpen = useThreadFilterDefaultOpenSetting();
   const { expandedImages, imageWidths, resizeImage, toggleImage } = useThreadImageExpansion(
     page.threadUrl,
@@ -337,10 +335,16 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     openFilterToolbar,
     rootRef,
   });
-  // 変更理由: 自動更新とステータスバー強調の条件を同一ソースに統一し、
-  // タブ切替後に非アクティブタブの状態がステータスバーへ残留するのを防ぐ。
-  // 変更理由: Overlayへ流しているスレッドはタブを切り替えても取得を止めず、
-  // 表示中の実況と自動次スレ探索をバックグラウンドで継続する。
+  useThreadSmoothScroll({
+    containerRef: effectiveScrollContainerRef,
+    rootRef,
+    isActive,
+    activeTopBar,
+    loading,
+    canRefresh: threadCapabilities.canRefresh,
+  });
+  // 自動更新とステータスバー強調の条件を揃え、非アクティブタブの状態を残さない。
+  // Overlay対象はタブ切替後も実況と自動次スレ探索を続ける。
   const isActiveAutoRefreshEnabled = (isActive || isCommentOverlayFlowing) && isAutoRefreshEnabled;
   // 次スレ待機中も、追従位置の計測と次スレ探索の経路（トラッキング）は止めない。
   const isNextThreadWaiting = tab ? isNextThreadWaitingForPage(tab, page) : false;

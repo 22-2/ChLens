@@ -255,6 +255,29 @@ const ALL_SETTINGS_SECTIONS = [
       },
       {
         kind: "divider",
+        id: "wheel-scroll",
+        title: "ホイールスクロール",
+      },
+      {
+        kind: "boolean",
+        key: "thread_smooth_scroll",
+        title: "スレを滑らかにスクロールする",
+        description: "ホイール操作を滑らかにし、移動量の倍率を適用します。",
+      },
+      {
+        kind: "string",
+        key: "thread_scroll_multiplier",
+        title: "ホイールの移動量",
+        description: "滑らかなスクロールが有効なときの移動量です。",
+        options: [
+          { const: "1", title: "1倍" },
+          { const: "1.5", title: "1.5倍" },
+          { const: "2", title: "2倍" },
+          { const: "3", title: "3倍" },
+        ],
+      },
+      {
+        kind: "divider",
         id: "auto-scroll",
         title: "自動スクロール",
       },

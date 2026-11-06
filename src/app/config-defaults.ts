@@ -11,6 +11,9 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   // EdgeLiveViewerと同じく候補がまだ立っていない間だけ待ち、subjectの無期限取得を防ぐ。
   next_thread_search_duration: "180",
   pause_auto_scroll_on_popup: "on",
+  // 既存のホイール操作を維持し、滑らかなスクロールは明示的に有効にする。
+  thread_smooth_scroll: "off",
+  thread_scroll_multiplier: "1.5",
   // ポップアップは従来どおりマウスを外すと閉じる。必要な場合だけ外側クリックまで維持する。
   popup_close_outside_only: "off",
   // 変更理由: フィルタバーは本文を押し下げるため、スレを開いた直後は閉じておくことを既定にする。
