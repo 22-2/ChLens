@@ -111,17 +111,22 @@ test("NG・置換エディタはEnterで現在の深さだけを維持し、段�
   const panel = page.locator('.content-area__tab-panel[data-active="true"]');
   await panel.getByRole("button", { name: /^NG/ }).click();
   const editingSurface = panel.locator(".monaco-editor .view-lines");
+  const editor = panel.getByRole("textbox", { name: "NGルール", exact: true });
   await editingSurface.click({ position: { x: 10, y: 10 } });
-  // EnterとTabの挙動を確認するため、文字も通常のキー入力として送る。
-  await page.keyboard.type("hide:");
+  await expect(editor).toBeFocused();
+  // 候補更新による文字の取りこぼしを避け、EnterとTabだけ実キーで確認する。
+  await page.keyboard.insertText("hide:");
   await page.keyboard.press("Escape");
   await page.keyboard.press("Enter");
+  // Enter後の空行には候補が開くため、Tabを字下げに使えるよう閉じる。
+  await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
-  await page.keyboard.type("when body contains:");
+  await page.keyboard.insertText("when body contains:");
   await page.keyboard.press("Escape");
   await page.keyboard.press("Enter");
+  await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
-  await page.keyboard.type('"入力テスト"');
+  await page.keyboard.insertText('"入力テスト"');
   await expect
     .poll(() =>
       page.evaluate(() => localStorage.getItem("config_ngwords")?.replace(/\r\n/gu, "\n")),
@@ -130,14 +135,15 @@ test("NG・置換エディタはEnterで現在の深さだけを維持し、段�
 
   await panel.getByRole("tab", { name: "文字列置換", exact: true }).click();
   await editingSurface.click({ position: { x: 10, y: 10 } });
-  await page.keyboard.type("replace body:");
+  await page.keyboard.insertText("replace body:");
   await page.keyboard.press("Escape");
   await page.keyboard.press("Enter");
+  await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
-  await page.keyboard.type('from "前"');
+  await page.keyboard.insertText('from "前"');
   await page.keyboard.press("Escape");
   await page.keyboard.press("Enter");
-  await page.keyboard.type('to "後"');
+  await page.keyboard.insertText('to "後"');
   await expect
     .poll(() =>
       page.evaluate(() => localStorage.getItem("config_replace_str_txt")?.replace(/\r\n/gu, "\n")),
