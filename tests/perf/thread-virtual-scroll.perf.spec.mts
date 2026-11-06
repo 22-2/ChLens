@@ -23,6 +23,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RESPONSE_COUNT = 1000;
 const TAB_COUNT = 10;
 const SCROLL_STEPS = 40;
+// 自動更新の計測: 5秒間隔（設定で選べる最短）で届く新着を、1000レスの上限に届かない範囲で重ねる。
+const AUTO_REFRESH_INITIAL_COUNT = 200;
+const AUTO_REFRESH_BATCH_SIZE = 40;
+const AUTO_REFRESH_BATCHES = 8;
 const ACTIVE_PANEL = '.content-area__tab-panel[data-active="true"]';
 const LABEL = process.env.CHLENS_PERF_LABEL ?? "current";
 
@@ -170,4 +174,59 @@ test.describe("スレッド表示の性能計測", () => {
       renderedResponses: await page.locator(".thread-page__responses .res").count(),
     };
   });
+
+  // 変更理由: 自動更新で新着が積み重なる場面は、スレを開くだけ・スクロールするだけの計測では
+  // 見えない再描画・追従スクロールの負荷が出るため、通常表示とライブ実況表示の両方を測る。
+  for (const mode of ["normal", "live-chat"] as const) {
+    const modeLabel = mode === "live-chat" ? "ライブ実況表示" : "通常表示";
+    test(`自動更新で新着が${AUTO_REFRESH_BATCHES}回積み重なる（${modeLabel}）`, async ({
+      page,
+      extensionId,
+      localBoard,
+    }) => {
+      await page.addInitScript((displayMode) => {
+        localStorage.setItem("config_auto_load_second", "5000");
+        if (displayMode === "live-chat") {
+          localStorage.setItem("config_thread_display_mode", "live-chat");
+        }
+      }, mode);
+      const thread = localBoard.addLargeThread(AUTO_REFRESH_INITIAL_COUNT);
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Performance.enable");
+
+      await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+      await waitForThreadLoaded(page, thread.threadUrl, AUTO_REFRESH_INITIAL_COUNT);
+
+      await page.getByRole("button", { name: /^スレッド自動更新: / }).click();
+      const toggle = page
+        .locator(".mini-window__toggle-row")
+        .filter({ has: page.getByText("自動更新", { exact: true }) })
+        .getByRole("button");
+      await toggle.click();
+      await page.keyboard.press("Escape");
+      await waitForScrollSettled(page);
+      await collectGarbage(cdp);
+
+      const before = await readMetrics(cdp);
+      let expected = AUTO_REFRESH_INITIAL_COUNT;
+      for (let index = 0; index < AUTO_REFRESH_BATCHES; index++) {
+        localBoard.appendLargeThreadPosts(AUTO_REFRESH_BATCH_SIZE);
+        expected += AUTO_REFRESH_BATCH_SIZE;
+        // 取得間隔（5秒）が待ち時間の大半を占めるため、経過時間ではなく処理時間だけを比べる。
+        await waitForThreadLoaded(page, thread.threadUrl, expected, 30_000);
+      }
+      await waitForScrollSettled(page);
+      const after = await readMetrics(cdp);
+
+      await collectGarbage(cdp);
+      const settled = await readMetrics(cdp);
+      results[mode === "live-chat" ? "autoRefreshLive" : "autoRefreshNormal"] = {
+        batches: AUTO_REFRESH_BATCHES,
+        responses: expected,
+        ...durationsBetween(before, after),
+        jsHeapUsedMb: Math.round((settled.JSHeapUsedSize ?? 0) / 1024 / 1024),
+        nodes: settled.Nodes,
+      };
+    });
+  }
 });
