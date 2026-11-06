@@ -339,9 +339,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     containerRef: effectiveScrollContainerRef,
     rootRef,
     isActive,
-    activeTopBar,
-    loading,
-    canRefresh: threadCapabilities.canRefresh,
   });
   // 自動更新とステータスバー強調の条件を揃え、非アクティブタブの状態を残さない。
   // Overlay対象はタブ切替後も実況と自動次スレ探索を続ける。

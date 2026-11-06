@@ -15,6 +15,7 @@ vi.mock("lenis", () => ({
   default: class {
     destroy = vi.fn();
     raf = vi.fn();
+    on = vi.fn(() => () => {});
     isScrolling = false;
     animatedScroll = 0;
     constructor(public options: (typeof mocks.instances)[number]["options"]) {
@@ -45,9 +46,6 @@ describe("スレの滑らかなスクロール", () => {
       containerRef: { current: wrapper },
       rootRef: { current: root },
       isActive: true,
-      activeTopBar: "none",
-      loading: false,
-      canRefresh: true,
     };
     const { rerender } = renderHook((props) => useThreadSmoothScroll(props), {
       initialProps: options,
@@ -74,9 +72,6 @@ describe("スレの滑らかなスクロール", () => {
         containerRef: { current: wrapper },
         rootRef: { current: root },
         isActive: true,
-        activeTopBar: "none",
-        loading: false,
-        canRefresh: true,
       }),
     );
     const handle = mocks.instances[0]!.options.virtualScroll;

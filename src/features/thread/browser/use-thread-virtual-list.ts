@@ -1,5 +1,6 @@
 import {
   defaultRangeExtractor,
+  elementScroll,
   type ReactVirtualizer,
   useVirtualizer,
 } from "@tanstack/react-virtual";
@@ -26,6 +27,7 @@ import type { IReadState, IRes } from "src/service-container/interfaces";
 import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
+import { SCROLL_LAYOUT_CORRECTION_EVENT } from "src/view/browser/utils/scroll-layout-correction";
 
 export type VirtualKey = string | number;
 
@@ -154,6 +156,13 @@ export function useThreadVirtualList({
   const virtualizer = useVirtualizer<HTMLElement, HTMLElement>({
     count: keys.length,
     getScrollElement: () => scrollContainerRef.current,
+    scrollToFn: (offset, options, instance) => {
+      elementScroll(offset, options, instance);
+      // 実測高さによる補正を滑らかなスクロールへ伝え、慣性と競合させない。
+      if (options.adjustments) {
+        instance.scrollElement?.dispatchEvent(new Event(SCROLL_LAYOUT_CORRECTION_EVENT));
+      }
+    },
     getItemKey: (index) => keys[index]!,
     estimateSize,
     // 画面外から戻ったレスは画像や埋め込みの状態が以前と異なるため、
