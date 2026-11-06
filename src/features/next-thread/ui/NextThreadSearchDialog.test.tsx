@@ -1,9 +1,18 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { NextThreadSearchState } from "src/features/next-thread/browser/use-next-thread-search";
 import { NextThreadSearchDialog } from "src/features/next-thread/ui/NextThreadSearchDialog";
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+
+const mocks = vi.hoisted(() => ({ dispatch: vi.fn() }));
+vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
+  useTabDispatch: () => mocks.dispatch,
+}));
+vi.mock("src/features/bookmark/browser/use-bookmark-revision", () => ({
+  useBookmarkRevision: () => 0,
+  readBookmarkStatus: () => false,
+}));
 
 const READY_STATE: NextThreadSearchState = {
   status: "ready",
@@ -36,8 +45,63 @@ const READY_STATE_WITH_SCORE: NextThreadSearchState = {
 describe("NextThreadSearchDialog", () => {
   afterEach(() => {
     cleanup();
+    mocks.dispatch.mockClear();
     document.querySelector(".browser-shell")?.remove();
   });
+
+  it.each(["related", "next"] as const)(
+    "%s候補の中クリックはダイアログを閉じず背景タブで開く",
+    (searchType) => {
+      const onSelect = vi.fn();
+      const onClose = vi.fn();
+      render(
+        <NextThreadSearchDialog
+          state={{ ...READY_STATE_WITH_SCORE, searchType }}
+          onClose={onClose}
+          onSelect={onSelect}
+        />,
+      );
+      const candidate = screen.getByRole("button", { name: "次のスレへ移動" });
+      fireEvent(
+        candidate,
+        new MouseEvent("auxclick", { button: 1, bubbles: true, cancelable: true }),
+      );
+      expect(mocks.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          background: true,
+          page: expect.objectContaining({
+            title: "次のスレ",
+            threadUrl: "https://example.com/test/read.cgi/live/2/",
+          }),
+        }),
+      );
+      expect(onSelect).not.toHaveBeenCalled();
+      expect(onClose).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["related", "next"] as const)(
+    "%s候補を右クリックするとスレッドのメニューを表示する",
+    async (searchType) => {
+      const onSelect = vi.fn();
+      render(
+        <NextThreadSearchDialog
+          state={{ ...READY_STATE_WITH_SCORE, searchType }}
+          onClose={() => {}}
+          onSelect={onSelect}
+        />,
+      );
+      fireEvent.contextMenu(screen.getByRole("button", { name: "次のスレへ移動" }), {
+        clientX: 30,
+        clientY: 40,
+      });
+      expect(await screen.findByRole("button", { name: "スレタイをコピー" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "スレタイをNG登録" })).toBeInTheDocument();
+      expect(onSelect).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "スレタイをNG登録" }));
+      expect(screen.getByRole("textbox", { name: "スレタイ" })).toHaveValue("次のスレ");
+    },
+  );
 
   it("ダークテーマのスコープ内へPortalを描画する", async () => {
     const shell = document.createElement("div");

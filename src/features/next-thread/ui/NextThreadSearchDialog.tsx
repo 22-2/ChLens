@@ -1,9 +1,22 @@
 import React, { useEffect, useRef, useState } from "react";
+import {
+  readBookmarkStatus,
+  useBookmarkRevision,
+} from "src/features/bookmark/browser/use-bookmark-revision";
 import type { NextThreadSearchState } from "src/features/next-thread/browser/use-next-thread-search";
 import type {
   NextThreadEvidence,
   ThreadSearchCandidate,
 } from "src/features/next-thread/domain/next-thread-search";
+import { useThreadTitleNgDialog } from "src/features/ng/browser/use-thread-title-ng-dialog";
+import { ThreadTitleNgDialog } from "src/features/ng/ui/ThreadTitleNgDialog";
+import { createThreadContextMenuItems } from "src/features/thread/ui/thread-context-menu-items";
+import { runCommandRequest } from "src/view/browser/commands/command-runtime";
+import { useToast } from "src/view/browser/hooks/use-toast";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
+import { useTabDispatch } from "src/view/browser/state/tabs/use-tab-store";
+import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Dialog } from "src/view/browser/ui/Dialog";
 import { Spinner } from "src/view/browser/ui/Spinner";
 
@@ -50,12 +63,38 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const firstCandidateRef = useRef<HTMLButtonElement>(null);
+  const dispatch = useTabDispatch();
+  const surface = useViewSurface();
+  const toast = useToast();
+  const bookmarkRevision = useBookmarkRevision();
+  const titleNgDialog = useThreadTitleNgDialog({ toast, logLabel: "NextThreadSearchDialog" });
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    candidate: ThreadSearchCandidate;
+  } | null>(null);
   const isAutoMovePrompt = autoMoveCountdown != null;
   const isOpen = state.status !== "idle" || isAutoMovePrompt;
   const isSearching = state.status === "searching";
   const isReady = state.status === "ready";
   const isError = state.status === "error";
   const isRelatedSearch = state.searchType === "related";
+  // スレ一覧と同じメニューを使い、ブックマークの外部更新も表示へ反映する。
+  void bookmarkRevision;
+  const menuItems = menu
+    ? createThreadContextMenuItems({
+        target: menu.candidate.thread,
+        isBookmarked: readBookmarkStatus(menu.candidate.thread.url),
+        onRegisterTitleNg: () => titleNgDialog.open(menu.candidate.thread),
+        runCommand: (request) => {
+          void runCommandRequest(request, { surface, toast });
+        },
+      })
+    : [];
+
+  useEffect(() => {
+    if (!isOpen) setMenu(null);
+  }, [isOpen]);
 
   useEffect(() => {
     // テーマトークンは `.browser-shell[data-theme]` にスコープされるため、
@@ -149,6 +188,25 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
                       type="button"
                       className="next-thread-search-dialog__candidate"
                       onClick={() => onSelect(candidate)}
+                      onAuxClick={(event) => {
+                        if (event.button !== 1) return;
+                        event.preventDefault();
+                        // 元の候補一覧とタブを保ち、スレ一覧と同じ背景タブとして開く。
+                        dispatch(
+                          tabActions.openInNewTab(
+                            {
+                              type: "thread",
+                              title: candidate.thread.title,
+                              threadUrl: candidate.thread.url,
+                            },
+                            { background: true },
+                          ),
+                        );
+                      }}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        setMenu({ x: event.clientX, y: event.clientY, candidate });
+                      }}
                       aria-label={candidate.thread.title + "へ移動"}
                     >
                       <span className="next-thread-search-dialog__rank">{index + 1}</span>
@@ -202,6 +260,10 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
               {isAutoMovePrompt ? "自動移動をキャンセル" : "閉じる"}
             </button>
           </div>
+          {menu && (
+            <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
+          )}
+          <ThreadTitleNgDialog controller={titleNgDialog} />
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
