@@ -214,9 +214,9 @@ export function useThreadData(
   const isCacheResolved =
     cacheResolvedThreadUrl === page.threadUrl || isImportedThreadUrl(page.threadUrl);
 
-  // 外部からの「ChLensで開く」も通常の遷移も、キャッシュ確認中から読み込みを示す。
-  // 通信が先に完了してもキャッシュ確認が残っていれば待機中とし、本文があれば表示を優先する。
-  const isInitialLoading = rawResponses.length === 0 && (loading || !isCacheResolved);
+  // 表示できる本文がなく通信中のときだけ初回読み込みを示す。
+  // キャッシュ確認の完了を待つと、キャッシュ本文があっても読み込み表示で画面全体を隠すため待たない。
+  const isInitialLoading = rawResponses.length === 0 && loading;
 
   const fetchThread = useCallback(
     async (forceUpdate = false, { throttleSubjectCheck = false }: FetchThreadOptions = {}) => {

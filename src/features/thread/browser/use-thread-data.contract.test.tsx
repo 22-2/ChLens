@@ -169,7 +169,7 @@ describe("useThreadData Phase 0 contracts", () => {
   });
 
   it.each([false, true])(
-    "キャッシュ確認が遅れても初回読み込みを示す（通信完了: %s）",
+    "キャッシュ確認が遅れても本文がなく通信中なら初回読み込みを示す（通信完了: %s）",
     async (completeRequest) => {
       const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/130/" };
       const cache = createDeferred<undefined>();
@@ -187,7 +187,7 @@ describe("useThreadData Phase 0 contracts", () => {
       if (completeRequest) {
         await act(async () => request.resolve({ url: page.threadUrl, title: page.title, res: [] }));
         expect(result.current.loading).toBe(false);
-        expect(result.current.isInitialLoading).toBe(true);
+        expect(result.current.isInitialLoading).toBe(false);
       }
       await act(async () => cache.resolve(undefined));
       expect(result.current.isCacheResolved).toBe(true);
