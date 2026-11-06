@@ -1,5 +1,6 @@
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { MoreVertical } from "lucide-react";
-import React from "react";
+import React, { useMemo, useRef } from "react";
 import type { SubTreeMenuClickHandler } from "src/features/popup/browser/use-reply-tree-menus";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
 import type { IRes } from "src/service-container";
@@ -42,6 +43,119 @@ export function collectReplyTreeResponses(
   };
   visit(resNum, 0);
   return result;
+}
+
+interface TreeRow {
+  res: IRes;
+  depth: number;
+  ancestors: number[];
+  hasChildTree: boolean;
+}
+
+function collectTreeRows(
+  resNum: number,
+  repIndex: Map<number, Set<number>>,
+  resMap: Map<number, IRes>,
+): TreeRow[] {
+  const rows: TreeRow[] = [];
+  const visited = new Set<number>();
+  const visit = (num: number, depth: number, ancestors: number[]) => {
+    if (depth >= MAX_TREE_DEPTH) return;
+    const replies = [...(repIndex.get(num) ?? [])].sort((a, b) => a - b);
+    for (const reply of replies) {
+      if (visited.has(reply) || !resMap.has(reply)) continue;
+      visited.add(reply);
+      const hasChildTree = hasRenderableChildTree(reply, repIndex, resMap, visited, depth);
+      rows.push({ res: resMap.get(reply)!, depth, ancestors, hasChildTree });
+      visit(reply, depth + 1, [...ancestors, reply]);
+    }
+  };
+  visit(resNum, 0, [resNum]);
+  return rows;
+}
+
+/** 大量の返信を持つツリーでは、経路を保ちながら表示中のカードだけを作る。 */
+export function VirtualReplyTree({
+  source,
+  resNum,
+  repIndex,
+  resMap,
+  anchorPreviewDepth,
+  allowHardNgReveal,
+  onSubTreeMenu,
+  focusResNum,
+}: ReplyTreeProps & { source: React.ReactNode }) {
+  const rows = useMemo(() => collectTreeRows(resNum, repIndex, resMap), [resNum, repIndex, resMap]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length + 1,
+    getScrollElement: () => scrollRef.current,
+    getItemKey: (index) => (index === 0 ? "source" : rows[index - 1].res.num),
+    estimateSize: () => 120,
+    overscan: 5,
+    initialRect: { width: 520, height: 500 },
+  });
+  return (
+    <div className="res-popup__body" ref={scrollRef}>
+      <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+        {virtualizer.getVirtualItems().map((item) => {
+          const row = item.index === 0 ? null : rows[item.index - 1];
+          let content: React.ReactNode = row ? (
+            <div className="reply-tree-node">
+              <PopupResCard
+                res={row.res}
+                isFocused={focusResNum === row.res.num}
+                anchorPreviewDepth={anchorPreviewDepth}
+                repIndex={repIndex}
+                allowHardNgReveal={allowHardNgReveal}
+              />
+              {onSubTreeMenu && (
+                <button
+                  type="button"
+                  className="reply-tree-node__menu-btn"
+                  aria-label="サブツリーメニュー"
+                  title="このレス以降のツリーをコピー"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSubTreeMenu(row.res.num, row.ancestors, row.hasChildTree, event);
+                  }}
+                >
+                  <MoreVertical size={12} />
+                </button>
+              )}
+            </div>
+          ) : (
+            source
+          );
+          if (row) {
+            for (let depth = row.depth; depth >= 0; depth -= 1) {
+              content = (
+                <div className={depth > 0 ? "reply-tree reply-tree--nested" : "reply-tree"}>
+                  {content}
+                </div>
+              );
+            }
+          }
+          return (
+            <div
+              key={item.key}
+              data-index={item.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${item.start}px)`,
+              }}
+            >
+              {content}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 interface ReplyTreeBranchProps {

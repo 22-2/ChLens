@@ -170,6 +170,41 @@ describe("ReplyTreePopup", () => {
     expect(sourceCard).toHaveClass("res--highlighted-persistent");
   });
 
+  it("大量の返信ツリーは表示範囲だけ描画し、末尾まで辿って全件をコピーできる", async () => {
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(500);
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(520);
+    const resMap = new Map<number, IRes>([[1, createRes(1, "起点")]]);
+    for (let num = 2; num <= 1001; num += 1) resMap.set(num, createRes(num, `>>1 本文${num}`));
+    const { container: rendered } = render(<ReplyTreePopup {...BASE_PROPS} resMap={resMap} />);
+    expect(rendered.querySelectorAll(".res").length).toBeLessThan(50);
+    expect(screen.getByText("起点")).toBeInTheDocument();
+    const body = rendered.querySelector(".res-popup__body") as HTMLElement;
+    body.scrollTop = 200_000;
+    fireEvent.scroll(body);
+    await waitFor(() => expect(screen.getByText("本文1001", { exact: false })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
+    fireEvent.click(screen.getByRole("button", { name: "返信ツリーを一括コピー" }));
+    expect(writeText.mock.calls[0]?.[0]).toContain("本文1001");
+  });
+
+  it("大量の返信ツリーでも枝を字下げし選んだレスまでの経路をコピーできる", () => {
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(100);
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(520);
+    const resMap = new Map<number, IRes>([[1, createRes(1, "起点")]]);
+    resMap.set(2, createRes(2, ">>1 親"));
+    resMap.set(3, createRes(3, ">>2 子"));
+    for (let num = 4; num <= 70; num += 1) resMap.set(num, createRes(num, `>>1 本文${num}`));
+    render(<ReplyTreePopup {...BASE_PROPS} resMap={resMap} />);
+    const node = screen.getByText("name-3").closest(".reply-tree-node") as HTMLElement;
+    expect(node.closest(".reply-tree")).toHaveClass("reply-tree--nested");
+    fireEvent.click(within(node).getByRole("button", { name: "サブツリーメニュー" }));
+    fireEvent.click(screen.getByRole("button", { name: "ツリー先頭からこのレスまでコピー" }));
+    expect(writeText.mock.calls[0]?.[0]).toContain("1 name-1");
+    expect(writeText.mock.calls[0]?.[0]).toContain("2 name-2");
+    expect(writeText.mock.calls[0]?.[0]).toContain("3 name-3");
+    expect(writeText.mock.calls[0]?.[0]).not.toContain("4 name-4");
+  });
+
   it("ライブチャットで入場が完了していない返信はツリーと返信数へ先出ししない", () => {
     const { rerender } = render(
       <ReplyTreePopup {...BASE_PROPS} replySourceNums={new Set([1, 2])} />,

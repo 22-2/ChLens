@@ -8,7 +8,11 @@ import { usePopupResContextMenu } from "src/features/popup/browser/use-popup-res
 import { useReplyTreeMenus } from "src/features/popup/browser/use-reply-tree-menus";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
-import { collectReplyTreeResponses, ReplyTree } from "src/features/popup/ui/ReplyTree";
+import {
+  collectReplyTreeResponses,
+  ReplyTree,
+  VirtualReplyTree,
+} from "src/features/popup/ui/ReplyTree";
 import type { IRes } from "src/service-container";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
@@ -186,34 +190,66 @@ export const ReplyTreePopup: React.FC<{
               onAnchorLeave={onAnchorLeave}
               onContextMenu={handleResContextMenu}
             >
-              <div className="res-popup__body">
-                {sourceRes && (
+              {popupResponses.length > 51 ? (
+                <VirtualReplyTree
+                  resNum={resNum}
+                  repIndex={treeRepIndex}
+                  resMap={resMap}
+                  anchorPreviewDepth={anchorPreviewDepth}
+                  allowHardNgReveal
+                  focusResNum={focusResNum}
+                  onSubTreeMenu={handleSubTreeMenuClick}
+                  source={
+                    <>
+                      {sourceRes && (
+                        <section className="res-popup__section">
+                          <div className="res-popup__section-title">参照元レス</div>
+                          <PopupResCard
+                            res={sourceRes}
+                            anchorPreviewDepth={anchorPreviewDepth}
+                            repIndex={repIndex}
+                            disableRepClick
+                            isHighlighted
+                            allowHardNgReveal
+                          />
+                        </section>
+                      )}
+                      <section className="res-popup__section">
+                        <div className="res-popup__section-title">返信レス</div>
+                      </section>
+                    </>
+                  }
+                />
+              ) : (
+                <div className="res-popup__body">
+                  {sourceRes && (
+                    <section className="res-popup__section">
+                      <div className="res-popup__section-title">参照元レス</div>
+                      <PopupResCard
+                        res={sourceRes}
+                        anchorPreviewDepth={anchorPreviewDepth}
+                        repIndex={repIndex}
+                        // 参照元レスの「返信」を押すと同じツリーを重ね続けるだけなので無効化する。
+                        disableRepClick={true}
+                        isHighlighted={true}
+                        allowHardNgReveal
+                      />
+                    </section>
+                  )}
                   <section className="res-popup__section">
-                    <div className="res-popup__section-title">参照元レス</div>
-                    <PopupResCard
-                      res={sourceRes}
+                    <div className="res-popup__section-title">返信レス</div>
+                    <ReplyTree
+                      resNum={resNum}
+                      repIndex={treeRepIndex}
+                      resMap={resMap}
                       anchorPreviewDepth={anchorPreviewDepth}
-                      repIndex={repIndex}
-                      // 参照元レスの「返信」を押すと同じツリーを重ね続けるだけなので無効化する。
-                      disableRepClick={true}
-                      isHighlighted={true}
                       allowHardNgReveal
+                      focusResNum={focusResNum}
+                      onSubTreeMenu={handleSubTreeMenuClick}
                     />
                   </section>
-                )}
-                <section className="res-popup__section">
-                  <div className="res-popup__section-title">返信レス</div>
-                  <ReplyTree
-                    resNum={resNum}
-                    repIndex={treeRepIndex}
-                    resMap={resMap}
-                    anchorPreviewDepth={anchorPreviewDepth}
-                    allowHardNgReveal
-                    focusResNum={focusResNum}
-                    onSubTreeMenu={handleSubTreeMenuClick}
-                  />
-                </section>
-              </div>
+                </div>
+              )}
             </PopupResCardScope>
           </RepeatedReplyProvider>
           {menuPosition && treeMenuItems.length > 0 && (
