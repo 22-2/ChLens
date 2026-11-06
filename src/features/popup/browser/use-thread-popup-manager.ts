@@ -22,6 +22,7 @@ import { POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY } from "src/view/browser/utils/popu
 import { getPopupViewportBounds } from "src/view/browser/utils/use-adjust-overflow";
 
 const DEFAULT_POPUP_SCOPE_ID = "default";
+const CHILD_POPUP_OFFSET = 40;
 
 export interface ThreadPopupManagerParams {
   scopeId?: string;
@@ -133,6 +134,22 @@ export function useThreadPopupManager({
     return { x: clientX, y: clientY };
   }, []);
 
+  const childPopupCoords = useCallback(
+    (x: number, y: number, parentId?: string) => {
+      if (!parentId) return { x, y };
+      // クリック位置が親の左上付近でも重ならないよう、実際に補正された親の位置を基準にする。
+      const parent = Array.from(viewDocument.querySelectorAll<HTMLElement>("[data-popup-id]")).find(
+        (element) => element.dataset.popupId === parentId,
+      );
+      const rect = parent?.getBoundingClientRect();
+      return {
+        x: (rect?.left ?? x) + CHILD_POPUP_OFFSET,
+        y: (rect?.top ?? y) - CHILD_POPUP_OFFSET,
+      };
+    },
+    [viewDocument],
+  );
+
   const clearAnchorPreviewHideTimer = useCallback(() => {
     if (anchorPreviewHideTimerRef.current != null) {
       viewWindow.clearTimeout(anchorPreviewHideTimerRef.current);
@@ -205,7 +222,8 @@ export function useThreadPopupManager({
           viewport.bottom - ANCHOR_PREVIEW_GUTTER,
         ),
       );
-      const { x, y } = toPageCoords(vx, vy);
+      const parentId = depth > 0 ? anchorPreviewsRef.current[depth - 1]?.id : sourcePopupId;
+      const { x, y } = childPopupCoords(vx, vy, parentId);
       const currentPreview = anchorPreviewsRef.current.find((item) => item.payload.depth === depth);
       if (
         currentPreview &&
@@ -218,7 +236,6 @@ export function useThreadPopupManager({
         return;
       }
 
-      const parentId = depth > 0 ? anchorPreviewsRef.current[depth - 1]?.id : sourcePopupId;
       // sourcePopupId が設定されている時（popup内のアンカーホバー）は、
       // sourcePopupId の祖先になっているアンカープレビューを閉じてはいけない。
       // hideAnchorPreviewsFromDepth は cascade で子孫ごと閉じるため、
@@ -245,12 +262,12 @@ export function useThreadPopupManager({
     },
     [
       addPopup,
+      childPopupCoords,
       clearAnchorPreviewHideTimer,
       closePopupsByPredicate,
       hideAnchorPreviewsFromDepth,
       isPopupDescendantOf,
       resMap,
-      toPageCoords,
       viewDocument,
       viewWindow,
     ],
@@ -265,7 +282,7 @@ export function useThreadPopupManager({
       anchorPreviewDepth = 0,
       focusResNum?: number,
     ) => {
-      const { x, y } = toPageCoords(clientX, clientY);
+      const { x, y } = childPopupCoords(clientX, clientY, parentId);
       return addPopup({
         type: "tree",
         x,
@@ -274,7 +291,7 @@ export function useThreadPopupManager({
         parentId,
       });
     },
-    [addPopup, toPageCoords],
+    [addPopup, childPopupCoords],
   );
 
   const addPopupContextMenu = useCallback(
@@ -299,7 +316,7 @@ export function useThreadPopupManager({
 
   const addIdPopup = useCallback(
     (clientX: number, clientY: number, items: IRes[], title: string, parentId?: string) => {
-      const { x, y } = toPageCoords(clientX, clientY);
+      const { x, y } = childPopupCoords(clientX, clientY, parentId);
       return addPopup({
         type: "id",
         x,
@@ -309,7 +326,7 @@ export function useThreadPopupManager({
         parentId,
       });
     },
-    [addPopup, toPageCoords],
+    [addPopup, childPopupCoords],
   );
 
   const hasPopupChild = useCallback(

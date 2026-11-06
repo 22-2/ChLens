@@ -235,6 +235,28 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
     );
   };
 
+  it("子のID・返信・アンカーを補正後の親の右上に揃える", () => {
+    const { result, unmount } = createThreadPopupHook("contract-child-position");
+    let parentId = "";
+    act(() => {
+      parentId = result.current.addTreePopup(1, 100, 200);
+    });
+    const parent = document.createElement("div");
+    parent.dataset.popupId = parentId;
+    parent.getBoundingClientRect = () => ({ left: 200, top: 300 }) as DOMRect;
+    document.body.appendChild(parent);
+    act(() => {
+      result.current.addTreePopup(2, 202, 302, parentId);
+      result.current.addIdPopup(203, 303, [createRes(2)], "ID:sample", parentId);
+      result.current.showAnchorPreview([3], createAnchorRect(), ">>3", 0, parentId);
+    });
+    const children = result.current.popups.filter((item) => item.parentId === parentId);
+    expect(children).toHaveLength(3);
+    for (const child of children) expect({ x: child.x, y: child.y }).toEqual({ x: 240, y: 260 });
+    parent.remove();
+    unmount();
+  });
+
   it("同じanchor previewの再表示を抑止し、depth指定で下位previewだけを削除する", () => {
     const { result, unmount } = createThreadPopupHook("contract-anchor-depth");
     const anchorRect = createAnchorRect();
