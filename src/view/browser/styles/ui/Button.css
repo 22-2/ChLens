@@ -29,8 +29,18 @@
 }
 
 .browser-button:disabled {
-  color: var(--sys-color-text-disabled);
   cursor: not-allowed;
+}
+
+.browser-button:disabled:not([aria-busy="true"]) {
+  border-color: var(--sys-color-border);
+  background: var(--sys-color-surface-muted);
+  color: var(--sys-color-text-muted);
+}
+
+/* 処理中は青い背景のままなので、文字と回転部分にボタンの前景色を使う。 */
+.browser-button[aria-busy="true"] .browser-spinner {
+  border-top-color: currentColor;
 }
 
 .browser-button[data-variant="subtle"] {
