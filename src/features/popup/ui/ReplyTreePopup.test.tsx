@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type React from "react";
+import { NgStatusProvider } from "src/features/ng/browser/use-ng-status";
 import { ReplyTreePopup } from "src/features/popup/ui/ReplyTreePopup";
 import type { IRes } from "src/service-container";
 import { container } from "src/service-container/index";
@@ -153,6 +154,30 @@ describe("ReplyTreePopup", () => {
     ]);
     const { container } = render(<ReplyTreePopup {...BASE_PROPS} resMap={resMap} />);
     expect(container.querySelectorAll(".res__id--repeated-reply")).toHaveLength(0);
+  });
+
+  it("hard-ngの返信は表示と一括コピーから除き、折りたたみ指定は残す", () => {
+    vi.spyOn(container.config, "get").mockImplementation((key) =>
+      key === "display_ng" ? "hard-ng" : "default",
+    );
+    const resMap = new Map([
+      [1, createRes(1, "起点")],
+      [2, { ...createRes(2, ">>1 隠す"), ng: { type: "word" } }],
+      [3, { ...createRes(3, ">>1 折りたたみ"), ng: { type: "word", action: "collapse" as const } }],
+      [4, createRes(4, ">>1 表示")],
+    ]);
+    render(
+      <NgStatusProvider>
+        <ReplyTreePopup {...BASE_PROPS} resMap={resMap} />
+      </NgStatusProvider>,
+    );
+    expect(screen.queryByText("name-2")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "クリックして内容を表示" })).toBeInTheDocument();
+    expect(screen.getByText("name-4")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "返信ツリーメニュー" }));
+    fireEvent.click(screen.getByRole("button", { name: "返信ツリーを一括コピー" }));
+    expect(writeText.mock.calls[0]?.[0]).not.toContain("隠す");
+    expect(writeText.mock.calls[0]?.[0]).toContain("折りたたみ");
   });
 
   it("参照元レスと返信レスを分けて表示する", () => {

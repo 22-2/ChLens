@@ -5,6 +5,7 @@ import { PopupResCardScope } from "src/features/popup/browser/popup-res-card-con
 import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
 import { usePopupResContextMenu } from "src/features/popup/browser/use-popup-res-context-menu";
+import { usePopupResponseVisibility } from "src/features/popup/browser/use-popup-visible-responses";
 import { useReplyTreeMenus } from "src/features/popup/browser/use-reply-tree-menus";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
@@ -105,36 +106,40 @@ export const ReplyTreePopup: React.FC<{
   threadKey,
   focusResNum,
 }) => {
-  // hard-ngの通常索引は非表示レスを除外するため、返信ツリーでは全レスから専用索引を作り、
-  // NGレスもクリック式プレースホルダーとして辿れるようにする。
+  const isVisible = usePopupResponseVisibility();
+  // 非表示レスを索引とコピーからも除き、仮想化時に空の行や隠れた本文が残らないようにする。
+  const visibleResMap = useMemo(
+    () => new Map(Array.from(resMap).filter(([, res]) => isVisible(res))),
+    [resMap, isVisible],
+  );
   // ライブチャットの未表示分は専用索引にも混ぜず、返信数とツリーの先出しを防ぐ。
   const treeRepIndex = useMemo(
     () =>
       buildReplyIndexes(
-        Array.from(resMap.values()).filter(
+        Array.from(visibleResMap.values()).filter(
           (res) => replySourceNums == null || replySourceNums.has(res.num),
         ),
       ).repIndex,
-    [replySourceNums, resMap],
+    [replySourceNums, visibleResMap],
   );
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
   const { treeMenuItems, subTreeMenu, subTreeMenuItems, handleSubTreeMenuClick, closeSubTreeMenu } =
     useReplyTreeMenus({
       resNum,
-      resMap,
+      resMap: visibleResMap,
       treeRepIndex,
       threadTitle,
       threadUrl,
       pinned,
       onTogglePinned,
     });
-  const sourceRes = resMap.get(resNum) ?? null;
+  const sourceRes = visibleResMap.get(resNum) ?? null;
   const popupResponses = useMemo(
     () => [
       ...(sourceRes ? [sourceRes] : []),
-      ...collectReplyTreeResponses(resNum, treeRepIndex, resMap),
+      ...collectReplyTreeResponses(resNum, treeRepIndex, visibleResMap),
     ],
-    [sourceRes, resNum, treeRepIndex, resMap],
+    [sourceRes, resNum, treeRepIndex, visibleResMap],
   );
 
   const handleResContextMenu = usePopupResContextMenu(onResContextMenu, onPopupMouseDown);
@@ -194,9 +199,8 @@ export const ReplyTreePopup: React.FC<{
                 <VirtualReplyTree
                   resNum={resNum}
                   repIndex={treeRepIndex}
-                  resMap={resMap}
+                  resMap={visibleResMap}
                   anchorPreviewDepth={anchorPreviewDepth}
-                  allowHardNgReveal
                   focusResNum={focusResNum}
                   onSubTreeMenu={handleSubTreeMenuClick}
                   source={
@@ -210,7 +214,6 @@ export const ReplyTreePopup: React.FC<{
                             repIndex={repIndex}
                             disableRepClick
                             isHighlighted
-                            allowHardNgReveal
                           />
                         </section>
                       )}
@@ -232,7 +235,6 @@ export const ReplyTreePopup: React.FC<{
                         // 参照元レスの「返信」を押すと同じツリーを重ね続けるだけなので無効化する。
                         disableRepClick={true}
                         isHighlighted={true}
-                        allowHardNgReveal
                       />
                     </section>
                   )}
@@ -241,9 +243,8 @@ export const ReplyTreePopup: React.FC<{
                     <ReplyTree
                       resNum={resNum}
                       repIndex={treeRepIndex}
-                      resMap={resMap}
+                      resMap={visibleResMap}
                       anchorPreviewDepth={anchorPreviewDepth}
-                      allowHardNgReveal
                       focusResNum={focusResNum}
                       onSubTreeMenu={handleSubTreeMenuClick}
                     />

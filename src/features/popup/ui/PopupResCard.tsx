@@ -27,7 +27,6 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     isHighlighted,
     isFocused,
     onOpenRootReplyTree,
-    allowHardNgReveal = false,
   }) => {
     const {
       messageProtocol,
@@ -84,14 +83,13 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     const isNgActive = !isNgTemporarilyDisabled && isNgMatched;
     const isNgHighlighted = isNgMatched && ngDisplayMode === "highlight-ng";
     const [isNgRevealed, setIsNgRevealed] = useState(false);
-    const canRevealNg =
-      ngDisplayMode === "soft-ng" || (ngDisplayMode === "hard-ng" && allowHardNgReveal);
+    const canRevealNg = ngDisplayMode === "soft-ng";
     // 表示方式の変更後に以前の一時表示を引き継がず、各方式のNG方針を保つ。
     // 描画中に state を直すのは、effect で直すと一度古い表示が描かれるため。条件が偽になるので再描画は一度で終わる。
     if (!canRevealNg && isNgRevealed) {
       setIsNgRevealed(false);
     }
-    if (isNgActive && ngDisplayMode === "hard-ng" && !allowHardNgReveal) {
+    if (isNgActive && ngDisplayMode === "hard-ng") {
       // 通常レスと同じhard-ngを適用し、ポップアップだけから本文を覗けないようにする。
       return null;
     }
@@ -262,6 +260,4 @@ export interface StaticResCardProps {
   /** 操作の起点になった元レスを、参照元より薄く強調する。 */
   isFocused?: boolean;
   onOpenRootReplyTree?: (resNum: number, e: React.MouseEvent) => void;
-  /** 返信ツリーなどでhard-ngもプレースホルダー表示し、明示操作で本文を確認できるようにする。 */
-  allowHardNgReveal?: boolean;
 }

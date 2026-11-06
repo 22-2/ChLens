@@ -1,9 +1,10 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { PopupResCardScope } from "src/features/popup/browser/popup-res-card-context";
 import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
 import { usePopupResContextMenu } from "src/features/popup/browser/use-popup-res-context-menu";
+import { usePopupResponseVisibility } from "src/features/popup/browser/use-popup-visible-responses";
 import { useResListPopupMenu } from "src/features/popup/browser/use-res-list-popup-menu";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
@@ -30,9 +31,7 @@ function PopupResponseList({
     overscan: 5,
     initialRect: { width: 520, height: 500 },
   });
-  const card = (res: IRes) => (
-    <PopupResCard res={res} anchorPreviewDepth={0} repIndex={repIndex} allowHardNgReveal />
-  );
+  const card = (res: IRes) => <PopupResCard res={res} anchorPreviewDepth={0} repIndex={repIndex} />;
 
   return (
     <div className="res-popup__body" ref={scrollRef}>
@@ -146,10 +145,12 @@ export const ResPopup: React.FC<{
   resMap,
   threadKey,
 }) => {
+  const isVisible = usePopupResponseVisibility();
+  const visibleItems = useMemo(() => items.filter(isVisible), [items, isVisible]);
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
   const idMenuItems = useResListPopupMenu({
     variant: "id",
-    items,
+    items: visibleItems,
     title,
     threadTitle,
     threadUrl,
@@ -188,7 +189,7 @@ export const ResPopup: React.FC<{
             onTogglePinned={onTogglePinned}
             onClose={onClose}
           />
-          <RepeatedReplyProvider responses={items}>
+          <RepeatedReplyProvider responses={visibleItems}>
             <PopupResCardScope
               messageProtocol={messageProtocol}
               idIndex={idIndex}
@@ -208,10 +209,10 @@ export const ResPopup: React.FC<{
               onAnchorLeave={onAnchorLeave}
               onContextMenu={handleResContextMenu}
             >
-              <PopupResponseList items={items} repIndex={repIndex} />
+              <PopupResponseList items={visibleItems} repIndex={repIndex} />
             </PopupResCardScope>
           </RepeatedReplyProvider>
-          {menuPosition && items.length > 0 && (
+          {menuPosition && visibleItems.length > 0 && (
             <ContextMenu
               x={menuPosition.x}
               y={menuPosition.y}

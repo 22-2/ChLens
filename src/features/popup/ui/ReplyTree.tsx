@@ -11,8 +11,6 @@ export interface ReplyTreeProps {
   repIndex: Map<number, Set<number>>;
   resMap: Map<number, IRes>;
   anchorPreviewDepth: number;
-  /** hard-ngの返信もクリック式プレースホルダーとしてツリーへ残す。 */
-  allowHardNgReveal?: boolean;
   /** 個別ツリーの三点メニュークリック時コールバック（渡された場合のみボタン表示） */
   onSubTreeMenu?: SubTreeMenuClickHandler;
   /** 「ツリー先頭から」で開いたとき、元の操作対象としてツリー内で薄く強調するレス番号 */
@@ -81,7 +79,6 @@ export function VirtualReplyTree({
   repIndex,
   resMap,
   anchorPreviewDepth,
-  allowHardNgReveal,
   onSubTreeMenu,
   focusResNum,
 }: ReplyTreeProps & { source: React.ReactNode }) {
@@ -107,7 +104,6 @@ export function VirtualReplyTree({
                 isFocused={focusResNum === row.res.num}
                 anchorPreviewDepth={anchorPreviewDepth}
                 repIndex={repIndex}
-                allowHardNgReveal={allowHardNgReveal}
               />
               {onSubTreeMenu && (
                 <button
@@ -195,14 +191,7 @@ const ReplyTreeBranch: React.FC<ReplyTreeBranchProps> = ({
   visited,
   ancestorResNums,
 }) => {
-  const {
-    repIndex,
-    resMap,
-    anchorPreviewDepth,
-    allowHardNgReveal = false,
-    onSubTreeMenu,
-    focusResNum,
-  } = shared;
+  const { repIndex, resMap, anchorPreviewDepth, onSubTreeMenu, focusResNum } = shared;
 
   if (depth >= MAX_TREE_DEPTH) return null;
   const replies = repIndex.get(resNum);
@@ -231,7 +220,6 @@ const ReplyTreeBranch: React.FC<ReplyTreeBranchProps> = ({
                 // ここを 0 に戻すと、次のアンカーホバーで親プレビューごと閉じる回帰が起きる。
                 anchorPreviewDepth={anchorPreviewDepth}
                 repIndex={repIndex}
-                allowHardNgReveal={allowHardNgReveal}
               />
               {onSubTreeMenu && (
                 <button

@@ -2,6 +2,8 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type React from "react";
+import { NgStatusProvider, useNgStatus } from "src/features/ng/browser/use-ng-status";
+import { AnchorPreview } from "src/features/popup/ui/AnchorPreview";
 import { ResPopup } from "src/features/popup/ui/ResPopup";
 import { container } from "src/service-container";
 import type { IRes } from "src/service-container/interfaces";
@@ -115,6 +117,63 @@ describe("ResPopup", () => {
     expect(copiedText).toContain("second message");
     expect(copiedText).toContain("テストスレタイ");
     expect(copiedText).toContain("https://example.com/test/read.cgi/board/123/");
+  });
+
+  it("hard-ngのレスをIDとアンカーのポップアップおよびコピーから除く", () => {
+    vi.spyOn(container.config, "get").mockImplementation((key) =>
+      key === "display_ng" ? "hard-ng" : "default",
+    );
+    const items = [
+      createRes(1, "表示本文"),
+      { ...createRes(2, "非表示本文"), ng: { type: "word" } },
+    ];
+    const { unmount } = render(
+      <NgStatusProvider>
+        <ResPopup {...BASE_PROPS} items={items} />
+      </NgStatusProvider>,
+    );
+    expect(screen.getByText("表示本文")).toBeInTheDocument();
+    expect(screen.queryByText("非表示本文")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "IDポップアップメニュー" }));
+    fireEvent.click(screen.getByRole("button", { name: "IDのレスを一括コピー" }));
+    expect((writeText.mock.calls as unknown as Array<[string]>)[0][0]).not.toContain("非表示本文");
+    unmount();
+    render(
+      <NgStatusProvider>
+        <AnchorPreview
+          {...BASE_PROPS}
+          items={items}
+          depth={0}
+          label=">>1"
+          zIndex={1}
+          onOpenRootReplyTree={() => {}}
+          onMouseEnter={() => {}}
+          onMouseLeave={() => {}}
+        />
+      </NgStatusProvider>,
+    );
+    expect(screen.getByText("表示本文")).toBeInTheDocument();
+    expect(screen.queryByText("非表示本文")).not.toBeInTheDocument();
+  });
+
+  it("NGを一時解除するとhard-ngのレスもポップアップへ戻る", () => {
+    vi.spyOn(container.config, "get").mockImplementation((key) =>
+      key === "display_ng" ? "hard-ng" : "default",
+    );
+    const items = [{ ...createRes(2, "解除された本文"), ng: { type: "word" } }];
+    function Toggle() {
+      const { setNgTemporarilyDisabled } = useNgStatus();
+      return <button onClick={() => setNgTemporarilyDisabled(true)}>解除</button>;
+    }
+    render(
+      <NgStatusProvider>
+        <Toggle />
+        <ResPopup {...BASE_PROPS} items={items} />
+      </NgStatusProvider>,
+    );
+    expect(screen.queryByText("解除された本文")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "解除" }));
+    expect(screen.getByText("解除された本文")).toBeInTheDocument();
   });
 
   it("大量のIDレスは表示範囲だけを描画し、一括コピーには全件を含める", async () => {

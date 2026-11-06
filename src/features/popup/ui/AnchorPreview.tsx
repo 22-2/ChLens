@@ -1,8 +1,9 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { PopupResCardScope } from "src/features/popup/browser/popup-res-card-context";
 import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
 import { usePopupResContextMenu } from "src/features/popup/browser/use-popup-res-context-menu";
+import { usePopupResponseVisibility } from "src/features/popup/browser/use-popup-visible-responses";
 import { useResListPopupMenu } from "src/features/popup/browser/use-res-list-popup-menu";
 import { PopupHeader } from "src/features/popup/ui/PopupHeader";
 import { PopupResCard } from "src/features/popup/ui/PopupResCard";
@@ -96,11 +97,13 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   threadTitle,
   threadUrl,
 }) => {
+  const isVisible = usePopupResponseVisibility();
+  const visibleItems = useMemo(() => items.filter(isVisible), [items, isVisible]);
   const { menuButtonRef, menuPosition, handleMenuClick, closeMenu } = usePopupHeaderMenu();
   const title = `参照: ${label}`;
   const anchorMenuItems = useResListPopupMenu({
     variant: "anchor",
-    items,
+    items: visibleItems,
     title,
     threadTitle,
     threadUrl,
@@ -148,7 +151,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
             onTogglePinned={onTogglePinned}
             onClose={handleClose}
           />
-          <RepeatedReplyProvider responses={items.slice(0, 8)}>
+          <RepeatedReplyProvider responses={visibleItems.slice(0, 8)}>
             <PopupResCardScope
               messageProtocol={messageProtocol}
               idIndex={idIndex}
@@ -169,21 +172,19 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
               onContextMenu={handleResContextMenu}
             >
               <div className="anchor-preview__body">
-                {items.slice(0, 8).map((res) => (
-                  /* hard-ngでも空のアンカーポップアップにせず、利用者が明示操作で本文を確認できるようにする。 */
+                {visibleItems.slice(0, 8).map((res) => (
                   <PopupResCard
                     key={res.num}
                     res={res}
                     anchorPreviewDepth={depth + 1}
                     repIndex={repIndex}
                     onOpenRootReplyTree={onOpenRootReplyTree}
-                    allowHardNgReveal
                   />
                 ))}
               </div>
             </PopupResCardScope>
           </RepeatedReplyProvider>
-          {menuPosition && items.length > 0 && (
+          {menuPosition && visibleItems.length > 0 && (
             <ContextMenu
               x={menuPosition.x}
               y={menuPosition.y}

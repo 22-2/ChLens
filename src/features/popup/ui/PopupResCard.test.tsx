@@ -85,7 +85,6 @@ function PopupResCard({
   isHighlighted,
   isFocused,
   onOpenRootReplyTree,
-  allowHardNgReveal,
   isImageBlurred,
   isOwn,
   isReplyToOwn,
@@ -106,7 +105,6 @@ function PopupResCard({
         isHighlighted={isHighlighted}
         isFocused={isFocused}
         onOpenRootReplyTree={onOpenRootReplyTree}
-        allowHardNgReveal={allowHardNgReveal}
       />
     </PopupResCardScope>
   );
