@@ -306,6 +306,17 @@ export function OverlayStage({
   }, [menu]);
 
   useLayoutEffect(() => {
+    // 新しいschedulerを旧時刻でリサイズすると、時刻を0へ戻す際に逆行エラーになる。
+    // 先に時計と重複判定を初期化してから、次のlayout effectでサイズを反映する。
+    seenResponseNumbers.current.clear();
+    logicalTime.current = 0;
+    previousFrameTime.current = null;
+    const nextSnapshot = scheduler.advance(0);
+    snapshotRef.current = nextSnapshot;
+    setSnapshot(nextSnapshot);
+  }, [scheduler]);
+
+  useLayoutEffect(() => {
     const currentLayout = layoutRef.current;
     if (
       currentLayout?.scheduler === scheduler &&
@@ -349,17 +360,6 @@ export function OverlayStage({
     schedulableStageHeight,
     scheduler,
   ]);
-
-  useEffect(() => {
-    // 変更理由: Controlsでステージ設定を変えたとき、旧ステージのlaneと時刻を
-    // 新しい寸法へ持ち越すと表示位置と衝突判定が一致しなくなるため、fixtureを再baselineする。
-    seenResponseNumbers.current.clear();
-    logicalTime.current = 0;
-    previousFrameTime.current = null;
-    const nextSnapshot = scheduler.advance(0);
-    snapshotRef.current = nextSnapshot;
-    setSnapshot(nextSnapshot);
-  }, [scheduler]);
 
   useEffect(() => {
     // 変更理由: 親が直近の履歴だけを保持している間、入力から外れたレス番号も

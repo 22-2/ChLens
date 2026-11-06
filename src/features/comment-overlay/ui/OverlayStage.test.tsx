@@ -297,6 +297,36 @@ describe("OverlayStage", () => {
     expect(commentAfterSecondResize.style.left).toBe("900px");
   });
 
+  it("描画中に余白が変わっても新着コメントを流し続ける", () => {
+    const { rerender } = render(
+      <OverlayStage
+        comments={[comment]}
+        stageWidth={900}
+        stageHeight={506}
+        bottomPadding={0}
+        playing
+      />,
+    );
+    act(() => {
+      scheduledFrame?.(0);
+      scheduledFrame?.(3_000);
+    });
+
+    rerender(
+      <OverlayStage
+        comments={[comment, { ...comment, responseNumber: 2, text: "新着コメント" }]}
+        stageWidth={900}
+        stageHeight={506}
+        bottomPadding={50}
+        playing
+      />,
+    );
+    act(() => {
+      scheduledFrame?.(3_100);
+    });
+    expect(screen.getByText("新着コメント")).toBeVisible();
+  });
+
   it("ホバーやフォーカスでは流れ続け、右クリックで停止してメニューを閉じると再開する", () => {
     render(
       <OverlayStage
