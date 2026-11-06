@@ -111,7 +111,7 @@ describe("PageCountStatusItem", () => {
     renderStatusBar("thread", 128, 7);
 
     await waitFor(() => {
-      expect(screen.getByText("128/7レス")).toBeInTheDocument();
+      expect(screen.getByText("7 / 128レス")).toBeInTheDocument();
     });
   });
 
