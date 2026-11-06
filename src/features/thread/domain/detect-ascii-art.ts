@@ -33,7 +33,10 @@ export function detectAsciiArt(message: string): boolean {
     return false;
   }
 
-  const alignedLines = lines.filter((line) => /　{2,}| {4,}|　 |　[^\s]/.test(line)).length;
+  // 全角スペース1個だけの字下げは、通常の日本語段落でも使われるためAAの根拠にしない。
+  const alignedLines = lines.filter((line) =>
+    /　{2,}| {4,}|　 |　[／＼|/\\()＿￣─━┌┐└┘├┤┬┴┼│]/.test(line),
+  ).length;
   if (alignedLines >= 2) {
     return true;
   }
