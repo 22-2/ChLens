@@ -2,7 +2,10 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { toggleFilter as toggleFilterForTab } from "src/view/browser/extension/page-actions";
+import {
+  openFilter,
+  toggleFilter as toggleFilterForTab,
+} from "src/view/browser/extension/page-actions";
 import { useThreadTopBar } from "src/view/browser/pages/thread/use-thread-top-bar";
 import type { ThreadFilter } from "src/view/browser/types";
 import { afterEach, describe, expect, it } from "vite-plus/test";
@@ -182,5 +185,23 @@ describe("useThreadTopBar", () => {
 
     expect(screen.getByTestId("active-top-bar")).toHaveTextContent("none");
     expect(screen.getByTestId("search-query")).toHaveTextContent("abc");
+  });
+
+  it("レス数からの開く操作は絞り込みを解除せずフィルタバーを開く", () => {
+    render(<TopBarHarness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "set filter" }));
+    act(() => {
+      openFilter(window, "tab-1");
+    });
+
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
+    expect(screen.getByTestId("filter")).toHaveTextContent("image");
+
+    act(() => {
+      openFilter(window, "tab-1");
+    });
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
+    expect(screen.getByTestId("filter")).toHaveTextContent("image");
   });
 });

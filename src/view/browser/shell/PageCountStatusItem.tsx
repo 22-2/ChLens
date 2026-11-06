@@ -2,7 +2,7 @@ import { MessagesSquare } from "lucide-react";
 import React from "react";
 import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
 import { StatusBarItem } from "src/view/browser/components/StatusBar";
-import { toggleFilter as toggleFilterForTab } from "src/view/browser/extension/page-actions";
+import { openFilter } from "src/view/browser/extension/page-actions";
 import {
   getThreadListPageCountKey,
   getThreadPageCountKey,
@@ -55,8 +55,8 @@ export const PageCountStatusItem: React.FC = () => {
       return;
     }
 
-    // ステータスバーからも表示中の窓とタブに登録された同じ操作を使う。
-    toggleFilterForTab(viewWindow, viewTab.id);
+    // 絞り込み中に押しても解除せず、フィルタバーを開いて状態を見せる。
+    openFilter(viewWindow, viewTab.id);
   };
 
   return (
@@ -64,7 +64,7 @@ export const PageCountStatusItem: React.FC = () => {
       id="page-count-status"
       alignment="left"
       priority={STATUS_BAR_PRIORITY.left.pageCount}
-      title={isThreadPage ? `${accessibleLabel}（クリックでフィルターを開閉）` : accessibleLabel}
+      title={isThreadPage ? `${accessibleLabel}（クリックでフィルターを開く）` : accessibleLabel}
       interactive={isThreadPage}
     >
       {isThreadPage ? (
@@ -73,7 +73,7 @@ export const PageCountStatusItem: React.FC = () => {
           className="status-bar__btn"
           onClick={handleThreadCountClick}
           aria-label={accessibleLabel}
-          title={`${accessibleLabel}（クリックでフィルターを開閉）`}
+          title={`${accessibleLabel}（クリックでフィルターを開く）`}
         >
           <MessagesSquare size={13} aria-hidden="true" />
           <span className="status-bar__count" aria-hidden="true">

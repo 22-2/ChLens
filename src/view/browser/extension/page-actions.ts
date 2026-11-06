@@ -96,11 +96,15 @@ function createPageAction<Args extends unknown[]>(name: string) {
 }
 
 const filterToggle = createPageAction<[]>("filter.toggle");
+const filterOpen = createPageAction<[]>("filter.open");
 const threadFilterModeToggle = createPageAction<[Exclude<ThreadFilter, "all">]>(
   "thread.filter-mode.toggle",
 );
 
 export const registerFilterToggle = filterToggle.register;
 export const toggleFilter = filterToggle.run;
+// レス数などの表示からは、絞り込みを解除せずフィルタバーを開くだけの操作を使う。
+export const registerFilterOpen = filterOpen.register;
+export const openFilter = filterOpen.run;
 export const registerThreadFilterModeToggle = threadFilterModeToggle.register;
 export const toggleThreadFilterMode = threadFilterModeToggle.run;
