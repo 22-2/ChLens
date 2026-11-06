@@ -71,6 +71,18 @@ test("ウィンドウを広い状態から狭くしても自動更新の追従�
 }) => {
   await page.addInitScript(() => {
     localStorage.setItem("config_auto_load_second", "5000");
+    // ブラウザが例外ではなく window の error イベントとして配る通知も捕捉する。
+    const target = window as Window & { resizeWarnings: string[] };
+    target.resizeWarnings = [];
+    window.addEventListener("error", (event) => {
+      if (
+        /^ResizeObserver loop (?:completed with undelivered notifications|limit exceeded)/.test(
+          event.message,
+        )
+      ) {
+        target.resizeWarnings.push(event.message);
+      }
+    });
   });
   await page.setViewportSize({ width: 1400, height: 700 });
   const thread = localBoard.addLargeThread(400);
@@ -92,6 +104,19 @@ test("ウィンドウを広い状態から狭くしても自動更新の追従�
   await page
     .getByRole("textbox", { name: "本文" })
     .fill("これは幅が狭くなると折り返して本文欄が伸びる長い入力です。".repeat(8));
+  const detectorWorks = await page.evaluate(() => {
+    const target = window as Window & { resizeWarnings: string[] };
+    target.resizeWarnings.length = 0;
+    window.dispatchEvent(
+      new ErrorEvent("error", {
+        message: "ResizeObserver loop completed with undelivered notifications.",
+      }),
+    );
+    const detected = target.resizeWarnings.length === 1;
+    target.resizeWarnings.length = 0;
+    return detected;
+  });
+  expect(detectorWorks).toBe(true);
   // ウィンドウの端をドラッグする操作に近づけ、幅を細かく連続で縮める。
   for (let width = 1400; width >= 380; width -= 20) {
     await page.setViewportSize({ width, height: 700 });
@@ -109,4 +134,7 @@ test("ウィンドウを広い状態から狭くしても自動更新の追従�
   });
   expect(atBottom).not.toBeNull();
   expect(atBottom!).toBeLessThanOrEqual(2);
+  expect(
+    await page.evaluate(() => (window as Window & { resizeWarnings: string[] }).resizeWarnings),
+  ).toEqual([]);
 });
