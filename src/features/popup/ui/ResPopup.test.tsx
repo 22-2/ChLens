@@ -117,6 +117,28 @@ describe("ResPopup", () => {
     expect(copiedText).toContain("https://example.com/test/read.cgi/board/123/");
   });
 
+  it("大量のIDレスは表示範囲だけを描画し、一括コピーには全件を含める", async () => {
+    // jsdomにはレイアウトがないため、スクロール領域の高さを与える。
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(500);
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(520);
+    const items = Array.from({ length: 1000 }, (_, index) =>
+      createRes(index + 1, `message-${index + 1}`),
+    );
+    const { container: rendered } = render(<ResPopup {...BASE_PROPS} items={items} />);
+
+    expect(rendered.querySelectorAll(".res").length).toBeGreaterThan(0);
+    expect(rendered.querySelectorAll(".res").length).toBeLessThan(50);
+    const body = rendered.querySelector(".res-popup__body") as HTMLElement;
+    body.scrollTop = 200_000;
+    fireEvent.scroll(body);
+    await waitFor(() => expect(screen.getByText("message-1000")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "IDポップアップメニュー" }));
+    fireEvent.click(screen.getByRole("button", { name: "IDのレスを一括コピー" }));
+    const copiedText = (writeText.mock.calls as unknown as Array<[string]>)[0]?.[0];
+    expect(copiedText).toContain("message-1");
+    expect(copiedText).toContain("message-1000");
+  });
+
   it("ヘッダーメニューから表示中のIDレスを画像としてコピーできる", async () => {
     render(<ResPopup {...BASE_PROPS} />);
 

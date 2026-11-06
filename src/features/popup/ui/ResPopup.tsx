@@ -1,4 +1,5 @@
-import type React from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import React, { useRef } from "react";
 import { PopupResCardScope } from "src/features/popup/browser/popup-res-card-context";
 import { RepeatedReplyProvider } from "src/features/popup/browser/repeated-reply-context";
 import { usePopupHeaderMenu } from "src/features/popup/browser/use-popup-header-menu";
@@ -10,6 +11,56 @@ import type { IRes } from "src/service-container";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { FloatingPopup } from "src/view/browser/ui/FloatingPopup";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
+
+function PopupResponseList({
+  items,
+  repIndex,
+}: {
+  items: IRes[];
+  repIndex: Map<number, Set<number>>;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // 少数のレスはそのまま描画し、大量のIDレスだけ表示範囲に絞ってDOMと画像処理を抑える。
+  const virtualized = items.length > 50;
+  const virtualizer = useVirtualizer({
+    count: virtualized ? items.length : 0,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 120,
+    getItemKey: (index) => items[index].num,
+    overscan: 5,
+    initialRect: { width: 520, height: 500 },
+  });
+  const card = (res: IRes) => (
+    <PopupResCard res={res} anchorPreviewDepth={0} repIndex={repIndex} allowHardNgReveal />
+  );
+
+  return (
+    <div className="res-popup__body" ref={scrollRef}>
+      {virtualized ? (
+        <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
+          {virtualizer.getVirtualItems().map((item) => (
+            <div
+              key={item.key}
+              data-index={item.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${item.start}px)`,
+              }}
+            >
+              {card(items[item.index])}
+            </div>
+          ))}
+        </div>
+      ) : (
+        items.map((res) => <React.Fragment key={res.num}>{card(res)}</React.Fragment>)
+      )}
+    </div>
+  );
+}
 
 // --- IDポップアップ ---
 export const ResPopup: React.FC<{
@@ -157,18 +208,7 @@ export const ResPopup: React.FC<{
               onAnchorLeave={onAnchorLeave}
               onContextMenu={handleResContextMenu}
             >
-              <div className="res-popup__body">
-                {items.map((res) => (
-                  <PopupResCard
-                    key={res.num}
-                    res={res}
-                    anchorPreviewDepth={0}
-                    repIndex={repIndex}
-                    // IDから開いたポップアップでもhard-ngのレスを明示操作で確認できるようにする。
-                    allowHardNgReveal
-                  />
-                ))}
-              </div>
+              <PopupResponseList items={items} repIndex={repIndex} />
             </PopupResCardScope>
           </RepeatedReplyProvider>
           {menuPosition && items.length > 0 && (
