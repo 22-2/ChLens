@@ -40,7 +40,9 @@ export async function verifyTwoPaneFilters(page: Page, localBoard: LocalBoard): 
   await rightCount.click();
   await expect(rightFilter).toBeVisible();
   await expect(leftFilter).toBeVisible();
-  await leftCount.click();
+  // ペインごとの閉じる操作はフィルタ欄をクリックしてから、空欄のEscapeで行う。
+  await leftFilter.click();
+  await leftFilter.press("Escape");
   await expect(leftFilter).toHaveCount(0);
   await expect(rightFilter).toBeVisible();
 
@@ -51,19 +53,22 @@ export async function verifyTwoPaneFilters(page: Page, localBoard: LocalBoard): 
     await page.getByPlaceholder("コマンドを検索...").fill(">画像のフィルタ");
     await page.getByRole("option", { name: /画像のフィルタを切り替え/u }).click();
   };
-  // 種類は「絞り込み」メニューのボタンの表示になる（選択中は種類名、解除すると「絞り込み」）。
-  const leftMode = left.locator(".thread-page__toolbar .search-options-menu__button--labeled");
-  const rightMode = right.locator(".thread-page__toolbar .search-options-menu__button--labeled");
+  // 種類はフィルタのボタンに出て、選んでいる間は押下状態になる。解除しても最後に選んだ種類を残す。
+  const leftMode = left.locator(".thread-page__toolbar button[aria-pressed]");
+  const rightMode = right.locator(".thread-page__toolbar button[aria-pressed]");
   await runImageFilter();
   await expect(leftMode).toHaveText("画像");
-  await expect(rightMode).toHaveText("絞り込み");
-  await rightCount.click();
+  await expect(leftMode).toHaveAttribute("aria-pressed", "true");
+  await expect(rightMode).toHaveAttribute("aria-pressed", "false");
+  await rightFilter.click();
+  await rightFilter.press("Escape");
   await expect(rightFilter).toHaveCount(0);
   await runImageFilter();
   await expect(rightMode).toHaveText("画像");
   await expect(leftMode).toHaveText("画像");
   await runImageFilter();
-  await expect(rightMode).toHaveText("絞り込み");
+  await expect(rightMode).toHaveText("画像");
+  await expect(rightMode).toHaveAttribute("aria-pressed", "false");
   await expect(leftMode).toHaveText("画像");
 }
 
@@ -104,7 +109,7 @@ export async function verifyDetachedFilters(page: Page, localBoard: LocalBoard):
   await mainCount.click();
   await expect(mainFilter).toBeVisible();
   await expect(popupFilter).toBeVisible();
-  await mainCount.click();
+  await page.getByRole("button", { name: "フィルターを開閉", exact: true }).click();
   await expect(mainFilter).toHaveCount(0);
   await expect(popupFilter).toBeVisible();
 

@@ -49,11 +49,13 @@ test("板からスレへの遷移と再読み込み後もフィルターが対�
     await page.getByRole("option", { name: /画像のフィルタを切り替え/ }).click();
   };
   await runImageFilter();
-  // 種類は「絞り込み」メニューのボタンの表示になる（選択中は種類名、解除すると「絞り込み」）。
-  const modeButton = panel.locator(".thread-page__toolbar .search-options-menu__button--labeled");
+  // 種類はフィルタのボタンに出て、選んでいる間は押下状態になる。解除しても最後に選んだ種類を残す。
+  const modeButton = panel.locator(".thread-page__toolbar button[aria-pressed]");
   await expect(modeButton).toHaveText("画像");
+  await expect(modeButton).toHaveAttribute("aria-pressed", "true");
   await runImageFilter();
-  await expect(modeButton).toHaveText("絞り込み");
+  await expect(modeButton).toHaveText("画像");
+  await expect(modeButton).toHaveAttribute("aria-pressed", "false");
   expect(registrationErrors).toEqual([]);
 });
 

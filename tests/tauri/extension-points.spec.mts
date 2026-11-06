@@ -90,7 +90,8 @@ test("別窓への移動と復帰後もフィルター操作が対象のスレ�
   await expect(mainFilter).toHaveCount(0);
   await mainCount.click();
   await expect(mainFilter).toBeVisible();
-  await mainCount.click();
+  // レス数のクリックは開くだけなので、閉じる操作はフィルターの開閉ボタンで行う。
+  await page.getByRole("button", { name: "フィルターを開閉", exact: true }).click();
   await expect(mainFilter).toHaveCount(0);
   await expect.poll(popupState).toMatchObject({ open: true, filter: true });
 
