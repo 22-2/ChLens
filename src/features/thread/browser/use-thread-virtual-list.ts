@@ -114,12 +114,16 @@ export function useThreadVirtualList({
     return nums;
   }, [readBoundary, replayBoundary, responses]);
   // 同じレスの推定値はスクロール中に繰り返し求められるため、本文と幅が変わるまで再利用する。
-  // レス配列が入れ替わったときも捨て、本文の変更や削除を古い値へ反映しない。
-  const estimateValues = useMemo(
-    () => ({ resByNum, metrics, estimateCache: new Map<number, number>() }),
-    [resByNum, metrics],
-  );
+  // 変更理由: レス配列は自動更新やライブ実況の1レスごとに作り直されるが、推定値は本文と幅だけで決まる。
+  // 配列の入れ替えごとに捨てると、1000レス近いスレで更新のたびに全レスの推定（HTML除去と
+  // 文字幅の計算）をやり直し、実スレの計測で自動更新中のscript時間の約4割を占めていた。
+  // そのため本文の文字列を一緒に覚え、本文が変わったレスと幅が変わったときだけ求め直す。
+  const estimateValues = useMemo(() => ({ resByNum, metrics }), [resByNum, metrics]);
   const estimateInput = useLatestRef(estimateValues);
+  const estimateCacheRef = useRef<{
+    metrics: ResHeightMetrics;
+    entries: Map<number, { message: string; height: number }>;
+  } | null>(null);
   const keyIndex = useMemo(() => new Map(keys.map((key, index) => [key, index])), [keys]);
   const estimateSize = useCallback(
     (index: number) => {
@@ -127,12 +131,17 @@ export function useThreadVirtualList({
       if (typeof key !== "number") return estimateInput.current.metrics.chromeHeight;
       const res = estimateInput.current.resByNum.get(key);
       if (!res) return estimateInput.current.metrics.chromeHeight;
-      const cached = estimateInput.current.estimateCache.get(key);
-      if (cached !== undefined) return cached;
+      let cache = estimateCacheRef.current;
+      if (!cache || cache.metrics !== estimateInput.current.metrics) {
+        cache = { metrics: estimateInput.current.metrics, entries: new Map() };
+        estimateCacheRef.current = cache;
+      }
+      const cached = cache.entries.get(key);
+      if (cached && cached.message === res.message) return cached.height;
       // NG非表示も最初は推定高さを持たせ、DOMにマウントして実測0を得る。
       // 推定から0にすると描画されず、NG解除後も要素を再計測できない。
       const height = estimateResHeight(res, estimateInput.current.metrics);
-      estimateInput.current.estimateCache.set(key, height);
+      cache.entries.set(key, { message: res.message, height });
       return height;
     },
     [estimateInput, keys],
