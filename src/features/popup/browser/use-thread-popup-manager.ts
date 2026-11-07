@@ -222,7 +222,9 @@ export function useThreadPopupManager({
           viewport.bottom - ANCHOR_PREVIEW_GUTTER,
         ),
       );
-      const parentId = depth > 0 ? anchorPreviewsRef.current[depth - 1]?.id : sourcePopupId;
+      // 返信ツリーなどを挟んだ場合は、アンカーの深さより実際の表示元を優先する。
+      const parentId =
+        sourcePopupId ?? (depth > 0 ? anchorPreviewsRef.current[depth - 1]?.id : undefined);
       const { x, y } = childPopupCoords(vx, vy, parentId);
       const currentPreview = anchorPreviewsRef.current.find((item) => item.payload.depth === depth);
       if (

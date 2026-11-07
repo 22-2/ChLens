@@ -257,6 +257,30 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
     unmount();
   });
 
+  it("アンカーから開いた返信ツリー内ではツリーを基準に子アンカーを配置する", () => {
+    const { result, unmount } = createThreadPopupHook("contract-nested-tree-position");
+    act(() => {
+      result.current.showAnchorPreview([1], createAnchorRect(), ">>1", 0);
+    });
+    const anchorId = result.current.anchorPreviews[0]!.id;
+    let treeId = "";
+    act(() => {
+      treeId = result.current.addTreePopup(2, 100, 120, anchorId, 1);
+    });
+    const tree = document.createElement("div");
+    tree.dataset.popupId = treeId;
+    tree.getBoundingClientRect = () => ({ left: 400, top: 500 }) as DOMRect;
+    document.body.appendChild(tree);
+    act(() => {
+      result.current.showAnchorPreview([3], createAnchorRect(), ">>3", 1, treeId);
+    });
+    const child = result.current.anchorPreviews.find((item) => item.payload.label === ">>3");
+    expect(child).toMatchObject({ parentId: treeId, x: 440, y: 460 });
+    expect(result.current.popups.some((item) => item.id === treeId)).toBe(true);
+    tree.remove();
+    unmount();
+  });
+
   it("同じanchor previewの再表示を抑止し、depth指定で下位previewだけを削除する", () => {
     const { result, unmount } = createThreadPopupHook("contract-anchor-depth");
     const anchorRect = createAnchorRect();
