@@ -33,9 +33,15 @@ fn create_requested_window<R: Runtime>(
   url: Url,
   features: NewWindowFeatures,
 ) -> NewWindowResponse<R> {
-  // `window.open("", ...)` は about:blank を要求する。その他の URL は外部リンクなので、
-  // WebView2 の既定処理へ渡し、既定のポップアップとして開けるようにする。
+  // WebView2の既定処理では外部サイトがアプリ内の窓になるため、既定ブラウザへ渡す。
   if url.as_str() != "about:blank" {
+    #[cfg(windows)]
+    if matches!(url.scheme(), "http" | "https") {
+      if let Err(error) = open_external_url(&url) {
+        log::error!("外部ブラウザを開けませんでした: {error}");
+      }
+      return NewWindowResponse::Deny;
+    }
     return NewWindowResponse::Allow;
   }
 
@@ -71,6 +77,32 @@ fn create_requested_window<R: Runtime>(
       NewWindowResponse::Deny
     }
   }
+}
+
+#[cfg(windows)]
+fn open_external_url(url: &Url) -> Result<(), String> {
+  use std::{os::windows::ffi::OsStrExt, ptr};
+  use windows_sys::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
+
+  let target: Vec<u16> = std::ffi::OsStr::new(url.as_str())
+    .encode_wide()
+    .chain(Some(0))
+    .collect();
+  // SAFETY: targetは終端NUL付きで、呼び出しが戻るまで有効。残りのポインタは省略可能。
+  let result = unsafe {
+    ShellExecuteW(
+      ptr::null_mut(),
+      ptr::null(),
+      target.as_ptr(),
+      ptr::null(),
+      ptr::null(),
+      SW_SHOWNORMAL,
+    )
+  } as isize;
+  if result <= 32 {
+    return Err(format!("ShellExecuteW エラーコード: {result}"));
+  }
+  Ok(())
 }
 
 fn new_window_handler<R: Runtime>(
