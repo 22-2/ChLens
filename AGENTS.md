@@ -71,6 +71,7 @@
   - `settings`: 設定画面、設定保存
   - `write`: 書き込み機能
   - `popup`: ポップアップ、ペイン
+  - `comment-overlay`: 実況コメントのOverlay（`src/features/comment-overlay/`）
   - `platform`: Browser/Tauriのプラットフォーム抽象化
   - `chlib`: `packages/chlib/` の共有ライブラリ
   - `workflow`: Issue、todo、自動化などの開発ワークフロー
