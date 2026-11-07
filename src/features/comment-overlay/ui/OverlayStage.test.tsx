@@ -297,6 +297,37 @@ describe("OverlayStage", () => {
     expect(commentAfterSecondResize.style.left).toBe("900px");
   });
 
+  it("描画領域のpropsが変わっても流れたコメントを最初から流し直さない", () => {
+    const { rerender } = render(
+      <OverlayStage
+        comments={[comment]}
+        stageWidth={900}
+        stageHeight={506}
+        durationSeconds={6}
+        playing
+      />,
+    );
+    act(() => {
+      scheduledFrame?.(0);
+      scheduledFrame?.(3_000);
+    });
+
+    rerender(
+      <OverlayStage
+        comments={[comment]}
+        stageWidth={600}
+        stageHeight={400}
+        bottomPadding={50}
+        durationSeconds={6}
+        playing
+      />,
+    );
+
+    const resizedComment = screen.getByText("テストコメント");
+    expect(resizedComment.style.animationDelay).toBe("-3s");
+    expect(resizedComment.style.left).toBe("600px");
+  });
+
   it("描画中に余白が変わっても新着コメントを流し続ける", () => {
     const { rerender } = render(
       <OverlayStage

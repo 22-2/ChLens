@@ -223,37 +223,30 @@ export function OverlayStage({
     return () => observer.disconnect();
   }, [containerHeight, containerWidth, fitToContainer]);
 
+  // 変更理由: 描画領域・余白・文字サイズの変化でSchedulerを作り直すと、再生済みの
+  // コメントがdedupe Setごと初期化されて最初から流れ直すため、Schedulerは方針の変更時だけ
+  // 作り直す。寸法の変化は下のresizeLayoutが表示中コメントの進捗を保ったまま反映する。
+  const initialLayoutRef = useRef({
+    stageWidth,
+    stageHeight: Math.max(
+      baseLaneHeight,
+      stageHeight - requestedTopPadding - requestedBottomPadding,
+    ),
+    laneHeight: baseLaneHeight,
+    maxLaneCount,
+    durationSeconds,
+    baseSpeedPxPerSecond,
+  });
   const scheduler = useMemo(
     () =>
       new CommentScheduler({
-        stageWidth,
-        stageHeight: Math.max(
-          baseLaneHeight,
-          stageHeight - requestedTopPadding - requestedBottomPadding,
-        ),
-        laneHeight: baseLaneHeight,
-        maxLaneCount,
-        durationSeconds,
-        baseSpeedPxPerSecond,
+        ...initialLayoutRef.current,
         maxQueueSize,
         collisionMode,
         backlogPolicy,
         maxActiveCount,
       }),
-    [
-      backlogPolicy,
-      baseSpeedPxPerSecond,
-      collisionMode,
-      durationSeconds,
-      baseLaneHeight,
-      maxActiveCount,
-      maxLaneCount,
-      maxQueueSize,
-      requestedBottomPadding,
-      requestedTopPadding,
-      stageHeight,
-      stageWidth,
-    ],
+    [backlogPolicy, collisionMode, maxActiveCount, maxQueueSize],
   );
   const [snapshot, setSnapshot] = useState<CommentSchedulerSnapshot>(() => scheduler.advance(0));
   const snapshotRef = useRef(snapshot);
