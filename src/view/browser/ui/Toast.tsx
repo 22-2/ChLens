@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { useCallback, useSyncExternalStore } from "react";
 import { TOAST_DISPLAY_DURATION_MS, toastStore } from "src/service-container/toast-store";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { useToastAvoidBottom } from "src/view/browser/ui/use-toast-avoid-offset";
 
 interface ToastProviderProps {
   topOffset: string;
@@ -17,6 +18,7 @@ export function ToastProvider({
   duration = TOAST_DISPLAY_DURATION_MS,
 }: ToastProviderProps) {
   const { window: targetWindow } = useViewSurface();
+  const avoidBottom = useToastAvoidBottom(targetWindow);
   const records = useSyncExternalStore(
     useCallback((listener) => toastStore.subscribe(listener, targetWindow), [targetWindow]),
     useCallback(() => toastStore.getSnapshot(targetWindow), [targetWindow]),
@@ -25,6 +27,7 @@ export function ToastProvider({
   const viewportStyle = {
     "--cmp-toast-offset-top": topOffset,
     "--cmp-toast-offset-right": rightOffset,
+    "--cmp-toast-avoid-bottom": `${avoidBottom}px`,
   } as CSSProperties;
 
   return (

@@ -878,7 +878,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         </div>
       ) : (
         <>
-          <div className="thread-page__sticky-header">
+          <div className="thread-page__sticky-header" data-toast-avoid="">
             {find.isOpen ? <ThreadFindBar find={find} /> : null}
             <ThreadPageTopBar
               activeTopBar={activeTopBar}
