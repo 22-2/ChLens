@@ -332,9 +332,15 @@
   text-decoration: underline;
 }
 
+/*
+ * AAは行頭の字下げと行の長さで形が決まるため、折り返すと絵が崩れる。
+ * 本文の word-break: break-all も折り返し位置を崩すので、AAでは解除し、幅が足りない分は横スクロールで見せる。
+ */
 .res--aa .res__body {
   font-family: "MS PGothic", "Mona", monospace;
-  white-space: pre-wrap;
+  white-space: pre;
+  word-break: normal;
+  overflow-x: auto;
 }
 
 .res__links {
