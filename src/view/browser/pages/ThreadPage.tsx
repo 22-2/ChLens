@@ -717,6 +717,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     filteredResponses,
     handleAnchorClick,
     hideAnchorPreviewImmediately,
+    blurredResNums,
+    messageProtocol,
     miniAaResNums,
     ownResNums,
     page,

@@ -2,6 +2,7 @@ import {
   ArrowDown,
   Ban,
   Copy,
+  Eye,
   FilterX,
   History,
   Pause,
@@ -10,6 +11,7 @@ import {
   RotateCw,
   Search,
   SkipForward,
+  Trash2,
   Type,
 } from "lucide-react";
 import React, { useCallback, useEffect, useRef } from "react";
@@ -17,6 +19,13 @@ import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { stringifyNgDslValue } from "src/core/ng/ngDsl";
 import { requestArchiveReplaySeek } from "src/features/archive-replay/platform";
+import {
+  discardLoadedImages,
+  filterLoadedImageUrls,
+  filterStillBlurredImageUrls,
+  unblurImages,
+} from "src/features/media/browser/res-image-actions";
+import { collectResImageUrls } from "src/features/media/domain/thread-images";
 import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
 import { useWriteRequest } from "src/features/write/browser/use-write-request";
 import { container } from "src/service-container/index";
@@ -54,6 +63,10 @@ interface UseThreadResContextMenuParams {
   filteredResponses: IRes[];
   handleAnchorClick: (resNum: number) => void;
   hideAnchorPreviewImmediately: () => void;
+  /** 本文の画像をぼかしているレス番号。画像のぼかし解除を出すかの判定に使う。 */
+  blurredResNums: ReadonlySet<number>;
+  /** レス本文から画像のURLを取り出すときのプロトコル（スレッドURLのもの）。 */
+  messageProtocol: string;
   miniAaResNums: Set<number>;
   ownResNums: Set<number>;
   page: ThreadPageType;
@@ -82,6 +95,8 @@ export function useThreadResContextMenu({
   filteredResponses,
   handleAnchorClick,
   hideAnchorPreviewImmediately,
+  blurredResNums,
+  messageProtocol,
   miniAaResNums,
   ownResNums,
   page,
@@ -402,6 +417,39 @@ export function useThreadResContextMenu({
         },
       ];
 
+      // 画像の操作は、このレスに該当する画像があるときだけ出す。状態はメニューを開く時点で読む。
+      const resImageUrls = collectResImageUrls(targetRes, messageProtocol);
+      const blurredImageUrls = blurredResNums.has(targetRes.num)
+        ? filterStillBlurredImageUrls(resImageUrls)
+        : [];
+      const loadedImageUrls = filterLoadedImageUrls(resImageUrls);
+      const imageItems: ContextMenuItem[] = [
+        ...(blurredImageUrls.length > 0
+          ? [
+              {
+                id: "unblur-res-images",
+                label: "このレスの画像のぼかしをすべて解除",
+                icon: <Eye size={14} />,
+                onSelect: () => unblurImages(blurredImageUrls),
+              },
+            ]
+          : []),
+        ...(loadedImageUrls.length > 0
+          ? [
+              {
+                id: "discard-res-images",
+                label: "このレスの取得済み画像をすべて破棄",
+                icon: <Trash2 size={14} />,
+                danger: true,
+                onSelect: () => {
+                  const count = discardLoadedImages(loadedImageUrls);
+                  toast.info(`${count}枚の画像を破棄しました`);
+                },
+              },
+            ]
+          : []),
+      ];
+
       const itemsAfterIdSlot: ContextMenuItem[] = [
         {
           id: "reply",
@@ -445,6 +493,7 @@ export function useThreadResContextMenu({
             });
           },
         },
+        ...imageItems,
       ];
 
       const selectionItems: ContextMenuItem[] = hasSelection
@@ -507,9 +556,11 @@ export function useThreadResContextMenu({
       dispatch,
       fetchThread,
       filter,
+      blurredResNums,
       handleAnchorClick,
       isAutoRefreshEnabled,
       markReadThrough,
+      messageProtocol,
       miniAaResNums,
       openWritePanelWithText,
       ownResNums,

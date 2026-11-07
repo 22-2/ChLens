@@ -2,6 +2,8 @@ import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import React, { useEffect, useState } from "react";
+import { useImageUnblurStore } from "src/features/media/browser/use-image-unblur-store";
+import { useMediaImageStore } from "src/features/media/browser/use-media-image-store";
 import type { IRes } from "src/service-container/interfaces";
 import { useThreadResContextMenu } from "src/view/browser/pages/thread/use-thread-res-context-menu";
 import { buildExtractResMenu } from "src/view/browser/state/thread-res-menu";
@@ -18,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   handleAnchorClick: vi.fn(),
   requestArchiveReplaySeek: vi.fn<() => Promise<void>>(),
   isAutoRefreshEnabled: false,
+  blurredResNums: new Set<number>(),
   fetchThread: vi.fn<() => Promise<void>>(),
 }));
 
@@ -93,6 +96,8 @@ function HookHarness() {
     filteredResponses: responses,
     handleAnchorClick: () => {},
     hideAnchorPreviewImmediately: () => {},
+    blurredResNums: mocks.blurredResNums,
+    messageProtocol: "https:",
     miniAaResNums,
     ownResNums: new Set<number>(),
     page: {
@@ -198,6 +203,8 @@ function FilterJumpHarness() {
     filteredResponses,
     handleAnchorClick: mocks.handleAnchorClick,
     hideAnchorPreviewImmediately: () => {},
+    blurredResNums: new Set<number>(),
+    messageProtocol: "https:",
     miniAaResNums: new Set<number>(),
     ownResNums: new Set<number>(),
     page: {
@@ -261,7 +268,63 @@ describe("useThreadResContextMenu", () => {
     mocks.handleAnchorClick.mockReset();
     mocks.requestArchiveReplaySeek.mockReset();
     mocks.isAutoRefreshEnabled = false;
+    mocks.blurredResNums = new Set<number>();
+    useImageUnblurStore.setState({ unblurredKeys: new Set() });
+    useMediaImageStore.setState({ images: new Map() });
     mocks.fetchThread.mockReset();
+  });
+
+  describe("レスの画像の操作", () => {
+    const THREAD_URL = "https://example.com/test/read.cgi/live/1/";
+    const IMAGE_URL = "https://images.example.com/menu-photo.jpg";
+    const IMAGE_RES: IRes = { ...TARGET_RES, message: IMAGE_URL };
+    const menuIds = () =>
+      buildExtractResMenu("tab-1", THREAD_URL, IMAGE_RES)!.map((item) => item.id);
+
+    it("画像がないレスには出さない", () => {
+      mocks.blurredResNums = new Set([TARGET_RES.num]);
+      render(<HookHarness />);
+
+      const ids = buildExtractResMenu("tab-1", THREAD_URL, TARGET_RES)!.map((item) => item.id);
+      expect(ids).not.toContain("unblur-res-images");
+      expect(ids).not.toContain("discard-res-images");
+    });
+
+    it("ぼかしているレスだけ、画像のぼかし解除を出し、選ぶと解除する", () => {
+      render(<HookHarness />);
+      expect(menuIds()).not.toContain("unblur-res-images");
+      cleanup();
+
+      mocks.blurredResNums = new Set([TARGET_RES.num]);
+      render(<HookHarness />);
+      const item = buildExtractResMenu("tab-1", THREAD_URL, IMAGE_RES)!.find(
+        (candidate) => candidate.id === "unblur-res-images",
+      );
+      expect(item).toBeDefined();
+      item?.onSelect?.();
+
+      expect(useImageUnblurStore.getState().unblurredKeys.has(IMAGE_URL)).toBe(true);
+      // 解除済みの画像しかなければ、項目は出さない。
+      expect(menuIds()).not.toContain("unblur-res-images");
+    });
+
+    it("取得済みの画像があるレスだけ、画像の破棄を出し、選ぶと破棄する", () => {
+      render(<HookHarness />);
+      expect(menuIds()).not.toContain("discard-res-images");
+
+      useMediaImageStore.setState({
+        images: new Map([
+          [IMAGE_URL, { status: "loaded", version: 1, fallbackSrc: null, sourceUrl: IMAGE_URL }],
+        ]),
+      });
+      const item = buildExtractResMenu("tab-1", THREAD_URL, IMAGE_RES)!.find(
+        (candidate) => candidate.id === "discard-res-images",
+      );
+      expect(item).toBeDefined();
+      item?.onSelect?.();
+
+      expect(useMediaImageStore.getState().images.get(IMAGE_URL)?.status).toBe("discarded");
+    });
   });
 
   it("抽出レスは対象タブのレス操作を共有し、更新項目を表示しない", () => {

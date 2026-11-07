@@ -29,6 +29,7 @@ import { imgurVideoResolver } from "../application/imgur-album";
 import { twitterPostResolver } from "../application/twitter-post";
 import { addImageMenuProvider } from "../browser/image-menu-contributions";
 import { useImageHashStore } from "../browser/use-image-hash-store";
+import { useImageUnblurStore } from "../browser/use-image-unblur-store";
 import { useMediaImageStore } from "../browser/use-media-image-store";
 import { ResMediaGallery } from "./ResMediaGallery";
 
@@ -44,6 +45,7 @@ afterEach(() => {
   cleanup();
   manualImageLoadingMock.value = false;
   useMediaImageStore.setState({ images: new Map() });
+  useImageUnblurStore.setState({ unblurredKeys: new Set() });
   useImageHashStore.setState({ hashingEnabled: false, entries: new Map() });
 });
 
@@ -455,6 +457,87 @@ describe("ResMediaGallery", () => {
 
     expect(thumb).toHaveClass("res__thumb--blurred");
     expect(thumb.getAttribute("style")).toContain("--res-thumb-blur-radius: 8px");
+  });
+
+  describe("ぼかしの解除", () => {
+    const firstUrl = "https://images.example.com/blurred-1.jpg";
+    const secondUrl = "https://images.example.com/blurred-2.jpg";
+    const getThumb = (url: string) => screen.getByRole("link", { name: url });
+
+    it("ぼかしていない画像のメニューには出さない", async () => {
+      render(<ResMediaGallery urls={[firstUrl]} onUrlClick={() => {}} />);
+      fireEvent.contextMenu(getThumb(firstUrl));
+
+      await screen.findByRole("menuitem", { name: "ビューアで開く" });
+      expect(screen.queryByRole("menuitem", { name: /ぼかしを/ })).toBeNull();
+    });
+
+    it("右クリックした画像だけぼかしを解除し、同じレスのほかの画像はぼかしたままにする", async () => {
+      render(<ResMediaGallery urls={[firstUrl, secondUrl]} onUrlClick={() => {}} isBlurred />);
+      fireEvent.contextMenu(getThumb(firstUrl));
+
+      fireEvent.click(await screen.findByRole("menuitem", { name: "画像のぼかしを解除" }));
+
+      expect(getThumb(firstUrl)).not.toHaveClass("res__thumb--blurred");
+      expect(getThumb(secondUrl)).toHaveClass("res__thumb--blurred");
+    });
+
+    it("解除した画像は類似画像NGの判定待ちでもぼかさない", () => {
+      useImageHashStore.setState({ hashingEnabled: true });
+      useImageUnblurStore.getState().unblurImages([firstUrl]);
+      render(<ResMediaGallery urls={[firstUrl]} onUrlClick={() => {}} />);
+
+      expect(getThumb(firstUrl)).not.toHaveClass("res__thumb--blurred");
+    });
+
+    it("同じレスのぼかしている画像をまとめて解除できる", async () => {
+      render(<ResMediaGallery urls={[firstUrl, secondUrl]} onUrlClick={() => {}} isBlurred />);
+      fireEvent.contextMenu(getThumb(firstUrl));
+
+      fireEvent.click(
+        await screen.findByRole("menuitem", { name: "このレスの画像のぼかしをすべて解除" }),
+      );
+
+      expect(getThumb(firstUrl)).not.toHaveClass("res__thumb--blurred");
+      expect(getThumb(secondUrl)).not.toHaveClass("res__thumb--blurred");
+    });
+
+    it("画像が1枚だけなら、まとめて解除の項目は出さない", async () => {
+      render(<ResMediaGallery urls={[firstUrl]} onUrlClick={() => {}} isBlurred />);
+      fireEvent.contextMenu(getThumb(firstUrl));
+
+      await screen.findByRole("menuitem", { name: "画像のぼかしを解除" });
+      expect(
+        screen.queryByRole("menuitem", { name: "このレスの画像のぼかしをすべて解除" }),
+      ).toBeNull();
+    });
+  });
+
+  it("同じレスの取得済み画像をまとめて破棄できる", async () => {
+    const firstUrl = "https://images.example.com/discard-1.jpg";
+    const secondUrl = "https://images.example.com/discard-2.jpg";
+    render(<ResMediaGallery urls={[firstUrl, secondUrl]} onUrlClick={() => {}} />);
+    for (const image of screen.getAllByRole("img")) fireEvent.load(image);
+    fireEvent.contextMenu(screen.getByRole("link", { name: firstUrl }));
+
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: "このレスの取得済み画像をすべて破棄" }),
+    );
+
+    expect(useMediaImageStore.getState().images.get(firstUrl)?.status).toBe("discarded");
+    expect(useMediaImageStore.getState().images.get(secondUrl)?.status).toBe("discarded");
+  });
+
+  it("取得済みの画像が1枚だけなら、まとめて破棄の項目は出さない", async () => {
+    const imageUrl = "https://images.example.com/discard-single.jpg";
+    render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} />);
+    fireEvent.load(screen.getByRole("img", { name: imageUrl }));
+    fireEvent.contextMenu(screen.getByRole("link", { name: imageUrl }));
+
+    await screen.findByRole("menuitem", { name: "画像を破棄" });
+    expect(
+      screen.queryByRole("menuitem", { name: "このレスの取得済み画像をすべて破棄" }),
+    ).toBeNull();
   });
 
   describe("類似画像NGの判定待ち", () => {

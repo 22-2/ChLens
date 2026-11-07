@@ -1,4 +1,4 @@
-import { AppWindow, Copy, Download, ExternalLink, Trash2 } from "lucide-react";
+import { AppWindow, Copy, Download, ExternalLink, Eye, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -21,8 +21,15 @@ import { imgurVideoResolver, isImgurVideoResolutionCandidate } from "../applicat
 import { type TwitterPost, twitterPostResolver } from "../application/twitter-post";
 import { collectImageMenuItems, joinImageMenuGroups } from "../browser/image-menu-contributions";
 import { copyMediaImageWithNotice } from "../browser/media-viewer-copy";
+import {
+  discardLoadedImages,
+  filterLoadedImageUrls,
+  filterStillBlurredImageUrls,
+  unblurImages,
+} from "../browser/res-image-actions";
 import { isImageHashPending, useImageHashStore } from "../browser/use-image-hash-store";
 import { useImageSave } from "../browser/use-image-save";
+import { useImageUnblurStore } from "../browser/use-image-unblur-store";
 import { useMediaImageStore } from "../browser/use-media-image-store";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "../domain/media-settings";
 import { ExternalImage } from "./ExternalImage";
@@ -92,6 +99,7 @@ export function ResMediaGallery({
   const surface = useViewSurface();
   const toast = useToast();
   const imageStates = useMediaImageStore((state) => state.images);
+  const unblurredKeys = useImageUnblurStore((state) => state.unblurredKeys);
   const handledMiddleClickUrlRef = useRef<string | null>(null);
   const [expandedVideoUrl, setExpandedVideoUrl] = useState<string | null>(null);
   const [imgurVideoUrls, setImgurVideoUrls] = useState<ReadonlyMap<string, string>>(
@@ -109,7 +117,7 @@ export function ResMediaGallery({
     const targetWindow = event.currentTarget.ownerDocument.defaultView;
 
     const viewerImages = imageUrls.includes(url) ? imageUrls : saveImageUrls;
-    // 並びは「見る → 持ち出す → 登録 → 破棄」。破棄は取り消せないので末尾にまとめる。
+    // 並びは「見る → ぼかし解除 → 持ち出す → 登録 → 破棄」。破棄は取り消せないので末尾にまとめる。
     const viewerItems: ContextMenuItem[] = [
       {
         id: "open-viewer",
@@ -157,21 +165,61 @@ export function ResMediaGallery({
       imageIsLoaded && image && targetWindow
         ? collectImageMenuItems({ imageKey: url, image, targetWindow })
         : [];
-    const discardItems: ContextMenuItem[] = imageIsLoaded
-      ? [
-          {
-            id: "discard-image",
-            label: "画像を破棄",
-            icon: <Trash2 size={14} />,
-            danger: true,
-            onSelect: () => useMediaImageStore.getState().discardImage(url),
-          },
-        ]
-      : [];
+    // ぼかしは本文の画像（このレスのサムネイル）にだけ掛かる。投稿カード内の画像などは対象にしない。
+    const blurredImageUrls = isBlurred ? filterStillBlurredImageUrls(imageUrls) : [];
+    const otherBlurredImageUrls = blurredImageUrls.filter((imageUrl) => imageUrl !== url);
+    const unblurItems: ContextMenuItem[] = [
+      ...(blurredImageUrls.includes(url)
+        ? [
+            {
+              id: "unblur-image",
+              label: "画像のぼかしを解除",
+              icon: <Eye size={14} />,
+              onSelect: () => unblurImages([url]),
+            },
+          ]
+        : []),
+      ...(otherBlurredImageUrls.length > 0
+        ? [
+            {
+              id: "unblur-res-images",
+              label: "このレスの画像のぼかしをすべて解除",
+              icon: <Eye size={14} />,
+              onSelect: () => unblurImages(blurredImageUrls),
+            },
+          ]
+        : []),
+    ];
+    const loadedImageUrls = filterLoadedImageUrls(imageUrls);
+    const otherLoadedImageUrls = loadedImageUrls.filter((imageUrl) => imageUrl !== url);
+    const discardItems: ContextMenuItem[] = [
+      ...(imageIsLoaded
+        ? [
+            {
+              id: "discard-image",
+              label: "画像を破棄",
+              icon: <Trash2 size={14} />,
+              danger: true,
+              onSelect: () => useMediaImageStore.getState().discardImage(url),
+            },
+          ]
+        : []),
+      ...(otherLoadedImageUrls.length > 0
+        ? [
+            {
+              id: "discard-res-images",
+              label: "このレスの取得済み画像をすべて破棄",
+              icon: <Trash2 size={14} />,
+              danger: true,
+              onSelect: () => discardLoadedImages(loadedImageUrls),
+            },
+          ]
+        : []),
+    ];
     openMenu(
       url,
       event,
-      joinImageMenuGroups([viewerItems, [...copySaveItems, ...ngItems], discardItems]),
+      joinImageMenuGroups([viewerItems, unblurItems, [...copySaveItems, ...ngItems], discardItems]),
       // 画像のメニューでは対象が画像のURLなので、リンクの「開く」を「画像URLを開く」と表示する。
       { openLabel: "画像URLを開く" },
     );
@@ -187,8 +235,9 @@ export function ResMediaGallery({
   const blurStyle: ThumbStyle = { "--res-thumb-blur-radius": `${imageBlurRadius}px` };
   const thumbStyle: ThumbStyle | undefined = isBlurred ? blurStyle : undefined;
   // ぼかしの理由は、ぼかしている画像にだけ出す。判定待ちの画像は理由がないので URL だけを出す。
+  const isUrlBlurred = (url: string): boolean => isBlurred && !unblurredKeys.has(url);
   const thumbTitle = (url: string): string =>
-    isBlurred && blurReason ? `${blurReason}\n${url}` : url;
+    isUrlBlurred(url) && blurReason ? `${blurReason}\n${url}` : url;
   const hashingEnabled = useImageHashStore((state) => state.hashingEnabled);
   const imageHashEntries = useImageHashStore((state) => state.entries);
   const thumbsRef = useRef<HTMLDivElement | null>(null);
@@ -351,12 +400,13 @@ export function ResMediaGallery({
               imageState?.status === "discarded" ||
               (manualImageLoading && !isImageLoadStarted(imageState?.status))
             ) {
+              const isPlaceholderBlurred = isUrlBlurred(item.rawUrl);
               return (
                 <button
                   key={`image:${item.rawUrl}`}
                   type="button"
-                  className={`res__thumb res__thumb--image res__thumb--manual${isBlurred ? " res__thumb--blurred" : ""}`}
-                  style={thumbStyle}
+                  className={`res__thumb res__thumb--image res__thumb--manual${isPlaceholderBlurred ? " res__thumb--blurred" : ""}`}
+                  style={isPlaceholderBlurred ? blurStyle : undefined}
                   aria-label={getImagePlaceholderLabel(imageState, "画像を読み込む")}
                   title={thumbTitle(item.rawUrl)}
                   onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
@@ -374,10 +424,11 @@ export function ResMediaGallery({
             }
 
             // 類似画像NGの判定は非同期なので、終わるまでぼかしておき、NG画像が一瞬見えるのを防ぐ。
-            const isHashPending = isImageHashPending(
-              hashingEnabled,
-              imageHashEntries.get(item.rawUrl),
-            );
+            // 利用者がぼかしを解除した画像は、判定待ちでもぼかさない。
+            const isUnblurred = unblurredKeys.has(item.rawUrl);
+            const isHashPending =
+              !isUnblurred && isImageHashPending(hashingEnabled, imageHashEntries.get(item.rawUrl));
+            const isThumbBlurred = (isBlurred && !isUnblurred) || isHashPending;
             const requestImageHash = (event: React.SyntheticEvent<HTMLImageElement>) => {
               useImageHashStore.getState().requestHash(item.rawUrl, event.currentTarget);
             };
@@ -389,8 +440,8 @@ export function ResMediaGallery({
               <React.Fragment key={`image:${item.rawUrl}`}>
                 <ConfirmableLink
                   href={item.rawUrl}
-                  className={`res__thumb res__thumb--image${isBlurred || isHashPending ? " res__thumb--blurred" : ""}${isHashPending ? " res__thumb--hash-pending" : ""}`}
-                  style={isBlurred || isHashPending ? blurStyle : undefined}
+                  className={`res__thumb res__thumb--image${isThumbBlurred ? " res__thumb--blurred" : ""}${isHashPending ? " res__thumb--hash-pending" : ""}`}
+                  style={isThumbBlurred ? blurStyle : undefined}
                   onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
                   onClick={(event) => {
                     event.preventDefault();
@@ -452,7 +503,7 @@ export function ResMediaGallery({
                     key={`image:${item.rawUrl}`}
                     src={toOriginalImageUrl(item.src) ?? item.src}
                     imageKey={item.rawUrl}
-                    isBlurred={isBlurred || isHashPending}
+                    isBlurred={isThumbBlurred}
                     blurStyle={blurStyle}
                     width={inlineImageWidths?.get(item.rawUrl)}
                     onResize={
