@@ -45,7 +45,7 @@ test("板からスレへの遷移と再読み込み後もフィルターが対�
   const runImageFilter = async () => {
     await page.getByTitle("メニュー", { exact: true }).click();
     await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
-    await page.getByPlaceholder("コマンドを検索...").fill(">画像のフィルタ");
+    await page.getByPlaceholder("コマンドを検索...").fill("画像のフィルタ");
     await page.getByRole("option", { name: /画像のフィルタを切り替え/ }).click();
   };
   await runImageFilter();

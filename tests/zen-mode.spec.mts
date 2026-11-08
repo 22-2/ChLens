@@ -8,7 +8,7 @@ test("Zenモードをコマンドから切り替え、パレットを再び開�
   await page.keyboard.press("Control+Shift+P");
   const commandInput = page.getByPlaceholder("コマンドを検索...");
   await expect(commandInput).toBeVisible();
-  await expect(commandInput).toHaveValue(">");
+  await expect(commandInput).toHaveValue("");
   await commandInput.pressSequentially("zen");
   await page.getByRole("option", { name: /Zenモードを開始/u }).click();
 
@@ -22,7 +22,7 @@ test("Zenモードをコマンドから切り替え、パレットを再び開�
   const zenPalette = page.locator(".zen-mode__palette");
   const zenCommandInput = zenPalette.getByPlaceholder("コマンドを検索...");
   await expect(zenCommandInput).toBeVisible();
-  await expect(zenCommandInput).toHaveValue(">");
+  await expect(zenCommandInput).toHaveValue("");
   await zenCommandInput.pressSequentially("zen");
   const exitZenModeCommand = page.getByRole("option", { name: /Zenモードを終了/u });
   await expect(exitZenModeCommand).toBeVisible();
