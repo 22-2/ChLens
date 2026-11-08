@@ -5,6 +5,7 @@ import fs from "fs-extra";
 import path from "path";
 import { defineConfig, lazyPlugins, Plugin } from "vite-plus";
 
+import { webPreviewProxyPlugin } from "./scripts/web-preview-proxy";
 import type { ChlensBuildInfo } from "./src/app/build-info";
 
 // ─── build info ─────────────────────────────────────────────────────────────
@@ -648,6 +649,7 @@ export default defineConfig(async ({ mode, command }) => {
     },
     plugins: lazyPlugins(() => [
       react(),
+      ...(platform === "web" ? [webPreviewProxyPlugin()] : []),
       ...(coveragePlugin ? [coveragePlugin] : []),
       browserHtmlPlugin(outputDir, entry),
       overlayHtmlPlugin(outputDir, entry),
