@@ -54,7 +54,10 @@ import {
   runManualRefresh,
   useManualRefreshCooldown,
 } from "src/view/browser/utils/manual-refresh";
-import { loadOmnibarSources } from "src/view/browser/utils/omnibar-sources";
+import {
+  loadOmnibarSources,
+  loadOmnibarWriteHistory,
+} from "src/view/browser/utils/omnibar-sources";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { createSettingsPage, type QuickAccessPage } from "src/view/browser/utils/tab-pages";
 
@@ -288,13 +291,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     handleFocus,
     handleBlur,
     handleSelectSuggestion,
-    enterCommandMode,
+    enterMode,
     returnToRoot,
-    showCommandMode,
+    availableModes,
   } = useOmnibar({
     displayUrl,
     maxSuggestions: OMNIBAR_MAX_SUGGESTIONS,
     loadEntries: loadOmnibarSources,
+    loadWriteHistory: loadOmnibarWriteHistory,
     onSelectSuggestion: openSuggestion,
     onSubmitInput: submitUrl,
     commands,
@@ -604,7 +608,20 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     <Omnibar
       inputRef={urlInputRef}
       inputValue={inputValue}
-      placeholder={omnibarMode === "command" ? "コマンドを検索..." : "URLを入力"}
+      placeholder={
+        omnibarMode === "command"
+          ? "コマンドを検索..."
+          : omnibarMode === "navigation"
+            ? "URLを入力"
+            : (
+                {
+                  bookmark: "お気に入りを検索...",
+                  board: "板を検索...",
+                  history: "閲覧履歴を検索...",
+                  writeHistory: "書き込み履歴を検索...",
+                } as const
+              )[omnibarMode]
+      }
       isOpen={isOmnibarOpen}
       isLoading={isOmnibarLoading}
       suggestions={omnibarSuggestions}
@@ -619,8 +636,8 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       onSuggestionHover={setActiveSuggestionIndex}
       onSuggestionSelect={handleSelectSuggestion}
       onSuggestionContextMenu={(suggestion, x, y) => setSuggestionMenuState({ suggestion, x, y })}
-      showCommandMode={showCommandMode}
-      onEnterCommandMode={enterCommandMode}
+      availableModes={availableModes}
+      onEnterMode={enterMode}
       onReturnToRoot={returnToRoot}
       onCommandSelect={(command) => void executeCommand(command)}
       trailingAction={

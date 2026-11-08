@@ -1,8 +1,20 @@
-import { Bookmark, Command, ExternalLink, History, List, type LucideIcon } from "lucide-react";
+import {
+  Bookmark,
+  Command,
+  ExternalLink,
+  History,
+  List,
+  type LucideIcon,
+  Pencil,
+} from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import React from "react";
 import type { ResolvedBrowserCommand } from "src/view/browser/commands/command-definition";
-import type { OmnibarInputMode } from "src/view/browser/hooks/use-omnibar";
+import {
+  OMNIBAR_MODES,
+  type OmnibarInputMode,
+  type OmnibarSearchMode,
+} from "src/view/browser/hooks/use-omnibar";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import type { OmnibarSource, OmnibarSuggestion } from "src/view/browser/utils/omnibar";
 
@@ -25,8 +37,8 @@ interface OmnibarProps {
   onSuggestionSelect: (suggestion: OmnibarSuggestion) => void;
   onSuggestionContextMenu?: (suggestion: OmnibarSuggestion, x: number, y: number) => void;
   onCommandSelect: (command: ResolvedBrowserCommand) => void;
-  showCommandMode: boolean;
-  onEnterCommandMode: () => void;
+  availableModes: typeof OMNIBAR_MODES;
+  onEnterMode: (mode: OmnibarSearchMode) => void;
   onReturnToRoot: () => void;
   trailingAction?: ReactNode;
 }
@@ -36,6 +48,7 @@ const SOURCE_METADATA: Record<OmnibarSource, { label: string; Icon: LucideIcon }
   history: { label: "閲覧履歴", Icon: History },
   board: { label: "板一覧", Icon: List },
   direct: { label: "入力URL", Icon: ExternalLink },
+  writeHistory: { label: "書き込み履歴", Icon: Pencil },
 };
 
 function SourceIcons({ sources }: { sources: readonly OmnibarSource[] }) {
@@ -72,8 +85,8 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   onSuggestionSelect,
   onSuggestionContextMenu,
   onCommandSelect,
-  showCommandMode,
-  onEnterCommandMode,
+  availableModes,
+  onEnterMode,
   onReturnToRoot,
   trailingAction,
 }) => {
@@ -82,11 +95,11 @@ export const Omnibar: React.FC<OmnibarProps> = ({
       className={`nav-bar__url${trailingAction ? " nav-bar__url--has-action" : ""}`}
       onBlur={onBlur}
     >
-      {mode === "command" ? (
+      {mode !== "navigation" ? (
         <button
           type="button"
           className="nav-bar__url-action-btn icon-button"
-          title="ルートに戻る (Esc)"
+          title={`${OMNIBAR_MODES.find((item) => item.id === mode)?.label}：ルートに戻る (Esc)`}
           aria-label="ルートに戻る"
           onMouseDown={(event) => event.preventDefault()}
           onClick={onReturnToRoot}
@@ -121,25 +134,29 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             </div>
           ) : null}
 
-          {mode === "navigation" && showCommandMode ? (
-            <button
-              type="button"
-              className={`nav-bar__omnibar-item nav-bar__omnibar-item--command${activeSuggestionIndex === 0 ? " nav-bar__omnibar-item--active" : ""}`}
-              role="option"
-              aria-selected={activeSuggestionIndex === 0}
-              onMouseDown={(event) => event.preventDefault()}
-              onMouseEnter={() => onSuggestionHover(0)}
-              onClick={onEnterCommandMode}
-            >
-              <span className="nav-bar__omnibar-command-icon" aria-hidden="true">
-                <Command size={15} />
-              </span>
-              <span className="nav-bar__omnibar-title">コマンド</span>
-              <span className="nav-bar__omnibar-url">モードを開く</span>
-            </button>
-          ) : null}
+          {availableModes.map((item, index) => {
+            const Icon = item.id === "command" ? Command : SOURCE_METADATA[item.id].Icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`nav-bar__omnibar-item nav-bar__omnibar-item--command${activeSuggestionIndex === index ? " nav-bar__omnibar-item--active" : ""}`}
+                role="option"
+                aria-selected={activeSuggestionIndex === index}
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => onSuggestionHover(index)}
+                onClick={() => onEnterMode(item.id)}
+              >
+                <span className="nav-bar__omnibar-command-icon" aria-hidden="true">
+                  <Icon size={15} />
+                </span>
+                <span className="nav-bar__omnibar-title">{item.label}</span>
+                <span className="nav-bar__omnibar-url">モードを開く</span>
+              </button>
+            );
+          })}
 
-          {!isLoading && mode === "navigation" && suggestions.length > 0
+          {!isLoading && mode !== "command" && suggestions.length > 0
             ? suggestions.map((suggestion, index) => (
                 <button
                   key={`${suggestion.url}::${suggestion.actionLabel ?? ""}::${
@@ -147,17 +164,17 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   }`}
                   type="button"
                   className={`nav-bar__omnibar-item nav-bar__omnibar-item--navigation${
-                    index + (showCommandMode ? 1 : 0) === activeSuggestionIndex
+                    index + availableModes.length === activeSuggestionIndex
                       ? " nav-bar__omnibar-item--active"
                       : ""
                   }`}
                   role="option"
-                  aria-selected={index + (showCommandMode ? 1 : 0) === activeSuggestionIndex}
+                  aria-selected={index + availableModes.length === activeSuggestionIndex}
                   onMouseDown={(e) => {
                     // blur が先に発火して候補クリックが失われるのを防ぐ。
                     if (e.button === 0) e.preventDefault();
                   }}
-                  onMouseEnter={() => onSuggestionHover(index + (showCommandMode ? 1 : 0))}
+                  onMouseEnter={() => onSuggestionHover(index + availableModes.length)}
                   onClick={() => onSuggestionSelect(suggestion)}
                   onContextMenu={(event) => {
                     event.preventDefault();
@@ -169,8 +186,11 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   <SourceIcons sources={suggestion.sources} />
                   <span className="nav-bar__omnibar-title">
                     {suggestion.actionLabel ?? suggestion.title}
+                    {suggestion.writtenRes ? ` #${suggestion.writtenRes}` : ""}
                   </span>
-                  <span className="nav-bar__omnibar-url">{suggestion.url}</span>
+                  <span className="nav-bar__omnibar-url">
+                    {suggestion.message || suggestion.url}
+                  </span>
                 </button>
               ))
             : null}

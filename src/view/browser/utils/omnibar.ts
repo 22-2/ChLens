@@ -17,7 +17,7 @@ export interface OmnibarHistorySource {
   viewedDate?: number;
 }
 
-export type OmnibarSource = "bookmark" | "history" | "board" | "direct";
+export type OmnibarSource = "bookmark" | "history" | "board" | "writeHistory" | "direct";
 
 export interface OmnibarMergedEntry {
   url: string;
@@ -36,6 +36,8 @@ export interface OmnibarSuggestion {
   score: number;
   isBookmark: boolean;
   sources: OmnibarSource[];
+  writtenRes?: number;
+  message?: string;
   actionLabel?: string;
   // 変更理由: URL直入力から「開く」と「新しいタブで開く」を選べるよう、
   // 同一URLで動作だけが違う候補を区別する。
