@@ -9,6 +9,7 @@ import {
   type OmnibarBoardSource,
   type OmnibarBookmarkSource,
   type OmnibarHistorySource,
+  type OmnibarSuggestion,
 } from "src/view/browser/utils/omnibar";
 
 const logger = createLogger("view/browser");
@@ -31,8 +32,6 @@ interface LegacyHistoryLike {
   viewedDate?: unknown;
   date?: unknown;
 }
-
-const OMNIBAR_HISTORY_FETCH_COUNT = 300;
 
 function normalizeString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
@@ -114,7 +113,8 @@ async function readBookmarkSources(): Promise<OmnibarBookmarkSource[]> {
 
 async function readHistorySources(): Promise<OmnibarHistorySource[]> {
   // window.app ではなくサービスコンテナの閲覧履歴から読む（legacy-window-app-plan の Phase 1）。
-  const raw = await container.history.get(0, OMNIBAR_HISTORY_FETCH_COUNT);
+  // 検索と件数は古い履歴も対象にする。表示件数の制限は候補作成時にかける。
+  const raw = await container.history.get();
   if (!Array.isArray(raw)) {
     return [];
   }
@@ -177,4 +177,21 @@ export async function loadOmnibarSources() {
   // 変更理由: URLバー候補は履歴・お気に入り・bbsmenu板を統合し、
   // 利用者の直近行動と明示的なお気に入りおよび板一覧を1ストロークで辿れるようにする。
   return mergeOmnibarSources(bookmarkItems, historyItems, boardItems);
+}
+
+/** 書き込みは同じスレッドでもレスごとに移動先が異なるため、URLで統合しない。 */
+export async function loadOmnibarWriteHistory(): Promise<OmnibarSuggestion[]> {
+  const rows = await container.writeHistory.get(undefined, 5000);
+  return rows
+    .filter((item) => item.url)
+    .map((item) => ({
+      url: item.url,
+      title: item.title || item.url,
+      boardTitle: "",
+      score: 0,
+      isBookmark: false,
+      sources: ["writeHistory"],
+      writtenRes: Math.max(0, Math.trunc(toFiniteNumber(item.res))),
+      message: item.message || "",
+    }));
 }

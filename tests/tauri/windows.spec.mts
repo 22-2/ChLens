@@ -31,8 +31,7 @@ test("コマンドパレットから過去実況再生の窓を開き、閉じ�
 
   await page.getByTitle("メニュー", { exact: true }).click();
   await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
-  // 入力欄は先頭の ">" でコマンド検索になるため、fillで置き換えるときも残す。
-  await page.getByPlaceholder("コマンドを検索...").fill(">過去実況");
+  await page.getByPlaceholder("コマンドを検索...").fill("過去実況");
   await page.getByRole("option", { name: /過去実況再生を開く/u }).click();
 
   await expect.poll(() => isWindowVisible(page, "archive-replay")).toBe(true);

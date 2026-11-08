@@ -62,7 +62,7 @@ test("dat落ち通知は関連スレ検索に次スレも含め、コマンド�
   // 次スレ検索の操作は通知から外したため、通知にボタンがないことと、コマンドの次スレ検索が候補を絞ることを確かめる。
   await expect(activePanel.getByRole("button", { name: "次スレを探す" })).toHaveCount(0);
   await page.keyboard.press("Control+Shift+P");
-  await page.getByPlaceholder("コマンドを検索...").fill(">次スレ候補を検索");
+  await page.getByPlaceholder("コマンドを検索...").fill("次スレ候補を検索");
   await page.getByRole("option", { name: /次スレ候補を検索/u }).click();
   const nextDialog = page.getByRole("dialog");
   const nextResults = nextDialog.getByRole("list", { name: "次スレ候補一覧" });
