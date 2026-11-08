@@ -220,7 +220,7 @@ describe("NavigationBar", () => {
     render(<NavigationBar />);
     openUrlBar();
     const input = await screen.findByPlaceholderText("URLを入力");
-    const mode = await screen.findByRole("option", { name: /コマンド.*モードを開く/ });
+    const mode = await screen.findByRole("option", { name: /コマンド.*モード/ });
     fireEvent.click(mode);
     expect(input).toHaveAttribute("placeholder", "コマンドを検索...");
     fireEvent.change(input, { target: { value: "設定" } });
@@ -261,9 +261,7 @@ describe("NavigationBar", () => {
       ["板", "板を検索...", "テスト板", "お気に入りのスレ"],
       ["閲覧履歴", "閲覧履歴を検索...", "閲覧したスレ", "お気に入りのスレ"],
     ]) {
-      fireEvent.click(
-        await screen.findByRole("option", { name: new RegExp(`${mode}.*モードを開く`) }),
-      );
+      fireEvent.click(await screen.findByRole("option", { name: new RegExp(`${mode}.*モード`) }));
       expect(input).toHaveAttribute("placeholder", placeholder);
       expect(await screen.findByRole("option", { name: new RegExp(expected) })).toBeInTheDocument();
       expect(screen.queryByRole("option", { name: new RegExp(excluded) })).not.toBeInTheDocument();
@@ -279,14 +277,36 @@ describe("NavigationBar", () => {
     fireEvent.keyDown(input, { key: "Enter" });
     expect(input).toHaveAttribute("placeholder", "閲覧履歴を検索...");
     fireEvent.keyDown(input, { key: "Backspace" });
-    const mode = screen.getByRole("option", { name: /閲覧履歴.*モードを開く/ });
+    const mode = screen.getByRole("option", { name: /閲覧履歴.*モード/ });
     expect(mode).toHaveAttribute("aria-selected", "true");
     fireEvent.keyDown(input, { key: "Enter" });
     expect(input).toHaveAttribute("placeholder", "閲覧履歴を検索...");
     fireEvent.click(screen.getByRole("button", { name: "ルートに戻る" }));
-    expect(screen.getByRole("option", { name: /閲覧履歴.*モードを開く/ })).toHaveAttribute(
+    expect(screen.getByRole("option", { name: /閲覧履歴.*モード/ })).toHaveAttribute(
       "aria-selected",
       "true",
+    );
+  });
+
+  it("モードの候補は50件まで表示し、絞り込み後の全件数を示す", async () => {
+    bookmarkGetAllMock.mockReturnValue(
+      Array.from({ length: 70 }, (_, index) => ({
+        url: `https://example.com/test/read.cgi/board/${index + 1}/`,
+        title: `保存済み ${String(index + 1).padStart(2, "0")}`,
+      })),
+    );
+    render(<NavigationBar />);
+    openUrlBar();
+    fireEvent.click(await screen.findByRole("option", { name: /お気に入り.*モード/ }));
+    expect(
+      await screen.findByRole("status", { name: "表示 50 件 / 一致 70 件" }),
+    ).toHaveTextContent("50 / 70");
+    expect(screen.getAllByRole("option")).toHaveLength(50);
+    fireEvent.change(screen.getByPlaceholderText("お気に入りを検索..."), {
+      target: { value: "保存済み 0" },
+    });
+    expect(screen.getByRole("status", { name: "表示 9 件 / 一致 9 件" })).toHaveTextContent(
+      "9 / 9",
     );
   });
 
@@ -300,7 +320,7 @@ describe("NavigationBar", () => {
     } as unknown as typeof container.writeHistory;
     render(<NavigationBar />);
     openUrlBar();
-    fireEvent.click(await screen.findByRole("option", { name: /書き込み履歴.*モードを開く/ }));
+    fireEvent.click(await screen.findByRole("option", { name: /書き込み履歴.*モード/ }));
     const input = screen.getByPlaceholderText("書き込み履歴を検索...");
     await screen.findByRole("option", { name: /最初の投稿/ });
     fireEvent.change(input, { target: { value: "探している" } });

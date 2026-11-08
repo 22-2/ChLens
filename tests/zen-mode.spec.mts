@@ -41,22 +41,45 @@ test("オムニバーのルートから各モードに入り戻れる", async ({
     ["閲覧履歴", "閲覧履歴を検索..."],
     ["書き込み履歴", "書き込み履歴を検索..."],
   ]) {
-    await page.getByRole("option", { name: new RegExp(`${label}.*モードを開く`) }).click();
+    await page.getByRole("option", { name: new RegExp(`${label}.*モード`) }).click();
     const input = page.getByPlaceholder(placeholder);
     await expect(input).toBeFocused();
     await input.press("Backspace");
     await expect(page.getByPlaceholder("URLを入力")).toBeFocused();
-    await expect(page.getByRole("option", { name: new RegExp(`${label}.*モードを開く`) })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("option", { name: new RegExp(`${label}.*モード`) })).toHaveAttribute("aria-selected", "true");
   }
 });
 
 test("モードでEscを押すか外側をクリックすると閉じる", async ({ page, extensionId }) => {
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.getByTestId("title-bar-title").click();
-  await page.getByRole("option", { name: /お気に入り.*モードを開く/ }).click();
+  await page.getByRole("option", { name: /お気に入り.*モード/ }).click();
   await page.getByPlaceholder("お気に入りを検索...").press("Escape");
   await expect(page.getByPlaceholder("お気に入りを検索...")).toHaveCount(0);
   await page.getByTestId("title-bar-title").click();
   await page.locator(".browser-shell").click({ position: { x: 2, y: 100 } });
   await expect(page.getByPlaceholder("URLを入力")).toHaveCount(0);
+});
+
+test("コマンド候補の件数を示し、キーボード選択に合わせてスクロールする", async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.keyboard.press("Control+Shift+P");
+  const input = page.getByPlaceholder("コマンドを検索...");
+  const list = page.getByRole("listbox", { name: "コマンド候補" });
+  const options = list.getByRole("option");
+  const count = await options.count();
+  expect(count).toBeGreaterThan(10);
+  await expect(list.getByRole("status")).toHaveText(`${count} / ${count}`);
+  for (let index = 0; index < 20; index += 1) await input.press("ArrowDown");
+  expect(await list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  const selected = list.locator('[role="option"][aria-selected="true"]');
+  await expect(selected).toBeInViewport();
+  const isVisibleInList = await selected.evaluate((element) => {
+    const listElement = element.closest('[role="listbox"]')!;
+    const item = element.getBoundingClientRect();
+    const container = listElement.getBoundingClientRect();
+    const footer = listElement.querySelector('.nav-bar__omnibar-count')!.getBoundingClientRect();
+    return item.top >= container.top && item.bottom <= footer.top + 1;
+  });
+  expect(isVisibleInList).toBe(true);
 });
