@@ -99,7 +99,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         <button
           type="button"
           className="nav-bar__url-action-btn icon-button"
-          title={`${OMNIBAR_MODES.find((item) => item.id === mode)?.label}：ルートに戻る (Esc)`}
+          title={`${OMNIBAR_MODES.find((item) => item.id === mode)?.label}：ルートに戻る (Backspace)`}
           aria-label="ルートに戻る"
           onMouseDown={(event) => event.preventDefault()}
           onClick={onReturnToRoot}
@@ -134,6 +134,11 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             </div>
           ) : null}
 
+          {availableModes.length > 0 ? (
+            <div className="nav-bar__omnibar-section" role="presentation">
+              モード
+            </div>
+          ) : null}
           {availableModes.map((item, index) => {
             const Icon = item.id === "command" ? Command : SOURCE_METADATA[item.id].Icon;
             return (
@@ -156,6 +161,11 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             );
           })}
 
+          {!isLoading && mode === "navigation" && suggestions.length > 0 ? (
+            <div className="nav-bar__omnibar-section" role="presentation">
+              候補
+            </div>
+          ) : null}
           {!isLoading && mode !== "command" && suggestions.length > 0
             ? suggestions.map((suggestion, index) => (
                 <button

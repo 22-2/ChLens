@@ -410,13 +410,22 @@ export function useOmnibar({
         return;
       }
 
+      // 検索語が空のときだけ戻し、入力中の文字削除は通常どおり扱う。
+      if (
+        e.key === "Backspace" &&
+        mode !== "navigation" &&
+        inputValue === "" &&
+        !e.nativeEvent.isComposing
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        returnToRoot();
+        return;
+      }
+
       if (e.key === "Escape") {
-        if (mode !== "navigation") {
-          e.preventDefault();
-          e.stopPropagation();
-          returnToRoot();
-          return;
-        }
+        e.preventDefault();
+        e.stopPropagation();
         setIsFocused(false);
         setInputValue(displayUrl);
         setActiveSuggestionIndex(0);

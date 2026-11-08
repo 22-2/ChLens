@@ -337,6 +337,25 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     [handleBlur, omnibarMode, paletteState.opened, viewSurface.window],
   );
 
+  useEffect(() => {
+    if (!isUrlEditing || !isActivePane) return;
+    // フォーカスが移らない本文や余白へのクリックでも、入力欄を閉じる。
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = getEventTargetElement(event.target, viewSurface.window);
+      const omnibar = urlInputRef.current?.closest(".nav-bar__url");
+      if (!target || omnibar?.contains(target)) return;
+      // 候補の右クリックメニューはオムニバーからの操作として扱う。
+      if (suggestionMenuState && target.closest(".context-menu")) return;
+      handleBlur();
+      commandPalette.close();
+      setSuggestionMenuState(null);
+      setIsUrlEditing(false);
+    };
+    viewSurface.document.addEventListener("pointerdown", handleOutsidePointerDown, true);
+    return () =>
+      viewSurface.document.removeEventListener("pointerdown", handleOutsidePointerDown, true);
+  }, [handleBlur, isActivePane, isUrlEditing, suggestionMenuState, viewSurface]);
+
   const handleRefresh = useCallback(() => {
     if (threadCapabilities?.canRefresh === false) return;
     setRefreshMenuPosition(null);
