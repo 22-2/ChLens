@@ -225,7 +225,10 @@ export function useThreadPopupManager({
       // 返信ツリーなどを挟んだ場合は、アンカーの深さより実際の表示元を優先する。
       const parentId =
         sourcePopupId ?? (depth > 0 ? anchorPreviewsRef.current[depth - 1]?.id : undefined);
-      const { x, y } = childPopupCoords(vx, vy, parentId);
+      // 横方向は親からずらし、縦方向は実際に触れたアンカーの位置に揃える。
+      // 親の上端を基準にすると、長い返信ツリーの下側から開いた時に大きく飛ぶ。
+      const { x } = childPopupCoords(vx, vy, parentId);
+      const y = vy;
       const currentPreview = anchorPreviewsRef.current.find((item) => item.payload.depth === depth);
       if (
         currentPreview &&

@@ -235,7 +235,7 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
     );
   };
 
-  it("子のID・返信・アンカーを補正後の親の右上に揃える", () => {
+  it("子のID・返信は親の右上、アンカーは操作位置の高さに配置する", () => {
     const { result, unmount } = createThreadPopupHook("contract-child-position");
     let parentId = "";
     act(() => {
@@ -252,12 +252,18 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
     });
     const children = result.current.popups.filter((item) => item.parentId === parentId);
     expect(children).toHaveLength(3);
-    for (const child of children) expect({ x: child.x, y: child.y }).toEqual({ x: 240, y: 260 });
+    expect(
+      children.filter((child) => child.type !== "anchor").map(({ x, y }) => ({ x, y })),
+    ).toEqual([
+      { x: 240, y: 260 },
+      { x: 240, y: 260 },
+    ]);
+    expect(children.find((child) => child.type === "anchor")).toMatchObject({ x: 240, y: 132 });
     parent.remove();
     unmount();
   });
 
-  it("アンカーから開いた返信ツリー内ではツリーを基準に子アンカーを配置する", () => {
+  it("返信ツリー内の子アンカーは表示元の横と操作位置の高さに配置する", () => {
     const { result, unmount } = createThreadPopupHook("contract-nested-tree-position");
     act(() => {
       result.current.showAnchorPreview([1], createAnchorRect(), ">>1", 0);
@@ -272,10 +278,10 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
     tree.getBoundingClientRect = () => ({ left: 400, top: 500 }) as DOMRect;
     document.body.appendChild(tree);
     act(() => {
-      result.current.showAnchorPreview([3], createAnchorRect(), ">>3", 1, treeId);
+      result.current.showAnchorPreview([3], createAnchorRect(420, 620), ">>3", 1, treeId);
     });
     const child = result.current.anchorPreviews.find((item) => item.payload.label === ">>3");
-    expect(child).toMatchObject({ parentId: treeId, x: 440, y: 460 });
+    expect(child).toMatchObject({ parentId: treeId, x: 440, y: 632 });
     expect(result.current.popups.some((item) => item.id === treeId)).toBe(true);
     tree.remove();
     unmount();
