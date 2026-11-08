@@ -44,20 +44,24 @@ test("画像の自動取得は5MB以内だけ先行し、超過・サイズ不�
   const oversizedImageButton = responses.getByRole("button", { name: /5\.50 MB/u }).last();
   await expect(oversizedImageButton).toBeVisible();
   await expect(
-    responses.getByRole("button", { name: "画像サイズを確認できません。クリックして確認" }).last(),
+    responses.getByRole("button", { name: "画像サイズを確認できません。クリックして取得" }).last(),
   ).toBeVisible();
 
-  page.once("dialog", (dialog) => dialog.accept());
+  let dialogCount = 0;
+  page.on("dialog", (dialog) => {
+    dialogCount += 1;
+    void dialog.dismiss();
+  });
   await oversizedImageButton.click();
   await expect.poll(() => methodsFor("/img/2.png")).toContain("GET");
   expect(methodsFor("/img/2.png").slice(0, 2)).toEqual(["HEAD", "GET"]);
 
-  page.once("dialog", (dialog) => dialog.accept());
   await responses
-    .getByRole("button", { name: "画像サイズを確認できません。クリックして確認" })
+    .getByRole("button", { name: "画像サイズを確認できません。クリックして取得" })
     .last()
     .click();
   await expect.poll(() => methodsFor("/img/3.png")).toContain("GET");
   expect(methodsFor("/img/3.png").slice(0, 2)).toEqual(["HEAD", "GET"]);
+  expect(dialogCount).toBe(0);
   await expect(responses.locator(`img[src="${exactLimitUrl}"]`)).toBeVisible();
 });
