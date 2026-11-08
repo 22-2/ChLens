@@ -9,6 +9,7 @@ import {
   type AutoScrollState,
   usePaneAutoScrollState,
 } from "src/features/auto-refresh/browser/use-auto-scroll-state";
+import { closedTabMenuItems } from "src/features/tabs/browser/closed-tab-menu-items";
 import type { TabBarItem } from "src/features/tabs/browser/tab-bar-layout";
 import {
   TAB_BAR_ORIENTATION_CONFIG_KEY,
@@ -195,6 +196,7 @@ export function useTabBarModel(isVertical: boolean): TabBarModel {
         icon: <RotateCcw size={16} />,
         onSelect: () => dispatch(tabActions.reopenClosedTab()),
       },
+      ...closedTabMenuItems(state.closedTabs, dispatch),
       {
         id: "toggle-orientation",
         label: isVertical ? "タブバーを水平にする" : "タブバーを垂直にする",
@@ -213,7 +215,7 @@ export function useTabBarModel(isVertical: boolean): TabBarModel {
         },
       },
     ],
-    [dispatch, isVertical, state.closedTabs.length],
+    [dispatch, isVertical, state.closedTabs],
   );
 
   return {

@@ -4,7 +4,7 @@ import { expect, type Page } from "@playwright/test";
 export async function verifyBuiltInPages(page: Page): Promise<void> {
   await page.getByTitle("メニュー", { exact: true }).click();
   await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
-  await page.getByPlaceholder("コマンドを検索...").fill(">タブバーを垂直にする");
+  await page.getByPlaceholder("コマンドを検索...").fill("タブバーを垂直にする");
   await page.getByRole("option", { name: /タブバーを垂直にする/u }).click();
   const collapse = page.getByRole("button", { name: "簡易表示にする", exact: true });
   if (await collapse.isVisible()) await collapse.click();

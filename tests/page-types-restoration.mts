@@ -101,7 +101,7 @@ export async function verifyExistingPageSelection(page: Page): Promise<void> {
   await page.locator('[data-tab-id="page-thread"]').click();
   await page.getByTitle("メニュー", { exact: true }).click();
   await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
-  await page.getByPlaceholder("コマンドを検索...").fill(">このスレッドの板を新しいタブで開く");
+  await page.getByPlaceholder("コマンドを検索...").fill("このスレッドの板を新しいタブで開く");
   await page.getByRole("option", { name: /このスレッドの板を新しいタブで開く/u }).click();
   await expect(page.locator('[data-tab-id="page-threadList"]')).toHaveAttribute(
     "aria-selected",

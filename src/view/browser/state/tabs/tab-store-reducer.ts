@@ -320,7 +320,14 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
     case TAB_ACTION_TYPES.REOPEN_CLOSED_TAB: {
       if (!canReopenClosedTab(state)) return state;
       const paneId = resolvePaneId(state, action.paneId);
-      const [reopened, ...rest] = state.closedTabs;
+      // 履歴から選択した項目だけを取り除き、残りの順序を保つ。
+      const index =
+        action.tabId === undefined
+          ? 0
+          : state.closedTabs.findIndex((tab) => tab.id === action.tabId);
+      if (index < 0) return state;
+      const reopened = state.closedTabs[index]!;
+      const rest = state.closedTabs.filter((_, i) => i !== index);
       // 変更理由: 閉じたタブを新規タブとして開き直す時は、自動更新状態を引き継がない。
       const restored: Tab = {
         ...resetAutoRefreshState(reopened),

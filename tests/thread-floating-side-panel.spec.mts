@@ -114,7 +114,7 @@ test("2ペインではサイドパネルの幅に合わせて両ペインが縮�
   await waitForThreadLoaded(page, first.threadUrl, 200);
   await page.getByTitle("メニュー", { exact: true }).click();
   await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
-  await page.getByPlaceholder("コマンドを検索...").fill(">2ペインで表示");
+  await page.getByPlaceholder("コマンドを検索...").fill("2ペインで表示");
   await page.getByRole("option", { name: /2ペインで表示/u }).click();
   await page.getByTestId("title-bar-title").click();
   await page.getByPlaceholder("URLを入力").fill(second.threadUrl);

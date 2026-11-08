@@ -194,16 +194,16 @@ describe("NavigationBar", () => {
     expect(within(option).getByRole("img", { name: "閲覧履歴・ブックマーク" })).toBeInTheDocument();
   });
 
-  it("> prefixでコマンドを検索し、Ctrl+Shift+Pでコマンドモードを開く", async () => {
+  it("Ctrl+Shift+Pでコマンドモードを開き検索する", async () => {
     render(<NavigationBar />);
 
     fireEvent.keyDown(window, { key: "P", ctrlKey: true, shiftKey: true });
 
     const input = await screen.findByPlaceholderText("コマンドを検索...");
-    expect(input).toHaveValue(">");
+    expect(input).toHaveValue("");
     expect(screen.getByRole("listbox", { name: "コマンド候補" })).toBeInTheDocument();
 
-    fireEvent.change(input, { target: { value: ">設定" } });
+    fireEvent.change(input, { target: { value: "設定" } });
     expect(screen.getByRole("option", { name: /設定を開く/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("option", { name: /設定を開く/ }));
@@ -214,6 +214,222 @@ describe("NavigationBar", () => {
         page: { type: "settings", title: "設定" },
       });
     });
+  });
+
+  it("空のモードでBackspaceを押すとルートに戻り、Escで閉じる", async () => {
+    render(<NavigationBar />);
+    openUrlBar();
+    const input = await screen.findByPlaceholderText("URLを入力");
+    const mode = await screen.findByRole("option", { name: /コマンド.*モード/ });
+    fireEvent.click(mode);
+    expect(input).toHaveAttribute("placeholder", "コマンドを検索...");
+    fireEvent.change(input, { target: { value: "設定" } });
+    expect(screen.getByRole("option", { name: /設定を開く/ })).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "Backspace" });
+    expect(input).toHaveAttribute("placeholder", "コマンドを検索...");
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.keyDown(input, { key: "Backspace" });
+    expect(input).toHaveAttribute("placeholder", "URLを入力");
+    expect(input).toHaveValue("");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input).toHaveAttribute("placeholder", "コマンドを検索...");
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByPlaceholderText("コマンドを検索...")).not.toBeInTheDocument();
+    expect(commandPaletteStore.getState().opened).toBe(false);
+  });
+
+  it("ルートの各モードは選んだ出典だけを検索する", async () => {
+    bookmarkGetAllMock.mockReturnValue([
+      { url: "https://example.com/test/read.cgi/board/1/", title: "お気に入りのスレ" },
+    ]);
+    historyGetMock.mockResolvedValue([
+      { url: "https://example.com/test/read.cgi/board/2/", title: "閲覧したスレ" },
+    ]);
+    container.bbsMenu = {
+      get: vi.fn(async () => ({
+        status: "success",
+        menu: [
+          { categories: [{ boards: [{ url: "https://example.com/board/", name: "テスト板" }] }] },
+        ],
+      })),
+    } as unknown as typeof container.bbsMenu;
+    render(<NavigationBar />);
+    openUrlBar();
+    const input = await screen.findByPlaceholderText("URLを入力");
+    for (const [mode, placeholder, expected, excluded] of [
+      ["お気に入り", "お気に入りを検索...", "お気に入りのスレ", "閲覧したスレ"],
+      ["板", "板を検索...", "テスト板", "お気に入りのスレ"],
+      ["閲覧履歴", "閲覧履歴を検索...", "閲覧したスレ", "お気に入りのスレ"],
+    ]) {
+      fireEvent.click(await screen.findByRole("option", { name: new RegExp(`${mode}.*モード`) }));
+      expect(input).toHaveAttribute("placeholder", placeholder);
+      expect(await screen.findByRole("option", { name: new RegExp(expected) })).toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: new RegExp(excluded) })).not.toBeInTheDocument();
+      fireEvent.keyDown(input, { key: "Backspace" });
+    }
+  });
+
+  it("絞り込みからモードに入って戻ると選択位置を復元する", async () => {
+    render(<NavigationBar />);
+    openUrlBar();
+    const input = await screen.findByPlaceholderText("URLを入力");
+    fireEvent.change(input, { target: { value: "閲覧" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input).toHaveAttribute("placeholder", "閲覧履歴を検索...");
+    fireEvent.keyDown(input, { key: "Backspace" });
+    const mode = screen.getByRole("option", { name: /閲覧履歴.*モード/ });
+    expect(mode).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input).toHaveAttribute("placeholder", "閲覧履歴を検索...");
+    fireEvent.click(screen.getByRole("button", { name: "ルートに戻る" }));
+    expect(screen.getByRole("option", { name: /閲覧履歴.*モード/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
+  it("モードの候補は50件まで表示し、絞り込み後の全件数を示す", async () => {
+    bookmarkGetAllMock.mockReturnValue(
+      Array.from({ length: 70 }, (_, index) => ({
+        url: `https://example.com/test/read.cgi/board/${index + 1}/`,
+        title: `保存済み ${String(index + 1).padStart(2, "0")}`,
+      })),
+    );
+    render(<NavigationBar />);
+    openUrlBar();
+    fireEvent.click(await screen.findByRole("option", { name: /お気に入り.*モード/ }));
+    expect(
+      await screen.findByRole("status", { name: "表示 50 件 / 一致 70 件" }),
+    ).toHaveTextContent("50 / 70");
+    expect(screen.getAllByRole("option")).toHaveLength(50);
+    fireEvent.change(screen.getByPlaceholderText("お気に入りを検索..."), {
+      target: { value: "保存済み 0" },
+    });
+    expect(screen.getByRole("status", { name: "表示 9 件 / 一致 9 件" })).toHaveTextContent(
+      "9 / 9",
+    );
+  });
+
+  it("閲覧履歴は300件を超えた古い履歴も検索と件数に含める", async () => {
+    const history = Array.from({ length: 360 }, (_, index) => ({
+      url: `https://example.com/test/read.cgi/board/${index + 1}/`,
+      title: `閲覧 ${index + 1}`,
+    }));
+    historyGetMock.mockImplementation(async (offset = 0, limit = -1) =>
+      limit < 0 ? history.slice(Math.max(0, offset)) : history.slice(offset, offset + limit),
+    );
+    render(<NavigationBar />);
+    openUrlBar();
+    fireEvent.click(await screen.findByRole("option", { name: /閲覧履歴.*モード/ }));
+    expect(await screen.findByRole("status", { name: "表示 50 件 / 一致 360 件" })).toBeVisible();
+    fireEvent.change(screen.getByPlaceholderText("閲覧履歴を検索..."), {
+      target: { value: "閲覧 360" },
+    });
+    expect(screen.getByRole("option", { name: /閲覧 360/ })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "表示 1 件 / 一致 1 件" })).toBeVisible();
+  });
+
+  it("再表示時の更新中も前回の閲覧履歴を読み込み表示なしで使える", async () => {
+    const old = [{ url: "https://example.com/test/read.cgi/board/1/", title: "前回の履歴" }];
+    let finishRefresh: ((rows: typeof old) => void) | undefined;
+    const pending = new Promise<typeof old>((resolve) => {
+      finishRefresh = resolve;
+    });
+    historyGetMock.mockResolvedValueOnce(old).mockReturnValueOnce(pending);
+    render(<NavigationBar />);
+    openUrlBar();
+    await screen.findByRole("option", { name: /前回の履歴/ });
+    fireEvent.pointerDown(document.body);
+    openUrlBar();
+    expect(screen.getByRole("option", { name: /前回の履歴/ })).toBeInTheDocument();
+    expect(screen.queryByText("候補を読み込み中...")).not.toBeInTheDocument();
+    await act(async () => finishRefresh?.([{ ...old[0], title: "更新後の履歴" }]));
+    expect(await screen.findByRole("option", { name: /更新後の履歴/ })).toBeInTheDocument();
+  });
+
+  it("書き込み履歴を再度開くと更新中も前回の候補を使える", async () => {
+    const rows = [
+      {
+        url: "https://example.com/test/read.cgi/board/123/",
+        title: "テストスレ",
+        res: 12,
+        message: "前回の投稿",
+      },
+    ];
+    let finishRefresh: ((value: typeof rows) => void) | undefined;
+    const pending = new Promise<typeof rows>((resolve) => {
+      finishRefresh = resolve;
+    });
+    container.writeHistory = {
+      get: vi.fn().mockResolvedValueOnce(rows).mockReturnValueOnce(pending),
+    } as unknown as typeof container.writeHistory;
+    render(<NavigationBar />);
+    openUrlBar();
+    fireEvent.click(await screen.findByRole("option", { name: /書き込み履歴.*モード/ }));
+    await screen.findByRole("option", { name: /前回の投稿/ });
+    fireEvent.keyDown(screen.getByPlaceholderText("書き込み履歴を検索..."), { key: "Backspace" });
+    fireEvent.click(screen.getByRole("option", { name: /書き込み履歴.*モード/ }));
+    expect(screen.getByRole("option", { name: /前回の投稿/ })).toBeInTheDocument();
+    expect(screen.queryByText("候補を読み込み中...")).not.toBeInTheDocument();
+    await act(async () => finishRefresh?.([{ ...rows[0], message: "更新後の投稿" }]));
+    expect(await screen.findByRole("option", { name: /更新後の投稿/ })).toBeInTheDocument();
+  });
+
+  it("矢印キーは候補の先頭と末尾で折り返さない", async () => {
+    historyGetMock.mockResolvedValue([]);
+    render(<NavigationBar />);
+    openUrlBar();
+    const input = await screen.findByPlaceholderText("URLを入力");
+    fireEvent.change(input, { target: { value: "履歴" } });
+    const first = screen.getByRole("option", { name: /閲覧履歴.*モード/ });
+    expect(first).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    expect(first).toHaveAttribute("aria-selected", "true");
+    const last = screen.getByRole("option", { name: /書き込み履歴.*モード/ });
+    fireEvent.mouseEnter(last);
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(last).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("書き込み履歴を本文で検索し選んだレスへ移動する", async () => {
+    const url = "https://example.com/test/read.cgi/board/123/";
+    container.writeHistory = {
+      get: vi.fn(async () => [
+        { url, title: "テストスレ", res: 12, message: "最初の投稿" },
+        { url, title: "テストスレ", res: 34, message: "探している投稿" },
+      ]),
+    } as unknown as typeof container.writeHistory;
+    render(<NavigationBar />);
+    openUrlBar();
+    fireEvent.click(await screen.findByRole("option", { name: /書き込み履歴.*モード/ }));
+    const input = screen.getByPlaceholderText("書き込み履歴を検索...");
+    await screen.findByRole("option", { name: /最初の投稿/ });
+    fireEvent.change(input, { target: { value: "探している" } });
+    fireEvent.click(screen.getByRole("option", { name: /#34.*探している投稿/ }));
+    expect(requestThreadResJumpMock).toHaveBeenCalledWith(url, 34);
+  });
+
+  it("ルートはモードと候補に見出しを表示する", async () => {
+    bookmarkGetAllMock.mockReturnValue([{ url: "https://example.com/board/", title: "テスト板" }]);
+    render(<NavigationBar />);
+    openUrlBar();
+    expect(
+      await screen.findByText("モード", { selector: ".nav-bar__omnibar-section" }),
+    ).toBeVisible();
+    expect(
+      await screen.findByText("候補", { selector: ".nav-bar__omnibar-section" }),
+    ).toBeVisible();
+  });
+
+  it("フォーカスが移らない場所へのクリックでも閉じる", async () => {
+    render(<NavigationBar />);
+    openUrlBar();
+    const input = await screen.findByPlaceholderText("URLを入力");
+    fireEvent.pointerDown(input);
+    expect(input).toBeInTheDocument();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByPlaceholderText("URLを入力")).not.toBeInTheDocument();
+    expect(commandPaletteStore.getState().opened).toBe(false);
   });
 
   it("コマンドパレットはフォーカスアウトで閉じる", async () => {
@@ -254,7 +470,7 @@ describe("NavigationBar", () => {
 
     fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
     const input = await screen.findByPlaceholderText("コマンドを検索...");
-    fireEvent.change(input, { target: { value: ">レス番号" } });
+    fireEvent.change(input, { target: { value: "レス番号" } });
     fireEvent.click(screen.getByRole("option", { name: /レス番号を指定してジャンプ/ }));
 
     const responseNumber = await screen.findByLabelText("レス番号");
@@ -272,7 +488,7 @@ describe("NavigationBar", () => {
 
     fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
     const input = await screen.findByPlaceholderText("コマンドを検索...");
-    fireEvent.change(input, { target: { value: ">42" } });
+    fireEvent.change(input, { target: { value: "42" } });
 
     const jumpOption = await screen.findByRole("option", { name: /レス42へジャンプ/ });
     expect(screen.getAllByRole("option")[0]).toBe(jumpOption);
@@ -293,7 +509,7 @@ describe("NavigationBar", () => {
     fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
     const input = await screen.findByPlaceholderText("コマンドを検索...");
     fireEvent.change(input, {
-      target: { value: ">https://example.com/test/read.cgi/software/1788743729/" },
+      target: { value: "https://example.com/test/read.cgi/software/1788743729/" },
     });
 
     const openOption = await screen.findByRole("option", { name: /このURLを開く/ });
