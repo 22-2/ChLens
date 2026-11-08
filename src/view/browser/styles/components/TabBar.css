@@ -231,20 +231,10 @@
   fill: currentColor;
 }
 
-.tab--pinned {
-  flex: 0 0 36px;
-  min-width: 36px;
-  max-width: 36px;
-  padding: 0;
-  justify-content: center;
-}
-
-.tab--pinned .tab__title {
-  font-size: 0;
-}
-
-.tab--pinned::before {
-  font-size: 12px;
+/* 固定タブも通常タブと同じ幅でタイトルを表示する。 */
+.tab__pin {
+  flex-shrink: 0;
+  margin-right: var(--sys-space-2);
 }
 
 /* Vertical Tab Bar - ペイン左端の縦タブ一覧 */
@@ -362,13 +352,6 @@
 
 .tab-bar--vertical .tab__title {
   line-height: var(--sys-space-12);
-}
-
-.tab-bar--vertical .tab--pinned {
-  flex-basis: var(--sys-space-12);
-  min-width: 0;
-  max-width: none;
-  width: 100%;
 }
 
 /* 変更理由: ペインごとのタブ一覧の区画。水平モードでは枠を作らず、従来どおり
@@ -513,6 +496,8 @@
 
 /* 変更理由: 垂直モードの追加ボタンは最終タブの直後に置き、一覧と一緒にスクロールさせる。 */
 .tab-bar--vertical .tab-list .tab-bar__add {
+  /* ドラッグによる DOM の移動後も追加ボタンをタブの末尾に保つ。 */
+  order: 1;
   flex: 0 0 var(--sys-space-12);
   width: 100%;
   height: var(--sys-space-12);

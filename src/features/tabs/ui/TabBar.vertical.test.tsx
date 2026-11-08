@@ -104,6 +104,15 @@ describe("TabBar vertical", () => {
     expect(container.querySelector(".tab__close")).toBeNull();
   });
 
+  it("固定タブも展開時はタイトルを表示する", () => {
+    mocks.tabStore.state.tabs[0].pinned = true;
+    const { container } = render(<TabBar orientation="vertical" />);
+
+    const tab = container.querySelector('[data-tab-id="tab-1"]');
+    expect(tab).toHaveTextContent("ホーム");
+    expect(tab?.querySelector(".tab__pin")).not.toBeNull();
+  });
+
   it("垂直では追加ボタンが最終タブの直後にある", () => {
     const { container } = render(<TabBar orientation="vertical" />);
     const tabList = container.querySelector(".tab-list") as HTMLDivElement;

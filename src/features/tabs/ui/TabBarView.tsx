@@ -130,7 +130,7 @@ const SortableTab: React.FC<SortableTabProps> = ({
         role="tab"
         aria-selected={isActive}
         // 変更理由: 簡易表示ではタイトルを隠すため、支援技術向けに名前を補う。
-        aria-label={compact && !tab.pinned ? page.title : undefined}
+        aria-label={compact ? page.title : undefined}
         tabIndex={isActive ? 0 : -1}
         onClick={handleClick}
         onKeyDown={handleKeyDown}
@@ -144,21 +144,24 @@ const SortableTab: React.FC<SortableTabProps> = ({
         }}
       >
         {/* ホームも他のページと同じタブ表示を使い、固定は利用者の選択に従う。 */}
-        {tab.pinned ? (
-          <Pin size={11} />
-        ) : compact ? (
+        {compact ? (
           <span
             className={`tab__icon${isArchiveReplayThread ? " tab__icon--archive-replay" : ""}`}
             title={isArchiveReplayThread ? "過去実況の再生対象" : undefined}
           >
-            {isArchiveReplayThread ? (
+            {tab.pinned ? (
+              <Pin size={11} />
+            ) : isArchiveReplayThread ? (
               <Play size={15} fill="currentColor" aria-hidden="true" />
             ) : (
               <PageTypeIcon type={page.type} size={15} />
             )}
           </span>
         ) : (
-          <span className="tab__title">{page.title}</span>
+          <>
+            {tab.pinned ? <Pin className="tab__pin" size={11} aria-hidden="true" /> : null}
+            <span className="tab__title">{page.title}</span>
+          </>
         )}
         {isArchiveReplayThread && (!compact || tab.pinned) ? (
           <span className="tab__archive-replay-indicator" title="過去実況の再生対象">
