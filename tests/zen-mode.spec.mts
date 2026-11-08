@@ -67,6 +67,7 @@ test("コマンド候補の件数を示し、キーボード選択に合わせ�
   const input = page.getByPlaceholder("コマンドを検索...");
   const list = page.getByRole("listbox", { name: "コマンド候補" });
   const options = list.getByRole("option");
+  await expect(options.first()).toBeVisible();
   const count = await options.count();
   expect(count).toBeGreaterThan(10);
   await expect(list.getByRole("status")).toHaveText(`${count} / ${count}`);
@@ -82,4 +83,20 @@ test("コマンド候補の件数を示し、キーボード選択に合わせ�
     return item.top >= container.top && item.bottom <= footer.top + 1;
   });
   expect(isVisibleInList).toBe(true);
+});
+
+test("候補の上でホイールを回しても自動追従がスクロールに重ならない", async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.keyboard.press("Control+Shift+P");
+  const list = page.getByRole("listbox", { name: "コマンド候補" });
+  await expect(list.getByRole("option").first()).toBeVisible();
+  const box = (await list.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height - 50);
+  const before = await list.evaluate((element) => element.scrollTop);
+  await page.mouse.wheel(0, 80);
+  await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(before);
+  // スクロールに伴うhover処理まで完了してから、余分な移動がないか確認する。
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  const after = await list.evaluate((element) => element.scrollTop);
+  expect(after - before).toBeCloseTo(80, 0);
 });

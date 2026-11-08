@@ -93,7 +93,14 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   trailingAction,
 }) => {
   const listRef = useRef<HTMLDivElement>(null);
+  const keyboardScrollRef = useRef(false);
+  const previousModeRef = useRef(mode);
   useLayoutEffect(() => {
+    const modeChanged = previousModeRef.current !== mode;
+    previousModeRef.current = mode;
+    // ホイール中にカーソル下の行が変わっても、自動スクロールを重ねない。
+    if (!modeChanged && !keyboardScrollRef.current) return;
+    keyboardScrollRef.current = false;
     const list = listRef.current;
     const selected = list?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
     if (!list || !selected) return;
@@ -132,7 +139,12 @@ export const Omnibar: React.FC<OmnibarProps> = ({
         type="text"
         value={inputValue}
         onChange={(e) => onInputChange(e.target.value)}
-        onKeyDown={onKeyDown}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp" || event.key === "Backspace") {
+            keyboardScrollRef.current = true;
+          }
+          onKeyDown(event);
+        }}
         onFocus={onFocus}
         placeholder={placeholder}
         spellCheck={false}
@@ -170,7 +182,10 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                 aria-selected={activeSuggestionIndex === index}
                 aria-label={`${item.label} モード`}
                 onMouseDown={(event) => event.preventDefault()}
-                onMouseEnter={() => onSuggestionHover(index)}
+                onMouseEnter={() => {
+                  keyboardScrollRef.current = false;
+                  onSuggestionHover(index);
+                }}
                 onClick={() => onEnterMode(item.id)}
               >
                 <span className="nav-bar__omnibar-command-icon" aria-hidden="true">
@@ -205,7 +220,10 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                     // blur が先に発火して候補クリックが失われるのを防ぐ。
                     if (e.button === 0) e.preventDefault();
                   }}
-                  onMouseEnter={() => onSuggestionHover(index + availableModes.length)}
+                  onMouseEnter={() => {
+                    keyboardScrollRef.current = false;
+                    onSuggestionHover(index + availableModes.length);
+                  }}
                   onClick={() => onSuggestionSelect(suggestion)}
                   onContextMenu={(event) => {
                     event.preventDefault();
@@ -244,7 +262,10 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                       // blur が先に発火してコマンドクリックが失われるのを防ぐ。
                       e.preventDefault();
                     }}
-                    onMouseEnter={() => onSuggestionHover(index)}
+                    onMouseEnter={() => {
+                      keyboardScrollRef.current = false;
+                      onSuggestionHover(index);
+                    }}
                     onClick={() => onCommandSelect(command)}
                     title={command.description ?? `${command.label} (${command.englishLabel})`}
                   >
