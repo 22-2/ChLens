@@ -7,6 +7,7 @@ import {
   parseOmnibarBrowserPage,
 } from "src/view/browser/utils/link-routing";
 import type { OmnibarSuggestion } from "src/view/browser/utils/omnibar";
+import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 type TabDispatch = ReturnType<typeof useTabStore>["dispatch"];
 
@@ -107,6 +108,11 @@ export function useOmnibarNavigation({ dispatch, urlInputRef }: UseOmnibarNaviga
       const parsed = parseInternalBrowserPage(suggestion.url);
       if (!parsed) {
         return;
+      }
+
+      if (parsed.type === "thread" && suggestion.writtenRes && suggestion.writtenRes > 0) {
+        // 書き込み履歴は同じスレッド内の投稿位置まで復元する。
+        requestThreadResJump(parsed.threadUrl, suggestion.writtenRes);
       }
 
       dispatch(

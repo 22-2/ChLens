@@ -194,6 +194,20 @@
   background: var(--sys-color-surface);
   box-shadow: var(--sys-shadow-floating);
 }
+.nav-bar__omnibar-count {
+  position: sticky;
+  bottom: 0;
+  padding: var(--sys-space-2) var(--sys-space-3);
+  background: var(--sys-color-surface);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-xs);
+  text-align: right;
+}
+.nav-bar__omnibar-section {
+  padding: var(--sys-space-2) var(--sys-space-3);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-xs);
+}
 .nav-bar__omnibar-item {
   display: flex;
   align-items: baseline;

@@ -140,8 +140,7 @@ export async function jumpToResponse(page: Page, resNum: number) {
 /**
  * コマンドパレットを開き、入力に対して出た候補を選ぶ。
  *
- * コマンドモードは入力欄の先頭に「>」が付く。開いた直後はアプリが「>」を入れる処理と
- * テストの入力が前後することがあり、「>>…」になって候補が出ないため、値と候補が
+ * 開いた直後はアプリの初期化とテストの入力が前後することがあるため、値と候補が
  * そろうまで入力し直す。
  */
 export async function runPaletteCommand(page: Page, input: string, option: RegExp) {
@@ -149,8 +148,8 @@ export async function runPaletteCommand(page: Page, input: string, option: RegEx
   const commandInput = page.getByPlaceholder("コマンドを検索...");
   const optionLocator = page.getByRole("option", { name: option });
   await expect(async () => {
-    await commandInput.fill(`>${input}`);
-    await expect(commandInput).toHaveValue(`>${input}`, { timeout: 1000 });
+    await commandInput.fill(input);
+    await expect(commandInput).toHaveValue(input, { timeout: 1000 });
     await expect(optionLocator).toBeVisible({ timeout: 1000 });
   }).toPass();
   await optionLocator.click();

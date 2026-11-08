@@ -54,7 +54,10 @@ import {
   runManualRefresh,
   useManualRefreshCooldown,
 } from "src/view/browser/utils/manual-refresh";
-import { loadOmnibarSources } from "src/view/browser/utils/omnibar-sources";
+import {
+  loadOmnibarSources,
+  loadOmnibarWriteHistory,
+} from "src/view/browser/utils/omnibar-sources";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { createSettingsPage, type QuickAccessPage } from "src/view/browser/utils/tab-pages";
 
@@ -67,7 +70,7 @@ import {
   useOmnibarSuggestionMenuItems,
 } from "./use-omnibar-suggestion-menu-items";
 
-const OMNIBAR_MAX_SUGGESTIONS = 8;
+const OMNIBAR_MAX_SUGGESTIONS = 50;
 const logger = createLogger("view/browser");
 
 const NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
@@ -278,6 +281,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     isLoading: isOmnibarLoading,
     suggestions: omnibarSuggestions,
     commandSuggestions: omnibarCommandSuggestions,
+    totalSuggestionCount,
     shouldShowNoMatch,
     activeSuggestionIndex,
     setActiveSuggestionIndex,
@@ -288,10 +292,14 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     handleFocus,
     handleBlur,
     handleSelectSuggestion,
+    enterMode,
+    returnToRoot,
+    availableModes,
   } = useOmnibar({
     displayUrl,
     maxSuggestions: OMNIBAR_MAX_SUGGESTIONS,
     loadEntries: loadOmnibarSources,
+    loadWriteHistory: loadOmnibarWriteHistory,
     onSelectSuggestion: openSuggestion,
     onSubmitInput: submitUrl,
     commands,
@@ -329,6 +337,25 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     },
     [handleBlur, omnibarMode, paletteState.opened, viewSurface.window],
   );
+
+  useEffect(() => {
+    if (!isUrlEditing || !isActivePane) return;
+    // フォーカスが移らない本文や余白へのクリックでも、入力欄を閉じる。
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = getEventTargetElement(event.target, viewSurface.window);
+      const omnibar = urlInputRef.current?.closest(".nav-bar__url");
+      if (!target || omnibar?.contains(target)) return;
+      // 候補の右クリックメニューはオムニバーからの操作として扱う。
+      if (suggestionMenuState && target.closest(".context-menu")) return;
+      handleBlur();
+      commandPalette.close();
+      setSuggestionMenuState(null);
+      setIsUrlEditing(false);
+    };
+    viewSurface.document.addEventListener("pointerdown", handleOutsidePointerDown, true);
+    return () =>
+      viewSurface.document.removeEventListener("pointerdown", handleOutsidePointerDown, true);
+  }, [handleBlur, isActivePane, isUrlEditing, suggestionMenuState, viewSurface]);
 
   const handleRefresh = useCallback(() => {
     if (threadCapabilities?.canRefresh === false) return;
@@ -601,11 +628,25 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     <Omnibar
       inputRef={urlInputRef}
       inputValue={inputValue}
-      placeholder={omnibarMode === "command" ? "コマンドを検索..." : "URLを入力"}
+      placeholder={
+        omnibarMode === "command"
+          ? "コマンドを検索..."
+          : omnibarMode === "navigation"
+            ? "URLを入力"
+            : (
+                {
+                  bookmark: "お気に入りを検索...",
+                  board: "板を検索...",
+                  history: "閲覧履歴を検索...",
+                  writeHistory: "書き込み履歴を検索...",
+                } as const
+              )[omnibarMode]
+      }
       isOpen={isOmnibarOpen}
       isLoading={isOmnibarLoading}
       suggestions={omnibarSuggestions}
       commandSuggestions={omnibarCommandSuggestions}
+      totalSuggestionCount={totalSuggestionCount}
       mode={omnibarMode}
       activeSuggestionIndex={activeSuggestionIndex}
       shouldShowNoMatch={shouldShowNoMatch}
@@ -616,6 +657,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       onSuggestionHover={setActiveSuggestionIndex}
       onSuggestionSelect={handleSelectSuggestion}
       onSuggestionContextMenu={(suggestion, x, y) => setSuggestionMenuState({ suggestion, x, y })}
+      availableModes={availableModes}
+      onEnterMode={enterMode}
+      onReturnToRoot={returnToRoot}
       onCommandSelect={(command) => void executeCommand(command)}
       trailingAction={
         bookmarkTarget ? (

@@ -14,7 +14,7 @@ export async function verifyTwoPaneFilters(page: Page, localBoard: LocalBoard): 
 
   await page.getByTitle("メニュー", { exact: true }).click();
   await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
-  await page.getByPlaceholder("コマンドを検索...").fill(">2ペインで表示");
+  await page.getByPlaceholder("コマンドを検索...").fill("2ペインで表示");
   await page.getByRole("option", { name: /2ペインで表示/u }).click();
 
   const panes = page.locator(".pane-column");
@@ -50,7 +50,7 @@ export async function verifyTwoPaneFilters(page: Page, localBoard: LocalBoard): 
   const runImageFilter = async () => {
     await page.getByTitle("メニュー", { exact: true }).click();
     await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
-    await page.getByPlaceholder("コマンドを検索...").fill(">画像のフィルタ");
+    await page.getByPlaceholder("コマンドを検索...").fill("画像のフィルタ");
     await page.getByRole("option", { name: /画像のフィルタを切り替え/u }).click();
   };
   // 種類はフィルタのボタンに出て、選んでいる間は押下状態になる。解除しても最後に選んだ種類を残す。

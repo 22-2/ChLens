@@ -51,8 +51,7 @@ async function captureArchiveReplay(tauri: TauriApp, shooter: Shooter): Promise<
   const page = tauri.page;
   await page.getByTitle("メニュー", { exact: true }).click();
   await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
-  // 入力欄は先頭の ">" でコマンド検索になるため、fillで置き換えるときも残す。
-  await page.getByPlaceholder("コマンドを検索...").fill(">過去実況");
+  await page.getByPlaceholder("コマンドを検索...").fill("過去実況");
   await page.getByRole("option", { name: /過去実況再生を開く/u }).click();
   const replay = await tauri.window("replay");
   await expect(replay.getByRole("heading", { name: "過去実況再生", exact: true })).toBeVisible();
