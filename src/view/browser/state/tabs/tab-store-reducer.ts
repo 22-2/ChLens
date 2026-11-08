@@ -865,7 +865,10 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
       // 常設ホームの重複除去を行わず、両ペインの通常タブと選択をそのまま引き継ぐ。
       const mergedPane: Pane = {
         ...leftPane,
-        tabs: [...leftPane.tabs, ...rightPane.tabs],
+        // 統合後も固定タブのグループを先頭に保ち、並べ替えと表示順を一致させる。
+        tabs: [...leftPane.tabs, ...rightPane.tabs].sort(
+          (a, b) => Number(b.pinned) - Number(a.pinned),
+        ),
         activeTabId: selectedTabId,
       };
       return {

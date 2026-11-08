@@ -219,6 +219,34 @@ describe("WindowHost", () => {
       expect(captured.controller?.dropTabAtScreenPoint("tab-1", 100, 100, window)).toBe("ignored");
       expect(mocks.dispatch).not.toHaveBeenCalled();
     });
+    it("ドラッグ中のタブの背後にある別ペインへ移し、空のペインを解除する", () => {
+      const target = createHomeTab("target");
+      mocks.stateRef.current.panes.push({ id: "pane-2", tabs: [target], activeTabId: target.id });
+      const sourceElement = document.createElement("div");
+      sourceElement.dataset.tabId = "tab-1";
+      const targetElement = document.createElement("div");
+      targetElement.dataset.tabId = "target";
+      Object.defineProperty(document, "elementsFromPoint", {
+        configurable: true,
+        value: () => [sourceElement, targetElement],
+      });
+      const focus = vi.spyOn(window, "focus").mockImplementation(() => {});
+      render(
+        <WindowHost>
+          <Controls />
+        </WindowHost>,
+      );
+      act(() => {
+        expect(captured.controller?.dropTabAtScreenPoint("tab-1", 100, 100, window)).toBe("moved");
+      });
+      expect(mocks.stateRef.current.panes).toHaveLength(1);
+      expect(mocks.stateRef.current.panes[0].tabs.map((tab) => tab.id)).toEqual([
+        "target",
+        "tab-1",
+      ]);
+      Reflect.deleteProperty(document, "elementsFromPoint");
+      focus.mockRestore();
+    });
     it("どの窓にも当たらない位置では、その近くに新しい窓を開いて移す", () => {
       render(
         <WindowHost>

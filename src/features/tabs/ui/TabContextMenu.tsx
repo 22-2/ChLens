@@ -144,6 +144,24 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     });
     result.push({ id: "sep-detach", separator: true });
 
+    const owner = stateRef?.current.panes.find((pane) =>
+      pane.tabs.some((item) => item.id === tab.id),
+    );
+    const ownerWindowId = owner?.windowId ?? MAIN_WINDOW_ID;
+    if (
+      owner &&
+      stateRef.current.panes.filter((pane) => (pane.windowId ?? MAIN_WINDOW_ID) === ownerWindowId)
+        .length > 1
+    ) {
+      // タブを閉じずに分割を解除できるよう、対象タブの窓を明示する。
+      result.push({
+        id: "close-pane",
+        label: "ペインの分割を解除",
+        onSelect: () => dispatch({ ...tabActions.closePane(), paneId: owner.id }),
+      });
+      result.push({ id: "sep-close-pane", separator: true });
+    }
+
     for (const destination of moveDestinations) {
       result.push({
         id: `move-to-${destination.paneId}`,

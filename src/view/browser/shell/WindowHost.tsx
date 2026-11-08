@@ -102,7 +102,15 @@ function resolveExistingDrop(
   );
   if (!target) return null;
   const point = screenToClientPoint(target.window, screenX, screenY);
-  const hit = target.window.document.elementFromPoint(point.x, point.y);
+  // ドラッグ中のタブ自身がポインタの下を覆っても、その背後の移動先を判定する。
+  const doc = target.window.document;
+  const hits = doc.elementsFromPoint?.(point.x, point.y) ?? [
+    doc.elementFromPoint(point.x, point.y),
+  ];
+  const hit =
+    hits.find(
+      (element) => element?.closest<HTMLElement>("[data-tab-id]")?.dataset.tabId !== tabId,
+    ) ?? null;
   const tabElement = hit?.closest<HTMLElement>("[data-tab-id]");
   const hovered = tabElement?.dataset.tabId
     ? locate(state.panes, tabElement.dataset.tabId)

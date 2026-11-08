@@ -61,7 +61,7 @@ export const SharedTabBar: React.FC<{ orientation: TabBarOrientation }> = ({ ori
   const showLabels = panes.length > 1;
 
   return (
-    <PaneProvider paneId={first.id}>
+    <PaneProvider key={first.id} paneId={first.id}>
       <TabBar
         orientation={orientation}
         sectionLabel={showLabels ? getPaneLabel(0, panes.length) : undefined}
