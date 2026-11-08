@@ -2,6 +2,7 @@ import { fetchHttpsFirst } from "packages/chlib/src/fetcher/https-first";
 import { createLogger } from "src/app/logger";
 import { getHttpsMode } from "src/app/platform/https-mode";
 import { QueuedHttpClient } from "src/app/platform/QueuedHttpClient";
+import { getWebAssetPath } from "src/app/platform/runtime";
 import type { BinaryHttpResponse, HttpClient, HttpRequestOptions } from "src/app/platform/types";
 
 const logger = createLogger("platform");
@@ -22,7 +23,7 @@ async function fetchBinary(
         ? setTimeout(() => controller.abort(), options.timeout)
         : undefined;
       try {
-        const proxyUrl = new URL("/__chlens_web_proxy", window.location.origin);
+        const proxyUrl = new URL(getWebAssetPath("__chlens_web_proxy"), window.location.origin);
         proxyUrl.searchParams.set("url", target);
         const response = await fetch(proxyUrl, {
           headers: options.headers,

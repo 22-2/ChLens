@@ -4,6 +4,7 @@ export {};
 declare global {
   const __CHLENS_TAURI_BUILD__: boolean;
   const __CHLENS_WEB_BUILD__: boolean;
+  const __CHLENS_WEB_BASE__: string;
   // vite.config.ts がビルド時に注入する。値の意味は src/app/build-info.ts を参照。
   const __CHLENS_BUILD_INFO__: import("src/app/build-info").ChlensBuildInfo;
 

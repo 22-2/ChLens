@@ -14,6 +14,12 @@ export function isWebRuntime(): boolean {
   return typeof __CHLENS_WEB_BUILD__ !== "undefined" && __CHLENS_WEB_BUILD__;
 }
 
+/** Web版の静的ファイルを配信元のサブパスから解決する。 */
+export function getWebAssetPath(path: string): string {
+  const base = typeof __CHLENS_WEB_BASE__ === "undefined" ? "/" : __CHLENS_WEB_BASE__;
+  return `${base}${path.replace(/^\/+/, "")}`;
+}
+
 // Why: iframe on Tauri does not always receive injected internals; copy from same-origin top window once.
 export function inheritTauriInternalsFromTopWindow(): void {
   if (typeof window === "undefined" || self === top || hasTauriInternals(window)) {

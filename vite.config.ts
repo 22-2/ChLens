@@ -102,7 +102,7 @@ function resolveBuildInfo(): ChlensBuildInfo {
 
 // ─── plugin: browser HTML (without Pug) ─────────────────────────────────────
 
-function browserHtmlPlugin(outputDir: string, entry: string): Plugin {
+function browserHtmlPlugin(outputDir: string, entry: string, platform: string): Plugin {
   const manifestJson = fs.readJsonSync("src/manifest.json");
 
   return {
@@ -117,7 +117,8 @@ function browserHtmlPlugin(outputDir: string, entry: string): Plugin {
       // no-referrer だと YouTube 埋め込みが client identity 不足で 153 になりやすいため、
       // クロスオリジンでは origin だけ送る既定寄りの方針にして他の外部埋め込みとも両立させる。
       // CSSやテーマスクリプトの取得待ちにも、ブラウザの初期背景をOSの配色へ合わせる。
-      const html = `<!DOCTYPE html><html class="view view_browser" data-app-version="${version}"><head><meta charset="utf-8"><meta name="color-scheme" content="light dark"><meta name="referrer" content="strict-origin-when-cross-origin"><title>read.crx-2</title><script src="../theme-init.js"></script><script type="module" src="../browser.js?v=${version}"></script><link rel="stylesheet" href="/browser.css?v=${version}"></head><body><div id="root"></div></body></html>`;
+      const cssPath = platform === "web" ? "../browser.css" : "/browser.css";
+      const html = `<!DOCTYPE html><html class="view view_browser" data-app-version="${version}"><head><meta charset="utf-8"><meta name="color-scheme" content="light dark"><meta name="referrer" content="strict-origin-when-cross-origin"><title>read.crx-2</title><script src="../theme-init.js"></script><script type="module" src="../browser.js?v=${version}"></script><link rel="stylesheet" href="${cssPath}?v=${version}"></head><body><div id="root"></div></body></html>`;
 
       const outputFile = path.join(outputDir, "view", "index.html");
       await fs.ensureDir(path.dirname(outputFile));
@@ -480,6 +481,14 @@ function createFeatureBoundaryOverrides() {
 
 export default defineConfig(async ({ mode, command }) => {
   const platform = process.env.PLATFORM || "chrome";
+  // GitHub Pagesのプロジェクトサイトはリポジトリ名のサブパスから配信される。
+  const webBase = process.env.WEB_BASE_PATH || "/";
+  if (
+    platform === "web" &&
+    (!/^\/(?:[A-Za-z0-9._~-]+\/)*$/.test(webBase) || webBase.includes("../"))
+  ) {
+    throw new Error("WEB_BASE_PATHは /repository/ の形式で指定してください");
+  }
   const entry = process.env.ENTRY || "browser";
   const outputDir = `./debug/${platform}`;
   const analyzeBundle = process.env.ANALYZE === "true";
@@ -520,6 +529,7 @@ export default defineConfig(async ({ mode, command }) => {
     : undefined;
 
   return {
+    base: platform === "web" ? webBase : "/",
     staged: {
       "src/**/*.{ts,tsx}": "vp check --fix",
     },
@@ -644,14 +654,15 @@ export default defineConfig(async ({ mode, command }) => {
       // 本番のChrome/FirefoxビルドではTauri専用の動的importを除去し、開発・テストでは実行時判定を保つ。
       __CHLENS_TAURI_BUILD__: JSON.stringify(command !== "build" || platform === "tauri"),
       __CHLENS_WEB_BUILD__: JSON.stringify(platform === "web"),
+      __CHLENS_WEB_BASE__: JSON.stringify(platform === "web" ? webBase : "/"),
       // 変更理由: ビルド時刻・ハッシュはビルドごとに決まるため、ソースではなく注入で渡す（src/app/build-info.ts）。
       __CHLENS_BUILD_INFO__: JSON.stringify(resolveBuildInfo()),
     },
     plugins: lazyPlugins(() => [
       react(),
-      ...(platform === "web" ? [webPreviewProxyPlugin()] : []),
+      ...(platform === "web" ? [webPreviewProxyPlugin(webBase)] : []),
       ...(coveragePlugin ? [coveragePlugin] : []),
-      browserHtmlPlugin(outputDir, entry),
+      browserHtmlPlugin(outputDir, entry, platform),
       overlayHtmlPlugin(outputDir, entry),
       archiveReplayHtmlPlugin(outputDir, entry),
       manifestPlugin(platform, outputDir),

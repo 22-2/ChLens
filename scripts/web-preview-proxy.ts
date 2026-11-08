@@ -74,11 +74,11 @@ export async function handleWebPreviewProxy(
   }
 }
 
-export function webPreviewProxyPlugin() {
+export function webPreviewProxyPlugin(base: string = "/") {
   return {
     name: "chlens-web-preview-proxy",
     configurePreviewServer(server: import("vite").PreviewServer) {
-      server.middlewares.use(PROXY_PATH, (request, response) => {
+      server.middlewares.use(`${base.slice(0, -1)}${PROXY_PATH}`, (request, response) => {
         void handleWebPreviewProxy(request, response);
       });
     },
