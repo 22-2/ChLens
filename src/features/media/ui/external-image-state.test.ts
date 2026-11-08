@@ -255,7 +255,7 @@ describe("getExternalImagePlaceholderText", () => {
         status: "awaiting-confirmation",
         contentLength: null,
       }),
-    ).toBe("画像サイズを確認できません。クリックして確認");
+    ).toBe("画像サイズを確認できません。クリックして取得");
   });
 
   it("サイズと上限が分かる確認待ちの画像は、両方をMB単位で示す", () => {
@@ -266,7 +266,7 @@ describe("getExternalImagePlaceholderText", () => {
         contentLength: 2_500_000,
         maxBytes: 5_000_000,
       }),
-    ).toBe("2.50 MBの画像（上限 5.00 MB）。クリックして確認");
+    ).toBe("2.50 MBの画像（上限 5.00 MB）。クリックして取得");
   });
 
   it("上限が無い確認待ちの画像は、上限を0MBとして示す", () => {
@@ -276,7 +276,7 @@ describe("getExternalImagePlaceholderText", () => {
         status: "awaiting-confirmation",
         contentLength: 1_000_000,
       }),
-    ).toBe("1.00 MBの画像（上限 0.00 MB）。クリックして確認");
+    ).toBe("1.00 MBの画像（上限 0.00 MB）。クリックして取得");
   });
 
   it("手動取得の設定では、クリックして取得する旨を出す", () => {

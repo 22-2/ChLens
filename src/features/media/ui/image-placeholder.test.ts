@@ -73,7 +73,7 @@ describe("getImagePlaceholderText", () => {
   it("サイズが分からない確認待ちの画像は、サイズを確認できないことを返す", () => {
     const state = createImageState({ status: "awaiting-confirmation", contentLength: null });
 
-    expect(getImagePlaceholderText(state)).toBe("サイズを確認できません。クリックして確認");
+    expect(getImagePlaceholderText(state)).toBe("サイズを確認できません。クリックして取得");
   });
 
   it("サイズが分かる確認待ちの画像は、MB単位の小数2桁でサイズを返す", () => {
@@ -82,7 +82,7 @@ describe("getImagePlaceholderText", () => {
       contentLength: 2_500_000,
     });
 
-    expect(getImagePlaceholderText(state)).toBe("画像サイズ 2.50 MB・クリックして確認");
+    expect(getImagePlaceholderText(state)).toBe("画像サイズ 2.50 MB・クリックして取得");
   });
 
   it("取得が始まった画像は、既定の文言を返す", () => {

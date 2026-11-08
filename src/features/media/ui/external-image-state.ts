@@ -153,10 +153,10 @@ export function getExternalImagePlaceholderText({
   if (status === "discarded") return "削除されました";
   if (status === "checking") return "画像サイズを確認中...";
   if (status === "awaiting-confirmation") {
-    if (contentLength == null) return "画像サイズを確認できません。クリックして確認";
+    if (contentLength == null) return "画像サイズを確認できません。クリックして取得";
     const imageSizeMb = (contentLength / 1_000_000).toFixed(2);
     const maxSizeMb = ((maxBytes ?? 0) / 1_000_000).toFixed(2);
-    return `${imageSizeMb} MBの画像（上限 ${maxSizeMb} MB）。クリックして確認`;
+    return `${imageSizeMb} MBの画像（上限 ${maxSizeMb} MB）。クリックして取得`;
   }
   return manualLoad ? "クリックして画像を取得" : "画像サイズを確認中...";
 }

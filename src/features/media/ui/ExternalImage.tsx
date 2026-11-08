@@ -162,7 +162,7 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
       }
 
       const beginPreflight = () => {
-        void requestMediaImageDownload(imageKey, src, viewWindow).catch((error: unknown) => {
+        void requestMediaImageDownload(imageKey, src).catch((error: unknown) => {
           logger.error("画像サイズ確認の開始に失敗しました", { url: src, error });
         });
       };
@@ -286,7 +286,7 @@ export const ExternalImage = forwardRef<HTMLImageElement, ExternalImageProps>(
         manualLoad: shouldLoadManually,
       });
       const requestImage = () => {
-        void requestMediaImageDownload(imageKey, src, viewWindow).catch((error: unknown) => {
+        void requestMediaImageDownload(imageKey, src).catch((error: unknown) => {
           logger.error("画像取得の事前確認に失敗しました", { url: src, error });
         });
       };
