@@ -3,6 +3,8 @@
 // core/URL.ts・link-routing.ts・ChURL.ts に三重に実装されており、
 // 片方だけ修正されて解釈がずれる回帰が起きやすかったため1箇所に集約する。
 
+declare const __CHLENS_DEMO_BUILD__: boolean;
+
 export const HOSTNAME = {
   OLD_2CH: "2ch.net",
   OLD_5CH_NET: "5ch.net",
@@ -80,6 +82,9 @@ export function isArchiveOnlyBoardHost(hostname: string): boolean {
 
 export function isCompatibleBoardHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
+  // 架空のexample.comを掲示板とみなすのは、通信を固定データへ閉じたデモビルドだけ。
+  if (typeof __CHLENS_DEMO_BUILD__ !== "undefined" && __CHLENS_DEMO_BUILD__ && h === "example.com")
+    return true;
   return (
     COMPATIBLE_EXACT_HOSTS.some((host) => h === host) ||
     COMPATIBLE_HOST_SUFFIXES.some((suffix) => hasHostnameSuffix(h, suffix))

@@ -1,6 +1,7 @@
 import "webextension-polyfill";
 
 import { createLogger } from "src/app/logger";
+import { getWebAssetPath, isWebRuntime } from "src/app/platform/runtime";
 import { configInstance } from "src/service-container/config-instance";
 import { setupContainer } from "src/service-container/setup";
 
@@ -12,7 +13,9 @@ export const manifest = (async () => {
   // フォールバックでHTML側のバージョン情報を返す。
   if (!/^(?:chrome|moz)-extension:$/.test(location.protocol)) {
     try {
-      const response = await fetch("/manifest.json");
+      const response = await fetch(
+        isWebRuntime() ? getWebAssetPath("manifest.json") : "/manifest.json",
+      );
       return await response.json();
     } catch {
       return { version: document.documentElement.dataset.appVersion || "" };
@@ -42,7 +45,7 @@ export async function bootView(path: string, onReady: () => void): Promise<void>
     return;
   }
 
-  if (location.pathname !== path) {
+  if (location.pathname !== (isWebRuntime() ? getWebAssetPath(path) : path)) {
     return;
   }
 

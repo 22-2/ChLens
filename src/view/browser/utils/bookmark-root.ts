@@ -1,4 +1,4 @@
-import { isTauriRuntime } from "src/app/platform/runtime";
+import { isTauriRuntime, isWebRuntime } from "src/app/platform/runtime";
 import { container } from "src/service-container/index";
 import browser from "webextension-polyfill";
 
@@ -30,7 +30,12 @@ function toBookmarkFolderNode(node: browser.Bookmarks.BookmarkTreeNode): Bookmar
 export function supportsBookmarkFolderSelection(): boolean {
   // 変更理由: Tauri はブックマークをブラウザAPIではなく別ストレージで扱うため、
   // 保存先フォルダ選択UIを表示すると誤解を招く。ランタイム判定を優先して無効化する。
-  return !isTauriRuntime() && typeof browser !== "undefined" && browser.bookmarks !== undefined;
+  return (
+    !isTauriRuntime() &&
+    !isWebRuntime() &&
+    typeof browser !== "undefined" &&
+    browser.bookmarks !== undefined
+  );
 }
 
 export function readConfiguredBookmarkFolderId(): string {

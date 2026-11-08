@@ -15,8 +15,8 @@ export function getImagePlaceholderText(imageState: MediaImageState | undefined)
   if (imageState?.status === "discarded") return "削除されました";
   if (imageState?.status === "checking") return "画像サイズを確認中...";
   if (imageState?.status === "awaiting-confirmation") {
-    if (imageState.contentLength == null) return "サイズを確認できません。クリックして確認";
-    return `画像サイズ ${(imageState.contentLength / 1_000_000).toFixed(2)} MB・クリックして確認`;
+    if (imageState.contentLength == null) return "サイズを確認できません。クリックして取得";
+    return `画像サイズ ${(imageState.contentLength / 1_000_000).toFixed(2)} MB・クリックして取得`;
   }
   return "クリックして画像を取得";
 }

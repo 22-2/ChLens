@@ -55,19 +55,6 @@ function parseContentLength(headers: Record<string, string>): number | null {
   return Number.isFinite(contentLength) ? contentLength : Number.MAX_SAFE_INTEGER;
 }
 
-function formatImageSize(bytes: number): string {
-  if (bytes < 1_000) return `${bytes} B`;
-  if (bytes < BYTES_PER_MB) return `${(bytes / 1_000).toFixed(1)} KB`;
-  return `${(bytes / BYTES_PER_MB).toFixed(2)} MB`;
-}
-
-function buildImageWarning(contentLength: number | null, maxBytes: number): string {
-  if (contentLength == null) {
-    return "画像サイズを取得前に確認できませんでした。この画像を取得しますか？";
-  }
-  return `この画像は ${formatImageSize(contentLength)} で、設定上限 ${formatImageSize(maxBytes)} を超えています。取得しますか？`;
-}
-
 function isHttpUrl(url: string): boolean {
   try {
     return ["http:", "https:"].includes(new URL(url).protocol);
@@ -133,11 +120,7 @@ async function startImagePreflight(key: string, sourceUrl: string): Promise<void
 }
 
 /** 画像取得の前にHEADでサイズを調べ、上限超過とサイズ不明だけ確認を求める。 */
-export async function requestMediaImageDownload(
-  key: string,
-  sourceUrl: string,
-  targetWindow: Window = window,
-): Promise<void> {
+export async function requestMediaImageDownload(key: string, sourceUrl: string): Promise<void> {
   if (!isHttpUrl(sourceUrl)) {
     useMediaImageStore.getState().requestImage(key, sourceUrl);
     return;
@@ -152,19 +135,8 @@ export async function requestMediaImageDownload(
     return;
   }
   if (isCurrentSource && current.status === "awaiting-confirmation") {
-    const maxBytes = getConfiguredMaxBytes();
-    if (current.contentLength != null && current.contentLength <= maxBytes) {
-      store.approveImage(key, current.version);
-      return;
-    }
-
-    try {
-      if (targetWindow.confirm(buildImageWarning(current.contentLength ?? null, maxBytes))) {
-        store.approveImage(key, current.version);
-      }
-    } catch (error) {
-      logger.error("画像取得の確認画面を表示できませんでした", { url: sourceUrl, error });
-    }
+    // 警告を表示したサムネイルへのクリック自体を承認とし、確認ダイアログを重ねない。
+    store.approveImage(key, current.version);
     return;
   }
 

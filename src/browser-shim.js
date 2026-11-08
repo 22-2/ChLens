@@ -1,3 +1,4 @@
+import { getWebAssetPath, isWebRuntime } from "src/app/platform/runtime";
 import {
   getStore2All,
   getStore2String,
@@ -99,7 +100,7 @@ import {
       // browser.runtime.idが存在しないとwebextension-polyfillがthrowするため設定する
       id: "tauri",
       /** @param {string} path */
-      getURL: (path) => path,
+      getURL: (path) => (isWebRuntime() ? getWebAssetPath(path) : path),
       sendMessage: asyncNoOp,
       onMessage: listener,
       onUpdateAvailable: listener,

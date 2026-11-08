@@ -85,12 +85,15 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   no_writehistory: "off",
   // 変更理由: 第三者が配信する板一覧を既定で信用しないよう、公式のbbsmenuだけを既定にする。
   bbsmenu:
-    "https://menu.5ch.io/bbsmenu.html\nhttps://menu.2ch.sc/bbsmenu.html\n// open2chは一度手動でbbsmenuのURLへアクセスする必要があります。\n// https://menu.open2ch.net/bbsmenu.html\n",
+    typeof __CHLENS_DEMO_BUILD__ !== "undefined" && __CHLENS_DEMO_BUILD__
+      ? "https://example.com/bbsmenu.html"
+      : "https://menu.5ch.io/bbsmenu.html\nhttps://menu.2ch.sc/bbsmenu.html\n// open2chは一度手動でbbsmenuのURLへアクセスする必要があります。\n// https://menu.open2ch.net/bbsmenu.html\n",
   bbsmenu_option: "",
   other_board_titles: "{}",
   imgur_access_token: "",
   imgur_client_id: "",
-  format_2chnet: "html",
+  format_2chnet:
+    typeof __CHLENS_DEMO_BUILD__ !== "undefined" && __CHLENS_DEMO_BUILD__ ? "dat" : "html",
   sage_flag: "off",
   // サイト・板設定は全体設定へ安全にフォールバックできる空のドキュメントを既定値にする。
   site_board_settings: "{}",

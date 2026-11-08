@@ -264,6 +264,11 @@ export const BoardStartPage: React.FC<{ intro: React.ReactNode }> = ({ intro }) 
 
   return (
     <div className="home-tab-page">
+      {typeof __CHLENS_DEMO_BUILD__ !== "undefined" && __CHLENS_DEMO_BUILD__ && (
+        <Alert className="home-tab-page__alert" title="読み取り専用デモ">
+          板とスレッドは架空のデータです。実際の掲示板へのアクセスや書き込みはできません。
+        </Alert>
+      )}
       {intro}
       {boardListLink}
       <FavoriteBoardsSection />

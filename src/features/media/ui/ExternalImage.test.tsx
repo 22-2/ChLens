@@ -192,8 +192,8 @@ describe("ExternalImage", () => {
     );
 
     expect(screen.getAllByRole("button")).toHaveLength(1);
-    fireEvent.click(screen.getByText("画像サイズを確認できません。クリックして確認"));
-    expect(requestMediaImageDownloadMock).toHaveBeenCalledWith(imageUrl, imageUrl, window);
+    fireEvent.click(screen.getByText("画像サイズを確認できません。クリックして取得"));
+    expect(requestMediaImageDownloadMock).toHaveBeenCalledWith(imageUrl, imageUrl);
     expect(onParentClick).not.toHaveBeenCalled();
   });
 

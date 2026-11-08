@@ -28,7 +28,11 @@ export const WritePanelToggleItem: React.FC = () => {
   } = useWriteSessionControls();
 
   // 書き込みUIは通常スレッド専用とし、過去実況の読み取り専用ThreadViewでも出さない。
-  if (viewPage.type !== "thread" || threadCapabilities?.canWrite !== true) {
+  if (
+    (typeof __CHLENS_DEMO_BUILD__ !== "undefined" && __CHLENS_DEMO_BUILD__) ||
+    viewPage.type !== "thread" ||
+    threadCapabilities?.canWrite !== true
+  ) {
     return null;
   }
 
