@@ -1,7 +1,42 @@
+import { Settings } from "lucide-react";
 import React from "react";
 import type { TabBarOrientation } from "src/features/tabs/browser/tab-bar-layout";
 import { TabBar } from "src/features/tabs/ui/TabBar";
-import { PaneProvider, useWindowPanes } from "src/view/browser/state/tabs/use-tab-store";
+import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
+import {
+  PaneProvider,
+  useTabStore,
+  useWindowPanes,
+} from "src/view/browser/state/tabs/use-tab-store";
+import { getCurrentPage } from "src/view/browser/types";
+import { createSettingsPage } from "src/view/browser/utils/tab-pages";
+
+const TabBarSettings: React.FC = () => {
+  const { state, dispatch } = useTabStore();
+  const openSettings = () => {
+    // 操作中のペインに設定があれば再利用し、重複した設定タブを作らない。
+    const existing = state.tabs.find((tab) => getCurrentPage(tab).type === "settings");
+    dispatch(
+      existing
+        ? tabActions.selectTab(existing.id)
+        : tabActions.openInNewTabForce(createSettingsPage(), { focus: true }),
+    );
+  };
+  return (
+    <div className="tab-bar__footer">
+      <button
+        type="button"
+        className="tab-bar__settings icon-button"
+        title="設定を開く"
+        aria-label="設定を開く"
+        onClick={openSettings}
+        onContextMenu={(event) => event.stopPropagation()}
+      >
+        <Settings size={17} />
+      </button>
+    </div>
+  );
+};
 
 function getPaneLabel(index: number, paneCount: number): string {
   if (paneCount === 2) return index === 0 ? "左" : "右";
@@ -28,6 +63,11 @@ export const SharedTabBar: React.FC<{ orientation: TabBarOrientation }> = ({ ori
         orientation={orientation}
         sectionLabel={showLabels ? getPaneLabel(0, panes.length) : undefined}
         isPaneFocused={showLabels && first.id === activePaneId}
+        footer={
+          <PaneProvider paneId={activePaneId}>
+            <TabBarSettings />
+          </PaneProvider>
+        }
         extraSections={rest.map((pane, index) => (
           <PaneProvider key={pane.id} paneId={pane.id}>
             <TabBar
