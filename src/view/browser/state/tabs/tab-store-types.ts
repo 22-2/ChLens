@@ -93,7 +93,7 @@ export type TabAction =
   | { type: typeof TAB_ACTION_TYPES.CLOSE_OTHER_TABS; tabId: string }
   | { type: typeof TAB_ACTION_TYPES.CLOSE_RIGHT_TABS; tabId: string }
   | { type: typeof TAB_ACTION_TYPES.CLOSE_ALL_TABS }
-  | { type: typeof TAB_ACTION_TYPES.REOPEN_CLOSED_TAB }
+  | { type: typeof TAB_ACTION_TYPES.REOPEN_CLOSED_TAB; tabId?: string }
   | { type: typeof TAB_ACTION_TYPES.TOGGLE_PIN; tabId: string }
   | { type: typeof TAB_ACTION_TYPES.MOVE_TAB; dragTabId: string; toIndex: number }
   | { type: typeof TAB_ACTION_TYPES.SELECT_TAB; tabId: string; preserveActivePane?: boolean }

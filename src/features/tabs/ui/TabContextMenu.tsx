@@ -4,6 +4,7 @@ import {
   readBookmarkStatus,
   useBookmarkRevision,
 } from "src/features/bookmark/browser/use-bookmark-revision";
+import { closedTabMenuItems } from "src/features/tabs/browser/closed-tab-menu-items";
 import { useDetachedTabController } from "src/features/tabs/browser/use-detached-tab-controller";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import {
@@ -94,6 +95,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         icon: <RotateCcw />,
         onSelect: () => dispatch(tabActions.reopenClosedTab()),
       },
+      ...closedTabMenuItems(state.closedTabs, dispatch),
       { id: "sep-1", separator: true },
     ];
 
@@ -210,6 +212,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     currentPage,
     dispatch,
     hasClosedTabs,
+    state.closedTabs,
     bookmarkRevision,
     tabIsDetached,
     isThread,

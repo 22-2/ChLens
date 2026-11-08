@@ -392,7 +392,14 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-rows: min-content;
   align-content: start;
+  /* 幅変更ハンドルなどを横スクロールの対象にせず、縦方向だけ操作する。 */
+  overflow-x: hidden;
   overflow-y: auto;
+}
+
+.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__resize-handle {
+  /* 縦スクロール領域の外側へはみ出すと横方向にもスクロール幅が生じる。 */
+  right: 0;
 }
 
 .tab-bar--multiple-panes .tab-bar__vertical-header {
@@ -421,6 +428,14 @@
   /* DOMの更新順に左右されず、表示中の２枚を同じ行へ置く。 */
   grid-row: 2;
   order: -1;
+}
+
+/* 2ペインの選択中タブは同じ行に並ぶため、青線は行の左端だけに表示する。 */
+.tab-bar--vertical.tab-bar--multiple-panes
+  .tab-bar__pane-section
+  ~ .tab-bar__pane-section
+  .tab--active {
+  border-left-color: transparent;
 }
 
 .tab-bar--vertical.tab-bar--multiple-panes .tab-bar__add {
