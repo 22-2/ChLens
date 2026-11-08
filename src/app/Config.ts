@@ -109,6 +109,14 @@ export default class Config {
   }
 
   get(key: string): string | null {
+    // デモは既存設定より架空データの取得先を優先し、実在の板一覧へ切り替わるのを防ぐ。
+    if (
+      typeof __CHLENS_DEMO_BUILD__ !== "undefined" &&
+      __CHLENS_DEMO_BUILD__ &&
+      (key === "bbsmenu" || key === "format_2chnet")
+    ) {
+      return DEFAULT_CONFIG[key] ?? null;
+    }
     if (this._cache.has(`config_${key}`)) {
       return this._cache.get(`config_${key}`);
     }
@@ -124,6 +132,10 @@ export default class Config {
       object[`config_${key}`] = val;
     }
     Object.assign(object, Object.fromEntries(this._cache));
+    if (typeof __CHLENS_DEMO_BUILD__ !== "undefined" && __CHLENS_DEMO_BUILD__) {
+      object.config_bbsmenu = DEFAULT_CONFIG.bbsmenu!;
+      object.config_format_2chnet = DEFAULT_CONFIG.format_2chnet!;
+    }
     return object;
   }
 

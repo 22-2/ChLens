@@ -669,6 +669,7 @@ export default defineConfig(async ({ mode, command }) => {
       // 本番のChrome/FirefoxビルドではTauri専用の動的importを除去し、開発・テストでは実行時判定を保つ。
       __CHLENS_TAURI_BUILD__: JSON.stringify(command !== "build" || platform === "tauri"),
       __CHLENS_WEB_BUILD__: JSON.stringify(platform === "web"),
+      __CHLENS_DEMO_BUILD__: JSON.stringify(platform === "web" && process.env.WEB_DEMO === "true"),
       __CHLENS_WEB_BASE__: JSON.stringify(platform === "web" ? webBase : "/"),
       __CHLENS_WEB_PROXY_URL__: JSON.stringify(platform === "web" ? webProxyUrl : ""),
       // 変更理由: ビルド時刻・ハッシュはビルドごとに決まるため、ソースではなく注入で渡す（src/app/build-info.ts）。

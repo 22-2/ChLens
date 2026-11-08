@@ -14,6 +14,7 @@
     "analyze:chrome": "cross-env PLATFORM=chrome ENTRY=browser ANALYZE=true vp build",
     "build:firefox": "cross-env PLATFORM=firefox ENTRY=browser vp build",
     "build:web": "cross-env PLATFORM=web ENTRY=browser vp build",
+    "build:web:demo": "cross-env PLATFORM=web ENTRY=browser WEB_DEMO=true vp build",
     "preview:web": "cross-env PLATFORM=web vp preview --outDir debug/web --host 127.0.0.1 --port 4173 --strictPort",
     "build:extensions": "run-s build:chrome build:firefox",
     "build:tauri": "tauri build",

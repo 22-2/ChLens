@@ -12,6 +12,7 @@ import { TauriHttpClient } from "src/app/platform/tauri/HttpClient";
 import { TauriStorageManager } from "src/app/platform/tauri/StorageManager";
 import { TauriWindowManager } from "src/app/platform/tauri/WindowManager";
 import { Platform } from "src/app/platform/types";
+import { DemoHttpClient } from "src/app/platform/web/DemoHttpClient";
 import { WebHttpClient } from "src/app/platform/web/HttpClient";
 
 // Tauri v2は常に__TAURI_INTERNALSをメインウィンドウに注入する。
@@ -20,7 +21,14 @@ inheritTauriInternalsFromTopWindow();
 
 const isTauri = isTauriRuntime();
 // 拡張機能とTauriは全ウィンドウ共有、Web試用版は画面ごとにHTTP要求を制限する。
-const httpClient = isTauri ? TauriHttpClient : isWebRuntime() ? WebHttpClient : BrowserHttpClient;
+const isDemo = typeof __CHLENS_DEMO_BUILD__ !== "undefined" && __CHLENS_DEMO_BUILD__;
+const httpClient = isDemo
+  ? DemoHttpClient
+  : isTauri
+    ? TauriHttpClient
+    : isWebRuntime()
+      ? WebHttpClient
+      : BrowserHttpClient;
 
 export const platform: Platform = isTauri
   ? {
