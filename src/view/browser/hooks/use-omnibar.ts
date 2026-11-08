@@ -144,7 +144,7 @@ export function useOmnibar({
   // コマンドモードでは履歴ソースを待たずに候補を表示し、ルートに戻った時だけ遅延ロードする。
   const needsOmnibarEntries =
     isFocused && mode !== "command" && mode !== "writeHistory" && !isOmnibarLoaded;
-  // 読み込み開始の表示は描画中に立てる。effect で立てると、spinner なしの候補が一度描かれるため。
+  // 取得中は前回の候補を保ち、初回だけ不確かな空結果の表示を避ける。
   if (needsOmnibarEntries && !isOmnibarLoading) {
     setIsOmnibarLoading(true);
   }
@@ -170,7 +170,6 @@ export function useOmnibar({
         // 変更理由: 候補取得に失敗してもURLの直接入力は継続できるようにしつつ、
         // 履歴・お気に入りが消えた原因はログから追跡できるようにする。
         logger.error("Failed to load omnibar entries", { error });
-        setOmnibarEntries([]);
         setIsOmnibarLoaded(true);
       })
       .finally(() => {
@@ -204,7 +203,6 @@ export function useOmnibar({
       })
       .catch((error: unknown) => {
         logger.error("書き込み履歴の取得に失敗しました", error);
-        if (!cancelled) setWriteEntries([]);
       })
       .finally(() => {
         if (!cancelled) setIsWriteLoading(false);
@@ -324,7 +322,6 @@ export function useOmnibar({
   const enterMode = useCallback((nextMode: OmnibarSearchMode) => {
     setMode(nextMode);
     if (nextMode === "writeHistory") {
-      setWriteEntries([]);
       setIsWriteLoading(true);
     }
     setInputValue("");
@@ -370,12 +367,14 @@ export function useOmnibar({
 
       const isSelectable = (index: number) =>
         mode !== "command" || commandSuggestions[index]?.enabled === true;
-      let nextIndex = activeSuggestionIndex;
-
-      for (let step = 0; step < activeSuggestionCount; step += 1) {
-        nextIndex = (nextIndex + direction + activeSuggestionCount) % activeSuggestionCount;
-        if (isSelectable(nextIndex)) {
-          setActiveSuggestionIndex(nextIndex);
+      // 端では折り返さず、無効なコマンドも飛ばして同じ方向へ探す。
+      for (
+        let index = activeSuggestionIndex + direction;
+        index >= 0 && index < activeSuggestionCount;
+        index += direction
+      ) {
+        if (isSelectable(index)) {
+          setActiveSuggestionIndex(index);
           return;
         }
       }

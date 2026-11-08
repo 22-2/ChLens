@@ -100,3 +100,20 @@ test("候補の上でホイールを回しても自動追従がスクロール�
   const after = await list.evaluate((element) => element.scrollTop);
   expect(after - before).toBeCloseTo(80, 0);
 });
+
+test("候補の先頭と末尾では矢印キーが折り返さない", async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.keyboard.press("Control+Shift+P");
+  const input = page.getByPlaceholder("コマンドを検索...");
+  const list = page.getByRole("listbox", { name: "コマンド候補" });
+  const selected = list.locator('[role="option"][aria-selected="true"]');
+  await expect(selected).toHaveCount(1);
+  const first = await selected.getAttribute("aria-label");
+  await input.press("ArrowUp");
+  await expect(selected).toHaveAttribute("aria-label", first!);
+  for (let index = 0; index < 60; index += 1) await input.press("ArrowDown");
+  const last = await selected.getAttribute("aria-label");
+  expect(last).not.toBe(first);
+  await input.press("ArrowDown");
+  await expect(selected).toHaveAttribute("aria-label", last!);
+});

@@ -15,7 +15,6 @@ import {
   type OmnibarInputMode,
   type OmnibarSearchMode,
 } from "src/view/browser/hooks/use-omnibar";
-import { Spinner } from "src/view/browser/ui/Spinner";
 import type { OmnibarSource, OmnibarSuggestion } from "src/view/browser/utils/omnibar";
 
 interface OmnibarProps {
@@ -105,14 +104,13 @@ export const Omnibar: React.FC<OmnibarProps> = ({
     const selected = list?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
     if (!list || !selected) return;
     // 長い候補一覧でも矢印キーで選択した行を表示範囲に保つ。
-    const top = selected.offsetTop;
-    const bottom = top + selected.offsetHeight;
-    const visibleBottom =
-      list.scrollTop +
-      list.clientHeight -
-      (list.querySelector<HTMLElement>(".nav-bar__omnibar-count")?.offsetHeight ?? 0);
-    if (top < list.scrollTop) list.scrollTop = top;
-    else if (bottom > visibleBottom) list.scrollTop += bottom - visibleBottom;
+    const selectedRect = selected.getBoundingClientRect();
+    const listRect = list.getBoundingClientRect();
+    const footer = list.querySelector<HTMLElement>(".nav-bar__omnibar-count");
+    const visibleBottom = footer ? footer.getBoundingClientRect().top : listRect.bottom;
+    if (selectedRect.top < listRect.top) list.scrollTop -= listRect.top - selectedRect.top;
+    else if (selectedRect.bottom > visibleBottom)
+      list.scrollTop += selectedRect.bottom - visibleBottom;
   }, [activeSuggestionIndex, isOpen, mode]);
   const visibleCount =
     mode === "command" ? commandSuggestions.length : suggestions.length + availableModes.length;
@@ -159,13 +157,6 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           role="listbox"
           aria-label={mode === "command" ? "コマンド候補" : "候補"}
         >
-          {isLoading ? (
-            <div className="nav-bar__omnibar-empty nav-bar__omnibar-empty--loading">
-              <Spinner size="xs" aria-label="候補を読み込み中" />
-              <span>候補を読み込み中...</span>
-            </div>
-          ) : null}
-
           {availableModes.length > 0 ? (
             <div className="nav-bar__omnibar-section" role="presentation">
               モード
@@ -197,12 +188,12 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             );
           })}
 
-          {!isLoading && mode === "navigation" && suggestions.length > 0 ? (
+          {mode === "navigation" && suggestions.length > 0 ? (
             <div className="nav-bar__omnibar-section" role="presentation">
               候補
             </div>
           ) : null}
-          {!isLoading && mode !== "command" && suggestions.length > 0
+          {mode !== "command" && suggestions.length > 0
             ? suggestions.map((suggestion, index) => (
                 <button
                   key={`${suggestion.url}::${suggestion.actionLabel ?? ""}::${
@@ -244,7 +235,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
               ))
             : null}
 
-          {!isLoading && mode === "command" && commandSuggestions.length > 0
+          {mode === "command" && commandSuggestions.length > 0
             ? commandSuggestions.map((command, index) => {
                 const Icon = command.icon;
                 return (
@@ -282,7 +273,8 @@ export const Omnibar: React.FC<OmnibarProps> = ({
           {shouldShowNoMatch ? (
             <div className="nav-bar__omnibar-empty">一致する候補がありません</div>
           ) : null}
-          {!isLoading ? (
+          {!isLoading ||
+          (mode === "command" ? commandSuggestions.length > 0 : suggestions.length > 0) ? (
             <div
               className="nav-bar__omnibar-count"
               role="status"

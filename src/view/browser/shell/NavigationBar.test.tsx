@@ -329,6 +329,68 @@ describe("NavigationBar", () => {
     expect(screen.getByRole("status", { name: "表示 1 件 / 一致 1 件" })).toBeVisible();
   });
 
+  it("再表示時の更新中も前回の閲覧履歴を読み込み表示なしで使える", async () => {
+    const old = [{ url: "https://example.com/test/read.cgi/board/1/", title: "前回の履歴" }];
+    let finishRefresh: ((rows: typeof old) => void) | undefined;
+    const pending = new Promise<typeof old>((resolve) => {
+      finishRefresh = resolve;
+    });
+    historyGetMock.mockResolvedValueOnce(old).mockReturnValueOnce(pending);
+    render(<NavigationBar />);
+    openUrlBar();
+    await screen.findByRole("option", { name: /前回の履歴/ });
+    fireEvent.pointerDown(document.body);
+    openUrlBar();
+    expect(screen.getByRole("option", { name: /前回の履歴/ })).toBeInTheDocument();
+    expect(screen.queryByText("候補を読み込み中...")).not.toBeInTheDocument();
+    await act(async () => finishRefresh?.([{ ...old[0], title: "更新後の履歴" }]));
+    expect(await screen.findByRole("option", { name: /更新後の履歴/ })).toBeInTheDocument();
+  });
+
+  it("書き込み履歴を再度開くと更新中も前回の候補を使える", async () => {
+    const rows = [
+      {
+        url: "https://example.com/test/read.cgi/board/123/",
+        title: "テストスレ",
+        res: 12,
+        message: "前回の投稿",
+      },
+    ];
+    let finishRefresh: ((value: typeof rows) => void) | undefined;
+    const pending = new Promise<typeof rows>((resolve) => {
+      finishRefresh = resolve;
+    });
+    container.writeHistory = {
+      get: vi.fn().mockResolvedValueOnce(rows).mockReturnValueOnce(pending),
+    } as unknown as typeof container.writeHistory;
+    render(<NavigationBar />);
+    openUrlBar();
+    fireEvent.click(await screen.findByRole("option", { name: /書き込み履歴.*モード/ }));
+    await screen.findByRole("option", { name: /前回の投稿/ });
+    fireEvent.keyDown(screen.getByPlaceholderText("書き込み履歴を検索..."), { key: "Backspace" });
+    fireEvent.click(screen.getByRole("option", { name: /書き込み履歴.*モード/ }));
+    expect(screen.getByRole("option", { name: /前回の投稿/ })).toBeInTheDocument();
+    expect(screen.queryByText("候補を読み込み中...")).not.toBeInTheDocument();
+    await act(async () => finishRefresh?.([{ ...rows[0], message: "更新後の投稿" }]));
+    expect(await screen.findByRole("option", { name: /更新後の投稿/ })).toBeInTheDocument();
+  });
+
+  it("矢印キーは候補の先頭と末尾で折り返さない", async () => {
+    historyGetMock.mockResolvedValue([]);
+    render(<NavigationBar />);
+    openUrlBar();
+    const input = await screen.findByPlaceholderText("URLを入力");
+    fireEvent.change(input, { target: { value: "履歴" } });
+    const first = screen.getByRole("option", { name: /閲覧履歴.*モード/ });
+    expect(first).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    expect(first).toHaveAttribute("aria-selected", "true");
+    const last = screen.getByRole("option", { name: /書き込み履歴.*モード/ });
+    fireEvent.mouseEnter(last);
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(last).toHaveAttribute("aria-selected", "true");
+  });
+
   it("書き込み履歴を本文で検索し選んだレスへ移動する", async () => {
     const url = "https://example.com/test/read.cgi/board/123/";
     container.writeHistory = {
