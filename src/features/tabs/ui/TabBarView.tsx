@@ -219,8 +219,18 @@ export interface TabBarViewProps {
    * タブバーの外（窓の外を含む）でドラッグを終えたときに、離した画面上の位置を渡す。
    * 窓をまたぐ移動として処理できたら true を返し、タブバー内の並べ替えは行わない。
    */
-  onDragTabOut?: (tabId: string, screenX: number, screenY: number) => boolean;
-  onDragTabPreview?: (tabId: string, screenX: number, screenY: number) => void;
+  onDragTabOut?: (
+    tabId: string,
+    screenX: number,
+    screenY: number,
+    clientPoint: { x: number; y: number },
+  ) => boolean;
+  onDragTabPreview?: (
+    tabId: string,
+    screenX: number,
+    screenY: number,
+    clientPoint: { x: number; y: number },
+  ) => void;
   onDragTabPreviewEnd?: () => void;
   /** 選択中タブから delta 個ぶん前後へ切り替える。切り替えられなければ false を返す。 */
   onStepTab: (delta: 1 | -1) => boolean;
@@ -287,7 +297,11 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   const lastWheelSwitchAtRef = useRef(0);
   // ドラッグ終了直後の click イベントによるタブ選択を抑止するためのフラグ。
   const wasDraggingRef = useRef(false);
-  const lastDragScreenPointRef = useRef<{ x: number; y: number } | null>(null);
+  const lastDragScreenPointRef = useRef<{
+    x: number;
+    y: number;
+    clientPoint: { x: number; y: number };
+  } | null>(null);
   const stopDragTrackingRef = useRef<(() => void) | null>(null);
   const stopTrackingDragPointer = useCallback(() => {
     stopDragTrackingRef.current?.();
@@ -512,7 +526,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       const sourceId = event.operation.source?.id;
       // 窓の外で離した場合だけ、窓をまたぐ移動を試す。
       if (!event.canceled && lastPoint && sourceId != null && onDragTabOut) {
-        if (onDragTabOut(String(sourceId), lastPoint.x, lastPoint.y)) {
+        if (onDragTabOut(String(sourceId), lastPoint.x, lastPoint.y, lastPoint.clientPoint)) {
           wasDraggingRef.current = true;
           return;
         }
@@ -536,8 +550,10 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       if (!ownerDocument) return;
       const tabId = event.operation.source?.id;
       const track = (event: PointerEvent) => {
-        lastDragScreenPointRef.current = { x: event.screenX, y: event.screenY };
-        if (tabId != null) onDragTabPreview?.(String(tabId), event.screenX, event.screenY);
+        const clientPoint = { x: event.clientX, y: event.clientY };
+        lastDragScreenPointRef.current = { x: event.screenX, y: event.screenY, clientPoint };
+        if (tabId != null)
+          onDragTabPreview?.(String(tabId), event.screenX, event.screenY, clientPoint);
       };
       ownerDocument.addEventListener("pointermove", track, { capture: true });
       stopDragTrackingRef.current = () =>

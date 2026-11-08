@@ -52,8 +52,8 @@ export const TabBar: React.FC<{
   const toast = useToast();
 
   const handleDragTabOut = useCallback(
-    (tabId: string, screenX: number, screenY: number) => {
-      const result = dropTabAtScreenPoint(tabId, screenX, screenY, viewWindow);
+    (tabId: string, screenX: number, screenY: number, clientPoint: { x: number; y: number }) => {
+      const result = dropTabAtScreenPoint(tabId, screenX, screenY, viewWindow, clientPoint);
       if (result === "failed") {
         // 窓を開けなかったときはタブを元の位置に残し、代わりの操作を案内する。
         toast.error(
@@ -120,7 +120,9 @@ export const TabBar: React.FC<{
       onAddTab={model.onAddTab}
       onMoveTab={model.onMoveTab}
       onDragTabOut={handleDragTabOut}
-      onDragTabPreview={(tabId, x, y) => previewTabDrop(tabId, x, y, viewWindow)}
+      onDragTabPreview={(tabId, x, y, clientPoint) =>
+        previewTabDrop(tabId, x, y, viewWindow, clientPoint)
+      }
       onDragTabPreviewEnd={clearTabDropPreview}
       onStepTab={model.onStepTab}
       onSetCollapsed={setCollapsed}

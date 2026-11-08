@@ -91,17 +91,29 @@ function resolveExistingDrop(
   tabId: string,
   screenX: number,
   screenY: number,
+  clientPoint?: { x: number; y: number },
 ): ExistingDrop | null {
   const source = locate(state.panes, tabId);
   if (!source) return null;
-  const inOrigin = isPointInRect(getWindowScreenRect(origin), screenX, screenY);
+  // 操作元のclient座標は外枠の推定値より正確で、最大化やブラウザのUIの影響を受けない。
+  const inOrigin = clientPoint
+    ? clientPoint.x >= 0 &&
+      clientPoint.x < origin.innerWidth &&
+      clientPoint.y >= 0 &&
+      clientPoint.y < origin.innerHeight
+    : isPointInRect(getWindowScreenRect(origin), screenX, screenY);
   const target = candidates.find(
     (candidate) =>
       (inOrigin ? candidate.window === origin : candidate.window !== origin) &&
-      isPointInRect(getWindowScreenRect(candidate.window), screenX, screenY),
+      (candidate.window === origin && clientPoint
+        ? inOrigin
+        : isPointInRect(getWindowScreenRect(candidate.window), screenX, screenY)),
   );
   if (!target) return null;
-  const point = screenToClientPoint(target.window, screenX, screenY);
+  const point =
+    target.window === origin && clientPoint
+      ? clientPoint
+      : screenToClientPoint(target.window, screenX, screenY);
   // ドラッグ中のタブ自身がポインタの下を覆っても、その背後の移動先を判定する。
   const doc = target.window.document;
   const hits = doc.elementsFromPoint?.(point.x, point.y) ?? [
@@ -310,7 +322,13 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
     previewRef.current = null;
   }, []);
   const resolveDrop = useCallback(
-    (tabId: string, screenX: number, screenY: number, originWindow: Window) => {
+    (
+      tabId: string,
+      screenX: number,
+      screenY: number,
+      originWindow: Window,
+      clientPoint?: { x: number; y: number },
+    ) => {
       const candidates = [
         ...[...entriesRef.current.values()]
           .filter((entry) => !entry.window.closed)
@@ -325,20 +343,30 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
         tabId,
         screenX,
         screenY,
+        clientPoint,
       );
     },
     [stateRef],
   );
   const previewTabDrop = useCallback(
-    (tabId: string, screenX: number, screenY: number, originWindow: Window) => {
+    (
+      tabId: string,
+      screenX: number,
+      screenY: number,
+      originWindow: Window,
+      clientPoint?: { x: number; y: number },
+    ) => {
       clearTabDropPreview();
-      const target = resolveDrop(tabId, screenX, screenY, originWindow);
+      const target = resolveDrop(tabId, screenX, screenY, originWindow, clientPoint);
       if (!target) return;
       const rect = target.element.getBoundingClientRect();
       const preview = target.window.document.createElement("div");
       preview.className = "workspace-tab-drop-preview";
       if (target.kind === "insert") {
-        const point = screenToClientPoint(target.window, screenX, screenY);
+        const point =
+          target.window === originWindow && clientPoint
+            ? clientPoint
+            : screenToClientPoint(target.window, screenX, screenY);
         const vertical = Boolean(target.element.closest(".tab-bar--vertical"));
         const before = isBeforeTabCenter(rect, point, vertical);
         preview.classList.add(
@@ -364,11 +392,17 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
   );
   useEffect(() => clearTabDropPreview, [clearTabDropPreview]);
   const dropTabAtScreenPoint = useCallback(
-    (tabId: string, screenX: number, screenY: number, originWindow: Window): TabDropResult => {
+    (
+      tabId: string,
+      screenX: number,
+      screenY: number,
+      originWindow: Window,
+      clientPoint?: { x: number; y: number },
+    ): TabDropResult => {
       const state = stateRef.current;
       const found = locate(state.panes, tabId);
       if (!found) return "ignored";
-      const target = resolveDrop(tabId, screenX, screenY, originWindow);
+      const target = resolveDrop(tabId, screenX, screenY, originWindow, clientPoint);
       if (target) {
         const to =
           target.kind === "split-left" || target.kind === "split-right"

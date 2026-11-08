@@ -18,7 +18,13 @@ export interface DetachedTabController {
   /** 別窓とタブを一緒に閉じる。 */
   closeDetachedTab: (tabId: string) => void;
   focusTabWindow: (tabId: string) => void;
-  previewTabDrop: (tabId: string, screenX: number, screenY: number, originWindow: Window) => void;
+  previewTabDrop: (
+    tabId: string,
+    screenX: number,
+    screenY: number,
+    originWindow: Window,
+    clientPoint?: { x: number; y: number },
+  ) => void;
   clearTabDropPreview: () => void;
   /**
    * ドラッグしたタブを画面上の位置 (screenX, screenY) で離したときの移動先を決めて移す。
@@ -29,6 +35,7 @@ export interface DetachedTabController {
     screenX: number,
     screenY: number,
     originWindow: Window,
+    clientPoint?: { x: number; y: number },
   ) => TabDropResult;
 }
 
