@@ -310,6 +310,25 @@ describe("NavigationBar", () => {
     );
   });
 
+  it("閲覧履歴は300件を超えた古い履歴も検索と件数に含める", async () => {
+    const history = Array.from({ length: 360 }, (_, index) => ({
+      url: `https://example.com/test/read.cgi/board/${index + 1}/`,
+      title: `閲覧 ${index + 1}`,
+    }));
+    historyGetMock.mockImplementation(async (offset = 0, limit = -1) =>
+      limit < 0 ? history.slice(Math.max(0, offset)) : history.slice(offset, offset + limit),
+    );
+    render(<NavigationBar />);
+    openUrlBar();
+    fireEvent.click(await screen.findByRole("option", { name: /閲覧履歴.*モード/ }));
+    expect(await screen.findByRole("status", { name: "表示 50 件 / 一致 360 件" })).toBeVisible();
+    fireEvent.change(screen.getByPlaceholderText("閲覧履歴を検索..."), {
+      target: { value: "閲覧 360" },
+    });
+    expect(screen.getByRole("option", { name: /閲覧 360/ })).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "表示 1 件 / 一致 1 件" })).toBeVisible();
+  });
+
   it("書き込み履歴を本文で検索し選んだレスへ移動する", async () => {
     const url = "https://example.com/test/read.cgi/board/123/";
     container.writeHistory = {

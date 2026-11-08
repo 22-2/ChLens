@@ -33,8 +33,6 @@ interface LegacyHistoryLike {
   date?: unknown;
 }
 
-const OMNIBAR_HISTORY_FETCH_COUNT = 300;
-
 function normalizeString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
@@ -115,7 +113,8 @@ async function readBookmarkSources(): Promise<OmnibarBookmarkSource[]> {
 
 async function readHistorySources(): Promise<OmnibarHistorySource[]> {
   // window.app ではなくサービスコンテナの閲覧履歴から読む（legacy-window-app-plan の Phase 1）。
-  const raw = await container.history.get(0, OMNIBAR_HISTORY_FETCH_COUNT);
+  // 検索と件数は古い履歴も対象にする。表示件数の制限は候補作成時にかける。
+  const raw = await container.history.get();
   if (!Array.isArray(raw)) {
     return [];
   }
