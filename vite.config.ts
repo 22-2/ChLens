@@ -642,6 +642,7 @@ export default defineConfig(async ({ mode, command }) => {
       "process.env.NODE_ENV": JSON.stringify(mode),
       // 本番のChrome/FirefoxビルドではTauri専用の動的importを除去し、開発・テストでは実行時判定を保つ。
       __CHLENS_TAURI_BUILD__: JSON.stringify(command !== "build" || platform === "tauri"),
+      __CHLENS_WEB_BUILD__: JSON.stringify(platform === "web"),
       // 変更理由: ビルド時刻・ハッシュはビルドごとに決まるため、ソースではなく注入で渡す（src/app/build-info.ts）。
       __CHLENS_BUILD_INFO__: JSON.stringify(resolveBuildInfo()),
     },
@@ -684,7 +685,7 @@ export default defineConfig(async ({ mode, command }) => {
         // Chlens側もLive側と同じ共有rules sourceを解決し、評価器の二重実装を防ぐ。
         "@chlen/chlib": path.resolve(__dirname, "./packages/chlib/src/index.ts"),
         "webextension-polyfill":
-          platform === "tauri"
+          platform === "tauri" || platform === "web"
             ? path.resolve(__dirname, "./src/browser-shim.js")
             : "webextension-polyfill",
       },

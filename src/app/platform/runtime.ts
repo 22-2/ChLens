@@ -9,6 +9,11 @@ export function isTauriRuntime(): boolean {
   return typeof window !== "undefined" && hasTauriInternals(window);
 }
 
+// テストやStorybookもHTTP上で動くため、実行環境はWeb版ビルド時に明示する。
+export function isWebRuntime(): boolean {
+  return typeof __CHLENS_WEB_BUILD__ !== "undefined" && __CHLENS_WEB_BUILD__;
+}
+
 // Why: iframe on Tauri does not always receive injected internals; copy from same-origin top window once.
 export function inheritTauriInternalsFromTopWindow(): void {
   if (typeof window === "undefined" || self === top || hasTauriInternals(window)) {

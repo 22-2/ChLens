@@ -13,6 +13,7 @@
     "build:chrome": "cross-env PLATFORM=chrome ENTRY=browser vp build",
     "analyze:chrome": "cross-env PLATFORM=chrome ENTRY=browser ANALYZE=true vp build",
     "build:firefox": "cross-env PLATFORM=firefox ENTRY=browser vp build",
+    "build:web": "cross-env PLATFORM=web ENTRY=browser vp build",
     "build:extensions": "run-s build:chrome build:firefox",
     "build:tauri": "tauri build",
     "// E2E用のTauri版。保存先を CHLENS_DATA_DIR へ差し替えられる実行ファイルだけを作り、インストーラーは作らない": "",

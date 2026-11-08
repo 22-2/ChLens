@@ -1,6 +1,6 @@
 import { ChURL } from "packages/chlib/src/index";
 import message from "src/app/Message";
-import { isTauriRuntime } from "src/app/platform/runtime";
+import { isTauriRuntime, isWebRuntime } from "src/app/platform/runtime";
 import { Entry, ReadState, SyncableEntryList } from "src/core/bookmark/BookmarkEntryList";
 import BrowserBookmarkEntryList from "src/core/bookmark/BrowserBookmarkEntryList";
 import IDBBookmarkEntryList from "src/core/bookmark/IDBBookmarkEntryList";
@@ -22,7 +22,8 @@ export default class Bookmark {
   readonly promiseFirstScan: Promise<boolean>;
 
   constructor(rootIdNode: string) {
-    if (isTauriRuntime()) {
+    // Web版にはブラウザのブックマークAPIがないため、Tauriと同じIndexedDBを使う。
+    if (isTauriRuntime() || isWebRuntime()) {
       this.bel = new IDBBookmarkEntryList();
     } else {
       this.bel = new BrowserBookmarkEntryList(rootIdNode);
