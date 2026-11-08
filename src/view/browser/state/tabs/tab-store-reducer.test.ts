@@ -328,6 +328,24 @@ describe("タブ内の履歴の移動", () => {
     expect(tabReducer(state, tabActions.navigate(thread(3)))).toBe(state);
   });
 
+  it("固定タブからの遷移は元のページを残して別タブを開く", () => {
+    const pinned = { ...createTabWithHistory(pages, 1), pinned: true };
+    const state = createState([pinned]);
+    for (const action of [
+      tabActions.navigate(thread(9)),
+      tabActions.navigateTab(pinned.id, thread(9)),
+    ]) {
+      const next = tabReducer(state, action);
+      expect(next.panes[0].tabs[0]).toBe(pinned);
+      expect(next.panes[0].tabs).toHaveLength(2);
+      expect(activeTabOf(next).history.at(-1)).toEqual(thread(9));
+      expect(activeTabOf(next).pinned).toBe(false);
+    }
+    expect(tabReducer(state, tabActions.goBack())).toBe(state);
+    expect(tabReducer(state, tabActions.goForward())).toBe(state);
+    expect(tabReducer(state, tabActions.goToHistoryIndex(0))).toBe(state);
+  });
+
   it("タブ指定の遷移で現在と同じページなら、そのタブを選ぶだけで履歴は積まない", () => {
     const first = createTabWithHistory([thread(1)]);
     const second = createTabWithHistory(pages, 2);

@@ -312,7 +312,15 @@ export const TabProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         case TAB_ACTION_TYPES.NAVIGATE_TAB: {
           // 対象タブが明示されていれば別窓の描画タブを記録し、省略時は従来どおりペインのactiveTabを記録する。
           const paneId = resolvePaneId(prevState, action.paneId);
-          const targetTabId = action.tabId ?? getPane(nextState, paneId).activeTabId;
+          // 固定タブからの遷移では新しく選ばれたタブに閲覧履歴を記録する。
+          const previousIds = new Set(
+            prevState.panes.flatMap((pane) => pane.tabs.map((tab) => tab.id)),
+          );
+          const inserted = nextState.panes
+            .flatMap((pane) => pane.tabs)
+            .find((tab) => !previousIds.has(tab.id));
+          const targetTabId =
+            inserted?.id ?? action.tabId ?? getPane(nextState, paneId).activeTabId;
           recordThreadVisitForTab(targetTabId);
           return;
         }

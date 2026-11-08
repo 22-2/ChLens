@@ -268,9 +268,9 @@ export function ensurePaneHasTab<T extends { tabs: Tab[]; activeTabId: string }>
 
 export function canGoBack(tab: Tab): boolean {
   // ホームへの戻るも同じタブの履歴で行い、他のタブを選択しない。
-  return tab.currentIndex > 0;
+  return !tab.pinned && tab.currentIndex > 0;
 }
 
 export function canGoForward(tab: Tab): boolean {
-  return tab.currentIndex < tab.history.length - 1;
+  return !tab.pinned && tab.currentIndex < tab.history.length - 1;
 }

@@ -418,6 +418,17 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
         return state;
       }
 
+      // 固定したページを残し、遷移先は同じペインの別タブで表示する。
+      if (targetTab.pinned) {
+        const owner = state.panes.find((pane) => pane.tabs.some((tab) => tab.id === targetTab.id));
+        return reduceTabState(state, {
+          type: TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE,
+          page: action.page,
+          paneId: owner?.id ?? paneId,
+          focus: true,
+        });
+      }
+
       const nextState = updateTargetTab(state, paneId, action.tabId, (tab) =>
         resetAutoRefreshState(pushPageToTabHistory(tab, action.page)),
       );
@@ -446,6 +457,15 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
         };
       }
 
+      if (targetTab.pinned) {
+        return reduceTabState(state, {
+          type: TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE,
+          page: action.page,
+          paneId,
+          focus: true,
+        });
+      }
+
       // 指定タブの実履歴を保ったままページを追加する。
       return {
         ...updatePane(state, paneId, (p) => ({
@@ -467,6 +487,7 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
       if (!tab) return state;
       // 戻るはタブ内の履歴を一つ戻すだけにし、別のホームタブへ転送しない。
       if (tab.currentIndex <= 0) return state;
+      if (tab.pinned) return state;
       return updateTargetTab(state, paneId, action.tabId, (t) =>
         resetAutoRefreshState({
           ...t,
@@ -482,6 +503,7 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
         : getPaneActiveTab(getPane(state, paneId));
       if (!tab) return state;
       if (tab.currentIndex >= tab.history.length - 1) return state;
+      if (tab.pinned) return state;
       return updateTargetTab(state, paneId, action.tabId, (t) =>
         resetAutoRefreshState({
           ...t,
@@ -498,6 +520,7 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
       if (!tab) return state;
       if (action.index < 0 || action.index >= tab.history.length) return state;
       if (action.index === tab.currentIndex) return state;
+      if (tab.pinned) return state;
       return updateTargetTab(state, paneId, action.tabId, (t) =>
         resetAutoRefreshState({
           ...t,
@@ -624,6 +647,33 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
 
     case TAB_ACTION_TYPES.FOLLOW_NEXT_THREAD: {
       const paneId = resolvePaneId(state, action.paneId);
+      const targetTab = action.tabId
+        ? findTabAcrossPanes(state, action.tabId)
+        : getPaneActiveTab(getPane(state, paneId));
+      if (targetTab?.pinned) {
+        const owner = state.panes.find((pane) => pane.tabs.some((tab) => tab.id === targetTab.id));
+        const destinationId = owner?.id ?? paneId;
+        const opened = reduceTabState(state, {
+          type: TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE,
+          page: action.page,
+          paneId: destinationId,
+          focus: true,
+        });
+        if (!action.keepAutoRefresh) return opened;
+        // 次スレ待機の引き継ぎ先を新しいタブに束縛する。
+        return updatePane(opened, destinationId, (pane) => ({
+          ...pane,
+          tabs: pane.tabs.map((tab) =>
+            tab.id === pane.activeTabId
+              ? {
+                  ...tab,
+                  autoRefreshEnabled: true,
+                  autoRefreshPageKey: getAutoRefreshPageKey(action.page),
+                }
+              : tab,
+          ),
+        }));
+      }
       return updateTargetTab(state, paneId, action.tabId, (tab) => {
         const nextTab = pushPageToTabHistory(tab, action.page);
         // 自動次スレ移動は「このタブの流れ」を保つのが目的なので、
