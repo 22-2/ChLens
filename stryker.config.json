@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/core/util/map-with-concurrency.ts",
+    "src/features/media/ui/external-image-state.ts",
+    "packages/chlib/src/url/ChURL.ts",
+    "packages/chlib/src/url/patterns.ts",
+    "packages/chlib/src/parser/ThreadParser.ts"
+  ],
+  "testFiles": [
+    "src/core/util/map-with-concurrency.test.ts",
+    "src/features/media/ui/external-image-state.test.ts",
+    "packages/chlib/src/url/ChURL*.test.ts",
+    "packages/chlib/src/url/patterns.test.ts",
+    "packages/chlib/src/parser/ThreadParser.test.ts",
+    "src/core/thread/ThreadParser.test.ts"
+  ],
+  "ignorePatterns": ["/coverage", "/debug", "/build"],
+  "tsconfigFile": "stryker-unused-tsconfig.json",
+  "concurrency": 2,
+  "reporters": ["progress", "clear-text", "html"],
+  "htmlReporter": { "fileName": "reports/mutation/mutation.html" },
+  "vitest": { "configFile": "vitest.config.ts" }
+}

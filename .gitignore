@@ -24,6 +24,8 @@ lib-cov
 
 # Coverage directory used by tools like istanbul
 coverage
+.stryker-tmp/
+reports/mutation/
 *.lcov
 
 # nyc test coverage

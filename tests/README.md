@@ -1,3 +1,17 @@
+# ミューテーションテスト
+
+```powershell
+pnpm run test:mutation
+```
+
+StrykerJSが実装に小さな変更を加え、既存のVitestテストで検出できるかを調べます。
+同時実行数制限、URL解析、スレッドパーサー、画像の遅延読み込み判定を対象にしています。
+対象は `stryker.config.json` の `mutate` と `testFiles` で変更できます。結果はコンソールと
+`reports/mutation/mutation.html` に出力されます。通常のテストやCIとは別に実行します。
+Strykerのtsconfig書き換え処理はTypeScript 7と互換性がないため、存在しない設定ファイルを
+指定して回避しています。Vitestは通常どおり `tsconfig.json` を使用します。この回避策は
+tsconfigの `extends` や `references` にサンドボックス外への相対パスがない場合に限って使えます。
+
 # E2Eテスト
 
 Chrome拡張版をビルドし、Playwrightの専用Chromiumで画面操作を検証します。
