@@ -234,6 +234,57 @@ describe("NavigationBar", () => {
     expect(input).toHaveAttribute("placeholder", "URLを入力");
   });
 
+  it("ルートの各モードは選んだ出典だけを検索する", async () => {
+    bookmarkGetAllMock.mockReturnValue([
+      { url: "https://example.com/test/read.cgi/board/1/", title: "お気に入りのスレ" },
+    ]);
+    historyGetMock.mockResolvedValue([
+      { url: "https://example.com/test/read.cgi/board/2/", title: "閲覧したスレ" },
+    ]);
+    container.bbsMenu = {
+      get: vi.fn(async () => ({
+        status: "success",
+        menu: [
+          { categories: [{ boards: [{ url: "https://example.com/board/", name: "テスト板" }] }] },
+        ],
+      })),
+    } as unknown as typeof container.bbsMenu;
+    render(<NavigationBar />);
+    openUrlBar();
+    const input = await screen.findByPlaceholderText("URLを入力");
+    for (const [mode, placeholder, expected, excluded] of [
+      ["お気に入り", "お気に入りを検索...", "お気に入りのスレ", "閲覧したスレ"],
+      ["板", "板を検索...", "テスト板", "お気に入りのスレ"],
+      ["閲覧履歴", "閲覧履歴を検索...", "閲覧したスレ", "お気に入りのスレ"],
+    ]) {
+      fireEvent.click(
+        await screen.findByRole("option", { name: new RegExp(`${mode}.*モードを開く`) }),
+      );
+      expect(input).toHaveAttribute("placeholder", placeholder);
+      expect(await screen.findByRole("option", { name: new RegExp(expected) })).toBeInTheDocument();
+      expect(screen.queryByRole("option", { name: new RegExp(excluded) })).not.toBeInTheDocument();
+      fireEvent.keyDown(input, { key: "Escape" });
+    }
+  });
+
+  it("書き込み履歴を本文で検索し選んだレスへ移動する", async () => {
+    const url = "https://example.com/test/read.cgi/board/123/";
+    container.writeHistory = {
+      get: vi.fn(async () => [
+        { url, title: "テストスレ", res: 12, message: "最初の投稿" },
+        { url, title: "テストスレ", res: 34, message: "探している投稿" },
+      ]),
+    } as unknown as typeof container.writeHistory;
+    render(<NavigationBar />);
+    openUrlBar();
+    fireEvent.click(await screen.findByRole("option", { name: /書き込み履歴.*モードを開く/ }));
+    const input = screen.getByPlaceholderText("書き込み履歴を検索...");
+    await screen.findByRole("option", { name: /最初の投稿/ });
+    fireEvent.change(input, { target: { value: "探している" } });
+    fireEvent.click(screen.getByRole("option", { name: /#34.*探している投稿/ }));
+    expect(requestThreadResJumpMock).toHaveBeenCalledWith(url, 34);
+  });
+
   it("コマンドパレットはフォーカスアウトで閉じる", async () => {
     render(<NavigationBar />);
 

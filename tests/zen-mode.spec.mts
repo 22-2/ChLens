@@ -31,3 +31,20 @@ test("Zenモードをコマンドから切り替え、パレットを再び開�
   await expect(page.locator(".title-bar")).toBeVisible();
   await expect(page.locator(".tab-bar")).toBeVisible();
 });
+
+test("オムニバーのルートから各モードに入り戻れる", async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  for (const [label, placeholder] of [
+    ["お気に入り", "お気に入りを検索..."],
+    ["板", "板を検索..."],
+    ["閲覧履歴", "閲覧履歴を検索..."],
+    ["書き込み履歴", "書き込み履歴を検索..."],
+  ]) {
+    await page.getByRole("option", { name: new RegExp(`${label}.*モードを開く`) }).click();
+    const input = page.getByPlaceholder(placeholder);
+    await expect(input).toBeFocused();
+    await input.press("Escape");
+    await expect(page.getByPlaceholder("URLを入力")).toBeFocused();
+  }
+});
