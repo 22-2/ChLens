@@ -9,7 +9,8 @@ test("2ペインの垂直タブバーは横にはみ出さず縦にスクロー�
   const command = async (name: string) => {
     await page.getByTitle("メニュー", { exact: true }).click();
     await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
-    await page.getByPlaceholder("コマンドを検索...").fill(`>${name}`);
+    // メニューから開いたパレットはコマンド入力モードなので、接頭辞を付けずに検索する。
+    await page.getByPlaceholder("コマンドを検索...").fill(name);
     await page.getByRole("option", { name: new RegExp(name, "u") }).click();
   };
   await command("2ペインで表示");
