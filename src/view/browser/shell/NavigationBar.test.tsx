@@ -194,16 +194,16 @@ describe("NavigationBar", () => {
     expect(within(option).getByRole("img", { name: "閲覧履歴・ブックマーク" })).toBeInTheDocument();
   });
 
-  it("> prefixでコマンドを検索し、Ctrl+Shift+Pでコマンドモードを開く", async () => {
+  it("Ctrl+Shift+Pでコマンドモードを開き検索する", async () => {
     render(<NavigationBar />);
 
     fireEvent.keyDown(window, { key: "P", ctrlKey: true, shiftKey: true });
 
     const input = await screen.findByPlaceholderText("コマンドを検索...");
-    expect(input).toHaveValue(">");
+    expect(input).toHaveValue("");
     expect(screen.getByRole("listbox", { name: "コマンド候補" })).toBeInTheDocument();
 
-    fireEvent.change(input, { target: { value: ">設定" } });
+    fireEvent.change(input, { target: { value: "設定" } });
     expect(screen.getByRole("option", { name: /設定を開く/ })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("option", { name: /設定を開く/ }));
@@ -214,6 +214,24 @@ describe("NavigationBar", () => {
         page: { type: "settings", title: "設定" },
       });
     });
+  });
+
+  it("ルートからコマンドに入りEscで戻り、再び選択できる", async () => {
+    render(<NavigationBar />);
+    openUrlBar();
+    const input = await screen.findByPlaceholderText("URLを入力");
+    const mode = await screen.findByRole("option", { name: /コマンド.*モードを開く/ });
+    fireEvent.click(mode);
+    expect(input).toHaveAttribute("placeholder", "コマンドを検索...");
+    fireEvent.change(input, { target: { value: "設定" } });
+    expect(screen.getByRole("option", { name: /設定を開く/ })).toBeInTheDocument();
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(input).toHaveAttribute("placeholder", "URLを入力");
+    expect(input).toHaveValue("");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input).toHaveAttribute("placeholder", "コマンドを検索...");
+    fireEvent.click(screen.getByRole("button", { name: "ルートに戻る" }));
+    expect(input).toHaveAttribute("placeholder", "URLを入力");
   });
 
   it("コマンドパレットはフォーカスアウトで閉じる", async () => {
@@ -254,7 +272,7 @@ describe("NavigationBar", () => {
 
     fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
     const input = await screen.findByPlaceholderText("コマンドを検索...");
-    fireEvent.change(input, { target: { value: ">レス番号" } });
+    fireEvent.change(input, { target: { value: "レス番号" } });
     fireEvent.click(screen.getByRole("option", { name: /レス番号を指定してジャンプ/ }));
 
     const responseNumber = await screen.findByLabelText("レス番号");
@@ -272,7 +290,7 @@ describe("NavigationBar", () => {
 
     fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
     const input = await screen.findByPlaceholderText("コマンドを検索...");
-    fireEvent.change(input, { target: { value: ">42" } });
+    fireEvent.change(input, { target: { value: "42" } });
 
     const jumpOption = await screen.findByRole("option", { name: /レス42へジャンプ/ });
     expect(screen.getAllByRole("option")[0]).toBe(jumpOption);
@@ -293,7 +311,7 @@ describe("NavigationBar", () => {
     fireEvent.keyDown(window, { key: "p", ctrlKey: true, shiftKey: true });
     const input = await screen.findByPlaceholderText("コマンドを検索...");
     fireEvent.change(input, {
-      target: { value: ">https://example.com/test/read.cgi/software/1788743729/" },
+      target: { value: "https://example.com/test/read.cgi/software/1788743729/" },
     });
 
     const openOption = await screen.findByRole("option", { name: /このURLを開く/ });
