@@ -96,7 +96,8 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         onSelect: () => dispatch(tabActions.reopenClosedTab()),
       },
       ...closedTabMenuItems(state.closedTabs, dispatch),
-      { id: "sep-1", separator: true },
+      // 履歴があるときは closedTabMenuItems が末尾に区切り線を出す。なければここで区切る。
+      ...(state.closedTabs.length === 0 ? [{ id: "sep-1", separator: true }] : []),
     ];
 
     // 変更理由: 他・右側・すべてのタブを閉じる操作は、タブ固有のメニューから分離して
