@@ -6,7 +6,8 @@ import { container } from "src/service-container";
 import type { Tab } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const { copyTextMock, dispatchMock, threadTab, secondTab } = vi.hoisted(() => ({
+const { copyTextMock, dispatchMock, threadTab, secondTab, closedTabs } = vi.hoisted(() => ({
+  closedTabs: [] as Tab[],
   copyTextMock: vi.fn<() => Promise<void>>(),
   dispatchMock: vi.fn(),
   threadTab: {
@@ -49,7 +50,7 @@ vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabStore: () => ({
     state: {
       tabs: [threadTab, secondTab],
-      closedTabs: [],
+      closedTabs,
     },
     paneId: "pane-1",
     stateRef: {
@@ -89,6 +90,19 @@ describe("TabContextMenu", () => {
     cleanup();
     copyTextMock.mockReset();
     dispatchMock.mockReset();
+    closedTabs.length = 0;
+  });
+
+  it("閉じた順に履歴を表示し、選択したタブを復元する", () => {
+    closedTabs.push(secondTab, threadTab);
+    render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
+    const labels = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".context-menu__item"),
+    ).map((button) => button.textContent?.trim());
+    const reopenIndex = labels.indexOf("閉じたタブを開く");
+    expect(labels.slice(reopenIndex + 1, reopenIndex + 3)).toEqual(["Other Tab", "Current Thread"]);
+    fireEvent.click(screen.getByRole("button", { name: "Current Thread" }));
+    expect(dispatchMock).toHaveBeenCalledWith({ type: "REOPEN_CLOSED_TAB", tabId: threadTab.id });
   });
 
   it("コマンドへ移動した項目をタブメニューに表示しない", () => {

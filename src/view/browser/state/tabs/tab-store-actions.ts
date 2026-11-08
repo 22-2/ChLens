@@ -22,7 +22,7 @@ export interface TabActionCreators {
   closeOtherTabs(tabId: string): ActionOf<"CLOSE_OTHER_TABS">;
   closeRightTabs(tabId: string): ActionOf<"CLOSE_RIGHT_TABS">;
   closeAllTabs(): ActionOf<"CLOSE_ALL_TABS">;
-  reopenClosedTab(): ActionOf<"REOPEN_CLOSED_TAB">;
+  reopenClosedTab(tabId?: string): ActionOf<"REOPEN_CLOSED_TAB">;
   togglePin(tabId: string): ActionOf<"TOGGLE_PIN">;
   moveTab(dragTabId: string, toIndex: number): ActionOf<"MOVE_TAB">;
   selectTab(
@@ -87,7 +87,10 @@ export const tabActions: TabActionCreators = {
   closeOtherTabs: (tabId) => ({ type: TAB_ACTION_TYPES.CLOSE_OTHER_TABS, tabId }),
   closeRightTabs: (tabId) => ({ type: TAB_ACTION_TYPES.CLOSE_RIGHT_TABS, tabId }),
   closeAllTabs: () => ({ type: TAB_ACTION_TYPES.CLOSE_ALL_TABS }),
-  reopenClosedTab: () => ({ type: TAB_ACTION_TYPES.REOPEN_CLOSED_TAB }),
+  reopenClosedTab: (tabId) =>
+    tabId === undefined
+      ? { type: TAB_ACTION_TYPES.REOPEN_CLOSED_TAB }
+      : { type: TAB_ACTION_TYPES.REOPEN_CLOSED_TAB, tabId },
   togglePin: (tabId) => ({ type: TAB_ACTION_TYPES.TOGGLE_PIN, tabId }),
   moveTab: (dragTabId, toIndex) => ({ type: TAB_ACTION_TYPES.MOVE_TAB, dragTabId, toIndex }),
   selectTab: (tabId, options = {}) => ({ type: TAB_ACTION_TYPES.SELECT_TAB, tabId, ...options }),

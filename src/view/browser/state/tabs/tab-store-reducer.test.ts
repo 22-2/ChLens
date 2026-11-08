@@ -45,6 +45,24 @@ function activeTabOf(state: TabStoreState): Tab {
 
 setupTestPageTypes();
 
+describe("閉じたタブの履歴", () => {
+  it("選んだ履歴だけを復元し、残りの順序を保つ", () => {
+    const state = createState([createHomeTab("active")]);
+    const latest = createTabWithHistory([thread(1)]);
+    const chosen = { ...createTabWithHistory([thread(2)]), autoRefreshEnabled: true };
+    const oldest = createTabWithHistory([thread(3)]);
+    state.closedTabs = [latest, chosen, oldest];
+
+    const restored = tabReducer(state, tabActions.reopenClosedTab(chosen.id));
+
+    expect(restored.closedTabs).toEqual([latest, oldest]);
+    expect(activeTabOf(restored).history).toEqual(chosen.history);
+    expect(activeTabOf(restored).id).not.toBe(chosen.id);
+    expect(activeTabOf(restored).autoRefreshEnabled).toBe(false);
+    expect(tabReducer(restored, tabActions.reopenClosedTab(chosen.id))).toBe(restored);
+  });
+});
+
 describe("窓ごとのペイン", () => {
   function twoWindows(): TabStoreState {
     const main = { ...createPane(createHomeTab("main-tab")), id: "main-pane" };
