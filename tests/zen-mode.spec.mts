@@ -46,6 +46,7 @@ test("オムニバーのルートから各モードに入り戻れる", async ({
     await expect(input).toBeFocused();
     await input.press("Backspace");
     await expect(page.getByPlaceholder("URLを入力")).toBeFocused();
+    await expect(page.getByRole("option", { name: new RegExp(`${label}.*モードを開く`) })).toHaveAttribute("aria-selected", "true");
   }
 });
 

@@ -320,8 +320,10 @@ export function useOmnibar({
   const returnToRoot = useCallback(() => {
     setMode("navigation");
     setInputValue("");
-    setActiveSuggestionIndex(0);
-  }, []);
+    // ルートの検索語は消えるため、絞り込み前の一覧で戻り先を探す。
+    const modeIndex = OMNIBAR_MODES.findIndex((item) => item.id === mode);
+    setActiveSuggestionIndex(Math.max(0, modeIndex));
+  }, [mode]);
 
   const handleSelectSuggestion = useCallback(
     (suggestion: OmnibarSuggestion) => {

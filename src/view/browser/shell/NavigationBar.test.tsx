@@ -271,6 +271,25 @@ describe("NavigationBar", () => {
     }
   });
 
+  it("絞り込みからモードに入って戻ると選択位置を復元する", async () => {
+    render(<NavigationBar />);
+    openUrlBar();
+    const input = await screen.findByPlaceholderText("URLを入力");
+    fireEvent.change(input, { target: { value: "閲覧" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input).toHaveAttribute("placeholder", "閲覧履歴を検索...");
+    fireEvent.keyDown(input, { key: "Backspace" });
+    const mode = screen.getByRole("option", { name: /閲覧履歴.*モードを開く/ });
+    expect(mode).toHaveAttribute("aria-selected", "true");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(input).toHaveAttribute("placeholder", "閲覧履歴を検索...");
+    fireEvent.click(screen.getByRole("button", { name: "ルートに戻る" }));
+    expect(screen.getByRole("option", { name: /閲覧履歴.*モードを開く/ })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+
   it("書き込み履歴を本文で検索し選んだレスへ移動する", async () => {
     const url = "https://example.com/test/read.cgi/board/123/";
     container.writeHistory = {
