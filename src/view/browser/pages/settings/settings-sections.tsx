@@ -55,11 +55,6 @@ const NEW_TAB_PAGE_MODE_OPTIONS = [
   { const: "related_board", title: "関連する板" },
 ] as const satisfies readonly SettingsOption[];
 
-const TAB_BAR_ORIENTATION_OPTIONS = [
-  { const: "horizontal", title: "水平（上部）" },
-  { const: "vertical", title: "垂直（左端）" },
-] as const satisfies readonly SettingsOption[];
-
 const HOW_TO_JUDGMENT_ID_OPTIONS = [
   { const: "first_res", title: "1レス目に存在する場合" },
   { const: "exists_once", title: "1つでも存在する場合" },
@@ -188,13 +183,6 @@ const ALL_SETTINGS_SECTIONS = [
         kind: "divider",
         id: "tab-bar",
         title: "タブバー",
-      },
-      {
-        kind: "string",
-        key: "tab_bar_orientation",
-        title: "タブバーの配置",
-        description: "タブ一覧を上部の横並びと左端の縦並びで切り替えます。",
-        options: TAB_BAR_ORIENTATION_OPTIONS,
       },
       {
         kind: "boolean",

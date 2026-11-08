@@ -31,11 +31,19 @@ export const TabBar: React.FC<{
   isPaneFocused?: boolean;
   /** 共通タブバーに続けて並べる他ペインのタブ一覧。 */
   extraSections?: React.ReactNode;
+  footer?: React.ReactNode;
   /** 共通タブバーの2つ目以降のペインとして、タブ一覧だけを描く。 */
   embedded?: boolean;
-}> = ({ orientation = "horizontal", sectionLabel, isPaneFocused, extraSections, embedded }) => {
+}> = ({
+  orientation = "horizontal",
+  sectionLabel,
+  isPaneFocused,
+  extraSections,
+  footer,
+  embedded,
+}) => {
   const isVertical = orientation === "vertical";
-  const model = useTabBarModel(isVertical);
+  const model = useTabBarModel();
   const { setCollapsed, setWidth } = model;
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] = useState<BarContextMenuState | null>(null);
@@ -123,6 +131,7 @@ export const TabBar: React.FC<{
       sectionLabel={sectionLabel}
       isPaneFocused={isPaneFocused}
       extraSections={extraSections}
+      footer={footer}
       embedded={embedded}
     />
   );

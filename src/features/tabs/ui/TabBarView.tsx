@@ -234,6 +234,7 @@ export interface TabBarViewProps {
   isPaneFocused?: boolean;
   /** 共通タブバーの本体に付ける他ペインのタブ一覧。 */
   extraSections?: React.ReactNode;
+  footer?: React.ReactNode;
   /** 共通タブバーの2つ目以降のペイン。外枠・開閉ボタン・幅変更を持たず、タブ一覧だけを描く。 */
   embedded?: boolean;
 }
@@ -267,6 +268,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
   sectionLabel,
   isPaneFocused = false,
   extraSections,
+  footer,
   embedded = false,
 }) => {
   const barRef = useRef<HTMLDivElement | null>(null);
@@ -756,6 +758,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       ) : null}
       {paneSection}
       {extraSections}
+      {footer}
       {/* タブが横幅を超えるときだけ、追加ボタンをスクロール領域の外へ固定する。 */}
       {isVertical ? (
         // 変更理由: 縮小時もハンドルを出し、右へ引く操作で展開へ移れるようにする。

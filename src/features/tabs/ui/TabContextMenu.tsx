@@ -20,7 +20,11 @@ import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel"
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
-import { listTabMoveDestinations } from "src/view/browser/state/tabs/tab-store-selectors";
+import {
+  hasClosableOtherTabs,
+  hasClosableRightTabs,
+  listTabMoveDestinations,
+} from "src/view/browser/state/tabs/tab-store-selectors";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { useWindowId } from "src/view/browser/state/tabs/use-window-scope";
 import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
@@ -88,6 +92,20 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         onSelect: () => runTabCommand(TAB_COMMAND_IDS.CLOSE),
       },
       {
+        id: "close-other",
+        label: "他のタブを閉じる",
+        disabled: !hasClosableOtherTabs(state.tabs, tab.id),
+        icon: <X />,
+        onSelect: () => runTabCommand(TAB_COMMAND_IDS.CLOSE_OTHER),
+      },
+      {
+        id: "close-below",
+        label: "下のタブを閉じる",
+        disabled: !hasClosableRightTabs(state.tabs, tab.id),
+        icon: <X />,
+        onSelect: () => runTabCommand(TAB_COMMAND_IDS.CLOSE_RIGHT),
+      },
+      {
         id: "reopen",
         label: "閉じたタブを開く",
         disabled: !hasClosedTabs,
@@ -96,12 +114,11 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         onSelect: () => dispatch(tabActions.reopenClosedTab()),
       },
       ...closedTabMenuItems(state.closedTabs, dispatch),
-      { id: "sep-1", separator: true },
+      // 履歴があるときは closedTabMenuItems が末尾に区切り線を出す。なければここで区切る。
+      ...(state.closedTabs.length === 0 ? [{ id: "sep-1", separator: true }] : []),
     ];
 
-    // 変更理由: 他・右側・すべてのタブを閉じる操作は、タブ固有のメニューから分離して
-    // コマンドパレットへ集約する。スレッド固有のブックマーク・コピーだけは一覧メニュー
-    // と同じ共通定義を使い、表示場所による操作差をなくす。
+    // 一括終了も対象タブの所有ペインに限定し、固定タブは既存コマンドの規則で残す。
 
     // 変更理由: ページ種別で別窓可否を分けず、どのタブも同じメニューで切り離せるようにする。
     result.push({
@@ -213,6 +230,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     dispatch,
     hasClosedTabs,
     state.closedTabs,
+    state.tabs,
     bookmarkRevision,
     tabIsDetached,
     isThread,

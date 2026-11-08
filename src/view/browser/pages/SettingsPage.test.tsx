@@ -266,7 +266,7 @@ describe("設定画面のタブ単位の表示状態", () => {
   it.each<[string, ScopedTabAction]>([
     ["タブを閉じる", { type: "CLOSE_TAB", tabId: "settings-tab" }],
     ["他のタブを閉じる", { type: "CLOSE_OTHER_TABS", tabId: "home-tab" }],
-    ["右側のタブを閉じる", { type: "CLOSE_RIGHT_TABS", tabId: "home-tab" }],
+    ["下のタブを閉じる", { type: "CLOSE_RIGHT_TABS", tabId: "home-tab" }],
     ["すべてのタブを閉じる", { type: "CLOSE_ALL_TABS" }],
   ])(
     "%sの後も新しい設定タブは初期状態で開き、閉じたタブを復元すると表示状態が戻る",

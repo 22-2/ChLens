@@ -268,6 +268,27 @@
   user-select: none;
 }
 
+.tab-bar__footer {
+  flex: none;
+  margin-top: auto;
+  padding-top: var(--sys-space-2);
+  border-top: 1px solid var(--sys-color-border);
+}
+
+.tab-bar__settings {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  /* 変更理由: タブ行と同じ全幅にして、簡易表示でもアイコンを中央に揃える。 */
+  width: 100%;
+  height: var(--sys-space-12);
+  border: none;
+  border-radius: var(--sys-radius-sm);
+  color: var(--sys-color-text-muted);
+  line-height: 0;
+}
+
 .tab-bar--vertical .tab-list-container {
   flex-direction: column;
   min-height: 0;
@@ -400,6 +421,14 @@
 .tab-bar--vertical.tab-bar--multiple-panes .tab-bar__resize-handle {
   /* 縦スクロール領域の外側へはみ出すと横方向にもスクロール幅が生じる。 */
   right: 0;
+}
+
+.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__footer {
+  /* 2ペインのグリッドでも区切り線をバー全幅に広げ、スクロール中も操作できるようにする。 */
+  grid-column: 1 / -1;
+  position: sticky;
+  bottom: 0;
+  background: var(--sys-color-tab-strip);
 }
 
 .tab-bar--multiple-panes .tab-bar__vertical-header {

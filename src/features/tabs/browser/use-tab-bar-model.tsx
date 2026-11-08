@@ -1,6 +1,5 @@
-import { PanelLeft, PanelTop, Plus, RotateCcw } from "lucide-react";
+import { Plus, RotateCcw } from "lucide-react";
 import { useCallback, useMemo } from "react";
-import { createLogger } from "src/app/logger";
 import {
   isArchiveReplayThread as matchesArchiveReplayThread,
   useArchiveReplayPositionStore,
@@ -11,12 +10,8 @@ import {
 } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import { closedTabMenuItems } from "src/features/tabs/browser/closed-tab-menu-items";
 import type { TabBarItem } from "src/features/tabs/browser/tab-bar-layout";
-import {
-  TAB_BAR_ORIENTATION_CONFIG_KEY,
-  useVerticalTabBarLayout,
-} from "src/features/tabs/browser/use-tab-bar-orientation";
+import { useVerticalTabBarLayout } from "src/features/tabs/browser/use-tab-bar-orientation";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
-import { container } from "src/service-container/index";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { isAutoRefreshEnabledForPage } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
@@ -24,8 +19,6 @@ import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
-
-const logger = createLogger("tabs");
 
 function getAutoRefreshIndicatorState(
   tab: Tab,
@@ -100,7 +93,7 @@ export interface TabBarModel {
  * 変更理由: 見た目と DOM の挙動を表示部品（TabBarView）へ分け、ストアに依存する部分をここへ集めることで、
  * 表示部品をストーリーや単独の描画で動かせるようにする。
  */
-export function useTabBarModel(isVertical: boolean): TabBarModel {
+export function useTabBarModel(): TabBarModel {
   const { state, stateRef, dispatch, paneId } = useTabStore();
   const selectedTabId = state.selectedTabId;
   const visibleTabs = state.tabs;
@@ -197,25 +190,8 @@ export function useTabBarModel(isVertical: boolean): TabBarModel {
         onSelect: () => dispatch(tabActions.reopenClosedTab()),
       },
       ...closedTabMenuItems(state.closedTabs, dispatch),
-      {
-        id: "toggle-orientation",
-        label: isVertical ? "タブバーを水平にする" : "タブバーを垂直にする",
-        icon: isVertical ? <PanelTop size={16} /> : <PanelLeft size={16} />,
-        onSelect: () => {
-          // 変更理由: 設定画面を開かずに方向を試せるよう、タブバーの右クリックメニューから
-          // 切り替える。config_updated 経由で useTabBarOrientation が即時反映する。
-          void Promise.resolve(
-            container.config.set(
-              TAB_BAR_ORIENTATION_CONFIG_KEY,
-              isVertical ? "horizontal" : "vertical",
-            ),
-          ).catch((error) => {
-            logger.error("タブバー方向の保存に失敗しました", error);
-          });
-        },
-      },
     ],
-    [dispatch, isVertical, state.closedTabs],
+    [dispatch, state.closedTabs],
   );
 
   return {

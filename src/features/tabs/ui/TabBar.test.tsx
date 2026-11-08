@@ -242,8 +242,8 @@ describe("TabBar wheel switching", () => {
     const menu = screen.getByTestId("bar-context-menu");
     expect(menu).toHaveTextContent("新しいタブを開く");
     expect(menu).toHaveTextContent("閉じたタブを開く");
-    expect(menu).toHaveTextContent("タブバーを垂直にする");
-    expect(menu.querySelectorAll("svg")).toHaveLength(3);
+    expect(menu).not.toHaveTextContent("タブバーを垂直にする");
+    expect(menu.querySelectorAll("svg")).toHaveLength(2);
 
     firstRender.unmount();
     const rerenderedTabBar = render(<TabBar />).container.querySelector(

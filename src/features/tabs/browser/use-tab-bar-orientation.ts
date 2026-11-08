@@ -24,34 +24,9 @@ export const TAB_BAR_ORIENTATION_CONFIG_KEY = "tab_bar_orientation";
 export const TAB_BAR_COLLAPSED_CONFIG_KEY = "tab_bar_collapsed";
 export const TAB_BAR_WIDTH_CONFIG_KEY = "tab_bar_width";
 
-function parseOrientation(raw: string | null | undefined): TabBarOrientation {
-  // 変更理由: 垂直タブバー導入前の既存環境や未知値では水平として扱い、
-  // 設定を持たない利用者の見た目を変えない。
-  if (raw === "vertical") {
-    return "vertical";
-  }
-  return "horizontal";
-}
-
-/** tab_bar_orientation 設定値を監視し、タブバーの配置方向を返すフック */
+/** 保存済みの旧配置設定に関係なく、タブバーは垂直に統一する。 */
 export function useTabBarOrientation(): TabBarOrientation {
-  const [orientation, setOrientation] = useState<TabBarOrientation>(() =>
-    parseOrientation(readConfigValue(TAB_BAR_ORIENTATION_CONFIG_KEY)),
-  );
-
-  useEffect(
-    () =>
-      subscribeConfigKeys(
-        [TAB_BAR_ORIENTATION_CONFIG_KEY],
-        () => {
-          setOrientation(parseOrientation(readConfigValue(TAB_BAR_ORIENTATION_CONFIG_KEY)));
-        },
-        { label: "TabBarSettings" },
-      ),
-    [],
-  );
-
-  return orientation;
+  return "vertical";
 }
 
 function parseTabBarWidth(raw: string | null | undefined): number {

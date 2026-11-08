@@ -108,16 +108,21 @@ describe("TabContextMenu", () => {
   it("コマンドへ移動した項目をタブメニューに表示しない", () => {
     render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
 
-    // 変更理由: 他・右側・すべてのタブを閉じる操作はコマンドパレットへ移動したため、
-    // タブメニューには置かない。スレッドのコピー3項目は共通メニューとして残す。
-    expect(screen.queryByRole("button", { name: "他のタブを閉じる" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "右側のタブを閉じる" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "すべて閉じる" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "右のペインで開く" })).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "スレタイ&URLをMarkdownでコピー" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "datのURLをコピー" })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["他のタブを閉じる", "CLOSE_OTHER_TABS"],
+    ["下のタブを閉じる", "CLOSE_RIGHT_TABS"],
+  ])("%sを対象ペインに実行する", (label, type) => {
+    render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: label }));
+    expect(dispatchMock).toHaveBeenCalledWith({ type, tabId: threadTab.id, paneId: "pane-1" });
   });
 
   it("スレッドのコピー項目を統一された順序とアイコンで表示する", () => {
