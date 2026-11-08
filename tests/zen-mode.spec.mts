@@ -44,7 +44,18 @@ test("オムニバーのルートから各モードに入り戻れる", async ({
     await page.getByRole("option", { name: new RegExp(`${label}.*モードを開く`) }).click();
     const input = page.getByPlaceholder(placeholder);
     await expect(input).toBeFocused();
-    await input.press("Escape");
+    await input.press("Backspace");
     await expect(page.getByPlaceholder("URLを入力")).toBeFocused();
   }
+});
+
+test("モードでEscを押すか外側をクリックすると閉じる", async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByRole("option", { name: /お気に入り.*モードを開く/ }).click();
+  await page.getByPlaceholder("お気に入りを検索...").press("Escape");
+  await expect(page.getByPlaceholder("お気に入りを検索...")).toHaveCount(0);
+  await page.getByTestId("title-bar-title").click();
+  await page.locator(".browser-shell").click({ position: { x: 2, y: 100 } });
+  await expect(page.getByPlaceholder("URLを入力")).toHaveCount(0);
 });

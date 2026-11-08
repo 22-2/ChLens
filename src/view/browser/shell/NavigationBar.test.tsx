@@ -216,7 +216,7 @@ describe("NavigationBar", () => {
     });
   });
 
-  it("ルートからコマンドに入りEscで戻り、再び選択できる", async () => {
+  it("空のモードでBackspaceを押すとルートに戻り、Escで閉じる", async () => {
     render(<NavigationBar />);
     openUrlBar();
     const input = await screen.findByPlaceholderText("URLを入力");
@@ -225,13 +225,17 @@ describe("NavigationBar", () => {
     expect(input).toHaveAttribute("placeholder", "コマンドを検索...");
     fireEvent.change(input, { target: { value: "設定" } });
     expect(screen.getByRole("option", { name: /設定を開く/ })).toBeInTheDocument();
-    fireEvent.keyDown(input, { key: "Escape" });
+    fireEvent.keyDown(input, { key: "Backspace" });
+    expect(input).toHaveAttribute("placeholder", "コマンドを検索...");
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.keyDown(input, { key: "Backspace" });
     expect(input).toHaveAttribute("placeholder", "URLを入力");
     expect(input).toHaveValue("");
     fireEvent.keyDown(input, { key: "Enter" });
     expect(input).toHaveAttribute("placeholder", "コマンドを検索...");
-    fireEvent.click(screen.getByRole("button", { name: "ルートに戻る" }));
-    expect(input).toHaveAttribute("placeholder", "URLを入力");
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.queryByPlaceholderText("コマンドを検索...")).not.toBeInTheDocument();
+    expect(commandPaletteStore.getState().opened).toBe(false);
   });
 
   it("ルートの各モードは選んだ出典だけを検索する", async () => {
@@ -263,7 +267,7 @@ describe("NavigationBar", () => {
       expect(input).toHaveAttribute("placeholder", placeholder);
       expect(await screen.findByRole("option", { name: new RegExp(expected) })).toBeInTheDocument();
       expect(screen.queryByRole("option", { name: new RegExp(excluded) })).not.toBeInTheDocument();
-      fireEvent.keyDown(input, { key: "Escape" });
+      fireEvent.keyDown(input, { key: "Backspace" });
     }
   });
 
@@ -283,6 +287,29 @@ describe("NavigationBar", () => {
     fireEvent.change(input, { target: { value: "探している" } });
     fireEvent.click(screen.getByRole("option", { name: /#34.*探している投稿/ }));
     expect(requestThreadResJumpMock).toHaveBeenCalledWith(url, 34);
+  });
+
+  it("ルートはモードと候補に見出しを表示する", async () => {
+    bookmarkGetAllMock.mockReturnValue([{ url: "https://example.com/board/", title: "テスト板" }]);
+    render(<NavigationBar />);
+    openUrlBar();
+    expect(
+      await screen.findByText("モード", { selector: ".nav-bar__omnibar-section" }),
+    ).toBeVisible();
+    expect(
+      await screen.findByText("候補", { selector: ".nav-bar__omnibar-section" }),
+    ).toBeVisible();
+  });
+
+  it("フォーカスが移らない場所へのクリックでも閉じる", async () => {
+    render(<NavigationBar />);
+    openUrlBar();
+    const input = await screen.findByPlaceholderText("URLを入力");
+    fireEvent.pointerDown(input);
+    expect(input).toBeInTheDocument();
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByPlaceholderText("URLを入力")).not.toBeInTheDocument();
+    expect(commandPaletteStore.getState().opened).toBe(false);
   });
 
   it("コマンドパレットはフォーカスアウトで閉じる", async () => {
