@@ -71,7 +71,7 @@ describe("画像一覧", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(mocks.download).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "画像を読み込む: >>2 の画像" }));
-    expect(mocks.download).toHaveBeenCalledWith(imageUrl, expect.any(String), expect.anything());
+    expect(mocks.download).toHaveBeenCalledWith(imageUrl, imageUrl);
   });
 
   it("画像一覧の右クリックからビューアで開ける", async () => {
