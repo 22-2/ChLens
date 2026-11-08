@@ -30,6 +30,9 @@ const TabBarSettings: React.FC = () => {
         title="設定を開く"
         aria-label="設定を開く"
         onClick={openSettings}
+        // 変更理由: マウス操作でフォーカスを残すとフォーカスリングが出続けるため、
+        // クリックではフォーカスを移さない。キーボード操作のフォーカス表示は維持する。
+        onMouseDown={(event) => event.preventDefault()}
         onContextMenu={(event) => event.stopPropagation()}
       >
         <Settings size={17} />

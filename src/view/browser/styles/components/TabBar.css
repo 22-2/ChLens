@@ -277,10 +277,16 @@
 
 .tab-bar__settings {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: var(--sys-space-12);
+  /* 変更理由: タブ行と同じ全幅にして、簡易表示でもアイコンを中央に揃える。 */
+  width: 100%;
   height: var(--sys-space-12);
+  border: none;
+  border-radius: var(--sys-radius-sm);
+  color: var(--sys-color-text-muted);
+  line-height: 0;
 }
 
 .tab-bar--vertical .tab-list-container {
