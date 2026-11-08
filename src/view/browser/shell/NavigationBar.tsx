@@ -288,6 +288,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     handleFocus,
     handleBlur,
     handleSelectSuggestion,
+    enterCommandMode,
+    returnToRoot,
+    showCommandMode,
   } = useOmnibar({
     displayUrl,
     maxSuggestions: OMNIBAR_MAX_SUGGESTIONS,
@@ -616,6 +619,9 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       onSuggestionHover={setActiveSuggestionIndex}
       onSuggestionSelect={handleSelectSuggestion}
       onSuggestionContextMenu={(suggestion, x, y) => setSuggestionMenuState({ suggestion, x, y })}
+      showCommandMode={showCommandMode}
+      onEnterCommandMode={enterCommandMode}
+      onReturnToRoot={returnToRoot}
       onCommandSelect={(command) => void executeCommand(command)}
       trailingAction={
         bookmarkTarget ? (

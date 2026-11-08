@@ -1,4 +1,4 @@
-import { Bookmark, ExternalLink, History, List, type LucideIcon } from "lucide-react";
+import { Bookmark, Command, ExternalLink, History, List, type LucideIcon } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
 import React from "react";
 import type { ResolvedBrowserCommand } from "src/view/browser/commands/command-definition";
@@ -25,6 +25,9 @@ interface OmnibarProps {
   onSuggestionSelect: (suggestion: OmnibarSuggestion) => void;
   onSuggestionContextMenu?: (suggestion: OmnibarSuggestion, x: number, y: number) => void;
   onCommandSelect: (command: ResolvedBrowserCommand) => void;
+  showCommandMode: boolean;
+  onEnterCommandMode: () => void;
+  onReturnToRoot: () => void;
   trailingAction?: ReactNode;
 }
 
@@ -69,6 +72,9 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   onSuggestionSelect,
   onSuggestionContextMenu,
   onCommandSelect,
+  showCommandMode,
+  onEnterCommandMode,
+  onReturnToRoot,
   trailingAction,
 }) => {
   return (
@@ -76,6 +82,18 @@ export const Omnibar: React.FC<OmnibarProps> = ({
       className={`nav-bar__url${trailingAction ? " nav-bar__url--has-action" : ""}`}
       onBlur={onBlur}
     >
+      {mode === "command" ? (
+        <button
+          type="button"
+          className="nav-bar__url-action-btn icon-button"
+          title="ルートに戻る (Esc)"
+          aria-label="ルートに戻る"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={onReturnToRoot}
+        >
+          <Command size={15} />
+        </button>
+      ) : null}
       <input
         ref={inputRef}
         className="nav-bar__url-input"
@@ -103,6 +121,24 @@ export const Omnibar: React.FC<OmnibarProps> = ({
             </div>
           ) : null}
 
+          {mode === "navigation" && showCommandMode ? (
+            <button
+              type="button"
+              className={`nav-bar__omnibar-item nav-bar__omnibar-item--command${activeSuggestionIndex === 0 ? " nav-bar__omnibar-item--active" : ""}`}
+              role="option"
+              aria-selected={activeSuggestionIndex === 0}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => onSuggestionHover(0)}
+              onClick={onEnterCommandMode}
+            >
+              <span className="nav-bar__omnibar-command-icon" aria-hidden="true">
+                <Command size={15} />
+              </span>
+              <span className="nav-bar__omnibar-title">コマンド</span>
+              <span className="nav-bar__omnibar-url">モードを開く</span>
+            </button>
+          ) : null}
+
           {!isLoading && mode === "navigation" && suggestions.length > 0
             ? suggestions.map((suggestion, index) => (
                 <button
@@ -111,15 +147,17 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   }`}
                   type="button"
                   className={`nav-bar__omnibar-item nav-bar__omnibar-item--navigation${
-                    index === activeSuggestionIndex ? " nav-bar__omnibar-item--active" : ""
+                    index + (showCommandMode ? 1 : 0) === activeSuggestionIndex
+                      ? " nav-bar__omnibar-item--active"
+                      : ""
                   }`}
                   role="option"
-                  aria-selected={index === activeSuggestionIndex}
+                  aria-selected={index + (showCommandMode ? 1 : 0) === activeSuggestionIndex}
                   onMouseDown={(e) => {
                     // blur が先に発火して候補クリックが失われるのを防ぐ。
                     if (e.button === 0) e.preventDefault();
                   }}
-                  onMouseEnter={() => onSuggestionHover(index)}
+                  onMouseEnter={() => onSuggestionHover(index + (showCommandMode ? 1 : 0))}
                   onClick={() => onSuggestionSelect(suggestion)}
                   onContextMenu={(event) => {
                     event.preventDefault();
