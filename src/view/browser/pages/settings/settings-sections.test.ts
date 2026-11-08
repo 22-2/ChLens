@@ -232,9 +232,8 @@ describe("設定項目の置き場所", () => {
     expect(keysOf("general")).not.toEqual(
       expect.arrayContaining(["tab_bar_orientation", "tab_bar_collapsed"]),
     );
-    expect(keysOf("display")).toEqual(
-      expect.arrayContaining(["tab_bar_orientation", "tab_bar_collapsed"]),
-    );
+    expect(keysOf("display")).toEqual(expect.arrayContaining(["tab_bar_collapsed"]));
+    expect(keysOf("display")).not.toContain("tab_bar_orientation");
   });
 
   it("画像の取得とぼかし設定を画像カテゴリにまとめる", () => {

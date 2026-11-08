@@ -35,7 +35,7 @@ export const TabBar: React.FC<{
   embedded?: boolean;
 }> = ({ orientation = "horizontal", sectionLabel, isPaneFocused, extraSections, embedded }) => {
   const isVertical = orientation === "vertical";
-  const model = useTabBarModel(isVertical);
+  const model = useTabBarModel();
   const { setCollapsed, setWidth } = model;
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [barContextMenu, setBarContextMenu] = useState<BarContextMenuState | null>(null);

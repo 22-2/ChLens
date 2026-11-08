@@ -756,7 +756,7 @@ describe("browser commands", () => {
     expect(dispatch).toHaveBeenLastCalledWith({ type: "OPEN_IN_RIGHT_PANE", tabId: "tab-1" });
   });
 
-  it("他のタブ・右側のタブを閉じるは閉じられるタブがある時だけ有効になる", async () => {
+  it("他のタブ・下のタブを閉じるは閉じられるタブがある時だけ有効になる", async () => {
     const homePage: Page = { type: "boardList", title: "ホーム" };
     const viewTab = createTab(homePage);
     const otherTab: Tab = { ...createTab(homePage), id: "tab-2" };
@@ -834,40 +834,6 @@ describe("browser commands", () => {
 
     expect(runTabCommand).toHaveBeenCalledWith(TAB_COMMAND_IDS.OPEN_RIGHT);
     expect(dispatch).not.toHaveBeenCalled();
-  });
-
-  it("タブバー方向切り替えコマンドは保存値に応じて反対方向へ切り替える", async () => {
-    const { context } = createContext({ type: "boardList", title: "ホーム" });
-    const configSetMock = vi.fn();
-    let originalConfig: unknown;
-    try {
-      originalConfig = container.config;
-    } catch {
-      originalConfig = undefined;
-    }
-    container.config = {
-      get: vi.fn(() => "horizontal"),
-      set: configSetMock,
-      getAll: () => ({}),
-      ready: (callback: () => void) => callback(),
-    };
-
-    try {
-      const ids = resolveBrowserCommands(context).map((command) => command.id);
-      expect(ids).toContain("layout.toggle-tab-orientation");
-
-      await expect(executeBrowserCommand("layout.toggle-tab-orientation", context)).resolves.toBe(
-        true,
-      );
-      expect(configSetMock).toHaveBeenCalledWith("tab_bar_orientation", "vertical");
-    } finally {
-      if (originalConfig === undefined) {
-        // 変更理由: もともと未登録だった場合は空に戻し、他のテストへ影響させない。
-        (container as unknown as { _config: unknown })._config = undefined;
-      } else {
-        container.config = originalConfig as typeof container.config;
-      }
-    }
   });
 
   it("スレッドのフィルタモード切り替えは表示中タブのIDと選んだモードをイベントで渡す", async () => {

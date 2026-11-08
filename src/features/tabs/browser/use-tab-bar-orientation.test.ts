@@ -2,7 +2,6 @@ import { act, renderHook } from "@testing-library/react";
 import {
   clampTabBarWidth,
   TAB_BAR_COLLAPSED_CONFIG_KEY,
-  TAB_BAR_ORIENTATION_CONFIG_KEY,
   TAB_BAR_WIDTH_CONFIG_KEY,
   TAB_BAR_WIDTH_DEFAULT,
   useTabBarOrientation,
@@ -12,51 +11,14 @@ import { container } from "src/service-container/index";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 describe("useTabBarOrientation", () => {
-  let storedValues: Record<string, string | null>;
-  let configUpdatedHandler: ((payload: { key?: string }) => void) | undefined;
-  const configSetMock = vi.fn();
-
-  beforeEach(() => {
-    storedValues = {};
-    configUpdatedHandler = undefined;
-    configSetMock.mockReset();
-
+  it("保存済みの水平設定があっても垂直に表示する", () => {
     container.config = {
-      get: vi.fn((key: string) => storedValues[`config_${key}`] ?? null),
-      set: configSetMock,
+      get: vi.fn(() => "horizontal"),
+      set: vi.fn(),
       getAll: () => ({}),
       ready: (callback: () => void) => callback(),
     };
-    container.message = {
-      send: vi.fn(),
-      on: vi.fn((type: string, handler: (payload: { key?: string }) => void) => {
-        if (type === "config_updated") {
-          configUpdatedHandler = handler;
-        }
-      }),
-      off: vi.fn(),
-    } as unknown as typeof container.message;
-  });
-
-  it("未設定時は既存の水平タブバーを維持する", () => {
     const { result } = renderHook(() => useTabBarOrientation());
-
-    expect(result.current).toBe("horizontal");
-  });
-
-  it("未知値は水平として扱う", () => {
-    storedValues["config_tab_bar_orientation"] = "sideways";
-    const { result } = renderHook(() => useTabBarOrientation());
-
-    expect(result.current).toBe("horizontal");
-  });
-
-  it("設定変更通知を受けて垂直方向へ即時反映する", () => {
-    const { result } = renderHook(() => useTabBarOrientation());
-
-    storedValues["config_tab_bar_orientation"] = "vertical";
-    act(() => configUpdatedHandler?.({ key: TAB_BAR_ORIENTATION_CONFIG_KEY }));
-
     expect(result.current).toBe("vertical");
   });
 });

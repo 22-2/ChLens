@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { TabBar } from "src/features/tabs/ui/TabBar";
 import { container } from "src/service-container/index";
 import { setupTestPageTypes } from "src/test-support/page-types-test-setup";
@@ -214,26 +214,6 @@ describe("TabBar vertical", () => {
     fireEvent.keyDown(firstTab, { key: "ArrowRight" });
 
     expect(dispatchMock).toHaveBeenCalledWith({ type: "SELECT_TAB", tabId: "tab-2" });
-  });
-
-  it("背景メニューからタブバーを垂直に切り替えられる", () => {
-    const { container } = render(<TabBar orientation="horizontal" />);
-    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
-
-    fireEvent.contextMenu(tabBar, { clientX: 20, clientY: 20 });
-    fireEvent.click(screen.getByText("タブバーを垂直にする"));
-
-    expect(configSetMock).toHaveBeenCalledWith("tab_bar_orientation", "vertical");
-  });
-
-  it("背景メニューからタブバーを水平に戻せる", () => {
-    const { container } = render(<TabBar orientation="vertical" />);
-    const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
-
-    fireEvent.contextMenu(tabBar, { clientX: 20, clientY: 20 });
-    fireEvent.click(screen.getByText("タブバーを水平にする"));
-
-    expect(configSetMock).toHaveBeenCalledWith("tab_bar_orientation", "horizontal");
   });
 
   it("簡易表示ではタイトルを隠してアイコンを表示する", () => {

@@ -54,7 +54,6 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   // 新規タブも同じホームを入口にし、既存の関連板の設定は選択肢として保つ。
   new_tab_page_mode: "home",
   // 変更理由: 垂直タブバー導入時の既定は水平とし、既存利用者の見た目を変えない。
-  tab_bar_orientation: "horizontal",
   // 変更理由: 垂直バーの既定は縮小モード（簡易表示）とし、本文の幅を優先する。
   tab_bar_collapsed: "on",
   // 変更理由: 展開幅の既定はタイトルが省略されにくい208pxとする。
