@@ -15,6 +15,17 @@ test("2ペインの垂直タブバーは横にはみ出さず縦にスクロー�
   await command("2ペインで表示");
   const bar = page.locator(".tab-bar--vertical.tab-bar--multiple-panes");
   await expect(bar).toBeVisible();
+  // フォーカス先を切り替えても、青線は2列の左端に1本だけ表示する。
+  const activeTabs = bar.locator(".tab--active");
+  await expect(activeTabs).toHaveCount(2);
+  for (const index of [0, 1]) {
+    await activeTabs.nth(index).click();
+    const colors = await activeTabs.evaluateAll((tabs) =>
+      tabs.map((tab) => getComputedStyle(tab).borderLeftColor),
+    );
+    expect(colors[0]).not.toBe("rgba(0, 0, 0, 0)");
+    expect(colors[1]).toBe("rgba(0, 0, 0, 0)");
+  }
   const handle = bar.getByRole("separator", { name: "タブバーの幅を変更" });
   const initialWidth = (await bar.boundingBox())!.width;
   const handleBox = (await handle.boundingBox())!;

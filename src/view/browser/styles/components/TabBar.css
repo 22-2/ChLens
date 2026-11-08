@@ -430,6 +430,14 @@
   order: -1;
 }
 
+/* 2ペインの選択中タブは同じ行に並ぶため、青線は行の左端だけに表示する。 */
+.tab-bar--vertical.tab-bar--multiple-panes
+  .tab-bar__pane-section
+  ~ .tab-bar__pane-section
+  .tab--active {
+  border-left-color: transparent;
+}
+
 .tab-bar--vertical.tab-bar--multiple-panes .tab-bar__add {
   grid-column: 1 / -1;
   order: 1;
