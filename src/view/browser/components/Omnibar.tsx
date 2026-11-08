@@ -8,7 +8,7 @@ import {
   Pencil,
 } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
-import React from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import type { ResolvedBrowserCommand } from "src/view/browser/commands/command-definition";
 import {
   OMNIBAR_MODES,
@@ -26,6 +26,7 @@ interface OmnibarProps {
   isLoading: boolean;
   suggestions: OmnibarSuggestion[];
   commandSuggestions: ResolvedBrowserCommand[];
+  totalSuggestionCount: number;
   mode: OmnibarInputMode;
   activeSuggestionIndex: number;
   shouldShowNoMatch: boolean;
@@ -74,6 +75,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   isLoading,
   suggestions,
   commandSuggestions,
+  totalSuggestionCount,
   mode,
   activeSuggestionIndex,
   shouldShowNoMatch,
@@ -90,6 +92,23 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   onReturnToRoot,
   trailingAction,
 }) => {
+  const listRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    const selected = list?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
+    if (!list || !selected) return;
+    // 長い候補一覧でも矢印キーで選択した行を表示範囲に保つ。
+    const top = selected.offsetTop;
+    const bottom = top + selected.offsetHeight;
+    const visibleBottom =
+      list.scrollTop +
+      list.clientHeight -
+      (list.querySelector<HTMLElement>(".nav-bar__omnibar-count")?.offsetHeight ?? 0);
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (bottom > visibleBottom) list.scrollTop += bottom - visibleBottom;
+  }, [activeSuggestionIndex, isOpen, mode]);
+  const visibleCount =
+    mode === "command" ? commandSuggestions.length : suggestions.length + availableModes.length;
   return (
     <div
       className={`nav-bar__url${trailingAction ? " nav-bar__url--has-action" : ""}`}
@@ -123,6 +142,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
 
       {isOpen ? (
         <div
+          ref={listRef}
           className="nav-bar__omnibar"
           role="listbox"
           aria-label={mode === "command" ? "コマンド候補" : "候補"}
@@ -148,6 +168,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                 className={`nav-bar__omnibar-item nav-bar__omnibar-item--command${activeSuggestionIndex === index ? " nav-bar__omnibar-item--active" : ""}`}
                 role="option"
                 aria-selected={activeSuggestionIndex === index}
+                aria-label={`${item.label} モード`}
                 onMouseDown={(event) => event.preventDefault()}
                 onMouseEnter={() => onSuggestionHover(index)}
                 onClick={() => onEnterMode(item.id)}
@@ -156,7 +177,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                   <Icon size={15} />
                 </span>
                 <span className="nav-bar__omnibar-title">{item.label}</span>
-                <span className="nav-bar__omnibar-url">モードを開く</span>
+                <span className="nav-bar__omnibar-url">{item.description}</span>
               </button>
             );
           })}
@@ -171,7 +192,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
                 <button
                   key={`${suggestion.url}::${suggestion.actionLabel ?? ""}::${
                     suggestion.openInNewTab ? "new-tab" : "current-tab"
-                  }`}
+                  }::${suggestion.writtenRes ?? ""}::${index}`}
                   type="button"
                   className={`nav-bar__omnibar-item nav-bar__omnibar-item--navigation${
                     index + availableModes.length === activeSuggestionIndex
@@ -239,6 +260,16 @@ export const Omnibar: React.FC<OmnibarProps> = ({
 
           {shouldShowNoMatch ? (
             <div className="nav-bar__omnibar-empty">一致する候補がありません</div>
+          ) : null}
+          {!isLoading ? (
+            <div
+              className="nav-bar__omnibar-count"
+              role="status"
+              title="検索対象内の表示件数 / 一致件数"
+              aria-label={`表示 ${visibleCount} 件 / 一致 ${totalSuggestionCount} 件`}
+            >
+              {visibleCount} / {totalSuggestionCount}
+            </div>
           ) : null}
         </div>
       ) : null}

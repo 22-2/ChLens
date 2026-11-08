@@ -70,7 +70,7 @@ import {
   useOmnibarSuggestionMenuItems,
 } from "./use-omnibar-suggestion-menu-items";
 
-const OMNIBAR_MAX_SUGGESTIONS = 8;
+const OMNIBAR_MAX_SUGGESTIONS = 50;
 const logger = createLogger("view/browser");
 
 const NOOP_OPEN_NEXT_THREAD_SEARCH_DIALOG = async (): Promise<void> => undefined;
@@ -281,6 +281,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     isLoading: isOmnibarLoading,
     suggestions: omnibarSuggestions,
     commandSuggestions: omnibarCommandSuggestions,
+    totalSuggestionCount,
     shouldShowNoMatch,
     activeSuggestionIndex,
     setActiveSuggestionIndex,
@@ -645,6 +646,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
       isLoading={isOmnibarLoading}
       suggestions={omnibarSuggestions}
       commandSuggestions={omnibarCommandSuggestions}
+      totalSuggestionCount={totalSuggestionCount}
       mode={omnibarMode}
       activeSuggestionIndex={activeSuggestionIndex}
       shouldShowNoMatch={shouldShowNoMatch}

@@ -31,12 +31,13 @@ export const OMNIBAR_MODES: ReadonlyArray<{
   id: OmnibarSearchMode;
   label: string;
   search: string;
+  description: string;
 }> = [
-  { id: "command", label: "コマンド", search: "command" },
-  { id: "bookmark", label: "お気に入り", search: "bookmark" },
-  { id: "board", label: "板", search: "board" },
-  { id: "history", label: "閲覧履歴", search: "history" },
-  { id: "writeHistory", label: "書き込み履歴", search: "write history" },
+  { id: "command", label: "コマンド", search: "command", description: "操作を実行" },
+  { id: "bookmark", label: "お気に入り", search: "bookmark", description: "保存したスレ・板" },
+  { id: "board", label: "板", search: "board", description: "板一覧" },
+  { id: "history", label: "閲覧履歴", search: "history", description: "最近開いたスレ・板" },
+  { id: "writeHistory", label: "書き込み履歴", search: "write history", description: "自分の投稿" },
 ];
 
 interface UseOmnibarOptions {
@@ -62,6 +63,7 @@ interface UseOmnibarResult {
   isLoading: boolean;
   suggestions: OmnibarSuggestion[];
   commandSuggestions: ResolvedBrowserCommand[];
+  totalSuggestionCount: number;
   shouldShowNoMatch: boolean;
   activeSuggestionIndex: number;
   setActiveSuggestionIndex: Dispatch<SetStateAction<number>>;
@@ -215,13 +217,11 @@ export function useOmnibar({
   const navigationSuggestions = useMemo(() => {
     if (mode === "writeHistory") {
       const query = inputValue.trim().toLowerCase();
-      return writeEntries
-        .filter((entry) =>
-          [entry.title, entry.url, entry.message ?? ""].some((value) =>
-            value.toLowerCase().includes(query),
-          ),
-        )
-        .slice(0, maxSuggestions);
+      return writeEntries.filter((entry) =>
+        [entry.title, entry.url, entry.message ?? ""].some((value) =>
+          value.toLowerCase().includes(query),
+        ),
+      );
     }
     const entries =
       mode === "navigation"
@@ -229,8 +229,8 @@ export function useOmnibar({
         : omnibarEntries.filter((entry) =>
             entry.sources.includes(mode as "bookmark" | "board" | "history"),
           );
-    return buildOmnibarSuggestions(entries, inputValue, maxSuggestions);
-  }, [inputValue, maxSuggestions, mode, omnibarEntries, writeEntries]);
+    return buildOmnibarSuggestions(entries, inputValue, Number.MAX_SAFE_INTEGER);
+  }, [inputValue, mode, omnibarEntries, writeEntries]);
 
   const directInputSuggestions = useMemo(() => {
     if (mode !== "navigation") {
@@ -245,7 +245,7 @@ export function useOmnibar({
     return Array.isArray(result) ? result : [result];
   }, [displayUrl, getDirectInputSuggestion, inputValue, mode]);
 
-  const suggestions = useMemo(() => {
+  const allSuggestions = useMemo(() => {
     if (directInputSuggestions.length === 0) {
       return navigationSuggestions;
     }
@@ -267,16 +267,30 @@ export function useOmnibar({
     }
 
     // URLとして認識できた入力は、履歴候補と同じリスト内に「URLを開く」操作として置く。
-    return [...filteredDirect, ...navigationSuggestions].slice(0, maxSuggestions);
-  }, [directInputSuggestions, maxSuggestions, navigationSuggestions]);
+    return [...filteredDirect, ...navigationSuggestions];
+  }, [directInputSuggestions, navigationSuggestions]);
+  const suggestions = useMemo(
+    () => allSuggestions.slice(0, maxSuggestions),
+    [allSuggestions, maxSuggestions],
+  );
 
-  const commandSuggestions = useMemo(
+  const allCommandSuggestions = useMemo(
     () =>
       mode === "command"
         ? filterAndSortBrowserCommands(commands, inputValue, recentCommandIds)
         : [],
     [commands, inputValue, mode, recentCommandIds],
   );
+
+  const commandSuggestions = useMemo(
+    () => allCommandSuggestions.slice(0, maxSuggestions),
+    [allCommandSuggestions, maxSuggestions],
+  );
+  // 全件数は表示上限を適用する前に数え、実際に並ぶモードと直入力も含める。
+  const totalSuggestionCount =
+    mode === "command"
+      ? allCommandSuggestions.length
+      : allSuggestions.length + availableModes.length;
 
   const activeSuggestionCount =
     mode === "command" ? commandSuggestions.length : suggestions.length + availableModes.length;
@@ -484,6 +498,7 @@ export function useOmnibar({
     isLoading: mode === "writeHistory" ? isWriteLoading : isOmnibarLoading,
     suggestions,
     commandSuggestions,
+    totalSuggestionCount,
     shouldShowNoMatch,
     activeSuggestionIndex,
     setActiveSuggestionIndex,
