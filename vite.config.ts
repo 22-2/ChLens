@@ -483,11 +483,26 @@ export default defineConfig(async ({ mode, command }) => {
   const platform = process.env.PLATFORM || "chrome";
   // GitHub Pagesのプロジェクトサイトはリポジトリ名のサブパスから配信される。
   const webBase = process.env.WEB_BASE_PATH || "/";
+  const webProxyUrl = process.env.WEB_PROXY_URL || "";
   if (
     platform === "web" &&
     (!/^\/(?:[A-Za-z0-9._~-]+\/)*$/.test(webBase) || webBase.includes("../"))
   ) {
     throw new Error("WEB_BASE_PATHは /repository/ の形式で指定してください");
+  }
+  if (platform === "web" && webProxyUrl) {
+    const proxy = new URL(webProxyUrl);
+    if (
+      proxy.protocol !== "https:" ||
+      proxy.username ||
+      proxy.password ||
+      proxy.search ||
+      proxy.hash
+    ) {
+      throw new Error(
+        "WEB_PROXY_URLは認証情報・クエリ・フラグメントのないHTTPS URLで指定してください",
+      );
+    }
   }
   const entry = process.env.ENTRY || "browser";
   const outputDir = `./debug/${platform}`;
@@ -655,6 +670,7 @@ export default defineConfig(async ({ mode, command }) => {
       __CHLENS_TAURI_BUILD__: JSON.stringify(command !== "build" || platform === "tauri"),
       __CHLENS_WEB_BUILD__: JSON.stringify(platform === "web"),
       __CHLENS_WEB_BASE__: JSON.stringify(platform === "web" ? webBase : "/"),
+      __CHLENS_WEB_PROXY_URL__: JSON.stringify(platform === "web" ? webProxyUrl : ""),
       // 変更理由: ビルド時刻・ハッシュはビルドごとに決まるため、ソースではなく注入で渡す（src/app/build-info.ts）。
       __CHLENS_BUILD_INFO__: JSON.stringify(resolveBuildInfo()),
     },

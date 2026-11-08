@@ -24,3 +24,5 @@ pnpm run preview:web
 ```
 
 この場合の画面URLは `http://127.0.0.1:4173/repository/view/index.html` です。通常のルートパスに戻すには `$env:WEB_BASE_PATH` を削除してから再ビルドしてください。
+
+別途用意したHTTPS中継先を使うビルドでは、`WEB_PROXY_URL` に中継先のURLを指定できます。値は公開されるJavaScriptに含まれるため、認証情報は入れないでください。中継先にはGitHub PagesのオリジンからのCORS許可と、`url` クエリで受け取った掲示板URLへの読み取り処理が必要です。この設定だけでは中継先は作成されず、書き込みにも対応しません。

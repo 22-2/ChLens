@@ -1,12 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { WebHttpClient } from "./HttpClient";
+import { resolveWebProxyUrl, WebHttpClient } from "./HttpClient";
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 describe("Web試用版のHTTP通信", () => {
+  it("HTTPSの外部中継を利用でき、認証情報やHTTPの中継先は拒否する", () => {
+    expect(resolveWebProxyUrl("https://example.com/proxy").href).toBe("https://example.com/proxy");
+    expect(() => resolveWebProxyUrl("http://example.com/proxy")).toThrow();
+    expect(() => resolveWebProxyUrl("https://user:password@example.com/proxy")).toThrow();
+  });
+
   it("取得先と条件付きヘッダーを中継へ渡し、応答の文字列と最終URLを返す", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response("本文", {

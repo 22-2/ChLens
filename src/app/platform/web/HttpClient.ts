@@ -7,6 +7,16 @@ import type { BinaryHttpResponse, HttpClient, HttpRequestOptions } from "src/app
 
 const logger = createLogger("platform");
 
+/** 公開版は別オリジンの中継を使い、未指定ならローカルプレビューへ接続する。 */
+export function resolveWebProxyUrl(configured: string): URL {
+  if (!configured) return new URL(getWebAssetPath("__chlens_web_proxy"), window.location.origin);
+  const url = new URL(configured);
+  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
+    throw new Error("Web版の中継先URLが不正です");
+  }
+  return url;
+}
+
 async function fetchBinary(
   url: string,
   options: HttpRequestOptions = {},
@@ -23,7 +33,9 @@ async function fetchBinary(
         ? setTimeout(() => controller.abort(), options.timeout)
         : undefined;
       try {
-        const proxyUrl = new URL(getWebAssetPath("__chlens_web_proxy"), window.location.origin);
+        const configured =
+          typeof __CHLENS_WEB_PROXY_URL__ === "undefined" ? "" : __CHLENS_WEB_PROXY_URL__;
+        const proxyUrl = resolveWebProxyUrl(configured);
         proxyUrl.searchParams.set("url", target);
         const response = await fetch(proxyUrl, {
           headers: options.headers,
