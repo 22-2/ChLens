@@ -217,7 +217,7 @@ describe("ThreadMinimap", () => {
       pointerType: "mouse",
     });
     expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenLastCalledWith(0, 300.5);
-    expect(CANVAS_CONTEXT_STUB.lineTo).toHaveBeenLastCalledWith(82, 300.5);
+    expect(CANVAS_CONTEXT_STUB.lineTo).toHaveBeenLastCalledWith(61, 300.5);
     expect(document.body.querySelector('[role="tooltip"]')).toHaveTextContent("レス 10");
     expect(document.body.querySelector('[role="tooltip"]')).toHaveStyle({ top: "300px" });
 
@@ -489,7 +489,7 @@ describe("ThreadMinimap", () => {
       // 三角の先端（markerX - 幅8px）を moveTo したYがマーカー中心。
       const call = [...CANVAS_CONTEXT_STUB.moveTo.mock.calls]
         .reverse()
-        .find((args) => args[0] === 68);
+        .find((args) => args[0] === 47);
       expect(call).toBeDefined();
       return call![1] as number;
     };

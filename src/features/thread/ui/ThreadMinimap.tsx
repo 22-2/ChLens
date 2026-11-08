@@ -78,7 +78,8 @@ interface MinimapResponseHit {
 
 const MINIMAP_MIN_WIDTH = 30;
 const MINIMAP_MAX_WIDTH = 180;
-const MINIMAP_WIDTH_RATIO = 0.08;
+// 本文の表示領域を広げつつ、マーカーの操作幅を確保する。
+const MINIMAP_WIDTH_RATIO = 0.06;
 const MINIMAP_CONTENT_GAP = 10;
 const MINIMAP_MIN_DRAWABLE_HEIGHT = 80;
 const MINIMAP_MARKER_SNAP_DISTANCE = 8;
