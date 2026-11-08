@@ -417,6 +417,14 @@
   right: 0;
 }
 
+.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__footer {
+  /* 2ペインのグリッドでも区切り線をバー全幅に広げ、スクロール中も操作できるようにする。 */
+  grid-column: 1 / -1;
+  position: sticky;
+  bottom: 0;
+  background: var(--sys-color-tab-strip);
+}
+
 .tab-bar--multiple-panes .tab-bar__vertical-header {
   grid-column: 1 / -1;
   order: -2;
