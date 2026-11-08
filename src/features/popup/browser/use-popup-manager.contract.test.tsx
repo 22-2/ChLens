@@ -235,7 +235,7 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
     );
   };
 
-  it("子のID・返信は親の右上、アンカーは操作位置の高さに配置する", () => {
+  it("子のID・返信・アンカーは親の右、操作位置の高さに配置する", () => {
     const { result, unmount } = createThreadPopupHook("contract-child-position");
     let parentId = "";
     act(() => {
@@ -255,8 +255,8 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
     expect(
       children.filter((child) => child.type !== "anchor").map(({ x, y }) => ({ x, y })),
     ).toEqual([
-      { x: 240, y: 260 },
-      { x: 240, y: 260 },
+      { x: 240, y: 314 },
+      { x: 240, y: 315 },
     ]);
     expect(children.find((child) => child.type === "anchor")).toMatchObject({ x: 240, y: 132 });
     parent.remove();

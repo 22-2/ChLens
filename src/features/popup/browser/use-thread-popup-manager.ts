@@ -142,9 +142,11 @@ export function useThreadPopupManager({
         (element) => element.dataset.popupId === parentId,
       );
       const rect = parent?.getBoundingClientRect();
+      // 横は親の右へずらし、縦は操作位置の直下に揃える（子アンカーと同じ規則）。
+      // 親の上端を基準にすると、長い返信ツリーの下側から開いた時に親の上端付近へ飛んでしまう。
       return {
         x: (rect?.left ?? x) + CHILD_POPUP_OFFSET,
-        y: (rect?.top ?? y) - CHILD_POPUP_OFFSET,
+        y: y + ANCHOR_PREVIEW_OFFSET,
       };
     },
     [viewDocument],
