@@ -2,7 +2,12 @@
 import { fc, test as propertyTest } from "@fast-check/vitest";
 import { describe, expect, it } from "vite-plus/test";
 
-import { ThreadParser } from "../parser/ThreadParser";
+import {
+  parseChThread,
+  parseJbbsThread,
+  parseMachiThread,
+  ThreadParser,
+} from "../parser/ThreadParser";
 import { ChURL } from "../url/ChURL";
 
 const datFieldCharacters = ["a", "Z", "あ", "猫", "0", " ", "_", "-"] as const;
@@ -35,6 +40,56 @@ function createDatText(rows: DatRow[]): string {
 }
 
 describe("ThreadParser", () => {
+  it("datの破損行を表示用のレスに置き換え、前後のレスの位置を保つ", () => {
+    const parsed = parseChThread(
+      "一人目<>sage<>日付1<>本文1<>タイトル\n破損した行\n三人目<><>日付3<>本文3<>\n",
+    );
+
+    expect(parsed).toEqual({
+      title: "タイトル",
+      res: [
+        { name: "一人目", mail: "sage", other: "日付1", message: "本文1" },
+        { name: "</b>データ破損<b>", mail: "", other: "", message: "データが破損しています" },
+        { name: "三人目", mail: "", other: "日付3", message: "本文3" },
+      ],
+    });
+  });
+
+  it("datに有効なレスがなければスレッドとして扱わない", () => {
+    expect(parseChThread("\n破損した行\n別の破損行\n")).toBeNull();
+    expect(parseChThread("\n")).toBeNull();
+  });
+
+  it("まちBBSの欠番を補い、後続レスの内容とタイトルを維持する", () => {
+    const parsed = parseMachiThread(
+      "1<>一人目<>sage<>日付1<>本文1<>タイトル\n3<>三人目<><>日付3<>本文3<>\n",
+    );
+
+    expect(parsed).toEqual({
+      title: "タイトル",
+      res: [
+        { name: "一人目", mail: "sage", other: "日付1", message: "本文1" },
+        { name: "あぼーん", mail: "あぼーん", other: "あぼーん", message: "あぼーん" },
+        { name: "三人目", mail: "", other: "日付3", message: "本文3" },
+      ],
+    });
+  });
+
+  it("したらばのIDがあるレスとないレスを区別し、欠番を補う", () => {
+    const parsed = parseJbbsThread(
+      "1<>一人目<>sage<>日付1<>本文1<>タイトル<>abc\n3<>三人目<><>日付3<>本文3<>タイトル<>\n",
+    );
+
+    expect(parsed).toEqual({
+      title: "タイトル",
+      res: [
+        { name: "一人目", mail: "sage", other: "日付1 ID:abc", message: "本文1" },
+        { name: "あぼーん", mail: "あぼーん", other: "あぼーん", message: "あぼーん" },
+        { name: "三人目", mail: "", other: "日付3", message: "本文3" },
+      ],
+    });
+  });
+
   propertyTest.prop([fc.array(datRowArbitrary, { minLength: 1, maxLength: 8 })])(
     "生成したdatレスの内容と順序を保つ",
     (rows) => {

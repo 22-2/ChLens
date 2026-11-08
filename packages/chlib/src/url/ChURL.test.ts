@@ -16,6 +16,43 @@ const pathSegmentArbitrary = fc
   .map((characters) => characters.join(""));
 
 describe("ChURL", () => {
+  it("したらばの通常スレッドから板・取得先・レス番号を解決する", () => {
+    const url = new ChURL(urlWithHost(HOSTNAME.NEW_JBBS, "/bbs/read.cgi/example/42/123/7"));
+
+    expect(url.type).toBe("thread");
+    expect(url.bbsType).toBe("jbbs");
+    expect(url.isArchive).toBe(false);
+    expect(url.getBoardName()).toBe("example/42");
+    expect(url.getThreadId()).toBe("123");
+    expect(url.getResNumber()).toBe("7");
+    expect(url.toBoard().pathname).toBe("/example/42/");
+    expect(new URL(url.getDatUrl()!).pathname).toBe("/bbs/rawmode.cgi/example/42/123/");
+    expect(new URL(url.getSubjectUrl()!).pathname).toBe("/example/42/subject.txt");
+  });
+
+  it("したらばの過去ログは元の取得先を使い、通常板の一覧を取得しない", () => {
+    const url = new ChURL(urlWithHost(HOSTNAME.NEW_JBBS, "/bbs/read_archive.cgi/example/42/123/"));
+
+    expect(url.type).toBe("thread");
+    expect(url.isArchive).toBe(true);
+    expect(url.getDatUrl()).toBe(url.href);
+    expect(url.getSubjectUrl()).toBeNull();
+    expect(url.getBoardName()).toBe("example/42");
+    expect(url.getThreadId()).toBe("123");
+  });
+
+  it("まちBBSのスレッドと板を、それぞれの取得先へ変換する", () => {
+    const url = new ChURL(urlWithHost(`server.${HOSTNAME.MACHI}`, "/bbs/read.cgi/example/123/7"));
+
+    expect(url.type).toBe("thread");
+    expect(url.bbsType).toBe("machi");
+    expect(url.getBoardName()).toBe("example");
+    expect(url.getThreadId()).toBe("123");
+    expect(url.getResNumber()).toBe("7");
+    expect(new URL(url.getDatUrl()!).pathname).toBe("/bbs/offlaw.cgi/example/123/");
+    expect(new URL(url.getSubjectUrl()!).pathname).toBe("/bbs/offlaw.cgi/example/");
+  });
+
   propertyTest.prop([
     fc.constantFrom("bbs.example.test", HOSTNAME.NEW_5CH, HOSTNAME.OLD_2CH, HOSTNAME.EDDIBB),
     pathSegmentArbitrary,

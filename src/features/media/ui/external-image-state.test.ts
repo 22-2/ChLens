@@ -248,6 +248,12 @@ describe("getExternalImagePlaceholderText", () => {
     );
   });
 
+  it("手動取得の設定でも、確認中の画像はクリックを促さず確認中と表示する", () => {
+    expect(getExternalImagePlaceholderText({ ...base, status: "checking", manualLoad: true })).toBe(
+      "画像サイズを確認中...",
+    );
+  });
+
   it("サイズが分からない確認待ちの画像は、確認できない旨を出す", () => {
     expect(
       getExternalImagePlaceholderText({
