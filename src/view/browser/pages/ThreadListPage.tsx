@@ -5,7 +5,6 @@ import {
   useBookmarkRevision,
 } from "src/features/bookmark/browser/use-bookmark-revision";
 import { useNgStatus } from "src/features/ng/browser/use-ng-status";
-import { useThreadTitleNgDialog } from "src/features/ng/browser/use-thread-title-ng-dialog";
 import { ThreadTitleNgDialog } from "src/features/ng/ui/ThreadTitleNgDialog";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
 import { useTabViewRuntime } from "src/features/tabs/browser/use-tab-view-runtime";
@@ -13,9 +12,7 @@ import {
   useWheelPagination,
   WHEEL_THRESHOLD,
 } from "src/features/thread/browser/useWheelPagination";
-import { createThreadContextMenuItems } from "src/features/thread/ui/thread-context-menu-items";
 import { WheelScrollIndicator } from "src/features/thread/ui/WheelScrollIndicator";
-import { clearCachedThreadReadState } from "src/features/thread-list/ui/thread-list-cache";
 import { setThreadListLoadedAt } from "src/features/thread-list/ui/thread-list-loaded-at";
 import {
   calcHeat,
@@ -39,12 +36,7 @@ import {
   type ThreadListSnapshot,
   useSelectedThreadListSnapshot,
 } from "src/features/thread-list/ui/thread-list-snapshots";
-import type { IThread } from "src/service-container/interfaces";
-import type { CommandRequest } from "src/view/browser/commands/command-runtime";
-import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import { deleteThreadLogAndHistory } from "src/view/browser/commands/thread-log-actions";
-import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
@@ -62,17 +54,13 @@ import {
 } from "src/view/browser/pages/thread-list/thread-list-display";
 import { useThreadListAutoRefresh } from "src/view/browser/pages/thread-list/use-thread-list-auto-refresh";
 import { useThreadListBoardRecord } from "src/view/browser/pages/thread-list/use-thread-list-board-record";
+import { useThreadListContextMenu } from "src/view/browser/pages/thread-list/use-thread-list-context-menu";
 import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
 import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";
 import { useThreadListViewState } from "src/view/browser/pages/thread-list/use-thread-list-view-state";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import {
-  canGoBack,
-  canGoForward,
-  type Tab,
-  type ThreadListPage as ThreadListPageType,
-} from "src/view/browser/types";
+import { type Tab, type ThreadListPage as ThreadListPageType } from "src/view/browser/types";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
@@ -80,7 +68,6 @@ import {
   setFilterToolbarPinned,
 } from "src/view/browser/utils/filter-toolbar-open-state";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
-import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { ThreadListView } from "src/view/shared/ThreadListView";
 
 const logger = createLogger("view/browser");
@@ -130,12 +117,6 @@ export const ThreadListPage: React.FC<Props> = ({
   const { window: viewWindow, document: viewDocument } = viewSurface;
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
-  const runTargetCommand = useCallback(
-    (request: CommandRequest) => {
-      void runCommandRequest(request, { surface: viewSurface, toast });
-    },
-    [toast, viewSurface],
-  );
   const { viewTab } = useTabStore();
   const { visitedBoardRef, resolvedBoardTitlesRef } = useThreadListBoardRecord({
     tabId,
@@ -246,16 +227,22 @@ export const ThreadListPage: React.FC<Props> = ({
       setFilterToolbarPinned(tabId, false);
     };
   }, [tabId]);
-  const [contextMenuState, setContextMenuState] = useState<{
-    x: number;
-    y: number;
-    thread: IThread;
-  } | null>(null);
-  const threadTitleNgDialog = useThreadTitleNgDialog({
+  const {
+    contextMenuState,
+    openContextMenu,
+    closeContextMenu,
+    contextMenuItems,
+    contextMenuNavigationActions,
+    threadTitleNgDialog,
+  } = useThreadListContextMenu({
+    page,
+    navigationTab,
+    viewSurface,
     toast,
-    logLabel: "ThreadListPage",
+    bookmarkRevision,
+    runTabCommand,
+    requestManualRefresh,
   });
-  const { open: openThreadTitleNgDialog } = threadTitleNgDialog;
   const { column: sortColumn, direction: sortDirection } = sortPreference;
 
   // Ctrl+Fで検索バーを開く
@@ -339,71 +326,6 @@ export const ThreadListPage: React.FC<Props> = ({
     },
     [handleSort],
   );
-
-  const deleteThreadRecords = useCallback(
-    async (thread: IThread) => {
-      try {
-        const deletedCount = await deleteThreadLogAndHistory(
-          thread.url,
-          clearCachedThreadReadState,
-        );
-        if (deletedCount === 0) {
-          toast.info("このスレのログは保存されていません。閲覧履歴を削除しました", {
-            targetWindow: viewWindow,
-          });
-          return;
-        }
-        toast.success("スレログと閲覧履歴を削除しました", { targetWindow: viewWindow });
-      } catch (error) {
-        logger.error("スレログと閲覧履歴の削除に失敗しました", { url: thread.url, error });
-        toast.error("スレログと閲覧履歴を削除できませんでした", { targetWindow: viewWindow });
-      }
-    },
-    [toast, viewWindow],
-  );
-
-  const contextMenuItems = useMemo(() => {
-    if (!contextMenuState) return [];
-    const { thread } = contextMenuState;
-    // ブックマークの外部更新でもメニューの表示を取り直すため、revisionを依存値に含める。
-    void bookmarkRevision;
-    return createThreadContextMenuItems({
-      target: { title: thread.title, url: thread.url },
-      isBookmarked: readBookmarkStatus(thread.url),
-      onRegisterTitleNg: () => openThreadTitleNgDialog(thread),
-      runCommand: runTargetCommand,
-      onDeleteThreadRecords: () => {
-        void deleteThreadRecords(thread);
-      },
-    });
-  }, [
-    bookmarkRevision,
-    contextMenuState,
-    deleteThreadRecords,
-    openThreadTitleNgDialog,
-    runTargetCommand,
-  ]);
-
-  const closeContextMenu = useCallback(() => setContextMenuState(null), []);
-  const contextMenuNavigationActions = contextMenuState ? (
-    <ContextMenuNavigationActions
-      canGoBack={canGoBack(navigationTab)}
-      canGoForward={canGoForward(navigationTab)}
-      canRefresh={isPageRefreshable(page)}
-      onBack={() => {
-        runTabCommand(TAB_COMMAND_IDS.BACK);
-        closeContextMenu();
-      }}
-      onForward={() => {
-        runTabCommand(TAB_COMMAND_IDS.FORWARD);
-        closeContextMenu();
-      }}
-      onRefresh={() => {
-        requestManualRefresh();
-        closeContextMenu();
-      }}
-    />
-  ) : null;
 
   const { ngCount: threadListNgCount, highlightCount: threadListHighlightCount } = useMemo(
     () => countThreadListFlags(threads),
@@ -517,7 +439,7 @@ export const ThreadListPage: React.FC<Props> = ({
         getRowClassName={({ thread }) => getThreadRowClassName(thread, isNgTemporarilyDisabled)}
         onRowClick={handleThreadClick}
         onRowMiddleClick={openThreadInNewTab}
-        onRowContextMenu={({ thread }, x, y) => setContextMenuState({ x, y, thread })}
+        onRowContextMenu={({ thread }, x, y) => openContextMenu(thread, x, y)}
         sortColumn={sortColumn ?? undefined}
         sortDirection={sortDirection}
         onSort={handleTableSort}
