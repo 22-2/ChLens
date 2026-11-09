@@ -1,11 +1,6 @@
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
-  BOARD_AUTO_REFRESH_CONFIG_KEY,
-  MIN_BOARD_AUTO_REFRESH_MS,
-  readBoardAutoRefreshIntervalMs,
-} from "src/features/auto-refresh/browser/auto-refresh-config";
-import {
   readBookmarkStatus,
   useBookmarkRevision,
 } from "src/features/bookmark/browser/use-bookmark-revision";
@@ -44,7 +39,6 @@ import {
   type ThreadListSnapshot,
   useSelectedThreadListSnapshot,
 } from "src/features/thread-list/ui/thread-list-snapshots";
-import { container } from "src/service-container/index";
 import type { IThread } from "src/service-container/interfaces";
 import type { CommandRequest } from "src/view/browser/commands/command-runtime";
 import { runCommandRequest } from "src/view/browser/commands/command-runtime";
@@ -66,6 +60,7 @@ import {
   getThreadRowClassName,
   nextSortPreference,
 } from "src/view/browser/pages/thread-list/thread-list-display";
+import { useThreadListAutoRefresh } from "src/view/browser/pages/thread-list/use-thread-list-auto-refresh";
 import { useThreadListBoardRecord } from "src/view/browser/pages/thread-list/use-thread-list-board-record";
 import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
 import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";
@@ -86,7 +81,6 @@ import {
 } from "src/view/browser/utils/filter-toolbar-open-state";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
-import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
 import { ThreadListView } from "src/view/shared/ThreadListView";
 
 const logger = createLogger("view/browser");
@@ -220,12 +214,18 @@ export const ThreadListPage: React.FC<Props> = ({
     return () => selectThreadListSnapshot(tabId, null);
   }, [page.boardUrl, refreshKey, tabId]);
   useThreadListReadStateSync({ boardUrl: page.boardUrl, isActive, setThreads });
-  const [boardAutoRefreshIntervalMs, setBoardAutoRefreshIntervalMs] = useState(() =>
-    readBoardAutoRefreshIntervalMs(page.boardUrl),
-  );
-  const [isDocumentVisible, setIsDocumentVisible] = useState(
-    viewDocument.visibilityState === "visible",
-  );
+  useThreadListAutoRefresh({
+    boardUrl: page.boardUrl,
+    refreshKey,
+    isActive,
+    isAutoRefreshEnabled,
+    hasSelectedSnapshot: selectedSnapshot != null,
+    loading,
+    autoRefreshRequestRef,
+    runTabCommand,
+    viewWindow,
+    viewDocument,
+  });
   // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
   // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
@@ -257,77 +257,6 @@ export const ThreadListPage: React.FC<Props> = ({
   });
   const { open: openThreadTitleNgDialog } = threadTitleNgDialog;
   const { column: sortColumn, direction: sortDirection } = sortPreference;
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      setIsDocumentVisible(viewDocument.visibilityState === "visible");
-    };
-
-    viewDocument.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      viewDocument.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [viewDocument]);
-
-  useEffect(() => {
-    const applyInterval = () => {
-      setBoardAutoRefreshIntervalMs(readBoardAutoRefreshIntervalMs(page.boardUrl));
-    };
-
-    // 変更理由: 板一覧のタイマーも対象板の上書きを読むため、
-    // 共通設定とスコープ設定のどちらが変わっても現在値を再評価する。
-    const handleConfigUpdated = ({ key }: { key?: string }) => {
-      if (key === BOARD_AUTO_REFRESH_CONFIG_KEY || key === SCOPED_SETTINGS_CONFIG_KEY) {
-        applyInterval();
-      }
-    };
-
-    container.config.ready(applyInterval);
-    container.message.on("config_updated", handleConfigUpdated);
-
-    return () => {
-      container.message.off("config_updated", handleConfigUpdated);
-    };
-  }, [page.boardUrl]);
-
-  useEffect(() => {
-    if (
-      !isAutoRefreshEnabled ||
-      selectedSnapshot != null ||
-      !isActive ||
-      !isDocumentVisible ||
-      boardAutoRefreshIntervalMs < MIN_BOARD_AUTO_REFRESH_MS
-    ) {
-      return;
-    }
-
-    const timerId = viewWindow.setInterval(() => {
-      if (loading) {
-        return;
-      }
-
-      // タブを切り替えた瞬間に旧タブの更新が走ると体感が悪いため、
-      // 一覧の自動更新は表示中タブの RELOAD 経路だけを使って発火する。
-      // 同じRELOAD経路を使う手動更新と区別し、自動更新だけ進捗をステータスバーへ出す。
-      autoRefreshRequestRef.current = { boardUrl: page.boardUrl, refreshKey };
-      if (!runTabCommand(TAB_COMMAND_IDS.RELOAD)) autoRefreshRequestRef.current = null;
-    }, boardAutoRefreshIntervalMs);
-
-    return () => {
-      viewWindow.clearInterval(timerId);
-    };
-  }, [
-    boardAutoRefreshIntervalMs,
-    isActive,
-    isAutoRefreshEnabled,
-    isDocumentVisible,
-    loading,
-    page.boardUrl,
-    refreshKey,
-    selectedSnapshot,
-    runTabCommand,
-    viewWindow,
-  ]);
 
   // Ctrl+Fで検索バーを開く
   // useEffect(() => {
