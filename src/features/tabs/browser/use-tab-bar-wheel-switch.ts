@@ -53,5 +53,5 @@ export function useTabBarWheelSwitch(
     return () => {
       el.removeEventListener("wheel", nativeHandler);
     };
-  }, [handleWheel]);
+  }, [barRef, handleWheel]);
 }

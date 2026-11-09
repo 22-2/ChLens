@@ -86,7 +86,7 @@ export function useTabDragTracking({
       stopDragTrackingRef.current = () =>
         ownerDocument.removeEventListener("pointermove", track, { capture: true });
     },
-    [onDragTabPreview],
+    [onDragTabPreview, tabListRef],
   );
 
   useEffect(

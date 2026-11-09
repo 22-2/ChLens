@@ -46,37 +46,43 @@ export function useTabListScroll({ tabListRef, selectedTabId, items }: UseTabLis
         ? previous
         : nextState,
     );
-  }, []);
+  }, [tabListRef]);
 
-  const scrollTabIntoView = useCallback((tabId: string) => {
-    const tabElement = [
-      ...(tabListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? []),
-    ].find((tab) => tab.dataset.tabId === tabId);
-    tabElement?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-  }, []);
+  const scrollTabIntoView = useCallback(
+    (tabId: string) => {
+      const tabElement = [
+        ...(tabListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? []),
+      ].find((tab) => tab.dataset.tabId === tabId);
+      tabElement?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    },
+    [tabListRef],
+  );
 
-  const scrollSelectedTabIntoView = useCallback((tabId: string) => {
-    const tabList = tabListRef.current;
-    const tabElement = [...(tabList?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? [])].find(
-      (tab) => tab.dataset.tabId === tabId,
-    );
-    if (!tabList || !tabElement) return;
+  const scrollSelectedTabIntoView = useCallback(
+    (tabId: string) => {
+      const tabList = tabListRef.current;
+      const tabElement = [...(tabList?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? [])].find(
+        (tab) => tab.dataset.tabId === tabId,
+      );
+      if (!tabList || !tabElement) return;
 
-    const tabListRect = tabList.getBoundingClientRect();
-    const tabRect = tabElement.getBoundingClientRect();
-    // 変更理由: 垂直モードでは上下の見切れも判定する。水平モードでは縦方向に
-    // はみ出さないため、両軸の判定を共通化しても既存の挙動は変わらない。
-    const isOutsideViewport =
-      tabRect.left < tabListRect.left ||
-      tabRect.right > tabListRect.right ||
-      tabRect.top < tabListRect.top ||
-      tabRect.bottom > tabListRect.bottom;
-    if (isOutsideViewport) {
-      // 変更理由: 常に scrollIntoView するとタブ切り替えのたびに既存の横位置へ干渉するため、
-      // 選択タブが見切れている場合だけ、最小限のスクロールを発生させる。
-      tabElement.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
-  }, []);
+      const tabListRect = tabList.getBoundingClientRect();
+      const tabRect = tabElement.getBoundingClientRect();
+      // 変更理由: 垂直モードでは上下の見切れも判定する。水平モードでは縦方向に
+      // はみ出さないため、両軸の判定を共通化しても既存の挙動は変わらない。
+      const isOutsideViewport =
+        tabRect.left < tabListRect.left ||
+        tabRect.right > tabListRect.right ||
+        tabRect.top < tabListRect.top ||
+        tabRect.bottom > tabListRect.bottom;
+      if (isOutsideViewport) {
+        // 変更理由: 常に scrollIntoView するとタブ切り替えのたびに既存の横位置へ干渉するため、
+        // 選択タブが見切れている場合だけ、最小限のスクロールを発生させる。
+        tabElement.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+    },
+    [tabListRef],
+  );
 
   const handleTabListResize = useCallback(() => {
     updateTabListScrollState();
@@ -107,7 +113,7 @@ export function useTabListScroll({ tabListRef, selectedTabId, items }: UseTabLis
       window.removeEventListener("resize", handleTabListResize);
       resizeObserver?.disconnect();
     };
-  }, [handleTabListResize, updateTabListScrollState, items]);
+  }, [handleTabListResize, tabListRef, updateTabListScrollState, items]);
 
   const isTabListScrollable = tabListScrollState.canScrollLeft || tabListScrollState.canScrollRight;
 
