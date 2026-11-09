@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { resolveSortPreference } from "src/features/thread-list/ui/thread-list-display";
 import {
   type ThreadListSortPreference,
   writeThreadListSortPreference,
@@ -9,8 +10,6 @@ import {
   DEFAULT_SEARCH_OPTIONS,
   type SearchOptions,
 } from "src/view/browser/utils/search-normalize";
-
-import { resolveSortPreference } from "./thread-list-display";
 
 /**
  * スレ一覧の並べ替え・検索語・検索オプションを持ち、タブの view state と板別の並べ替え設定へ保存する。

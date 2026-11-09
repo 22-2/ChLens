@@ -13,6 +13,14 @@ import {
   WHEEL_THRESHOLD,
 } from "src/features/thread/browser/useWheelPagination";
 import { WheelScrollIndicator } from "src/features/thread/ui/WheelScrollIndicator";
+import {
+  buildDisplayThreads,
+  buildThreadSections,
+  countThreadListFlags,
+  filterVisibleThreads,
+  getThreadRowClassName,
+  nextSortPreference,
+} from "src/features/thread-list/ui/thread-list-display";
 import { setThreadListLoadedAt } from "src/features/thread-list/ui/thread-list-loaded-at";
 import {
   calcHeat,
@@ -44,14 +52,6 @@ import {
   getThreadListPageCountKey,
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
-import {
-  buildDisplayThreads,
-  buildThreadSections,
-  countThreadListFlags,
-  filterVisibleThreads,
-  getThreadRowClassName,
-  nextSortPreference,
-} from "src/view/browser/pages/thread-list/thread-list-display";
 import { useThreadListAutoRefresh } from "src/view/browser/pages/thread-list/use-thread-list-auto-refresh";
 import { useThreadListBoardRecord } from "src/view/browser/pages/thread-list/use-thread-list-board-record";
 import { useThreadListContextMenu } from "src/view/browser/pages/thread-list/use-thread-list-context-menu";
