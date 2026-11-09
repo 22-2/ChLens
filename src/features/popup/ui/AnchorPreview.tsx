@@ -26,6 +26,7 @@ export interface AnchorPreviewProps {
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onOpenRootReplyTree: (resNum: number, e: React.MouseEvent) => void;
+  resolveReplyTreeRoot: (resNum: number) => number;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
@@ -73,6 +74,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   onIdLinkClick,
   onRepClick,
   onOpenRootReplyTree,
+  resolveReplyTreeRoot,
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
@@ -167,6 +169,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
               onIdLinkClick={onIdLinkClick}
               onRepClick={onRepClick}
               onOpenRootReplyTree={onOpenRootReplyTree}
+              resolveReplyTreeRoot={resolveReplyTreeRoot}
               onAnchorClick={onAnchorClick}
               onAnchorHover={onAnchorHover}
               onAnchorLeave={onAnchorLeave}

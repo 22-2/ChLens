@@ -38,6 +38,10 @@ export interface PopupResCardShared {
    * 必須にしておくと、新しいポップアップで渡し忘れた時点で型チェックが失敗する。
    */
   onOpenRootReplyTree: (resNum: number, e: ReactMouseEvent) => void;
+  /** 「ツリー先頭から」で開く起点レス番号を返す。押した時と同じ関数でボタンの表示を決める。 */
+  resolveReplyTreeRoot: (resNum: number) => number;
+  /** 返信ツリーのポップアップ内なら、表示中のツリーの起点。同じツリーを開き直すボタンを隠す。 */
+  displayedTreeRootResNum?: number;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
@@ -63,6 +67,8 @@ export function PopupResCardScope({
   onIdLinkClick,
   onRepClick,
   onOpenRootReplyTree,
+  resolveReplyTreeRoot,
+  displayedTreeRootResNum,
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
@@ -84,6 +90,8 @@ export function PopupResCardScope({
       onIdLinkClick,
       onRepClick,
       onOpenRootReplyTree,
+      resolveReplyTreeRoot,
+      displayedTreeRootResNum,
       onAnchorClick,
       onAnchorHover,
       onAnchorLeave,
@@ -104,6 +112,8 @@ export function PopupResCardScope({
       onIdLinkClick,
       onRepClick,
       onOpenRootReplyTree,
+      resolveReplyTreeRoot,
+      displayedTreeRootResNum,
       onAnchorClick,
       onAnchorHover,
       onAnchorLeave,

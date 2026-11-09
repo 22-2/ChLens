@@ -35,6 +35,8 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
       onIdLinkClick,
       onRepClick,
       onOpenRootReplyTree,
+      resolveReplyTreeRoot,
+      displayedTreeRootResNum,
       onAnchorClick,
       onAnchorHover,
       onAnchorLeave,
@@ -53,6 +55,15 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
     const nameMarkup = useMemo(() => ({ __html: decoded.nameHtml }), [decoded.nameHtml]);
     const urls = useMemo(() => extractUrlsFromMessage(decoded.messageHtml), [decoded.messageHtml]);
     const resolvedMedia = useImgurAlbumMedia(decoded.messageHtml, urls, threadKey);
+    const treeRootResNum = useMemo(
+      () => resolveReplyTreeRoot(res.num),
+      [resolveReplyTreeRoot, res.num],
+    );
+    const showOpenRootReplyTree = canOpenRootReplyTree(
+      res.num,
+      treeRootResNum,
+      displayedTreeRootResNum,
+    );
 
     // repIndex が渡された場合のみ返信数を表示する
     const repCount = repIndex?.get(res.num)?.size ?? 0;
@@ -197,19 +208,21 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
               返信({repCount})
             </span>
           )}
-          {/* ポップアップの種類で有無が変わらないよう、共通コンテキストのハンドラーで常に表示する。 */}
-          <button
-            type="button"
-            className="res__open-root-tree-btn"
-            onClick={(e) => {
-              // アンカーの葉からでも議論の起点へ辿れるよう、
-              // 返信ツリーの開始レスを呼び出し元で解決してから開く。
-              e.stopPropagation();
-              onOpenRootReplyTree(res.num, e);
-            }}
-          >
-            ツリー先頭から
-          </button>
+          {/* ポップアップの種類ではなく、押した時に開くツリーで表示を決める。 */}
+          {showOpenRootReplyTree && (
+            <button
+              type="button"
+              className="res__open-root-tree-btn"
+              onClick={(e) => {
+                // アンカーの葉からでも議論の起点へ辿れるよう、
+                // 返信ツリーの開始レスを呼び出し元で解決してから開く。
+                e.stopPropagation();
+                onOpenRootReplyTree(res.num, e);
+              }}
+            >
+              ツリー先頭から
+            </button>
+          )}
         </header>
         <ResBody
           messageHtml={resolvedMedia.messageHtml}
@@ -237,6 +250,20 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
   },
 );
 PopupResCard.displayName = "PopupResCard";
+
+/**
+ * 「ツリー先頭から」を押して、今見ているものと違うツリーが開くときだけ表示する。
+ * - 起点が自分自身なら、開くのは自分への返信ツリーで「返信(N)」と同じになる。
+ * - 表示中の返信ツリーと同じ起点なら、全体がすでに見えている。
+ */
+function canOpenRootReplyTree(
+  resNum: number,
+  treeRootResNum: number,
+  displayedTreeRootResNum: number | undefined,
+): boolean {
+  if (treeRootResNum === resNum) return false;
+  return treeRootResNum !== displayedTreeRootResNum;
+}
 export interface StaticResCardProps {
   res: IRes;
   anchorPreviewDepth: number;

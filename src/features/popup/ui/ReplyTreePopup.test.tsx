@@ -44,6 +44,7 @@ const BASE_PROPS: React.ComponentProps<typeof ReplyTreePopup> = {
   onUrlContextMenu: () => {},
   onRepClick: () => {},
   onOpenRootReplyTree: () => {},
+  resolveReplyTreeRoot: (resNum: number) => resNum,
   onAnchorClick: () => {},
   onAnchorHover: () => {},
   onAnchorLeave: () => {},
@@ -128,6 +129,20 @@ describe("ReplyTreePopup", () => {
     clipboardItemCtor.mockReset();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it("ツリー全体を表示しているときは「ツリー先頭から」を出さない", () => {
+    // どのレスから遡ってもレス1へ着く＝表示中のツリーと同じなので、押しても同じものが開くだけ。
+    render(<ReplyTreePopup {...BASE_PROPS} resolveReplyTreeRoot={() => 1} />);
+
+    expect(screen.getByText("nested reply message")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "ツリー先頭から" })).not.toBeInTheDocument();
+  });
+
+  it("表示中のツリーより上へ遡れるときは「ツリー先頭から」を出す", () => {
+    render(<ReplyTreePopup {...BASE_PROPS} resNum={2} resolveReplyTreeRoot={() => 1} />);
+
+    expect(screen.getAllByRole("button", { name: "ツリー先頭から" }).length).toBeGreaterThan(0);
   });
 
   it("単一ツリー内の同じ宛先への複数返信だけIDを強調し、別の枝は合算しない", () => {

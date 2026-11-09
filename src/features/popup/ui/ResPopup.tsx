@@ -75,6 +75,7 @@ export const ResPopup: React.FC<{
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
   onOpenRootReplyTree: (resNum: number, e: React.MouseEvent) => void;
+  resolveReplyTreeRoot: (resNum: number) => number;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
@@ -123,6 +124,7 @@ export const ResPopup: React.FC<{
   onIdLinkClick,
   onRepClick,
   onOpenRootReplyTree,
+  resolveReplyTreeRoot,
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
@@ -207,6 +209,7 @@ export const ResPopup: React.FC<{
               onIdLinkClick={onIdLinkClick}
               onRepClick={onRepClick}
               onOpenRootReplyTree={onOpenRootReplyTree}
+              resolveReplyTreeRoot={resolveReplyTreeRoot}
               onAnchorClick={onAnchorClick}
               onAnchorHover={onAnchorHover}
               onAnchorLeave={onAnchorLeave}

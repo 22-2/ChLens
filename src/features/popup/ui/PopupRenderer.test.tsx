@@ -136,6 +136,7 @@ describe("PopupRenderer", () => {
       onPopupIdLinkClick,
       onRepClickInPopup,
       onOpenRootReplyTreeInPopup,
+      resolveReplyTreeRoot: (resNum) => resNum,
       onResContextMenuOpen,
       onUrlClick: () => false,
       onUrlContextMenuOpen,

@@ -155,13 +155,20 @@ export function useResInteractionHandlers({
     [addTreePopup, clearAnchorPreviewHideTimer, openDirectReplyPopup],
   );
 
+  // 「ツリー先頭から」で開く起点。ボタンを出すかどうかの判定と、押した時に開く処理で
+  // 同じ関数を使い、表示と実際の動きがずれないようにする。
+  const resolveReplyTreeRoot = useCallback(
+    (resNum: number) => resolveReplyTreeRootResNum(resNum, indexes.ancIndex, indexes.resMap),
+    [indexes.ancIndex, indexes.resMap],
+  );
+
   const handleOpenRootReplyTreeInPopup = useCallback(
     (parentId?: string, anchorPreviewDepth = 0) =>
       (resNum: number, e: MouseEvent) => {
         clearAnchorPreviewHideTimer();
         // 葉のアンカーから辿る時は起点レスを ancIndex で逆引きしてから開くことで、
         // 相互アンカーが続くケースでも最初の流れを辿りやすくする。
-        const rootResNum = resolveReplyTreeRootResNum(resNum, indexes.ancIndex, indexes.resMap);
+        const rootResNum = resolveReplyTreeRoot(resNum);
         // 起点へ遡った場合は、押した元レスをツリー内で薄く強調して位置を見失わないようにする。
         addTreePopup(
           rootResNum,
@@ -172,7 +179,7 @@ export function useResInteractionHandlers({
           rootResNum === resNum ? undefined : resNum,
         );
       },
-    [addTreePopup, clearAnchorPreviewHideTimer, indexes.ancIndex, indexes.resMap],
+    [addTreePopup, clearAnchorPreviewHideTimer, resolveReplyTreeRoot],
   );
 
   // アンカークリックで該当レスへスクロール
@@ -195,6 +202,7 @@ export function useResInteractionHandlers({
     closePopup,
     handleRepClickInPopup,
     handleOpenRootReplyTreeInPopup,
+    resolveReplyTreeRoot,
     handleAnchorClick,
   };
 }

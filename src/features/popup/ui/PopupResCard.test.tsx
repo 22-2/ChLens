@@ -70,9 +70,10 @@ vi.mock("src/core/util/url-media", async () => {
 // 共通のハンドラー・設定は PopupResCardScope で渡す設計になったため、
 // 各テストでは従来どおり1つの props として書けるよう、ここで分けて渡す。
 type TestCardProps = StaticResCardProps &
-  Omit<PopupResCardShared, "onRepClick" | "onOpenRootReplyTree"> & {
+  Omit<PopupResCardShared, "onRepClick" | "onOpenRootReplyTree" | "resolveReplyTreeRoot"> & {
     onRepClick?: PopupResCardShared["onRepClick"];
     onOpenRootReplyTree?: PopupResCardShared["onOpenRootReplyTree"];
+    resolveReplyTreeRoot?: PopupResCardShared["resolveReplyTreeRoot"];
     isImageBlurred?: boolean;
     isOwn?: boolean;
     isReplyToOwn?: boolean;
@@ -86,6 +87,8 @@ function PopupResCard({
   isHighlighted,
   isFocused,
   onOpenRootReplyTree = () => {},
+  // 既定では起点が自分自身（遡る先がない）とみなす。
+  resolveReplyTreeRoot = (resNum) => resNum,
   isImageBlurred,
   isOwn,
   isReplyToOwn,
@@ -95,6 +98,7 @@ function PopupResCard({
     <PopupResCardScope
       {...shared}
       onOpenRootReplyTree={onOpenRootReplyTree}
+      resolveReplyTreeRoot={resolveReplyTreeRoot}
       blurredResNums={isImageBlurred ? new Set([res.num]) : undefined}
       ownResNums={isOwn ? new Set([res.num]) : undefined}
       replyToOwnResNums={isReplyToOwn ? new Set([res.num]) : undefined}
@@ -397,6 +401,30 @@ describe("PopupResCard", () => {
     expect(screen.getByRole("menuitem", { name: "ビューアで開く" })).toBeInTheDocument();
   });
 
+  it.each([
+    { name: "起点が自分自身なら出さない", root: 10, displayed: undefined, visible: false },
+    { name: "表示中のツリーと同じ起点なら出さない", root: 3, displayed: 3, visible: false },
+    { name: "別のツリーへ遡れるなら出す", root: 3, displayed: undefined, visible: true },
+    { name: "表示中のツリーより上へ遡れるなら出す", root: 3, displayed: 5, visible: true },
+  ])("「ツリー先頭から」: $name", ({ root, displayed, visible }) => {
+    render(
+      <PopupResCard
+        res={BASE_RES}
+        messageProtocol="https:"
+        anchorPreviewDepth={0}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        resolveReplyTreeRoot={() => root}
+        displayedTreeRootResNum={displayed}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "ツリー先頭から" }) !== null).toBe(visible);
+  });
+
   it("ルート起点ボタン押下で先頭ツリー展開ハンドラを呼ぶ", () => {
     const onOpenRootReplyTree = vi.fn();
     const repIndex = new Map<number, Set<number>>([[10, new Set([1, 2])]]);
@@ -415,6 +443,7 @@ describe("PopupResCard", () => {
         onAnchorLeave={() => {}}
         onRepClick={() => {}}
         onOpenRootReplyTree={onOpenRootReplyTree}
+        resolveReplyTreeRoot={() => 3}
       />,
     );
 

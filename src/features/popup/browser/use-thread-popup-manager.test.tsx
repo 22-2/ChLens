@@ -187,6 +187,7 @@ function PopupSequenceHarness({
           onIdLinkClick={() => {}}
           onRepClick={handleRepClickInPopup(anchorPreview.id, anchorPreview.payload.depth + 1)}
           onOpenRootReplyTree={() => {}}
+          resolveReplyTreeRoot={(resNum) => resNum}
           onAnchorClick={() => {}}
           onAnchorHover={showAnchorPreview}
           onAnchorLeave={hideAnchorPreviewsFromDepth}
@@ -221,6 +222,7 @@ function PopupSequenceHarness({
           onIdLinkClick={() => {}}
           onRepClick={handleRepClickInPopup(treePopup.id, treePopup.payload.anchorPreviewDepth)}
           onOpenRootReplyTree={() => {}}
+          resolveReplyTreeRoot={(resNum) => resNum}
           onAnchorClick={() => {}}
           onAnchorHover={(targets, anchorRect, label, depth) =>
             showAnchorPreview(targets, anchorRect, label, depth, treePopup.id)
@@ -347,6 +349,7 @@ function PopupIdChainHarness() {
           onIdLinkClick={handlePopupIdClick(treePopup.id)}
           onRepClick={handleRepClickInPopup(treePopup.id)}
           onOpenRootReplyTree={() => {}}
+          resolveReplyTreeRoot={(resNum) => resNum}
           onAnchorClick={() => {}}
           onAnchorHover={() => {}}
           onAnchorLeave={() => {}}
@@ -377,6 +380,7 @@ function PopupIdChainHarness() {
           onIdLinkClick={handlePopupIdClick(item.id)}
           onRepClick={handleRepClickInPopup(item.id)}
           onOpenRootReplyTree={() => {}}
+          resolveReplyTreeRoot={(resNum) => resNum}
           onAnchorClick={() => {}}
           onAnchorHover={() => {}}
           onAnchorLeave={() => {}}
@@ -457,6 +461,7 @@ describe("thread popup manager integration", () => {
         onIdLinkClick={() => {}}
         onRepClick={() => {}}
         onOpenRootReplyTree={() => {}}
+        resolveReplyTreeRoot={(resNum) => resNum}
         onAnchorClick={() => {}}
         onAnchorHover={onAnchorHover}
         onAnchorLeave={() => {}}

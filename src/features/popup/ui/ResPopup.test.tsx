@@ -34,6 +34,7 @@ const BASE_PROPS: React.ComponentProps<typeof ResPopup> = {
   onIdLinkClick: () => {},
   onRepClick: () => {},
   onOpenRootReplyTree: () => {},
+  resolveReplyTreeRoot: (resNum: number) => resNum,
   onAnchorClick: () => {},
   onAnchorHover: () => {},
   onAnchorLeave: () => {},
@@ -107,12 +108,18 @@ describe("ResPopup", () => {
   it("返信先プレビューなどで開くIDポップアップにも「ツリー先頭から」を表示する", () => {
     const onOpenRootReplyTree = vi.fn();
     render(
-      <ResPopup {...BASE_PROPS} items={[ITEMS[0]]} onOpenRootReplyTree={onOpenRootReplyTree} />,
+      <ResPopup
+        {...BASE_PROPS}
+        items={[ITEMS[1]]}
+        // レス4は起点のレス1へ遡れるので、押すと別のツリーが開く。
+        resolveReplyTreeRoot={(resNum) => (resNum === 4 ? 1 : resNum)}
+        onOpenRootReplyTree={onOpenRootReplyTree}
+      />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "ツリー先頭から" }));
 
-    expect(onOpenRootReplyTree).toHaveBeenCalledWith(1, expect.any(Object));
+    expect(onOpenRootReplyTree).toHaveBeenCalledWith(4, expect.any(Object));
   });
 
   it("ヘッダーメニューからIDレスを一括コピーできる", () => {
@@ -159,6 +166,7 @@ describe("ResPopup", () => {
           label=">>1"
           zIndex={1}
           onOpenRootReplyTree={() => {}}
+          resolveReplyTreeRoot={(resNum) => resNum}
           onMouseEnter={() => {}}
           onMouseLeave={() => {}}
         />

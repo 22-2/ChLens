@@ -49,6 +49,7 @@ export interface PopupEntryContext {
     parentId?: string,
     anchorPreviewDepth?: number,
   ) => (resNum: number, e: React.MouseEvent) => void;
+  resolveReplyTreeRoot: (resNum: number) => number;
   onResContextMenuOpen: (parentId: string) => (targetRes: IRes, e: React.MouseEvent) => void;
   onUrlClick: UrlClickHandler;
   onUrlContextMenuOpen: (parentId: string) => UrlContextMenuHandler;
@@ -134,6 +135,7 @@ export const AnchorPreviewEntry: React.FC<{
       onIdLinkClick={common.onIdLinkClick}
       onRepClick={onRepClick}
       onOpenRootReplyTree={onOpenRootReplyTree}
+      resolveReplyTreeRoot={context.resolveReplyTreeRoot}
       onAnchorClick={context.onAnchorClick}
       onAnchorHover={context.onAnchorHover}
       onAnchorLeave={onAnchorLeave}
@@ -197,6 +199,7 @@ export const IdPopupEntry: React.FC<{
       onIdLinkClick={common.onIdLinkClick}
       onRepClick={onRepClick}
       onOpenRootReplyTree={onOpenRootReplyTree}
+      resolveReplyTreeRoot={context.resolveReplyTreeRoot}
       onAnchorClick={context.onAnchorClick}
       onAnchorHover={onAnchorHover}
       onAnchorLeave={onAnchorLeave}
@@ -271,6 +274,7 @@ export const TreePopupEntry: React.FC<{
       onIdLinkClick={common.onIdLinkClick}
       onRepClick={onRepClick}
       onOpenRootReplyTree={onOpenRootReplyTree}
+      resolveReplyTreeRoot={context.resolveReplyTreeRoot}
       onAnchorClick={context.onAnchorClick}
       onAnchorHover={onAnchorHover}
       onAnchorLeave={onAnchorLeave}

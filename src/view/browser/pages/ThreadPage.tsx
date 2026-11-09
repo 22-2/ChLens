@@ -642,6 +642,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     closePopup,
     handleRepClickInPopup,
     handleOpenRootReplyTreeInPopup,
+    resolveReplyTreeRoot,
     handleAnchorClick,
   } = useResInteractionHandlers({
     indexes,
@@ -953,6 +954,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             onPopupIdLinkClick={handlePopupIdClick}
             onRepClickInPopup={handleRepClickInPopup}
             onOpenRootReplyTreeInPopup={handleOpenRootReplyTreeInPopup}
+            resolveReplyTreeRoot={resolveReplyTreeRoot}
             onResContextMenuOpen={openPopupResContextMenu}
             onUrlClick={handleUrlClick}
             onUrlContextMenuOpen={openPopupUrlContextMenu}
