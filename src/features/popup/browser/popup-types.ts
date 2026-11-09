@@ -1,4 +1,5 @@
 import type { IRes } from "src/service-container";
+import type { ResMenuTarget } from "src/view/browser/components/ResContextMenuTarget";
 import type { ContextMenuItem } from "src/view/browser/ui/ContextMenu";
 
 // popup managerのライフサイクルと描画側が共有する判別unionなので、
@@ -58,6 +59,8 @@ export interface ContextMenuPopupPayload {
   // メニュー項目自体をスタックへ積むことで、
   // 親ポップアップと同じ parentId ツリーで開閉を同期できる。
   items: ContextMenuItem[];
+  /** レスのメニューのとき、どのレスを対象にしているか。 */
+  target?: ResMenuTarget;
 }
 
 export type PopupItem = IdPopupItem | TreePopupItem | AnchorPopupItem | ContextMenuPopupItem;

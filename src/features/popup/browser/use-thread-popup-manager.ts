@@ -50,6 +50,7 @@ export interface ThreadPopupManagerResult {
     clientY: number,
     items: ContextMenuPopupPayload["items"],
     parentId?: string,
+    target?: ContextMenuPopupPayload["target"],
   ) => string;
   addIdPopup: (
     clientX: number,
@@ -253,8 +254,8 @@ export function useThreadPopupManager({
       closePopupsByPredicate,
       hideAnchorPreviewsFromDepth,
       isPopupDescendantOf,
-      resMap,
       placePopup,
+      resMap,
     ],
   );
 
@@ -285,6 +286,7 @@ export function useThreadPopupManager({
       clientY: number,
       items: ContextMenuPopupPayload["items"],
       parentId?: string,
+      target?: ContextMenuPopupPayload["target"],
     ) => {
       closePopupsByPredicate((item) => item.type === "contextMenu");
       const { x, y } = toPageCoords(clientX, clientY);
@@ -292,7 +294,7 @@ export function useThreadPopupManager({
         type: "contextMenu",
         x,
         y,
-        payload: { items },
+        payload: { items, target },
         parentId,
       });
     },

@@ -7,6 +7,12 @@ import { useThreadMediaViewerScope } from "src/features/media/browser/use-thread
 import { ResMediaGallery } from "src/features/media/ui/ResMediaGallery";
 import { buildThreadFindIndex, findThreadMatches } from "src/features/thread/domain/thread-find";
 import { ResBody } from "src/features/thread/ui/ResBody";
+import {
+  createResMenuTarget,
+  type ResMenuTarget,
+  ResMenuTargetHeader,
+  ResMenuTargetMarker,
+} from "src/view/browser/components/ResContextMenuTarget";
 import { getSearchError, SearchOptionsMenu } from "src/view/browser/components/SearchOptionsMenu";
 import { SidePanelMessage } from "src/view/browser/components/SidePanelMessage";
 import { ThreadSnapshotGate } from "src/view/browser/components/ThreadSnapshotGate";
@@ -26,7 +32,7 @@ import {
 import type { ThreadHighlightMatchers } from "src/view/browser/utils/thread-query";
 
 type ExtractResponse = ThreadSnapshot["responses"][number];
-type ExtractMenu = { x: number; y: number; items: ContextMenuItem[] };
+type ExtractMenu = { x: number; y: number; items: ContextMenuItem[]; target?: ResMenuTarget };
 type UrlHandlers = ReturnType<typeof useUrlHandlers>;
 
 // 抽出の一覧は本文の操作を持たない。レスへのジャンプは右クリックのメニューに残す。
@@ -224,7 +230,12 @@ function ExtractResults({
                       if (!items) return;
                       event.preventDefault();
                       event.stopPropagation();
-                      setMenu({ x: event.clientX, y: event.clientY, items });
+                      setMenu({
+                        x: event.clientX,
+                        y: event.clientY,
+                        items,
+                        target: createResMenuTarget(event, target),
+                      });
                     }}
                     onOpenReplies={(event, resNum) => {
                       event.stopPropagation();
@@ -243,7 +254,16 @@ function ExtractResults({
         )}
       </div>
       {menu && (
-        <ContextMenu x={menu.x} y={menu.y} items={menu.items} onClose={() => setMenu(null)} />
+        <>
+          {menu.target ? <ResMenuTargetMarker element={menu.target.element} /> : null}
+          <ContextMenu
+            x={menu.x}
+            y={menu.y}
+            items={menu.items}
+            header={menu.target ? <ResMenuTargetHeader resNum={menu.target.resNum} /> : undefined}
+            onClose={() => setMenu(null)}
+          />
+        </>
       )}
     </>
   );

@@ -12,6 +12,10 @@ import {
   TreePopupEntry,
 } from "src/features/popup/ui/PopupEntries";
 import { PopupPortalLayer } from "src/features/popup/ui/PopupPortalLayer";
+import {
+  ResMenuTargetHeader,
+  ResMenuTargetMarker,
+} from "src/view/browser/components/ResContextMenuTarget";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
 
 interface PopupRendererProps extends PopupEntryContext {
@@ -55,22 +59,35 @@ export const PopupRenderer: React.FC<PopupRendererProps> = ({
         />
       ))}
 
-      {contextMenuItems.map((menu) => (
-        <ContextMenu
-          key={menu.id}
-          x={menu.x}
-          y={menu.y}
-          items={menu.payload.items}
-          header={contextMenuHeader?.(menu)}
-          onClose={() => onClosePopupById(menu.id)}
-          popupId={menu.id}
-          isPopupDescendantOf={isPopupDescendantOf}
-          onEnterFromDescendant={() => onClosePopupChildren(menu.id)}
-          onPopupMouseDown={() => onClosePopupChildren(menu.id)}
-          closeDisabled={hasPopupChild(menu.id)}
-          zIndex={menu.z}
-        />
-      ))}
+      {contextMenuItems.map((menu) => {
+        const { target } = menu.payload;
+        const navigationHeader = contextMenuHeader?.(menu);
+        return (
+          <React.Fragment key={menu.id}>
+            {target ? <ResMenuTargetMarker element={target.element} /> : null}
+            <ContextMenu
+              x={menu.x}
+              y={menu.y}
+              items={menu.payload.items}
+              header={
+                target || navigationHeader ? (
+                  <>
+                    {target ? <ResMenuTargetHeader resNum={target.resNum} /> : null}
+                    {navigationHeader}
+                  </>
+                ) : undefined
+              }
+              onClose={() => onClosePopupById(menu.id)}
+              popupId={menu.id}
+              isPopupDescendantOf={isPopupDescendantOf}
+              onEnterFromDescendant={() => onClosePopupChildren(menu.id)}
+              onPopupMouseDown={() => onClosePopupChildren(menu.id)}
+              closeDisabled={hasPopupChild(menu.id)}
+              zIndex={menu.z}
+            />
+          </React.Fragment>
+        );
+      })}
     </PopupPortalLayer>
   );
 };

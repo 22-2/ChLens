@@ -32,6 +32,10 @@ import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
 import { COMMAND_REQUEST_IDS, runCommandRequest } from "src/view/browser/commands/command-runtime";
 import {
+  createResMenuTarget,
+  type ResMenuTarget,
+} from "src/view/browser/components/ResContextMenuTarget";
+import {
   getAutoRefreshPageKey,
   isAutoRefreshEnabledForPage,
 } from "src/view/browser/state/tabs/auto-refresh-pages";
@@ -53,6 +57,7 @@ type AddPopupContextMenu = (
   y: number,
   items: ContextMenuItem[],
   parentId?: string,
+  target?: ResMenuTarget,
 ) => void;
 
 interface UseThreadResContextMenuParams {
@@ -607,6 +612,7 @@ export function useThreadResContextMenu({
         e.clientY,
         buildContextMenuItems(targetRes, fromPopup, clickedOnId),
         parentId,
+        createResMenuTarget(e, targetRes),
       );
     },
     [addPopupContextMenu, buildContextMenuItems, hideAnchorPreviewImmediately],
