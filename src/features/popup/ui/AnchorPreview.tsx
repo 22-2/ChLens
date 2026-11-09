@@ -166,6 +166,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
               onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
               onIdLinkClick={onIdLinkClick}
               onRepClick={onRepClick}
+              onOpenRootReplyTree={onOpenRootReplyTree}
               onAnchorClick={onAnchorClick}
               onAnchorHover={onAnchorHover}
               onAnchorLeave={onAnchorLeave}
@@ -178,7 +179,6 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
                     res={res}
                     anchorPreviewDepth={depth + 1}
                     repIndex={repIndex}
-                    onOpenRootReplyTree={onOpenRootReplyTree}
                   />
                 ))}
               </div>

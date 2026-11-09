@@ -166,9 +166,19 @@ export const IdPopupEntry: React.FC<{
   context: PopupEntryContext;
 }> = ({ item, context }) => {
   const { id, payload } = item;
-  const { onRepClickInPopup, onPopupAnchorHover, onToggleIdPopupPinned, onAnchorLeave } = context;
+  const {
+    onRepClickInPopup,
+    onOpenRootReplyTreeInPopup,
+    onPopupAnchorHover,
+    onToggleIdPopupPinned,
+    onAnchorLeave,
+  } = context;
   const common = useCommonPopupHandlers(id, context);
   const onRepClick = useMemo(() => onRepClickInPopup(id), [onRepClickInPopup, id]);
+  const onOpenRootReplyTree = useMemo(
+    () => onOpenRootReplyTreeInPopup(id),
+    [onOpenRootReplyTreeInPopup, id],
+  );
   const onAnchorHover = useMemo(() => onPopupAnchorHover(id), [onPopupAnchorHover, id]);
   const onTogglePinned = useCallback(() => onToggleIdPopupPinned(id), [onToggleIdPopupPinned, id]);
   const onMouseLeave = useCallback(() => onAnchorLeave(0), [onAnchorLeave]);
@@ -186,6 +196,7 @@ export const IdPopupEntry: React.FC<{
       onUrlContextMenu={common.onUrlContextMenu}
       onIdLinkClick={common.onIdLinkClick}
       onRepClick={onRepClick}
+      onOpenRootReplyTree={onOpenRootReplyTree}
       onAnchorClick={context.onAnchorClick}
       onAnchorHover={onAnchorHover}
       onAnchorLeave={onAnchorLeave}
@@ -220,11 +231,21 @@ export const TreePopupEntry: React.FC<{
   context: PopupEntryContext;
 }> = ({ item, hasLaterTreePopup, context }) => {
   const { id, payload } = item;
-  const { onRepClickInPopup, onPopupAnchorHover, onToggleTreePopupPinned, onAnchorLeave } = context;
+  const {
+    onRepClickInPopup,
+    onOpenRootReplyTreeInPopup,
+    onPopupAnchorHover,
+    onToggleTreePopupPinned,
+    onAnchorLeave,
+  } = context;
   const common = useCommonPopupHandlers(id, context);
   const onRepClick = useMemo(
     () => onRepClickInPopup(id, payload.anchorPreviewDepth),
     [onRepClickInPopup, id, payload.anchorPreviewDepth],
+  );
+  const onOpenRootReplyTree = useMemo(
+    () => onOpenRootReplyTreeInPopup(id, payload.anchorPreviewDepth),
+    [onOpenRootReplyTreeInPopup, id, payload.anchorPreviewDepth],
   );
   const onAnchorHover = useMemo(() => onPopupAnchorHover(id), [onPopupAnchorHover, id]);
   const onTogglePinned = useCallback(
@@ -249,6 +270,7 @@ export const TreePopupEntry: React.FC<{
       onUrlContextMenu={common.onUrlContextMenu}
       onIdLinkClick={common.onIdLinkClick}
       onRepClick={onRepClick}
+      onOpenRootReplyTree={onOpenRootReplyTree}
       onAnchorClick={context.onAnchorClick}
       onAnchorHover={onAnchorHover}
       onAnchorLeave={onAnchorLeave}

@@ -220,6 +220,7 @@ function PopupSequenceHarness({
           onUrlContextMenu={() => {}}
           onIdLinkClick={() => {}}
           onRepClick={handleRepClickInPopup(treePopup.id, treePopup.payload.anchorPreviewDepth)}
+          onOpenRootReplyTree={() => {}}
           onAnchorClick={() => {}}
           onAnchorHover={(targets, anchorRect, label, depth) =>
             showAnchorPreview(targets, anchorRect, label, depth, treePopup.id)
@@ -345,6 +346,7 @@ function PopupIdChainHarness() {
           onUrlContextMenu={() => {}}
           onIdLinkClick={handlePopupIdClick(treePopup.id)}
           onRepClick={handleRepClickInPopup(treePopup.id)}
+          onOpenRootReplyTree={() => {}}
           onAnchorClick={() => {}}
           onAnchorHover={() => {}}
           onAnchorLeave={() => {}}
@@ -374,6 +376,7 @@ function PopupIdChainHarness() {
           onUrlContextMenu={() => {}}
           onIdLinkClick={handlePopupIdClick(item.id)}
           onRepClick={handleRepClickInPopup(item.id)}
+          onOpenRootReplyTree={() => {}}
           onAnchorClick={() => {}}
           onAnchorHover={() => {}}
           onAnchorLeave={() => {}}
@@ -453,6 +456,7 @@ describe("thread popup manager integration", () => {
         onUrlContextMenu={() => {}}
         onIdLinkClick={() => {}}
         onRepClick={() => {}}
+        onOpenRootReplyTree={() => {}}
         onAnchorClick={() => {}}
         onAnchorHover={onAnchorHover}
         onAnchorLeave={() => {}}

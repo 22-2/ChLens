@@ -33,6 +33,7 @@ const BASE_PROPS: React.ComponentProps<typeof ResPopup> = {
   onUrlContextMenu: () => {},
   onIdLinkClick: () => {},
   onRepClick: () => {},
+  onOpenRootReplyTree: () => {},
   onAnchorClick: () => {},
   onAnchorHover: () => {},
   onAnchorLeave: () => {},
@@ -101,6 +102,17 @@ describe("ResPopup", () => {
     clipboardItemCtor.mockReset();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+  });
+
+  it("返信先プレビューなどで開くIDポップアップにも「ツリー先頭から」を表示する", () => {
+    const onOpenRootReplyTree = vi.fn();
+    render(
+      <ResPopup {...BASE_PROPS} items={[ITEMS[0]]} onOpenRootReplyTree={onOpenRootReplyTree} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "ツリー先頭から" }));
+
+    expect(onOpenRootReplyTree).toHaveBeenCalledWith(1, expect.any(Object));
   });
 
   it("ヘッダーメニューからIDレスを一括コピーできる", () => {

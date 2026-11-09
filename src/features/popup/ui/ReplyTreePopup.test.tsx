@@ -43,6 +43,7 @@ const BASE_PROPS: React.ComponentProps<typeof ReplyTreePopup> = {
   onUrlClick: () => {},
   onUrlContextMenu: () => {},
   onRepClick: () => {},
+  onOpenRootReplyTree: () => {},
   onAnchorClick: () => {},
   onAnchorHover: () => {},
   onAnchorLeave: () => {},

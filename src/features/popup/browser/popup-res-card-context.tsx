@@ -31,6 +31,13 @@ export interface PopupResCardShared {
   onIdLinkClick: (id: string, e: ReactMouseEvent) => void;
   /** 渡された場合のみ、返信数を押せるようにする。 */
   onRepClick?: (resNum: number, e: ReactMouseEvent) => void;
+  /**
+   * 「ツリー先頭から」ボタンの処理。
+   * 以前はアンカープレビューだけがカードの props で渡しており、IDポップアップや
+   * 返信先プレビューから開いたポップアップではボタンが出なかった。
+   * 必須にしておくと、新しいポップアップで渡し忘れた時点で型チェックが失敗する。
+   */
+  onOpenRootReplyTree: (resNum: number, e: ReactMouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
@@ -55,6 +62,7 @@ export function PopupResCardScope({
   onLinkMiddleClickStart,
   onIdLinkClick,
   onRepClick,
+  onOpenRootReplyTree,
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
@@ -75,6 +83,7 @@ export function PopupResCardScope({
       onLinkMiddleClickStart,
       onIdLinkClick,
       onRepClick,
+      onOpenRootReplyTree,
       onAnchorClick,
       onAnchorHover,
       onAnchorLeave,
@@ -94,6 +103,7 @@ export function PopupResCardScope({
       onLinkMiddleClickStart,
       onIdLinkClick,
       onRepClick,
+      onOpenRootReplyTree,
       onAnchorClick,
       onAnchorHover,
       onAnchorLeave,

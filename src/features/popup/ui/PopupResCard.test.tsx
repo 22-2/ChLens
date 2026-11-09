@@ -70,8 +70,9 @@ vi.mock("src/core/util/url-media", async () => {
 // 共通のハンドラー・設定は PopupResCardScope で渡す設計になったため、
 // 各テストでは従来どおり1つの props として書けるよう、ここで分けて渡す。
 type TestCardProps = StaticResCardProps &
-  Omit<PopupResCardShared, "onRepClick"> & {
+  Omit<PopupResCardShared, "onRepClick" | "onOpenRootReplyTree"> & {
     onRepClick?: PopupResCardShared["onRepClick"];
+    onOpenRootReplyTree?: PopupResCardShared["onOpenRootReplyTree"];
     isImageBlurred?: boolean;
     isOwn?: boolean;
     isReplyToOwn?: boolean;
@@ -84,7 +85,7 @@ function PopupResCard({
   disableRepClick,
   isHighlighted,
   isFocused,
-  onOpenRootReplyTree,
+  onOpenRootReplyTree = () => {},
   isImageBlurred,
   isOwn,
   isReplyToOwn,
@@ -93,6 +94,7 @@ function PopupResCard({
   return (
     <PopupResCardScope
       {...shared}
+      onOpenRootReplyTree={onOpenRootReplyTree}
       blurredResNums={isImageBlurred ? new Set([res.num]) : undefined}
       ownResNums={isOwn ? new Set([res.num]) : undefined}
       replyToOwnResNums={isReplyToOwn ? new Set([res.num]) : undefined}
@@ -104,7 +106,6 @@ function PopupResCard({
         disableRepClick={disableRepClick}
         isHighlighted={isHighlighted}
         isFocused={isFocused}
-        onOpenRootReplyTree={onOpenRootReplyTree}
       />
     </PopupResCardScope>
   );

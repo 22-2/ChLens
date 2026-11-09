@@ -35,6 +35,7 @@ export const ReplyTreePopup: React.FC<{
   onUrlContextMenu: UrlContextMenuHandler;
   onIdLinkClick: (id: string, e: React.MouseEvent) => void;
   onRepClick: (resNum: number, e: React.MouseEvent) => void;
+  onOpenRootReplyTree: (resNum: number, e: React.MouseEvent) => void;
   onAnchorClick: (resNum: number) => void;
   onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
@@ -82,6 +83,7 @@ export const ReplyTreePopup: React.FC<{
   onUrlContextMenu,
   onIdLinkClick,
   onRepClick,
+  onOpenRootReplyTree,
   onAnchorClick,
   onAnchorHover,
   onAnchorLeave,
@@ -190,6 +192,7 @@ export const ReplyTreePopup: React.FC<{
               onLinkMiddleClickStart={armMouseLeaveCloseSuppression}
               onIdLinkClick={onIdLinkClick}
               onRepClick={onRepClick}
+              onOpenRootReplyTree={onOpenRootReplyTree}
               onAnchorClick={onAnchorClick}
               onAnchorHover={onAnchorHover}
               onAnchorLeave={onAnchorLeave}
