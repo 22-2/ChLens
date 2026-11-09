@@ -16,7 +16,6 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { createLogger } from "src/app/logger";
 import { extractUrlsFromMessage, toViewerImageUrl } from "src/core/util/url-media";
 import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
@@ -30,24 +29,21 @@ import {
   useWriteSessionControls,
   type WriteEditorPlace,
 } from "src/features/write/browser/use-write-session";
+import { WriteAuthDialog } from "src/features/write/ui/WriteAuthDialog";
 import { WriteEditorElsewhere } from "src/features/write/ui/WriteEditorElsewhere";
+import { WriteSettingsDialog } from "src/features/write/ui/WriteSettingsDialog";
+import { WriteWarningDialog } from "src/features/write/ui/WriteWarningDialog";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { useOptionalBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import { Dialog } from "src/view/browser/ui/Dialog";
-import { SettingRow, TextControl } from "src/view/browser/ui/FormControls";
 import { Popover } from "src/view/browser/ui/Popover";
-import { copyText } from "src/view/browser/utils/clipboard";
 import { getResizeObserverForWindow } from "src/view/browser/utils/dom";
 import { sanitizeUrlsInText } from "src/view/browser/utils/url-tracking";
 import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
-import { WRITE_SETTING_COPY } from "src/view/browser/utils/write-settings";
 import { findUrlTrackingWarning, findWriteWarnings } from "src/view/browser/utils/write-warning";
-
-const logger = createLogger("write");
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 const WRITE_SANITIZE_URLS_ON_PASTE_KEY = "write_sanitize_urls_on_paste";
@@ -119,19 +115,12 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   const appliedInsertRequestIdRef = useRef<number | null>(null);
   const writePanelFocusRequestId = bottomPanel?.writePanelFocusRequestId ?? null;
   const imgurFileInputRef = useRef<HTMLInputElement | null>(null);
-  const errorDialogDescriptionId = useId();
-  const authCodeUrlInputId = useId();
-  const authCodeInputId = useId();
-  const settingsDialogDescriptionId = useId();
-  const warningDialogDescriptionId = useId();
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(
     portalContainer ?? null,
   );
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
   const [writeWarnings, setWriteWarnings] = useState<ReturnType<typeof findWriteWarnings>>([]);
-  const [isAuthCodeUrlCopied, setIsAuthCodeUrlCopied] = useState(false);
-  const [isAuthCodeCopied, setIsAuthCodeCopied] = useState(false);
   const confirmationFrameCleanupRef = useRef<(() => void) | null>(null);
   // 変更理由: 書き込み中の入力欄を増やさず、書き込みに関する設定を
   // パネル内の歯車モーダルへまとめて、必要な時だけ変更できるようにする。
@@ -354,35 +343,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
       closePanel();
     }
   }, [closePanel, openWriteWindow]);
-
-  useEffect(() => {
-    setIsAuthCodeUrlCopied(false);
-    setIsAuthCodeCopied(false);
-  }, [authCode, authCodeUrl]);
-
-  const handleCopyAuthCode = useCallback(async () => {
-    if (!authCode) return;
-    try {
-      await copyText(authCode, viewSurface);
-      setIsAuthCodeCopied(true);
-      toast.success("認証コードをコピーしました");
-    } catch (error) {
-      logger.error("eddibbの認証コードをコピーできませんでした", error);
-      toast.error("認証コードをコピーできませんでした");
-    }
-  }, [authCode, toast, viewSurface]);
-
-  const handleCopyAuthCodeUrl = useCallback(async () => {
-    if (!authCodeUrl) return;
-    try {
-      await copyText(authCodeUrl, viewSurface);
-      setIsAuthCodeUrlCopied(true);
-      toast.success("認証URLをコピーしました");
-    } catch (error) {
-      logger.error("eddibbの認証URLをコピーできませんでした", error);
-      toast.error("認証URLをコピーできませんでした");
-    }
-  }, [authCodeUrl, toast, viewSurface]);
 
   const handleConfirmationFrameLoad = useCallback(() => {
     confirmationFrameCleanupRef.current?.();
@@ -717,186 +677,35 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
         <MediaViewerContainer scopeId={mediaViewerScopeId} />,
         dialogPortalContainer ?? viewDocument.body,
       )}
-      <Dialog.Root open={isWarningDialogOpen} onOpenChange={setIsWarningDialogOpen}>
-        <Dialog.Portal container={dialogPortalContainer ?? undefined}>
-          <Dialog.Overlay className="browser-dialog-overlay" />
-          <Dialog.Content
-            className="browser-dialog-content write-panel__warning-dialog"
-            aria-describedby={warningDialogDescriptionId}
-          >
-            <Dialog.Title className="browser-dialog-title">投稿内容を確認してください</Dialog.Title>
-            <Dialog.Description
-              id={warningDialogDescriptionId}
-              className="browser-dialog-description"
-            >
-              公開したくない情報や、共有元の計測に使われるURLパラメータが含まれている可能性があります。
-              投稿前に内容を確認してください。
-            </Dialog.Description>
-            <ul className="write-panel__warning-list">
-              {writeWarnings.map((warning) => (
-                <li key={warning.category}>
-                  <strong>{warning.category}</strong>: {warning.reason}
-                </li>
-              ))}
-            </ul>
-            <div className="write-panel__error-dialog-actions">
-              <Dialog.Close asChild>
-                <button type="button" className="write-panel__btn write-panel__btn--secondary">
-                  内容を見直す
-                </button>
-              </Dialog.Close>
-              {writeWarnings.some((warning) => warning.category === "URLの追跡パラメータ") && (
-                <button
-                  type="button"
-                  className="write-panel__btn write-panel__btn--secondary"
-                  onClick={removeTrackingParametersAndSubmit}
-                >
-                  URLパラメータを除去して投稿
-                </button>
-              )}
-              <button
-                type="button"
-                className="write-panel__btn write-panel__btn--primary"
-                onClick={confirmWarningSubmit}
-              >
-                無視して投稿
-              </button>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-      <Dialog.Root open={isSettingsDialogOpen} onOpenChange={setIsSettingsDialogOpen}>
-        <Dialog.Portal container={dialogPortalContainer ?? undefined}>
-          <Dialog.Overlay className="browser-dialog-overlay" />
-          <Dialog.Content
-            className="browser-dialog-content write-panel__settings-dialog"
-            aria-describedby={settingsDialogDescriptionId}
-          >
-            <Dialog.Title className="browser-dialog-title">書き込み設定</Dialog.Title>
-            <Dialog.Description
-              id={settingsDialogDescriptionId}
-              className="browser-dialog-description"
-            >
-              <strong>この板のすべてのスレッドで共有されます。</strong> 変更はすぐに反映されます。
-            </Dialog.Description>
-            <div className="write-panel__settings-list">
-              <SettingRow
-                htmlFor="write-setting-name"
-                label={WRITE_SETTING_COPY.default_name.title}
-                description={WRITE_SETTING_COPY.default_name.description}
-                layout="stacked"
-              >
-                <TextControl
-                  id="write-setting-name"
-                  value={name}
-                  onValueChange={setName}
-                  disabled={isSubmitting}
-                  placeholder="名無し"
-                />
-              </SettingRow>
-              <SettingRow
-                htmlFor="write-setting-mail"
-                label={WRITE_SETTING_COPY.default_mail.title}
-                description={WRITE_SETTING_COPY.default_mail.description}
-                layout="stacked"
-              >
-                <TextControl
-                  id="write-setting-mail"
-                  value={mail}
-                  onValueChange={setMail}
-                  disabled={isSubmitting}
-                />
-              </SettingRow>
-            </div>
-            <div className="write-panel__settings-actions">
-              <Dialog.Close asChild>
-                <button type="button" className="write-panel__btn write-panel__btn--secondary">
-                  閉じる
-                </button>
-              </Dialog.Close>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-      <Dialog.Root
+      <WriteWarningDialog
+        open={isWarningDialogOpen}
+        onOpenChange={setIsWarningDialogOpen}
+        container={dialogPortalContainer ?? undefined}
+        warnings={writeWarnings}
+        onRemoveTrackingParametersAndSubmit={removeTrackingParametersAndSubmit}
+        onSubmitAnyway={confirmWarningSubmit}
+      />
+      <WriteSettingsDialog
+        open={isSettingsDialogOpen}
+        onOpenChange={setIsSettingsDialogOpen}
+        container={dialogPortalContainer ?? undefined}
+        name={name}
+        mail={mail}
+        onNameChange={setName}
+        onMailChange={setMail}
+        disabled={isSubmitting}
+      />
+      <WriteAuthDialog
         open={status === "error" && isErrorDialogOpen}
         onOpenChange={(open) => {
           setIsErrorDialogOpen(open);
           // 閉じる・Esc・背景クリックでも認証案内を解除し、ステータスバーへ残し続けない。
           if (!open) handleRetry();
         }}
-      >
-        <Dialog.Portal container={dialogPortalContainer ?? undefined}>
-          <Dialog.Overlay className="browser-dialog-overlay" />
-          <Dialog.Content
-            className="browser-dialog-content write-panel__error-dialog"
-            aria-describedby={errorDialogDescriptionId}
-          >
-            <Dialog.Title className="browser-dialog-title">認証を完了してください</Dialog.Title>
-            <Dialog.Description
-              id={errorDialogDescriptionId}
-              className="browser-dialog-description"
-            >
-              認証コードを認証ページで入力してトークンを発行し、メール欄へ貼り付けてから再入力してください。
-            </Dialog.Description>
-            {/* 変更理由: ステータスバーへ流れていた認証コードを、選択・コピーしやすい認証手順内へ移す。 */}
-            {authCode && (
-              <div className="write-panel__auth-url">
-                <label htmlFor={authCodeInputId}>認証コード</label>
-                <textarea
-                  id={authCodeInputId}
-                  className="write-panel__auth-url-input"
-                  value={authCode}
-                  readOnly
-                  rows={1}
-                  onFocus={(event) => event.currentTarget.select()}
-                  aria-label="認証コード"
-                />
-                <button
-                  type="button"
-                  className="write-panel__btn write-panel__btn--secondary"
-                  onClick={() => void handleCopyAuthCode()}
-                >
-                  {isAuthCodeCopied ? "コピーしました" : "コードをコピー"}
-                </button>
-              </div>
-            )}
-            {authCodeUrl && (
-              <div className="write-panel__auth-url">
-                <label htmlFor={authCodeUrlInputId}>認証ページURL</label>
-                <textarea
-                  id={authCodeUrlInputId}
-                  className="write-panel__auth-url-input"
-                  value={authCodeUrl}
-                  readOnly
-                  rows={2}
-                  onFocus={(event) => event.currentTarget.select()}
-                  aria-label="認証ページURL"
-                />
-                <button
-                  type="button"
-                  className="write-panel__btn write-panel__btn--secondary"
-                  onClick={() => void handleCopyAuthCodeUrl()}
-                >
-                  {isAuthCodeUrlCopied ? "コピーしました" : "URLをコピー"}
-                </button>
-              </div>
-            )}
-            <div className="write-panel__error-dialog-actions">
-              <Dialog.Close asChild>
-                <button type="button" className="write-panel__btn write-panel__btn--secondary">
-                  閉じる
-                </button>
-              </Dialog.Close>
-              <Dialog.Close asChild>
-                <button type="button" className="write-panel__btn write-panel__btn--primary">
-                  再入力
-                </button>
-              </Dialog.Close>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+        container={dialogPortalContainer ?? undefined}
+        authCode={authCode}
+        authCodeUrl={authCodeUrl}
+      />
     </div>
   );
 };
