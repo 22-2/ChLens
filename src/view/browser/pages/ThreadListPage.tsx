@@ -38,7 +38,6 @@ import {
   THREAD_LIST_COLUMN_VISIBILITY_STORAGE_KEY,
   THREAD_LIST_COLUMNS,
   type ThreadListSortColumn,
-  type ThreadListSortPreference,
   writeThreadListSortPreference,
 } from "src/features/thread-list/ui/thread-list-shared";
 import {
@@ -68,12 +67,12 @@ import {
   filterVisibleThreads,
   getThreadRowClassName,
   nextSortPreference,
-  resolveSortPreference,
 } from "src/view/browser/pages/thread-list/thread-list-display";
 import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
 import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";
+import { useThreadListViewState } from "src/view/browser/pages/thread-list/use-thread-list-view-state";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
-import { useTabStore, useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
+import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import {
   canGoBack,
   canGoForward,
@@ -89,10 +88,6 @@ import {
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
-import {
-  DEFAULT_SEARCH_OPTIONS,
-  type SearchOptions,
-} from "src/view/browser/utils/search-normalize";
 import { ThreadListView } from "src/view/shared/ThreadListView";
 
 const logger = createLogger("view/browser");
@@ -176,10 +171,14 @@ export const ThreadListPage: React.FC<Props> = ({
   );
   // 既存の直接利用者との互換性のため渡されたtabを残し、通常の描画経路ではそれを優先する。
   const navigationTab = tab ?? viewTab;
-  const { state: persistedViewState, update: updateViewState } = useTabViewState(tabId, page);
-  const persistedSearchQuery = persistedViewState.searchQuery;
-  const persistedSortColumn = persistedViewState.sortColumn;
-  const persistedSortDirection = persistedViewState.sortDirection;
+  const {
+    sortPreference,
+    setSortPreference,
+    searchQuery,
+    setSearchQuery,
+    searchOptions,
+    setSearchOptions,
+  } = useThreadListViewState(tabId, page);
   const { isNgTemporarilyDisabled, setThreadListStats } = useNgStatus();
   const { setPageCount } = usePageCountStatus();
   const pageCountKey = getThreadListPageCountKey(tabId, page.boardUrl);
@@ -241,17 +240,6 @@ export const ThreadListPage: React.FC<Props> = ({
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     viewDocument.visibilityState === "visible",
   );
-  const [sortPreference, setSortPreference] = useState<ThreadListSortPreference>(() =>
-    resolveSortPreference(persistedSortColumn, persistedSortDirection, page.boardUrl),
-  );
-  const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
-  // 切り替えは検索欄の使い方の好みに近いため、板を移っても引き継ぎ、タブの復元時に戻す。
-  const [searchOptions, setSearchOptions] = useState<SearchOptions>(() => ({
-    ...DEFAULT_SEARCH_OPTIONS,
-    ...persistedViewState.searchOptions,
-  }));
-  const previousBoardUrlRef = useRef(page.boardUrl);
-  const skipViewStateUpdateRef = useRef(false);
   // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
   // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。
   const wheelPagination = useWheelPagination({
@@ -283,48 +271,6 @@ export const ThreadListPage: React.FC<Props> = ({
   });
   const { open: openThreadTitleNgDialog } = threadTitleNgDialog;
   const { column: sortColumn, direction: sortDirection } = sortPreference;
-
-  useEffect(() => {
-    if (previousBoardUrlRef.current === page.boardUrl) {
-      return;
-    }
-
-    // 保存値は板を切り替えたときだけ復元する。入力中にも view state が更新されるため、
-    // そのたびに同じ値をローカル状態へ戻すと、入力イベントと競合して文字が点滅する。
-    previousBoardUrlRef.current = page.boardUrl;
-    // 板切り替え直後は、復元前のローカル状態を新しい板へ保存しない。
-    skipViewStateUpdateRef.current = true;
-    const restoredSortPreference = resolveSortPreference(
-      persistedSortColumn,
-      persistedSortDirection,
-      page.boardUrl,
-    );
-    setSortPreference((previous) =>
-      previous.column === restoredSortPreference.column &&
-      previous.direction === restoredSortPreference.direction
-        ? previous
-        : restoredSortPreference,
-    );
-    setSearchQuery(persistedSearchQuery ?? "");
-  }, [page.boardUrl, persistedSearchQuery, persistedSortColumn, persistedSortDirection]);
-
-  useEffect(() => {
-    if (skipViewStateUpdateRef.current) {
-      skipViewStateUpdateRef.current = false;
-      return;
-    }
-
-    updateViewState({
-      searchQuery,
-      searchOptions,
-      sortColumn: sortPreference.column,
-      sortDirection: sortPreference.direction,
-    });
-  }, [searchOptions, searchQuery, sortPreference, updateViewState]);
-
-  useEffect(() => {
-    writeThreadListSortPreference(page.boardUrl, sortPreference);
-  }, [page.boardUrl, sortPreference]);
 
   useEffect(() => {
     container.openedBoards.upsertOpenedBoardEntry(page.boardUrl, initialBoardTitle);
@@ -459,9 +405,12 @@ export const ThreadListPage: React.FC<Props> = ({
   //   return () => window.removeEventListener("keydown", handleKeyDown);
   // }, []);
 
-  const handleSort = useCallback((column: ThreadListSortColumn) => {
-    setSortPreference((previous) => nextSortPreference(previous, column));
-  }, []);
+  const handleSort = useCallback(
+    (column: ThreadListSortColumn) => {
+      setSortPreference((previous) => nextSortPreference(previous, column));
+    },
+    [setSortPreference],
+  );
 
   // ソート・検索フィルタ適用後のスレッド一覧
   const displayThreads = useMemo(() => {
