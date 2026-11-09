@@ -159,7 +159,6 @@
   border-radius: 2px;
   background: var(--sys-color-accent);
   clip-path: none;
-  animation: none;
 }
 
 /* 変更理由: 動作中であることを視線を止めずに分かるよう、赤い三角だけを緩やかに点滅させる。
@@ -174,8 +173,10 @@
   }
 }
 
+/* 変更理由: 待機（一時停止）中の四角は点滅させない。待機の規則より後ろで同じ強さの規則を
+   当てると、点滅が待機中にも掛かるため、動作中の三角だけに限定して指定する。 */
 @media (prefers-reduced-motion: no-preference) {
-  .tab__auto-refresh-indicator {
+  .tab__auto-refresh-indicator:not(.tab__auto-refresh-indicator--inactive) {
     animation: tab-auto-refresh-blink 1.2s ease-in-out infinite;
   }
 }
