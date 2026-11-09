@@ -8,14 +8,13 @@ export interface ReplyPreview {
   num: number;
   /** 右クリックメニューなど、返信先レスそのものを対象にする操作で使う。 */
   res: IRes;
-  /** アンカーを除いた本文の要約。本文が画像だけなら空文字になる。 */
+  /** 返信先の本文の要約。返信先自身のアンカーも含める。本文が画像だけなら空文字になる。 */
   text: string;
   hasImage: boolean;
 }
 
-// 本文中の >>N 形式のアンカーを取り除いて、返信先本文だけを要約に残す。
-const ANCHOR_REG = /(?:(?:&gt;|＞){1,2}|>>)[\d\uff10-\uff19,、\-\u30fc\s]*/g;
-const PREVIEW_MAX_LENGTH = 120;
+// 2行まで表示するため、1行分より長めに切り出す。表示側の行数制限で最終的に省略する。
+const PREVIEW_MAX_LENGTH = 200;
 
 /**
  * レスの最初のアンカーが指す返信先を要約する。
@@ -34,10 +33,6 @@ export function buildReplyPreview(
   const hasImage = extractUrlsFromMessage(target.message).some(
     (url) => toViewerImageUrl(url) != null,
   );
-  const text = stripHtml(target.message)
-    .replace(ANCHOR_REG, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, PREVIEW_MAX_LENGTH);
+  const text = stripHtml(target.message).replace(/\s+/g, " ").trim().slice(0, PREVIEW_MAX_LENGTH);
   return { num: target.num, res: target, text, hasImage };
 }

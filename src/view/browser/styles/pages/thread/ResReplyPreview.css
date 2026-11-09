@@ -1,7 +1,7 @@
 /* 返信先レスの要約行。Discordのように左上へ曲がる線で本文へつなぐ。 */
 .res__reply-preview {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--sys-space-3);
   max-width: 100%;
   margin: var(--sys-space-1) 0 var(--sys-space-1) var(--sys-space-4);
@@ -24,9 +24,13 @@
 
 .res__reply-preview-text {
   min-width: 0;
+  /* 変更理由: 長い返信先は2行まで表示し、それ以上は省略する。 */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .res__reply-preview-image {
