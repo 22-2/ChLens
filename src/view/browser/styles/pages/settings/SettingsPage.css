@@ -7,10 +7,6 @@
   height: 100%;
 }
 
-.settings-page__shell--compact {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .settings-page__loading,
 .settings-page__error-state {
   display: flex;
@@ -24,33 +20,6 @@
 
 .settings-page__error-state {
   flex-direction: column;
-}
-
-.settings-page__compact-hotzone {
-  position: absolute;
-  z-index: var(--sys-z-local);
-  inset: 0 auto 0 0;
-  width: var(--sys-space-6);
-}
-
-.settings-page__compact-menu {
-  position: absolute;
-  z-index: var(--sys-z-popup-layer);
-  top: var(--sys-space-8);
-  left: var(--sys-space-8);
-  width: min(220px, calc(100vw - var(--sys-space-16)));
-  max-height: calc(100% - var(--sys-space-16));
-  overflow: hidden;
-  padding: var(--sys-space-6) var(--sys-space-4);
-  border: 1px solid var(--sys-color-border);
-  border-radius: var(--sys-radius-xl);
-  background: var(--sys-color-settings-card-bg);
-  box-shadow: var(--sys-shadow-floating);
-}
-
-.settings-page__compact-menu-scroll {
-  max-height: calc(100vh - var(--sys-space-16));
-  overflow-y: auto;
 }
 
 .settings-page__header {

@@ -40,7 +40,6 @@ vi.mock("src/service-container/index", () => ({
   },
 }));
 
-vi.mock("src/view/browser/hooks/use-media-query", () => ({ useMediaQuery: () => false }));
 vi.mock("src/features/ng/ui/NGEditor", () => ({
   NGEditor: () => null,
   NGDslHelpSnippet: () => null,

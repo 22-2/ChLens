@@ -8,7 +8,6 @@ import {
   ReplacementEditor,
 } from "src/features/replacement/ui/ReplacementEditor";
 import { container } from "src/service-container/index";
-import { useMediaQuery } from "src/view/browser/hooks/use-media-query";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import {
   groupSectionItems,
@@ -32,7 +31,6 @@ import {
 } from "src/view/browser/pages/settings/settings-types";
 import { SettingsGroup, SettingsGroupActions } from "src/view/browser/pages/settings/SettingsGroup";
 import { SettingsSupplementaryPanels } from "src/view/browser/pages/settings/SettingsSupplementaryPanels";
-import { useCompactMenu } from "src/view/browser/pages/settings/use-compact-menu";
 import { useSettingsAutoSave } from "src/view/browser/pages/settings/use-settings-auto-save";
 import { useSettingsMaintenanceActions } from "src/view/browser/pages/settings/use-settings-maintenance";
 import { useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
@@ -135,9 +133,6 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
   // 全タブ共通の保存値を使うと、閉じて開き直した設定タブにも前回の表示状態が残る。
   // タブセッションから初期値を読み、Chrome側の再読み込みでは同じタブの状態を復元する。
   const [initialUiState] = useState(() => persistedViewState.settingsPage ?? {});
-  // カテゴリ一覧をアイコンと名前だけの細い列にしたため、画面幅の半分程度でも常に表示し、
-  // 本文が窮屈になる幅だけ左端のホットゾーンから開くメニューへ切り替える。
-  const isCompact = useMediaQuery("(max-width: 720px)") ?? false;
   const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>(() =>
     resolveSectionId(
       initialUiState.linkedSectionId === page.sectionId
@@ -158,8 +153,6 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
   const [isNgAdvancedOpen, setIsNgAdvancedOpen] = useState(initialUiState.ngAdvancedOpen === true);
   const { savingSectionId, autoSaveError, setAutoSaveError, scheduleAutoSave } =
     useSettingsAutoSave();
-  const { isCompactMenuOpen, openCompactMenu, closeCompactMenu, scheduleCompactMenuClose } =
-    useCompactMenu(isCompact);
   const formStateRef = useRef<SettingsFormState | null>(null);
   const scrollViewportRef = useRef<HTMLDivElement | null>(null);
   const restoredScrollTopRef = useRef(
@@ -502,44 +495,10 @@ export const SettingsPage: React.FC<{ tabId: string; page: SettingsPageType }> =
   const relatedSection = activeSection.relatedSection;
 
   return (
-    <div className={`settings-page__shell${isCompact ? " settings-page__shell--compact" : ""}`}>
-      {!isCompact && (
-        <aside className="settings-page__sidebar">
-          <SettingsSectionNav activeSectionId={activeSectionId} onSelect={setActiveSectionId} />
-        </aside>
-      )}
-
-      {isCompact && (
-        <>
-          <div
-            className="settings-page__compact-hotzone"
-            role="button"
-            tabIndex={0}
-            aria-label="設定カテゴリメニューを開く"
-            onMouseEnter={openCompactMenu}
-            onFocus={openCompactMenu}
-            onBlur={scheduleCompactMenuClose}
-          />
-
-          {isCompactMenuOpen && (
-            <aside
-              className="settings-page__compact-menu"
-              onMouseEnter={openCompactMenu}
-              onMouseLeave={scheduleCompactMenuClose}
-            >
-              <div className="settings-page__compact-menu-scroll">
-                <SettingsSectionNav
-                  activeSectionId={activeSectionId}
-                  onSelect={(sectionId) => {
-                    setActiveSectionId(sectionId);
-                    closeCompactMenu();
-                  }}
-                />
-              </div>
-            </aside>
-          )}
-        </>
-      )}
+    <div className="settings-page__shell">
+      <aside className="settings-page__sidebar">
+        <SettingsSectionNav activeSectionId={activeSectionId} onSelect={setActiveSectionId} />
+      </aside>
 
       <main
         ref={scrollViewportRef}
