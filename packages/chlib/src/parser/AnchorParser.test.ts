@@ -51,4 +51,29 @@ describe("AnchorParser", () => {
     expect(result.targetCount).toBe(0);
     expect(result.segments).toEqual([]);
   });
+
+  it("5桁の番号を受け入れ、6桁以上の番号や0番は対象から除く", () => {
+    expect(AnchorParser.parse(">>1,99999,100000,0,3-100000")).toEqual({
+      targetCount: 2,
+      segments: [
+        [1, 1],
+        [99999, 99999],
+      ],
+    });
+  });
+
+  it("数字の前後に本文が混ざる文字列はアンカー全体として扱わない", () => {
+    expect(AnchorParser.parse("本文>>12")).toEqual({ targetCount: 0, segments: [] });
+    expect(AnchorParser.parse(">>12本文")).toEqual({ targetCount: 0, segments: [] });
+  });
+
+  it("記号を省いた番号や読点の前後の空白を含む複数範囲を解析する", () => {
+    expect(AnchorParser.parse("12 、 20-21")).toEqual({
+      targetCount: 3,
+      segments: [
+        [12, 12],
+        [20, 21],
+      ],
+    });
+  });
 });
