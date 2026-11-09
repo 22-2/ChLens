@@ -8,14 +8,19 @@ import {
   mapWithConcurrency,
   MAX_CONCURRENT_BATCH_REQUESTS,
 } from "src/core/util/map-with-concurrency";
-import type { CommentCandidate } from "src/features/comment-overlay/domain";
-import { projectCommentResponse } from "src/features/comment-overlay/domain";
+import {
+  type ArchiveReplayThreadSelection,
+  createReplaySessionId,
+  formatReplayClock,
+  formatReplayDuration,
+  projectThreadComments,
+  resolveArchiveReplayThreadSelection,
+} from "src/features/archive-replay/ui/archive-replay-window-helpers";
 import {
   type CommentOverlayWindowPlatform,
   commentOverlayWindowPlatform,
 } from "src/features/comment-overlay/platform";
 import { container } from "src/service-container";
-import type { IThreadDetail } from "src/service-container/interfaces";
 import { useTheme } from "src/view/browser/hooks/use-theme";
 import { Button } from "src/view/browser/ui/Button";
 
@@ -56,12 +61,6 @@ interface LoadedArchiveReplayData {
 
 interface LoadedThreadData {
   source: ArchiveReplaySource;
-  title: string;
-}
-
-interface ArchiveReplayThreadSelection {
-  threadUrl: string;
-  responseNumber: number;
   title: string;
 }
 
@@ -761,66 +760,4 @@ export function ArchiveReplayWindow({
       </p>
     </main>
   );
-}
-
-function projectThreadComments(thread: IThreadDetail): readonly CommentCandidate[] {
-  return thread.res
-    .map((response) => projectCommentResponse(response))
-    .filter((comment): comment is CommentCandidate => comment !== null);
-}
-
-function createReplaySessionId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-}
-
-function formatReplayDuration(seconds: number): string {
-  const wholeSeconds = Math.max(0, Math.floor(seconds));
-  const hours = Math.floor(wholeSeconds / 3_600);
-  const minutes = Math.floor((wholeSeconds % 3_600) / 60);
-  const remainder = wholeSeconds % 60;
-  return hours > 0
-    ? `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${remainder
-        .toString()
-        .padStart(2, "0")}`
-    : `${minutes.toString().padStart(2, "0")}:${remainder.toString().padStart(2, "0")}`;
-}
-
-function formatReplayClock(timestamp: number): string {
-  return new Intl.DateTimeFormat("ja-JP", {
-    timeZone: "Asia/Tokyo",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).format(new Date(timestamp));
-}
-
-function resolveArchiveReplayThreadSelection(
-  timeline: ArchiveReplayTimeline,
-  position: number,
-  syncOffset: number,
-  threadTitles: Readonly<Record<string, string>>,
-): ArchiveReplayThreadSelection | null {
-  let firstInRange: ArchiveReplayTimeline["comments"][number] | null = null;
-  let current: ArchiveReplayTimeline["comments"][number] | null = null;
-
-  for (const comment of timeline.comments) {
-    const effectiveOffset = comment.replayOffsetSeconds + syncOffset;
-    if (effectiveOffset < 0 || effectiveOffset > timeline.durationSeconds) continue;
-    firstInRange ??= comment;
-    if (effectiveOffset <= position) {
-      current = comment;
-      continue;
-    }
-    break;
-  }
-
-  const selected = current ?? firstInRange;
-  if (!selected) return null;
-
-  return {
-    threadUrl: selected.sourceThreadUrl,
-    responseNumber: selected.responseNumber,
-    title: threadTitles[selected.sourceThreadUrl] ?? selected.sourceThreadUrl,
-  };
 }
