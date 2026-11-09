@@ -50,8 +50,14 @@ export class BoardParser {
       });
     }
 
-    if (chUrl.getTsld() === "shitaraba.net") {
-      threads.pop(); // Remove the last empty line/footer for shitaraba
+    // したらばは先頭スレッドの重複行を末尾に付けることがある。
+    // 重複のない一覧や1件だけの一覧まで末尾を捨てると、実在するスレッドが消える。
+    if (
+      chUrl.getTsld() === "shitaraba.net" &&
+      threads.length > 1 &&
+      threads[0].url === threads.at(-1)?.url
+    ) {
+      threads.pop();
     }
 
     return threads;
