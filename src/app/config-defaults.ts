@@ -100,7 +100,9 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   image_replace_dat_obj: "",
   image_replace_dat:
     "^https?:\\/\\/(?:www\\.youtube\\.com\\/watch\\?(?:.+&)?v=|youtu\\.be\\/)([\\w\\-]+).*\thttps://img.youtube.com/vi/$1/default.jpg\nhttp:\\/\\/(?:www\\.)?nicovideon?\\.jp\\/(?:(?:watch|thumb)(?:_naisho)?(?:\\?v=|\\/)|\\?p=)(?!am|fz)[a-z]{2}(\\d+)\thttp://tn-skr.smilevideo.jp/smile?i=$1\n\\.(png|jpe?g|gif|bmp|webp)([\\?#:].*)?$\t.$1$2",
-  replace_str_txt: "",
+  // 既定ではjump5.chの中継URL（jump5.ch/?<URL>）から中継部分を外して元のURLへ置き換える。
+  replace_str_txt:
+    'replace body regex:\n  from "https?://jump5\\.ch/\\?(https?://[^<>\\s]+)"\n  to "$1"\n',
 };
 
 // 設定画面や操作UIから編集できず、内部処理だけで扱う設定。
