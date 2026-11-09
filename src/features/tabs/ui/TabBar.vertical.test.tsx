@@ -98,10 +98,18 @@ describe("TabBar vertical", () => {
     expect(container.querySelector(".tab-bar__collapse")).not.toBeNull();
   });
 
-  it("垂直ではタブ上の閉じるボタンを表示しない", () => {
+  it("簡易表示の垂直タブではタブ上の閉じるボタンを描画しない", () => {
+    configValues["tab_bar_collapsed"] = "on";
     const { container } = render(<TabBar orientation="vertical" />);
 
     expect(container.querySelector(".tab__close")).toBeNull();
+  });
+
+  it("広く開いた垂直タブでは閉じるボタンを描画し、表示はホバー時に限る", () => {
+    configValues["tab_bar_collapsed"] = "off";
+    const { container } = render(<TabBar orientation="vertical" />);
+
+    expect(container.querySelector(".tab__close")).not.toBeNull();
   });
 
   it("固定タブも展開時はタイトルを表示する", () => {

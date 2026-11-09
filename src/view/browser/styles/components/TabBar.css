@@ -190,6 +190,16 @@
   background: var(--sys-color-tab-strip-active-hover);
 }
 
+/* 変更理由: 広く開いた垂直タブバーでは閉じるボタンを常設せず、ホバー中のタブだけ右端に出す。
+   自動更新の表示はボタンより前に置かれるため、ホバー時にはボタンの一つ左へ寄る。 */
+.tab-bar--vertical:not(.tab-bar--collapsed) .tab__close {
+  display: none;
+}
+
+.tab-bar--vertical:not(.tab-bar--collapsed) .tab:hover .tab__close {
+  display: flex;
+}
+
 .tab-bar__add,
 .tab-bar__bookmark {
   display: flex;
@@ -522,7 +532,7 @@
 }
 
 /* 変更理由: 簡易表示ではタイトルを隠してアイコンだけの細幅にする。
-   垂直タブの閉じるボタンは常設せず、中クリックと右クリックで閉じる操作を保つ。 */
+   閉じるボタンは細幅に収まらないため出さず、中クリックと右クリックで閉じる操作を保つ。 */
 .tab-bar--vertical.tab-bar--collapsed {
   width: 48px;
   min-width: 48px;

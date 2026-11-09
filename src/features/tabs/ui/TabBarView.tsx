@@ -168,8 +168,10 @@ const SortableTab: React.FC<SortableTabProps> = ({
             }
           />
         )}
-        {/* 最後のタブを残す規則はページ種別によらず共通にする。 */}
-        {!isVertical && !tab.pinned && canClose && (
+        {/* 最後のタブを残す規則はページ種別によらず共通にする。
+            変更理由: 広く開いた垂直タブでもボタンを描画し、表示はCSSでホバー時だけに限る。
+            簡易表示は細幅を保つため描画しない。 */}
+        {!compact && !tab.pinned && canClose && (
           <button
             className="tab__close"
             onClick={(e) => {
