@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, Filter, Menu, Pause, RotateCw, Settings, Star } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createLogger } from "src/app/logger";
 import {
@@ -163,8 +163,11 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     setPortalContainer(viewSurface.document.querySelector<HTMLElement>(".browser-shell"));
   }, [viewSurface.document]);
 
+  // 変更理由: フォーカスが別ペインへ移ると、受け口の data-pane-id は同じcommitで書き換わる。
+  // useEffect で探し直すと、画面に出る1回の描画のあいだ受け口がなく、ボタン群がペイン上部へ
+  // インライン表示されて本文が1行分ガクっと下がる。描画前に探し直してこの一瞬を出さない。
   // oxlint-disable-next-line react/set-state-in-effect -- pane別の受け口はReactのcommit後にDOMへ接続されるため、DOMの受け口をstateへ同期する。
-  useEffect(() => {
+  useLayoutEffect(() => {
     setTitleBarSlot(
       viewSurface.document.querySelector<HTMLElement>(
         `.title-bar__nav-slot[data-pane-id="${paneId}"]`,
