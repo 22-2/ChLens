@@ -202,18 +202,6 @@ const ALL_SETTINGS_SECTIONS = [
         description:
           "ONにすると、スレッドを開いた直後からフィルタバーを常時表示し、開閉操作を受け付けません。入力欄へのフォーカスは移しません。",
       },
-      {
-        kind: "divider",
-        id: "popup-close",
-        title: "ポップアップ",
-      },
-      {
-        kind: "boolean",
-        key: POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY,
-        title: "外側をクリックするまでポップアップを閉じない",
-        description:
-          "ONにすると、マウスをポップアップから外しても閉じず、外側をクリックしたときに閉じます。",
-      },
     ],
     {
       supplementaryPanelIds: ["titleBarButtonSettings"],
@@ -274,6 +262,18 @@ const ALL_SETTINGS_SECTIONS = [
         key: "pause_auto_scroll_on_popup",
         title: "ポップアップ表示中は自動スクロールを一時停止する",
         description: "OFFにすると、レスポップアップなどを表示している間も新着レスへ追従します。",
+      },
+      {
+        kind: "divider",
+        id: "popup-close",
+        title: "ポップアップ",
+      },
+      {
+        kind: "boolean",
+        key: POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY,
+        title: "外側をクリックするまでポップアップを閉じない",
+        description:
+          "ONにすると、マウスをポップアップから外しても閉じず、外側をクリックしたときに閉じます。",
       },
       {
         kind: "divider",

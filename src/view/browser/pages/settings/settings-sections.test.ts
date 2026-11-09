@@ -281,9 +281,9 @@ describe("設定項目の置き場所", () => {
     ).toBe(false);
   });
 
-  it("ポップアップの閉じ方を表示設定から切り替えられる", () => {
-    const display = getSettingsSections(false).find((section) => section.id === "display");
-    const setting = display?.fields.find(
+  it("ポップアップの閉じ方をスレ設定から切り替えられる", () => {
+    const thread = getSettingsSections(false).find((section) => section.id === "thread");
+    const setting = thread?.fields.find(
       (field) => "key" in field && field.key === "popup_close_outside_only",
     );
 
