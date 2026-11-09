@@ -159,6 +159,25 @@
   border-radius: 2px;
   background: var(--sys-color-accent);
   clip-path: none;
+  animation: none;
+}
+
+/* 変更理由: 動作中であることを視線を止めずに分かるよう、赤い三角だけを緩やかに点滅させる。
+   動きを減らす設定では点滅させず、色と形だけで状態を示す。 */
+@keyframes tab-auto-refresh-blink {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 0.2;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tab__auto-refresh-indicator {
+    animation: tab-auto-refresh-blink 1.2s ease-in-out infinite;
+  }
 }
 
 .tab__archive-replay-indicator {
