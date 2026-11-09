@@ -1,4 +1,3 @@
-import { ChURL } from "packages/chlib/src/index";
 import React, { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -6,7 +5,6 @@ import {
   MIN_BOARD_AUTO_REFRESH_MS,
   readBoardAutoRefreshIntervalMs,
 } from "src/features/auto-refresh/browser/auto-refresh-config";
-import { isResolvedBoardTitle } from "src/features/board/domain/board-list-utils";
 import {
   readBookmarkStatus,
   useBookmarkRevision,
@@ -68,6 +66,7 @@ import {
   getThreadRowClassName,
   nextSortPreference,
 } from "src/view/browser/pages/thread-list/thread-list-display";
+import { useThreadListBoardRecord } from "src/view/browser/pages/thread-list/use-thread-list-board-record";
 import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
 import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";
 import { useThreadListViewState } from "src/view/browser/pages/thread-list/use-thread-list-view-state";
@@ -124,18 +123,6 @@ interface Props {
   scrollContainerRef?: RefObject<HTMLDivElement | null>;
 }
 
-function resolveInitialBoardTitle(page: ThreadListPageType): string | null {
-  if (isResolvedBoardTitle(page.boardUrl, page.title)) {
-    return page.title;
-  }
-
-  if (isResolvedBoardTitle(page.boardUrl, page.boardTitle)) {
-    return page.boardTitle;
-  }
-
-  return null;
-}
-
 export const ThreadListPage: React.FC<Props> = ({
   tabId,
   tab,
@@ -156,13 +143,12 @@ export const ThreadListPage: React.FC<Props> = ({
     [toast, viewSurface],
   );
   const { viewTab } = useTabStore();
-  const visitedBoardRef = useRef<{ url: string; lastVisited: number } | null>(null);
-  const resolvedBoardTitlesRef = useRef(new Map<string, string>());
-  const initialBoardTitle = resolveInitialBoardTitle(page);
-  useEffect(() => {
-    // スレ一覧の取得より前に名前が分かる経路も、取得確認後の保存へ引き継ぐ。
-    if (initialBoardTitle) resolvedBoardTitlesRef.current.set(page.boardUrl, initialBoardTitle);
-  }, [initialBoardTitle, page.boardUrl]);
+  const { visitedBoardRef, resolvedBoardTitlesRef } = useThreadListBoardRecord({
+    tabId,
+    page,
+    isActive,
+    dispatch,
+  });
   const runTabCommand = useTabCommandRunner(tabId);
   const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const requestManualRefresh = useCallback(
@@ -271,56 +257,6 @@ export const ThreadListPage: React.FC<Props> = ({
   });
   const { open: openThreadTitleNgDialog } = threadTitleNgDialog;
   const { column: sortColumn, direction: sortDirection } = sortPreference;
-
-  useEffect(() => {
-    container.openedBoards.upsertOpenedBoardEntry(page.boardUrl, initialBoardTitle);
-  }, [initialBoardTitle, page.boardUrl]);
-
-  useEffect(() => {
-    // スレを開かず板だけを開いた場合や既存タブの再選択も記録する。板名解決では日時を進めない。
-    if (visitedBoardRef.current?.url !== page.boardUrl || isActive) {
-      visitedBoardRef.current = { url: page.boardUrl, lastVisited: Date.now() };
-      container.openedBoards.upsertOpenedBoardEntry(
-        page.boardUrl,
-        null,
-        visitedBoardRef.current.lastVisited,
-      );
-    }
-  }, [isActive, page.boardUrl]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // 変更理由: スレ一覧コンポーネントは再マウントされない経路があるため、
-    // 「初回だけ取得」だと別板へ遷移した後のタイトルが更新されないことがある。
-    if (initialBoardTitle) {
-      if (initialBoardTitle !== page.title) {
-        dispatch(tabActions.updateTitleForTab(tabId, initialBoardTitle, page.boardUrl));
-      }
-      return;
-    }
-
-    container.boardTitle
-      .ask(new ChURL(page.boardUrl))
-      .then((title) => {
-        if (title && isResolvedBoardTitle(page.boardUrl, title)) {
-          resolvedBoardTitlesRef.current.set(page.boardUrl, title);
-          // タブの再描画を保存の前提にせず、遷移後に届いた名前も元の板へ残す。
-          // 板名解決の遅延では閲覧日時を進めず、板を開いた時刻をそのまま保つ。
-          container.openedBoards.upsertOpenedBoardEntry(page.boardUrl, title);
-        }
-        if (!cancelled && title) {
-          dispatch(tabActions.updateTitleForTab(tabId, title, page.boardUrl));
-        }
-      })
-      .catch((err) => {
-        logger.error(err);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [dispatch, initialBoardTitle, page.boardUrl, page.title, tabId]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
