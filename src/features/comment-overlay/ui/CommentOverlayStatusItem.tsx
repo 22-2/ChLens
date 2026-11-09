@@ -102,8 +102,8 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
       {/* 実況操作を左端へ置き、実況中も共通のボタン色を使ってバー全体の見た目を揃える。 */}
       <StatusBarItem
         id="comment-overlay-status"
-        alignment="left"
-        priority={STATUS_BAR_PRIORITY.left.commentOverlay}
+        alignment="right"
+        priority={STATUS_BAR_PRIORITY.right.commentOverlay}
         title={statusLabel}
         interactive
       >

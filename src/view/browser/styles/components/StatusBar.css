@@ -1,26 +1,25 @@
-/* Status Bar - VS Code風の左右スロット */
+/* Status Bar - 右寄せの項目だけを置く。帯の背景と罫線は持たず、項目が本文の下に浮かぶように見せる。 */
 .status-bar {
   /* 変更理由: ステータスバー上端に重ねた自動読み込みボタンを背後に隠し、表示を常に優先する。 */
   position: relative;
   z-index: var(--sys-z-minimap);
   display: flex;
   align-items: stretch;
-  justify-content: space-between;
+  justify-content: flex-end;
   min-height: var(--sys-space-12);
-  background: var(--sys-color-tab-strip);
+  /* 変更理由: 帯全体を消し、右側の項目だけを本文の下に残す。 */
+  background: transparent;
   color: var(--sys-color-text-muted);
   font-size: var(--sys-font-size-sm);
-  border-top: 1px solid var(--sys-color-status-border);
+  border-top: 0;
 }
 
 .status-bar--active {
-  background: var(--sys-color-status-active-bg);
   color: var(--sys-color-status-active-fg);
 }
 
 /* 変更理由: 待機は通知と同じ色にして、自動更新中の青と取り違えないようにする。 */
 .status-bar--waiting {
-  background: var(--sys-color-status-waiting-bg);
   color: var(--sys-color-status-waiting-fg);
 }
 

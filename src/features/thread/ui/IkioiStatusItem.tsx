@@ -104,8 +104,8 @@ export const IkioiStatusItem: React.FC = () => {
     <>
       <StatusBarItem
         id="ikioi-status"
-        alignment="left"
-        priority={STATUS_BAR_PRIORITY.left.ikioi}
+        alignment="right"
+        priority={STATUS_BAR_PRIORITY.right.ikioi}
         title={`勢い: ${displayValue}`}
         interactive
       >

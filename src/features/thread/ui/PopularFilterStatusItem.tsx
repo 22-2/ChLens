@@ -51,8 +51,8 @@ export const PopularFilterStatusItem: React.FC = () => {
     <>
       <StatusBarItem
         id="popular-filter-status"
-        alignment="left"
-        priority={STATUS_BAR_PRIORITY.left.popularFilter}
+        alignment="right"
+        priority={STATUS_BAR_PRIORITY.right.popularFilter}
         title={itemLabel}
         interactive
       >

@@ -62,8 +62,8 @@ export const PageCountStatusItem: React.FC = () => {
   return (
     <StatusBarItem
       id="page-count-status"
-      alignment="left"
-      priority={STATUS_BAR_PRIORITY.left.pageCount}
+      alignment="right"
+      priority={STATUS_BAR_PRIORITY.right.pageCount}
       title={isThreadPage ? `${accessibleLabel}（クリックでフィルターを開く）` : accessibleLabel}
       interactive={isThreadPage}
     >

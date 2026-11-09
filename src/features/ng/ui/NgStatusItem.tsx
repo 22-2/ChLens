@@ -49,8 +49,8 @@ export const NgStatusItem: React.FC = () => {
     <>
       <StatusBarItem
         id="ng-status"
-        alignment="left"
-        priority={STATUS_BAR_PRIORITY.left.ng}
+        alignment="right"
+        priority={STATUS_BAR_PRIORITY.right.ng}
         title={itemTitle}
         interactive
       >

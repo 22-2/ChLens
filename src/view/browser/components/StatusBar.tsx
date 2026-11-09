@@ -160,9 +160,7 @@ export const StatusBarProvider: React.FC<StatusBarProviderProps> = ({ children }
         if (left.alignment !== right.alignment) {
           return left.alignment === "left" ? -1 : 1;
         }
-        return left.alignment === "left"
-          ? left.priority - right.priority
-          : right.priority - left.priority;
+        return left.priority - right.priority;
       });
   }, [itemsById]);
 
