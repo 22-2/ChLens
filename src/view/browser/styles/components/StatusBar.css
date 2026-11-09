@@ -41,6 +41,15 @@
   border-top-left-radius: var(--sys-radius-lg);
 }
 
+/* 変更理由: 右側の項目のまとまりが背景を持つため、自動更新中の青と待機の色はこの塊へ適用する。 */
+.pane-column > .status-bar--active .status-bar__group--right {
+  background: var(--sys-color-status-active-bg);
+}
+
+.pane-column > .status-bar--waiting .status-bar__group--right {
+  background: var(--sys-color-status-waiting-bg);
+}
+
 /* 変更理由: 待機は通知と同じ色にして、自動更新中の青と取り違えないようにする。 */
 .status-bar--waiting {
   color: var(--sys-color-status-waiting-fg);
