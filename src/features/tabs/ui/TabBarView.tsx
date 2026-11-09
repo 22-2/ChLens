@@ -353,7 +353,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
     [items, onSelectTab],
   );
 
-  const addTabButton = (
+  const renderAddTabButton = (concealed = false) => (
     <button
       type="button"
       className="tab-bar__add icon-button"
@@ -361,10 +361,15 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       onContextMenu={(e) => e.stopPropagation()}
       title="新しいタブ"
       aria-label="新しいタブ"
+      // 変更理由: フォーカス外のペインでもボタン分の高さを確保し、ペインを切り替えても
+      // タブ一覧の長さとスクロール状態が変わらないようにする。見えなくするだけで場所は残す。
+      style={concealed ? { visibility: "hidden" } : undefined}
+      tabIndex={concealed ? -1 : undefined}
     >
       <Plus size={13} />
     </button>
   );
+  const addTabButton = renderAddTabButton();
 
   const displayWidth = dragWidth ?? width;
 
@@ -430,7 +435,7 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
                 垂直モードでは最終タブの直後に置き、一覧と一緒にスクロールさせる。 */}
             {!isVertical && !isTabListScrollable ? addTabButton : null}
             {/* 共通の縦レーンでは、フォーカス中のペインにだけ追加ボタンを置く。 */}
-            {isVertical && (!sectionLabel || isPaneFocused) ? addTabButton : null}
+            {isVertical ? renderAddTabButton(Boolean(sectionLabel) && !isPaneFocused) : null}
           </div>
         </div>
       </DragDropProvider>
