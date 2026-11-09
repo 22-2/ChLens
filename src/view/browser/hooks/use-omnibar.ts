@@ -122,17 +122,22 @@ export function useOmnibar({
   const [isWriteLoading, setIsWriteLoading] = useState(false);
   // 入力文字とは独立してモードを保持し、ルートへ戻る操作を可能にする。
   const [mode, setMode] = useState<OmnibarInputMode>("navigation");
+  // フォーカス直後は現在のURLを選択状態で見せるだけで、候補の絞り込みには使わない。
+  // 利用者が入力するまで空の検索語として扱い、通常の候補一覧を維持する。
+  const [isInputPristine, setIsInputPristine] = useState(false);
+  const [hasMovedSelection, setHasMovedSelection] = useState(false);
+  const searchQuery = isInputPristine ? "" : inputValue;
   const availableModes = useMemo(
     () =>
       mode === "navigation"
         ? OMNIBAR_MODES.filter((item) => {
-            const query = inputValue.trim().toLowerCase();
+            const query = searchQuery.trim().toLowerCase();
             return (
               !query || item.label.toLowerCase().includes(query) || item.search.includes(query)
             );
           })
         : [],
-    [inputValue, mode],
+    [searchQuery, mode],
   );
 
   // 変更理由: 非フォーカス時の表示URLへの追従は描画中に行う。effect で行うと古い入力が一度描かれるため。
@@ -214,7 +219,7 @@ export function useOmnibar({
 
   const navigationSuggestions = useMemo(() => {
     if (mode === "writeHistory") {
-      const query = inputValue.trim().toLowerCase();
+      const query = searchQuery.trim().toLowerCase();
       return writeEntries.filter((entry) =>
         [entry.title, entry.url, entry.message ?? ""].some((value) =>
           value.toLowerCase().includes(query),
@@ -227,21 +232,21 @@ export function useOmnibar({
         : omnibarEntries.filter((entry) =>
             entry.sources.includes(mode as "bookmark" | "board" | "history"),
           );
-    return buildOmnibarSuggestions(entries, inputValue, Number.MAX_SAFE_INTEGER);
-  }, [inputValue, mode, omnibarEntries, writeEntries]);
+    return buildOmnibarSuggestions(entries, searchQuery, Number.MAX_SAFE_INTEGER);
+  }, [searchQuery, mode, omnibarEntries, writeEntries]);
 
   const directInputSuggestions = useMemo(() => {
     if (mode !== "navigation") {
       return [];
     }
 
-    const result = getDirectInputSuggestion?.(inputValue, displayUrl) ?? null;
+    const result = getDirectInputSuggestion?.(searchQuery, displayUrl) ?? null;
     if (!result) {
       return [];
     }
 
     return Array.isArray(result) ? result : [result];
-  }, [displayUrl, getDirectInputSuggestion, inputValue, mode]);
+  }, [displayUrl, getDirectInputSuggestion, searchQuery, mode]);
 
   const allSuggestions = useMemo(() => {
     if (directInputSuggestions.length === 0) {
@@ -275,9 +280,9 @@ export function useOmnibar({
   const allCommandSuggestions = useMemo(
     () =>
       mode === "command"
-        ? filterAndSortBrowserCommands(commands, inputValue, recentCommandIds)
+        ? filterAndSortBrowserCommands(commands, searchQuery, recentCommandIds)
         : [],
-    [commands, inputValue, mode, recentCommandIds],
+    [commands, searchQuery, mode, recentCommandIds],
   );
 
   const commandSuggestions = useMemo(
@@ -309,7 +314,7 @@ export function useOmnibar({
     isFocused &&
     !isOmnibarLoading &&
     (mode !== "writeHistory" || !isWriteLoading) &&
-    (mode !== "navigation" || inputValue.trim().length > 0) &&
+    (mode !== "navigation" || searchQuery.trim().length > 0) &&
     activeSuggestionCount === 0;
 
   const isOpen =
@@ -374,6 +379,7 @@ export function useOmnibar({
         index += direction
       ) {
         if (isSelectable(index)) {
+          setHasMovedSelection(true);
           setActiveSuggestionIndex(index);
           return;
         }
@@ -403,6 +409,13 @@ export function useOmnibar({
             e.preventDefault();
             handleSelectCommand(selected);
           }
+          return;
+        }
+
+        // 現在のURLを選択しただけの状態でEnterを押した時は、先頭候補へ進まず入力欄の値を確定する。
+        if (isInputPristine && !hasMovedSelection) {
+          onSubmitInput(inputValue);
+          e.currentTarget.blur();
           return;
         }
 
@@ -456,7 +469,9 @@ export function useOmnibar({
       displayUrl,
       handleSelectCommand,
       handleSelectSuggestion,
+      hasMovedSelection,
       inputValue,
+      isInputPristine,
       mode,
       moveSelection,
       onSubmitInput,
@@ -467,6 +482,8 @@ export function useOmnibar({
   const activate = useCallback((nextMode: OmnibarInputMode) => {
     setMode(nextMode);
     setInputValue("");
+    setIsInputPristine(false);
+    setHasMovedSelection(false);
     setIsFocused(true);
     setActiveSuggestionIndex(0);
   }, []);
@@ -474,6 +491,8 @@ export function useOmnibar({
   const handleFocus = useCallback((e: FocusEvent<HTMLInputElement>) => {
     setIsFocused(true);
     setActiveSuggestionIndex(0);
+    setHasMovedSelection(false);
+    setIsInputPristine(true);
     e.target.select();
   }, []);
 
@@ -482,10 +501,12 @@ export function useOmnibar({
     setMode("navigation");
     setIsOmnibarLoaded(false);
     setActiveSuggestionIndex(0);
+    setIsInputPristine(false);
     setInputValue(displayUrl);
   }, [displayUrl]);
 
   const handleInputChange = useCallback((value: string) => {
+    setIsInputPristine(false);
     setInputValue(value);
     setActiveSuggestionIndex(0);
   }, []);
