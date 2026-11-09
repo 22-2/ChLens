@@ -1,32 +1,17 @@
-import { DragDropProvider, type DragEndEvent, DragOverlay, KeyboardSensor } from "@dnd-kit/react";
+import { DragDropProvider, DragOverlay, KeyboardSensor } from "@dnd-kit/react";
 import { PanelLeftClose, PanelLeftOpen, Pin, Play, Plus, X } from "lucide-react";
-import normalizeWheel from "normalize-wheel";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  clampTabBarWidth,
-  TAB_BAR_COLLAPSED_WIDTH,
-  TAB_BAR_WIDTH_MIN,
-  type TabBarItem,
-} from "src/features/tabs/browser/tab-bar-layout";
+import React, { useCallback, useRef } from "react";
+import { type TabBarItem } from "src/features/tabs/browser/tab-bar-layout";
+import { useNewTabHighlight } from "src/features/tabs/browser/use-new-tab-highlight";
+import { useTabBarWheelSwitch } from "src/features/tabs/browser/use-tab-bar-wheel-switch";
+import { useTabBarWidthResize } from "src/features/tabs/browser/use-tab-bar-width-resize";
+import { useTabDragTracking } from "src/features/tabs/browser/use-tab-drag-tracking";
+import { useTabListScroll } from "src/features/tabs/browser/use-tab-list-scroll";
 import { useCursorTooltip } from "src/view/browser/components/CursorTooltip";
 import { PageTypeIcon } from "src/view/browser/components/PageTypeIcon";
-import {
-  readSortableMove,
-  useSortableTab,
-  WindowPointerSensor,
-} from "src/view/browser/components/sortable-tab";
+import { useSortableTab, WindowPointerSensor } from "src/view/browser/components/sortable-tab";
 import type { Tab } from "src/view/browser/types";
 import { getCurrentPage } from "src/view/browser/types";
-
-interface TabListScrollState {
-  canScrollLeft: boolean;
-  canScrollRight: boolean;
-  canScrollTop: boolean;
-  canScrollBottom: boolean;
-}
-
-const TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD = 1.5;
-const TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS = 150;
 
 interface SortableTabProps {
   tab: Tab;
@@ -286,206 +271,28 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
 }) => {
   const barRef = useRef<HTMLDivElement | null>(null);
   const tabListRef = useRef<HTMLDivElement | null>(null);
-  // ドラッグ中は保存済み幅ではなく操作中の幅で描画し、確定時だけ保存する。
-  // 移動のたびに保存すると書き込みが連続して重くなるため。
-  const [dragWidth, setDragWidth] = useState<number | null>(null);
-  const dragWidthRef = useRef<number | null>(null);
-  const dragRawWidthRef = useRef<number | null>(null);
-  const resizeStartRef = useRef<{ startX: number; startWidth: number } | null>(null);
-  const [highlightedTabIds, setHighlightedTabIds] = useState<Set<string>>(new Set());
-  const prevTabIdsRef = useRef<Set<string>>(new Set(items.map((item) => item.tab.id)));
-  const lastWheelSwitchAtRef = useRef(0);
-  // ドラッグ終了直後の click イベントによるタブ選択を抑止するためのフラグ。
-  const wasDraggingRef = useRef(false);
-  const lastDragScreenPointRef = useRef<{
-    x: number;
-    y: number;
-    clientPoint: { x: number; y: number };
-  } | null>(null);
-  const stopDragTrackingRef = useRef<(() => void) | null>(null);
-  const stopTrackingDragPointer = useCallback(() => {
-    stopDragTrackingRef.current?.();
-    stopDragTrackingRef.current = null;
-    lastDragScreenPointRef.current = null;
-  }, []);
-  const [tabListScrollState, setTabListScrollState] = useState<TabListScrollState>({
-    canScrollLeft: false,
-    canScrollRight: false,
-    canScrollTop: false,
-    canScrollBottom: false,
+
+  const { tabListScrollState, isTabListScrollable, scrollTabIntoView } = useTabListScroll({
+    tabListRef,
+    selectedTabId,
+    items,
   });
-
-  const updateTabListScrollState = useCallback(() => {
-    const tabList = tabListRef.current;
-    if (!tabList) return;
-
-    const maxScrollLeft = Math.max(0, tabList.scrollWidth - tabList.clientWidth);
-    const maxScrollTop = Math.max(0, tabList.scrollHeight - tabList.clientHeight);
-    const nextState = {
-      canScrollLeft: tabList.scrollLeft > 1,
-      canScrollRight: tabList.scrollLeft < maxScrollLeft - 1,
-      canScrollTop: tabList.scrollTop > 1,
-      canScrollBottom: tabList.scrollTop < maxScrollTop - 1,
-    };
-
-    setTabListScrollState((previous) =>
-      previous.canScrollLeft === nextState.canScrollLeft &&
-      previous.canScrollRight === nextState.canScrollRight &&
-      previous.canScrollTop === nextState.canScrollTop &&
-      previous.canScrollBottom === nextState.canScrollBottom
-        ? previous
-        : nextState,
-    );
-  }, []);
-
-  const scrollTabIntoView = useCallback((tabId: string) => {
-    const tabElement = [
-      ...(tabListRef.current?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? []),
-    ].find((tab) => tab.dataset.tabId === tabId);
-    tabElement?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
-  }, []);
-
-  const scrollSelectedTabIntoView = useCallback((tabId: string) => {
-    const tabList = tabListRef.current;
-    const tabElement = [...(tabList?.querySelectorAll<HTMLElement>("[data-tab-id]") ?? [])].find(
-      (tab) => tab.dataset.tabId === tabId,
-    );
-    if (!tabList || !tabElement) return;
-
-    const tabListRect = tabList.getBoundingClientRect();
-    const tabRect = tabElement.getBoundingClientRect();
-    // 変更理由: 垂直モードでは上下の見切れも判定する。水平モードでは縦方向に
-    // はみ出さないため、両軸の判定を共通化しても既存の挙動は変わらない。
-    const isOutsideViewport =
-      tabRect.left < tabListRect.left ||
-      tabRect.right > tabListRect.right ||
-      tabRect.top < tabListRect.top ||
-      tabRect.bottom > tabListRect.bottom;
-    if (isOutsideViewport) {
-      // 変更理由: 常に scrollIntoView するとタブ切り替えのたびに既存の横位置へ干渉するため、
-      // 選択タブが見切れている場合だけ、最小限のスクロールを発生させる。
-      tabElement.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
-  }, []);
-
-  const handleTabListResize = useCallback(() => {
-    updateTabListScrollState();
-    // 変更理由: 表示領域やタブ幅の変化で選択タブの矩形が見切れるため、
-    // 選択IDの変更時だけでなく、リサイズ時にも既存の境界判定を再利用する。
-    // 見切れている場合だけスクロールするので、手動で決めた横位置を不要に奪わない。
-    scrollSelectedTabIntoView(selectedTabId);
-  }, [scrollSelectedTabIntoView, selectedTabId, updateTabListScrollState]);
-
-  useEffect(() => {
-    const tabList = tabListRef.current;
-    if (!tabList) return;
-
-    // スクロール位置の変化だけでなく、ウィンドウ幅とタブ幅の変化も表示へ反映する。
-    tabList.addEventListener("scroll", updateTabListScrollState, { passive: true });
-    window.addEventListener("resize", handleTabListResize);
-
-    let resizeObserver: ResizeObserver | undefined;
-    if (typeof ResizeObserver !== "undefined") {
-      resizeObserver = new ResizeObserver(handleTabListResize);
-      resizeObserver.observe(tabList);
-    }
-
-    updateTabListScrollState();
-
-    return () => {
-      tabList.removeEventListener("scroll", updateTabListScrollState);
-      window.removeEventListener("resize", handleTabListResize);
-      resizeObserver?.disconnect();
-    };
-  }, [handleTabListResize, updateTabListScrollState, items]);
-
-  const isTabListScrollable = tabListScrollState.canScrollLeft || tabListScrollState.canScrollRight;
-
-  useEffect(() => {
-    const prev = prevTabIdsRef.current;
-    const current = new Set(items.map((item) => item.tab.id));
-    const newIds = items.map((item) => item.tab.id).filter((tabId) => !prev.has(tabId));
-
-    if (newIds.length > 0) {
-      // 変更理由: バックグラウンド追加では selectedTabId が変わらないため、
-      // 新規タブ自体を基準にスクロールしないと追加位置を利用者が確認できない。
-      scrollTabIntoView(newIds[newIds.length - 1]);
-      setHighlightedTabIds((prevIds) => {
-        const next = new Set(prevIds);
-        for (const tabId of newIds) {
-          next.add(tabId);
-        }
-        return next;
-      });
-
-      const timerId = window.setTimeout(() => {
-        setHighlightedTabIds((prevIds) => {
-          const next = new Set(prevIds);
-          for (const tabId of newIds) {
-            next.delete(tabId);
-          }
-          return next;
-        });
-      }, 1500);
-
-      return () => window.clearTimeout(timerId);
-    }
-
-    prevTabIdsRef.current = current;
-    return;
-  }, [scrollTabIntoView, items]);
-
-  useEffect(() => {
-    prevTabIdsRef.current = new Set(items.map((item) => item.tab.id));
-  }, [items]);
-
-  useEffect(() => {
-    scrollSelectedTabIntoView(selectedTabId);
-  }, [scrollSelectedTabIntoView, selectedTabId]);
-
-  // ホイールは一覧のスクロールに使わず、選択タブを前後に切り替えるためだけに使う。
-  // 一覧のスクロールはスクロールバーで行う。
-  const handleWheel = useCallback(
-    (e: WheelEvent) => {
-      // 変更理由: 閾値未満や冷却中の入力でも既定のスクロールを起こさないよう、
-      // 切り替えの判定より前に既定の動作を止める。
-      e.preventDefault();
-      const normalizedWheel = normalizeWheel(e);
-      const wheelDistance = normalizedWheel.pixelX + normalizedWheel.pixelY;
-      if (Math.abs(wheelDistance) < TAB_SWITCH_WHEEL_DISTANCE_THRESHOLD) {
-        return;
-      }
-
-      const now = Date.now();
-      const cooldownMs = Math.max(
-        0,
-        TAB_SWITCH_WHEEL_BASE_COOLDOWN_MS -
-          2 * (Math.abs(normalizedWheel.pixelX) + Math.abs(normalizedWheel.pixelY)),
-      );
-      if (now - lastWheelSwitchAtRef.current < cooldownMs) {
-        return;
-      }
-
-      // 変更理由: ブラウザごとの生の delta 符号差を normalize-wheel で吸収し、
-      // 正規化後に正なら下/右、負なら上/左として一貫して扱う。
-      const delta = wheelDistance > 0 ? 1 : -1;
-      if (!onStepTab(delta)) {
-        return;
-      }
-      lastWheelSwitchAtRef.current = now;
-    },
-    [onStepTab],
-  );
-
-  useEffect(() => {
-    const el = barRef.current;
-    if (!el) return;
-    const nativeHandler = (ev: WheelEvent) => handleWheel(ev);
-    el.addEventListener("wheel", nativeHandler, { passive: false });
-    return () => {
-      el.removeEventListener("wheel", nativeHandler);
-    };
-  }, [handleWheel]);
+  const highlightedTabIds = useNewTabHighlight(items, scrollTabIntoView);
+  useTabBarWheelSwitch(barRef, onStepTab);
+  const { wasDraggingRef, handleDragStart, handleDragEnd } = useTabDragTracking({
+    tabListRef,
+    onMoveTab,
+    onDragTabOut,
+    onDragTabPreview,
+    onDragTabPreviewEnd,
+  });
+  const {
+    dragWidth,
+    handleResizePointerDown,
+    handleResizePointerMove,
+    handleResizePointerUp,
+    handleResizePointerCancel,
+  } = useTabBarWidthResize({ collapsed, width, onCommitWidth });
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, tab: Tab) => {
@@ -517,117 +324,6 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
     },
     [onBarContextMenu],
   );
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const lastPoint = lastDragScreenPointRef.current;
-      stopTrackingDragPointer();
-      onDragTabPreviewEnd?.();
-      const sourceId = event.operation.source?.id;
-      // 窓の外で離した場合だけ、窓をまたぐ移動を試す。
-      if (!event.canceled && lastPoint && sourceId != null && onDragTabOut) {
-        if (onDragTabOut(String(sourceId), lastPoint.x, lastPoint.y, lastPoint.clientPoint)) {
-          wasDraggingRef.current = true;
-          return;
-        }
-      }
-      // 実際に位置が変わっていなければ、click 抑止も並べ替えも行わない。
-      const move = readSortableMove(event);
-      if (!move) return;
-      if (!onMoveTab(move.id, move.toIndex)) return;
-      // ドラッグ完了直後の click イベントによるタブ選択を1回だけ抑止する。
-      wasDraggingRef.current = true;
-    },
-    [onDragTabOut, onDragTabPreviewEnd, onMoveTab, stopTrackingDragPointer],
-  );
-
-  // 変更理由: ドラッグ中のポインタが窓の外へ出ても、ボタンを押している間は元の窓の
-  // documentへイベントが届く。その画面座標を覚えておき、離した位置の判定に使う。
-  const handleDragStart = useCallback(
-    (event: { operation: { source: { id: string | number } | null } }) => {
-      lastDragScreenPointRef.current = null;
-      const ownerDocument = tabListRef.current?.ownerDocument;
-      if (!ownerDocument) return;
-      const tabId = event.operation.source?.id;
-      const track = (event: PointerEvent) => {
-        const clientPoint = { x: event.clientX, y: event.clientY };
-        lastDragScreenPointRef.current = { x: event.screenX, y: event.screenY, clientPoint };
-        if (tabId != null)
-          onDragTabPreview?.(String(tabId), event.screenX, event.screenY, clientPoint);
-      };
-      ownerDocument.addEventListener("pointermove", track, { capture: true });
-      stopDragTrackingRef.current = () =>
-        ownerDocument.removeEventListener("pointermove", track, { capture: true });
-    },
-    [onDragTabPreview],
-  );
-
-  useEffect(
-    () => () => {
-      stopTrackingDragPointer();
-      onDragTabPreviewEnd?.();
-    },
-    [stopTrackingDragPointer, onDragTabPreviewEnd],
-  );
-
-  const handleResizePointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      // 変更理由: タブのドラッグ並べ替えと幅変更の当たり判定が干渉しないよう、
-      // 幅変更は右端の専用ハンドルだけで開始する。
-      // 縮小時は48pxを起点にし、右へ引けば展開へ移れるようにする。
-      e.preventDefault();
-      e.currentTarget.setPointerCapture?.(e.pointerId);
-      resizeStartRef.current = {
-        startX: e.clientX,
-        startWidth: collapsed ? TAB_BAR_COLLAPSED_WIDTH : (dragWidth ?? width),
-      };
-    },
-    [collapsed, dragWidth, width],
-  );
-
-  const handleResizePointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      const start = resizeStartRef.current;
-      if (!start) return;
-      const raw = start.startWidth + (e.clientX - start.startX);
-      dragRawWidthRef.current = raw;
-      // 変更理由: 縮小中の表示は48pxを下限にし、敷居判定は丸め前の実値で行う。
-      const next = collapsed
-        ? Math.max(TAB_BAR_COLLAPSED_WIDTH, Math.round(raw))
-        : clampTabBarWidth(raw);
-      dragWidthRef.current = next;
-      setDragWidth(next);
-    },
-    [collapsed],
-  );
-
-  const handleResizePointerUp = useCallback(() => {
-    resizeStartRef.current = null;
-    const finalWidth = dragWidthRef.current;
-    const rawWidth = dragRawWidthRef.current;
-    dragWidthRef.current = null;
-    dragRawWidthRef.current = null;
-    setDragWidth(null);
-    // 変更理由: 確定した幅だけを保存し、ドラッグ中の連続書き込みを避ける。
-    // 縮小中に最小幅まで広げたら展開へ移し、敷居に届かなければ縮小のまま戻す。
-    if (finalWidth == null) {
-      return;
-    }
-    if (collapsed) {
-      if ((rawWidth ?? finalWidth) >= TAB_BAR_WIDTH_MIN) {
-        onCommitWidth(finalWidth, true);
-      }
-      return;
-    }
-    onCommitWidth(finalWidth, false);
-  }, [collapsed, onCommitWidth]);
-
-  const handleResizePointerCancel = useCallback(() => {
-    // 変更理由: 中断時は操作中の幅を破棄し、保存済みの幅へ戻す。
-    resizeStartRef.current = null;
-    dragWidthRef.current = null;
-    setDragWidth(null);
-  }, []);
 
   const handleArrowNavigate = useCallback(
     (index: number, delta: number) => {
