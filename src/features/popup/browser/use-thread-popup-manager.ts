@@ -1,5 +1,10 @@
 import type { RefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  type PopupTrigger,
+  resolvePopupPosition,
+  triggerFromPoint,
+} from "src/features/popup/browser/popup-position";
 import type {
   AnchorPopupItem,
   ContextMenuPopupItem,
@@ -12,17 +17,11 @@ import { usePopupCore } from "src/features/popup/browser/use-popup-core";
 import type { IRes } from "src/service-container/interfaces";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import {
-  ANCHOR_PREVIEW_GUTTER,
-  ANCHOR_PREVIEW_HIDE_DELAY_MS,
-  ANCHOR_PREVIEW_MAX_WIDTH,
-  ANCHOR_PREVIEW_OFFSET,
-} from "src/view/browser/utils/constants";
+import { ANCHOR_PREVIEW_HIDE_DELAY_MS } from "src/view/browser/utils/constants";
 import { POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY } from "src/view/browser/utils/popup-settings";
 import { getPopupViewportBounds } from "src/view/browser/utils/use-adjust-overflow";
 
 const DEFAULT_POPUP_SCOPE_ID = "default";
-const CHILD_POPUP_OFFSET = 40;
 
 export interface ThreadPopupManagerParams {
   scopeId?: string;
@@ -134,22 +133,22 @@ export function useThreadPopupManager({
     return { x: clientX, y: clientY };
   }, []);
 
-  const childPopupCoords = useCallback(
-    (x: number, y: number, parentId?: string) => {
-      if (!parentId) return { x, y };
-      // クリック位置が親の左上付近でも重ならないよう、実際に補正された親の位置を基準にする。
-      const parent = Array.from(viewDocument.querySelectorAll<HTMLElement>("[data-popup-id]")).find(
-        (element) => element.dataset.popupId === parentId,
-      );
-      const rect = parent?.getBoundingClientRect();
-      // 横は親の右へずらし、縦は操作位置の直下に揃える（子アンカーと同じ規則）。
-      // 親の上端を基準にすると、長い返信ツリーの下側から開いた時に親の上端付近へ飛んでしまう。
-      return {
-        x: (rect?.left ?? x) + CHILD_POPUP_OFFSET,
-        y: y + ANCHOR_PREVIEW_OFFSET,
-      };
+  // ID・返信ツリー・アンカーはすべてここを通して配置し、種類ごとに規則が分かれないようにする。
+  const placePopup = useCallback(
+    (trigger: PopupTrigger, parentId?: string) => {
+      // 親は保存時の座標ではなく、はみ出し補正後に実際に表示されている位置を基準にする。
+      const parent = parentId
+        ? Array.from(viewDocument.querySelectorAll<HTMLElement>("[data-popup-id]")).find(
+            (element) => element.dataset.popupId === parentId,
+          )
+        : undefined;
+      return resolvePopupPosition({
+        trigger,
+        parentRect: parent?.getBoundingClientRect(),
+        viewport: getPopupViewportBounds(viewWindow, viewDocument),
+      });
     },
-    [viewDocument],
+    [viewDocument, viewWindow],
   );
 
   const clearAnchorPreviewHideTimer = useCallback(() => {
@@ -208,29 +207,10 @@ export function useThreadPopupManager({
         return;
       }
 
-      const maxWidth = Math.min(
-        ANCHOR_PREVIEW_MAX_WIDTH,
-        viewWindow.innerWidth - ANCHOR_PREVIEW_GUTTER * 2,
-      );
-      const viewport = getPopupViewportBounds(viewWindow, viewDocument);
-      const vx = Math.max(
-        ANCHOR_PREVIEW_GUTTER,
-        Math.min(anchorRect.left, viewWindow.innerWidth - maxWidth - ANCHOR_PREVIEW_GUTTER),
-      );
-      const vy = Math.max(
-        ANCHOR_PREVIEW_GUTTER,
-        Math.min(
-          anchorRect.bottom + ANCHOR_PREVIEW_OFFSET,
-          viewport.bottom - ANCHOR_PREVIEW_GUTTER,
-        ),
-      );
       // 返信ツリーなどを挟んだ場合は、アンカーの深さより実際の表示元を優先する。
       const parentId =
         sourcePopupId ?? (depth > 0 ? anchorPreviewsRef.current[depth - 1]?.id : undefined);
-      // 横方向は親からずらし、縦方向は実際に触れたアンカーの位置に揃える。
-      // 親の上端を基準にすると、長い返信ツリーの下側から開いた時に大きく飛ぶ。
-      const { x } = childPopupCoords(vx, vy, parentId);
-      const y = vy;
+      const { x, y } = placePopup({ left: anchorRect.left, bottom: anchorRect.bottom }, parentId);
       const currentPreview = anchorPreviewsRef.current.find((item) => item.payload.depth === depth);
       if (
         currentPreview &&
@@ -269,14 +249,12 @@ export function useThreadPopupManager({
     },
     [
       addPopup,
-      childPopupCoords,
       clearAnchorPreviewHideTimer,
       closePopupsByPredicate,
       hideAnchorPreviewsFromDepth,
       isPopupDescendantOf,
       resMap,
-      viewDocument,
-      viewWindow,
+      placePopup,
     ],
   );
 
@@ -289,7 +267,7 @@ export function useThreadPopupManager({
       anchorPreviewDepth = 0,
       focusResNum?: number,
     ) => {
-      const { x, y } = childPopupCoords(clientX, clientY, parentId);
+      const { x, y } = placePopup(triggerFromPoint(clientX, clientY), parentId);
       return addPopup({
         type: "tree",
         x,
@@ -298,7 +276,7 @@ export function useThreadPopupManager({
         parentId,
       });
     },
-    [addPopup, childPopupCoords],
+    [addPopup, placePopup],
   );
 
   const addPopupContextMenu = useCallback(
@@ -323,7 +301,7 @@ export function useThreadPopupManager({
 
   const addIdPopup = useCallback(
     (clientX: number, clientY: number, items: IRes[], title: string, parentId?: string) => {
-      const { x, y } = childPopupCoords(clientX, clientY, parentId);
+      const { x, y } = placePopup(triggerFromPoint(clientX, clientY), parentId);
       return addPopup({
         type: "id",
         x,
@@ -333,7 +311,7 @@ export function useThreadPopupManager({
         parentId,
       });
     },
-    [addPopup, childPopupCoords],
+    [addPopup, placePopup],
   );
 
   const hasPopupChild = useCallback(

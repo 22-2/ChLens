@@ -406,6 +406,92 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
   });
 });
 
+describe("ポップアップの種類によらない配置の契約", () => {
+  type ThreadPopupManager = ReturnType<typeof useThreadPopupManager>;
+  interface PopupKind {
+    name: string;
+    type: "tree" | "id" | "anchor";
+    /** left/bottom の位置をきっかけに開く。 */
+    open: (manager: ThreadPopupManager, left: number, bottom: number, parentId?: string) => void;
+  }
+  // 新しい開き方を足したら、ここへ1行加えるだけで同じ配置の確認を受けられる。
+  const POPUP_KINDS: PopupKind[] = [
+    {
+      name: "返信ツリー",
+      type: "tree",
+      open: (manager, left, bottom, parentId) => manager.addTreePopup(2, left, bottom, parentId),
+    },
+    {
+      name: "IDポップアップ",
+      type: "id",
+      open: (manager, left, bottom, parentId) =>
+        manager.addIdPopup(left, bottom, [createRes(2)], "ID:sample", parentId),
+    },
+    {
+      name: "アンカープレビュー",
+      type: "anchor",
+      open: (manager, left, bottom, parentId) =>
+        manager.showAnchorPreview([3], createAnchorRect(left, bottom), ">>3", 0, parentId),
+    },
+  ];
+
+  const setup = (scopeId: string) => {
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+    const hook = renderHook(() =>
+      useThreadPopupManager({ scopeId, rootRef, resMap: TEST_RES_MAP }),
+    );
+    const open = (kind: PopupKind, left: number, bottom: number, parentId?: string) => {
+      act(() => {
+        kind.open(hook.result.current, left, bottom, parentId);
+      });
+      // 開き方によってIDを返すものと返さないものがあるため、その種類で最後に追加されたものを見る。
+      const popup = hook.result.current.popups.filter((item) => item.type === kind.type).at(-1);
+      if (!popup) throw new Error(`${kind.name}が開かなかった`);
+      return popup;
+    };
+    return { hook, open };
+  };
+
+  const mountParent = (popupId: string, rect: Partial<DOMRect>) => {
+    const parent = document.createElement("div");
+    parent.dataset.popupId = popupId;
+    parent.getBoundingClientRect = () => rect as DOMRect;
+    document.body.appendChild(parent);
+    return parent;
+  };
+
+  it.each(POPUP_KINDS)("$name: 親がなければ、きっかけの位置の直下に出る", (kind) => {
+    const { hook, open } = setup(`contract-root-${kind.name}`);
+    expect(open(kind, 100, 200)).toMatchObject({ x: 100, y: 212 });
+    hook.unmount();
+  });
+
+  it.each(POPUP_KINDS)(
+    "$name: 長い親の下のほうから開くと、親の右・きっかけの直下に出る",
+    (kind) => {
+      const { hook, open } = setup(`contract-child-${kind.name}`);
+      let parentId = "";
+      act(() => {
+        parentId = hook.result.current.addTreePopup(1, 0, 0);
+      });
+      // 親の上端(100)ではなく、親の下のほうで触った位置(600)を基準にすることを確かめる。
+      const parent = mountParent(parentId, { left: 200, top: 100 });
+      expect(open(kind, 260, 600, parentId)).toMatchObject({ parentId, x: 240, y: 612 });
+      parent.remove();
+      hook.unmount();
+    },
+  );
+
+  it.each(POPUP_KINDS)("$name: 画面の右下端で開いても画面内に収める", (kind) => {
+    const { hook, open } = setup(`contract-edge-${kind.name}`);
+    const popup = open(kind, window.innerWidth, window.innerHeight);
+    expect(popup.x).toBeLessThan(window.innerWidth);
+    expect(popup.x).toBeGreaterThanOrEqual(0);
+    expect(popup.y).toBeLessThan(window.innerHeight);
+    hook.unmount();
+  });
+});
+
 describe("usePopupCloseBehavior Phase 0 contracts", () => {
   it("right clickでは枝閉じ用onPopupMouseDownを呼ばない", () => {
     const onClose = vi.fn();
