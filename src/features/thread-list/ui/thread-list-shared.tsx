@@ -64,16 +64,17 @@ export const THREAD_LIST_COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 const DEFAULT_THREAD_LIST_SORT: ThreadListSortPreference = { column: null, direction: "asc" };
 
 const BG_COLOR_PRESETS: Record<string, string> = {
+  // 変更理由: 淡い背景色では縦線が見えにくいため、Material Design の 500 番の色を縦線に使う。
   yellow: "#ffeb3b",
-  blue: "#e3f2fd",
-  green: "#c8e6c9",
-  red: "#ffcdd2",
-  purple: "#e1bee7",
-  orange: "#ffe0b2",
-  pink: "#f8bbd0",
-  cyan: "#b2ebf2",
-  lime: "#f0f4c3",
-  amber: "#ffecb3",
+  blue: "#2196f3",
+  green: "#4caf50",
+  red: "#f44336",
+  purple: "#9c27b0",
+  orange: "#ff9800",
+  pink: "#e91e63",
+  cyan: "#00bcd4",
+  lime: "#cddc39",
+  amber: "#ffc107",
 };
 
 export type DividerStyle = React.CSSProperties & {
