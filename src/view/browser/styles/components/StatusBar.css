@@ -18,6 +18,20 @@
   color: var(--sys-color-status-active-fg);
 }
 
+/* 変更理由: 本文の下に帯の行を取ると、行の背景が本文と色違いで残って見えるため、
+   ペインの右下に項目だけを重ねる。重なった部分の本文は項目の上の領域だけ操作を奪う。 */
+.pane-column > .status-bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: auto;
+  pointer-events: none;
+}
+
+.pane-column > .status-bar .status-bar__item {
+  pointer-events: auto;
+}
+
 /* 変更理由: 待機は通知と同じ色にして、自動更新中の青と取り違えないようにする。 */
 .status-bar--waiting {
   color: var(--sys-color-status-waiting-fg);
