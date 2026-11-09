@@ -56,6 +56,14 @@ function readMinimapReservation(root: HTMLElement, targetWindow: Window): number
   return Number.isFinite(reservation) ? Math.max(0, reservation) : 0;
 }
 
+/** ペインの右下に重なるステータスバーの高さ。操作ボタンはその上に置く。 */
+function readStatusBarReservation(root: HTMLElement): number {
+  const statusBar = root
+    .closest(".pane-column")
+    ?.querySelector<HTMLElement>(":scope > .status-bar");
+  return statusBar?.getBoundingClientRect().height ?? 0;
+}
+
 function isSameLayout(left: ScrollFloatingLayout | null, right: ScrollFloatingLayout): boolean {
   if (!left) {
     return false;
@@ -152,7 +160,8 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
       const nextLayout: ScrollFloatingLayout = {
         panelLeft: rect.left,
         panelRight: visibleRight,
-        panelBottom: rect.bottom,
+        // 変更理由: ステータスバーは本文の下端に重なるため、操作ボタンの基準はその上端にする。
+        panelBottom: rect.bottom - readStatusBarReservation(currentRoot),
         // 上端から十分離れた位置でだけ戻りボタンを出し、短いスクロールでは本文を隠さない。
         isFarFromTop: currentScrollContainer.scrollTop > NEAR_BOTTOM_DISTANCE,
         distanceToBottom,
