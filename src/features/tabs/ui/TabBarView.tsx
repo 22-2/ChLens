@@ -33,6 +33,26 @@ interface SortableTabProps {
 }
 
 // タブ1枚分の Sortable ラッパー。
+interface AutoRefreshIndicatorProps {
+  state: "active" | "inactive";
+}
+
+/**
+ * 自動更新の動作中（赤い三角）と待機中（青い四角）を示す。
+ * 変更理由: 簡易表示では既存のページアイコンと置き換え、広い表示では右端に置くため、
+ * 配置を呼び出し側で決められるように部品として分けている。
+ */
+const AutoRefreshIndicator: React.FC<AutoRefreshIndicatorProps> = ({ state }) => (
+  <span
+    className={`tab__auto-refresh-indicator${
+      state === "inactive" ? " tab__auto-refresh-indicator--inactive" : ""
+    }`}
+    title={state === "active" ? "自動更新: 動作中" : "自動更新: 待機中"}
+    aria-label={state === "active" ? "自動更新動作中" : "自動更新待機中"}
+  />
+);
+
+// タブ1枚分の Sortable ラッパー。
 // useSortable は各タブが独自に DragDropManager と紐付くため、TabBar 外のコンポーネントとして定義する。
 const SortableTab: React.FC<SortableTabProps> = ({
   tab,
@@ -134,10 +154,13 @@ const SortableTab: React.FC<SortableTabProps> = ({
             className={`tab__icon${isArchiveReplayThread ? " tab__icon--archive-replay" : ""}`}
             title={isArchiveReplayThread ? "過去実況の再生対象" : undefined}
           >
+            {/* 変更理由: 簡易表示では自動更新の状態をページアイコンに重ねず、アイコンと置き換える。 */}
             {tab.pinned ? (
               <Pin size={11} />
             ) : isArchiveReplayThread ? (
               <Play size={15} fill="currentColor" aria-hidden="true" />
+            ) : autoRefreshIndicatorState != null ? (
+              <AutoRefreshIndicator state={autoRefreshIndicatorState} />
             ) : (
               <PageTypeIcon type={page.type} size={15} />
             )}
@@ -153,20 +176,10 @@ const SortableTab: React.FC<SortableTabProps> = ({
             <Play size={13} fill="currentColor" aria-hidden="true" />
           </span>
         ) : null}
-        {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、
-            実行中/待機中を区別できるインジケーターを常時表示する。 */}
-        {autoRefreshIndicatorState != null && !tab.pinned && (
-          <span
-            className={`tab__auto-refresh-indicator${
-              autoRefreshIndicatorState === "inactive"
-                ? " tab__auto-refresh-indicator--inactive"
-                : ""
-            }`}
-            title={autoRefreshIndicatorState === "active" ? "自動更新: 動作中" : "自動更新: 待機中"}
-            aria-label={
-              autoRefreshIndicatorState === "active" ? "自動更新動作中" : "自動更新待機中"
-            }
-          />
+        {/* 変更理由: タブが非アクティブでも自動更新設定は残るため、実行中/待機中を区別できる表示を常時出す。
+            簡易表示ではアイコンの位置に出すため、ここでは広い表示だけ扱う。 */}
+        {autoRefreshIndicatorState != null && !tab.pinned && !compact && (
+          <AutoRefreshIndicator state={autoRefreshIndicatorState} />
         )}
         {/* 最後のタブを残す規則はページ種別によらず共通にする。
             変更理由: 広く開いた垂直タブでもボタンを描画し、表示はCSSでホバー時だけに限る。

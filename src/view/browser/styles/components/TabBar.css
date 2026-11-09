@@ -546,12 +546,8 @@
   padding: 0;
 }
 
+/* 変更理由: 簡易表示では自動更新の表示がページアイコンと置き換わるため、重ね位置の指定を持たない。 */
 .tab-bar--collapsed .tab__auto-refresh-indicator {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 8px;
-  height: 8px;
   margin: 0;
 }
 
