@@ -261,7 +261,14 @@ export const NextThreadSearchDialog: React.FC<NextThreadSearchDialogProps> = ({
             </button>
           </div>
           {menu && (
-            <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
+            <ContextMenu
+              x={menu.x}
+              y={menu.y}
+              items={menuItems}
+              onClose={() => setMenu(null)}
+              portal
+              portalContainer={portalContainer}
+            />
           )}
           <ThreadTitleNgDialog controller={titleNgDialog} />
         </Dialog.Content>

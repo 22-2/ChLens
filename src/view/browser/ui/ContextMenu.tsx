@@ -36,7 +36,25 @@ interface Props {
   closeDisabled?: boolean;
   zIndex?: number | string;
   enableKeyboardNavigation?: boolean;
+  /**
+   * trueのとき、メニューをPortalでbody（または`portalContainer`）直下へ描画する。
+   * transformやoverflowを持つDialog内ではposition:fixedが祖先基準になり、メニューが
+   * Dialogの内側で切れて潜るため、Dialog内から開くときに指定する。
+   */
+  portal?: boolean;
+  portalContainer?: HTMLElement | null;
 }
+
+const MenuPortal: React.FC<{
+  enabled: boolean;
+  container?: HTMLElement | null;
+  children: ReactNode;
+}> = ({ enabled, container, children }) =>
+  enabled ? (
+    <RadixContextMenu.Portal container={container ?? undefined}>{children}</RadixContextMenu.Portal>
+  ) : (
+    <>{children}</>
+  );
 
 /** Radix ContextMenuを既存の座標・popup lifecycle APIへ適合させる共通wrapper。 */
 export const ContextMenu: React.FC<Props> = ({
@@ -54,6 +72,8 @@ export const ContextMenu: React.FC<Props> = ({
   closeDisabled,
   zIndex,
   enableKeyboardNavigation = false,
+  portal = false,
+  portalContainer,
 }) => {
   const { window: viewWindow, document: viewDocument } = useViewSurface();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -174,110 +194,120 @@ export const ContextMenu: React.FC<Props> = ({
           }}
         />
       </RadixContextMenu.Trigger>
-      <RadixContextMenu.Content
-        asChild
-        // 右端・下端で開いた場合も viewport 内へ押し戻し、共通メニュー全体で同じ挙動にする。
-        avoidCollisions
-        collisionPadding={8}
-        onCloseAutoFocus={(event) => event.preventDefault()}
-        onPointerDownOutside={(event) => {
-          if (closeDisabled || isPopupBranchTarget(event.target) || isTriggerTarget(event.target)) {
-            event.preventDefault();
-          }
-        }}
-        onInteractOutside={(event) => {
-          if (closeDisabled || isPopupBranchTarget(event.target) || isTriggerTarget(event.target)) {
-            event.preventDefault();
-          }
-        }}
-      >
-        <div
-          ref={menuRef}
-          data-popup="true"
-          data-popup-id={popupId}
-          className="context-menu"
-          // Content の配置は Radix が contextmenu の clientX/clientY を基準に行う。
-          // ここで left/top を再設定するとクリック座標が二重に加算されるため、z-index だけ補正する。
-          style={zIndex != null ? { zIndex } : undefined}
-          onKeyDownCapture={(event) => {
-            if (event.altKey || event.ctrlKey || event.metaKey || event.key.length !== 1) return;
-            const item = visibleItems.find(
-              (candidate) =>
-                !candidate.disabled &&
-                candidate.accessKey?.toLowerCase() === event.key.toLowerCase(),
-            );
-            if (!item) return;
-            // Radix の文字検索より先にアクセスキーを処理し、クリックと同じ操作を実行する。
-            event.preventDefault();
-            event.stopPropagation();
-            item.onSelect?.();
-            onClose();
-          }}
-          onMouseDownCapture={handleMouseDownCapture}
-          onAuxClickCapture={handleAuxClickCapture}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          {header ? <div className="context-menu__header">{header}</div> : null}
-          {visibleItems.map((item) => {
-            if (item.separator) {
-              return <div key={item.id} className="context-menu__separator" />;
+      <MenuPortal enabled={portal} container={portalContainer}>
+        <RadixContextMenu.Content
+          asChild
+          // 右端・下端で開いた場合も viewport 内へ押し戻し、共通メニュー全体で同じ挙動にする。
+          avoidCollisions
+          collisionPadding={8}
+          onCloseAutoFocus={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => {
+            if (
+              closeDisabled ||
+              isPopupBranchTarget(event.target) ||
+              isTriggerTarget(event.target)
+            ) {
+              event.preventDefault();
             }
+          }}
+          onInteractOutside={(event) => {
+            if (
+              closeDisabled ||
+              isPopupBranchTarget(event.target) ||
+              isTriggerTarget(event.target)
+            ) {
+              event.preventDefault();
+            }
+          }}
+        >
+          <div
+            ref={menuRef}
+            data-popup="true"
+            data-popup-id={popupId}
+            className="context-menu"
+            // Content の配置は Radix が contextmenu の clientX/clientY を基準に行う。
+            // ここで left/top を再設定するとクリック座標が二重に加算されるため、z-index だけ補正する。
+            style={zIndex != null ? { zIndex } : undefined}
+            onKeyDownCapture={(event) => {
+              if (event.altKey || event.ctrlKey || event.metaKey || event.key.length !== 1) return;
+              const item = visibleItems.find(
+                (candidate) =>
+                  !candidate.disabled &&
+                  candidate.accessKey?.toLowerCase() === event.key.toLowerCase(),
+              );
+              if (!item) return;
+              // Radix の文字検索より先にアクセスキーを処理し、クリックと同じ操作を実行する。
+              event.preventDefault();
+              event.stopPropagation();
+              item.onSelect?.();
+              onClose();
+            }}
+            onMouseDownCapture={handleMouseDownCapture}
+            onAuxClickCapture={handleAuxClickCapture}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+          >
+            {header ? <div className="context-menu__header">{header}</div> : null}
+            {visibleItems.map((item) => {
+              if (item.separator) {
+                return <div key={item.id} className="context-menu__separator" />;
+              }
 
-            const button = (
-              <button
-                key={item.id}
-                className={`context-menu__item${item.danger ? " context-menu__item--danger" : ""}${
-                  item.allowMultilineLabel ? " context-menu__item--multiline" : ""
-                }`}
-                disabled={item.disabled}
-                {...(item.checked === undefined
-                  ? {}
-                  : { role: "menuitemcheckbox", "aria-checked": item.checked })}
-                title={item.label}
-                // mousedown でフォーカスが移動するとページ上のテキスト選択が消えるため、
-                // preventDefault でフォーカス移動を抑止し、選択状態を維持する。
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => {
-                  if (!item.disabled) {
-                    item.onSelect?.();
-                  }
-                  onClose();
-                }}
-                onAuxClick={(event) => {
-                  if (item.disabled || !item.onAuxSelect) return;
-                  if (event.button === 1) {
-                    event.preventDefault();
-                  }
-                  item.onAuxSelect(event.button);
-                  onClose();
-                }}
-              >
-                {item.icon && <span className="context-menu__icon">{item.icon}</span>}
-                {item.labelIcon && <span className="context-menu__icon">{item.labelIcon}</span>}
-                <span
-                  className={`context-menu__label${
-                    item.allowMultilineLabel ? " context-menu__label--multiline" : ""
+              const button = (
+                <button
+                  key={item.id}
+                  className={`context-menu__item${item.danger ? " context-menu__item--danger" : ""}${
+                    item.allowMultilineLabel ? " context-menu__item--multiline" : ""
                   }`}
+                  disabled={item.disabled}
+                  {...(item.checked === undefined
+                    ? {}
+                    : { role: "menuitemcheckbox", "aria-checked": item.checked })}
+                  title={item.label}
+                  // mousedown でフォーカスが移動するとページ上のテキスト選択が消えるため、
+                  // preventDefault でフォーカス移動を抑止し、選択状態を維持する。
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    if (!item.disabled) {
+                      item.onSelect?.();
+                    }
+                    onClose();
+                  }}
+                  onAuxClick={(event) => {
+                    if (item.disabled || !item.onAuxSelect) return;
+                    if (event.button === 1) {
+                      event.preventDefault();
+                    }
+                    item.onAuxSelect(event.button);
+                    onClose();
+                  }}
                 >
-                  {item.label}
-                  {item.accessKey && (
-                    <span aria-hidden="true"> ({item.accessKey.toUpperCase()})</span>
-                  )}
-                </span>
-              </button>
-            );
-            // 外部リンク用の項目はRadixへ登録し、矢印キー・Enterでの選択も可能にする。
-            return enableKeyboardNavigation ? (
-              <RadixContextMenu.Item key={item.id} asChild disabled={item.disabled}>
-                {button}
-              </RadixContextMenu.Item>
-            ) : (
-              button
-            );
-          })}
-        </div>
-      </RadixContextMenu.Content>
+                  {item.icon && <span className="context-menu__icon">{item.icon}</span>}
+                  {item.labelIcon && <span className="context-menu__icon">{item.labelIcon}</span>}
+                  <span
+                    className={`context-menu__label${
+                      item.allowMultilineLabel ? " context-menu__label--multiline" : ""
+                    }`}
+                  >
+                    {item.label}
+                    {item.accessKey && (
+                      <span aria-hidden="true"> ({item.accessKey.toUpperCase()})</span>
+                    )}
+                  </span>
+                </button>
+              );
+              // 外部リンク用の項目はRadixへ登録し、矢印キー・Enterでの選択も可能にする。
+              return enableKeyboardNavigation ? (
+                <RadixContextMenu.Item key={item.id} asChild disabled={item.disabled}>
+                  {button}
+                </RadixContextMenu.Item>
+              ) : (
+                button
+              );
+            })}
+          </div>
+        </RadixContextMenu.Content>
+      </MenuPortal>
     </RadixContextMenu.Root>
   );
 };
