@@ -165,6 +165,12 @@ export type TabAction =
 // tabIdを省略した既存アクションは、従来どおり対象ペインのselectedTabへ作用する。
 export type ScopedTabAction = TabAction & { paneId?: string; tabId?: string };
 
+/** アクション種別を指定して、その種別の reducer が受け取るアクションの型を取り出す。 */
+export type ScopedTabActionOf<K extends keyof typeof TAB_ACTION_TYPES> = Extract<
+  ScopedTabAction,
+  { type: (typeof TAB_ACTION_TYPES)[K] }
+>;
+
 export interface PaneScopedState {
   tabs: Tab[];
   // ペイン自身が選択しているタブ。別窓の表示対象とは独立している。

@@ -1,35 +1,50 @@
-import { getPageIdentity } from "src/view/browser/page-type-definitions";
 import {
-  getAutoRefreshPageKey,
-  resetAutoRefreshState,
-} from "src/view/browser/state/tabs/auto-refresh-pages";
+  setAutoRefreshEnabled,
+  setAutoRefreshStoppedPageKey,
+  startNextThreadWait,
+} from "src/view/browser/state/tabs/tab-store-reducer-auto-refresh";
 import {
-  createPane,
-  createTab,
-  createTabFromPage,
-  shouldFocusNewTabOnOpen,
-} from "src/view/browser/state/tabs/tab-store-new-tab";
+  closeAllTabs,
+  closeOtherTabs,
+  closeRightTabs,
+  closeTab,
+  reopenClosedTab,
+} from "src/view/browser/state/tabs/tab-store-reducer-close";
 import {
-  canCloseTab,
-  canOpenInRightPane,
-  canReopenClosedTab,
-  findTabAcrossPanes,
-  getPaneWindowId,
-  getWindowPanes,
-  hasClosableOtherTabs,
-  hasClosableRightTabs,
-  MAX_PANES,
-} from "src/view/browser/state/tabs/tab-store-selectors";
+  followNextThread,
+  goBack,
+  goForward,
+  goToHistoryIndex,
+  navigate,
+  navigateTab,
+  reload,
+  updateTabViewState,
+  updateTitle,
+  updateTitleForTab,
+} from "src/view/browser/state/tabs/tab-store-reducer-navigation";
+import {
+  addTab,
+  openInNewTab,
+  openInNewTabForce,
+} from "src/view/browser/state/tabs/tab-store-reducer-open";
+import {
+  closePane,
+  openInRightPane,
+  setActivePane,
+  splitPane,
+  swapPaneTabs,
+} from "src/view/browser/state/tabs/tab-store-reducer-panes";
+import {
+  closeWorkspaceWindow,
+  collapseWorkspaceWindow,
+  setWorkspaceWindowBounds,
+} from "src/view/browser/state/tabs/tab-store-reducer-windows";
+import { getWindowPanes } from "src/view/browser/state/tabs/tab-store-selectors";
 import { sanitizeTabStoreState } from "src/view/browser/state/tabs/tab-store-session";
 import {
-  buildHierarchyForNewTab,
   getPane,
-  getPaneActiveTab,
-  pushClosed,
-  pushPageToTabHistory,
   resolvePaneId,
   updatePane,
-  updateTargetTab,
 } from "src/view/browser/state/tabs/tab-store-state-helpers";
 import { transferTab } from "src/view/browser/state/tabs/tab-store-transfer";
 import {
@@ -37,21 +52,6 @@ import {
   TAB_ACTION_TYPES,
   type TabStoreState,
 } from "src/view/browser/state/tabs/tab-store-types";
-import { MAIN_WINDOW_ID } from "src/view/browser/state/tabs/window-model";
-import { createHomeTab, getCurrentPage, type Pane, type Tab } from "src/view/browser/types";
-import { normalizePageLocation } from "src/view/browser/utils/page-location";
-
-// 停止記録は、自動更新と次スレ待機の両方を終えたことを一緒に表す。
-// 変更理由: 停止記録とON表示を同時に更新し、本文だけ止まってステータスバーが回り続ける状態を防ぐ。
-function applyAutoRefreshStopRecord(tab: Tab, pageKey: string | null): Tab {
-  return {
-    ...tab,
-    autoRefreshStoppedPageKey: pageKey,
-    autoRefreshEnabled: false,
-    autoRefreshPageKey: null,
-    nextThreadWaitPageKey: null,
-  };
-}
 
 // タブストア全体の reducer。
 export function tabReducer(state: TabStoreState, action: ScopedTabAction): TabStoreState {
@@ -85,271 +85,33 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
           [action.targetPaneId]: { ...state.bottomPanels?.[action.targetPaneId], ...action.patch },
         },
       };
+
     case TAB_ACTION_TYPES.UPDATE_SIDE_PANEL:
       return { ...state, sidePanel: action.sidePanel };
-    case TAB_ACTION_TYPES.ADD_TAB: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const pane = getPane(state, paneId);
-      const activeTab = getPaneActiveTab(pane);
-      const sourcePage = getCurrentPage(activeTab);
-      const newTab = createTab(sourcePage, activeTab);
-      // 固定タブの後ろに非固定タブを追加
-      return {
-        ...updatePane(state, paneId, (p) => ({
-          ...p,
-          tabs: [...p.tabs, newTab],
-          activeTabId: newTab.id,
-        })),
-        // 別窓化で本窓用の代替タブを作る時は、元のフォーカスペインを奪わない。
-        activePaneId: action.preserveActivePane ? state.activePaneId : paneId,
-      };
-    }
 
-    case TAB_ACTION_TYPES.OPEN_IN_NEW_TAB: {
-      // 同一 URL のタブが既に存在する場合はそちらをフォーカスして重複を防ぐ。
-      // 重複判定はペイン内に閉じる（別ペインで同じスレを並べて見比べられるように）。
-      // 強制的に新タブを開きたい場合は OPEN_IN_NEW_TAB_FORCE を使う。
-      const paneId = resolvePaneId(state, action.paneId);
-      const pane = getPane(state, paneId);
-      const targetIdentity = getPageIdentity(action.page);
-      const existingDuplicate = pane.tabs.find(
-        (t) => getPageIdentity(getCurrentPage(t)) === targetIdentity,
-      );
-      if (existingDuplicate) {
-        // スレを再度開く操作では既存タブへ移動するため、背景指定は新規作成時だけに適用する。
-        // 板などを背景で開く操作は、既存タブがあっても現在の表示を維持する。
-        if (action.background && action.page.type !== "thread") return state;
-        return {
-          ...updatePane(state, paneId, (p) => ({
-            ...p,
-            activeTabId: existingDuplicate.id,
-          })),
-          activePaneId: paneId,
-        };
-      }
+    case TAB_ACTION_TYPES.ADD_TAB:
+      return addTab(state, action);
 
-      // バックグラウンドで新規タブを開く（アクティブタブ/ペインを切り替えない）。
-      // buildHierarchyForNewTab で現在ページの板名を引き継いだカノニカルな祖先履歴を付与する。
-      // background フラグが true の場合は、設定値を無視して常にバックグラウンドで開く。
-      const newTabForOpen = createTabFromPage(action.page);
-      const sourcePageForOpen = getCurrentPage(getPaneActiveTab(pane));
-      const newHistoryForOpen = buildHierarchyForNewTab(sourcePageForOpen, action.page);
-      const shouldFocus = action.background ? false : shouldFocusNewTabOnOpen();
-      const nextPane = updatePane(state, paneId, (p) => ({
-        ...p,
-        tabs: [
-          ...p.tabs,
-          {
-            ...newTabForOpen,
-            history: newHistoryForOpen,
-            currentIndex: newHistoryForOpen.length - 1,
-          },
-        ],
-        activeTabId: shouldFocus ? newTabForOpen.id : p.activeTabId,
-      }));
+    case TAB_ACTION_TYPES.OPEN_IN_NEW_TAB:
+      return openInNewTab(state, action);
 
-      return {
-        ...nextPane,
-        activePaneId: shouldFocus ? paneId : state.activePaneId,
-      };
-    }
+    case TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE:
+      return openInNewTabForce(state, action);
 
-    case TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const pane = getPane(state, paneId);
-      const newTabForForce = createTabFromPage(action.page);
-      const sourcePageForForce = getCurrentPage(getPaneActiveTab(pane));
-      const newHistoryForForce = buildHierarchyForNewTab(sourcePageForForce, action.page);
-      const newTab = {
-        ...newTabForForce,
-        // 同期refとReactでReducerが別々に評価されても、外部から追従するタブのIDを一致させる。
-        id: action.tabId ?? newTabForForce.id,
-        history: newHistoryForForce,
-        currentIndex: newHistoryForForce.length - 1,
-      };
-      const nextState = updatePane(state, paneId, (p) => ({
-        ...p,
-        tabs: [...p.tabs, newTab],
-        // focus指定時は追加と選択を同じReducer処理で確定し、別dispatch間の状態競合を防ぐ。
-        activeTabId: action.focus ? newTab.id : p.activeTabId,
-      }));
-      return action.focus ? { ...nextState, activePaneId: paneId } : nextState;
-    }
+    case TAB_ACTION_TYPES.CLOSE_TAB:
+      return closeTab(state, action);
 
-    case TAB_ACTION_TYPES.CLOSE_TAB: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const pane = getPane(state, paneId);
-      const target = pane.tabs.find((t) => t.id === action.tabId);
-      if (!target || !canCloseTab(target)) {
-        return state;
-      }
-      // 2ペイン時は最後のタブを閉じる操作で空ペインを残さず、もう片方へ戻す。
-      const windowPanes = getWindowPanes(state, getPaneWindowId(pane));
-      if (
-        pane.tabs.length === 1 &&
-        windowPanes.length === 1 &&
-        getPaneWindowId(pane) !== MAIN_WINDOW_ID &&
-        !action.replaceLastTab
-      ) {
-        // 別窓の最後のタブを閉じたら窓ごと履歴に残して終了する。
-        return reduceTabState(state, {
-          type: TAB_ACTION_TYPES.CLOSE_WORKSPACE_WINDOW,
-          windowId: getPaneWindowId(pane),
-        });
-      }
-      if (pane.tabs.length <= 1 && windowPanes.length > 1 && !action.replaceLastTab) {
-        const panes = state.panes.filter((candidate) => candidate.id !== paneId);
-        return {
-          ...state,
-          panes,
-          activePaneId: panes.some((candidate) => candidate.id === state.activePaneId)
-            ? state.activePaneId
-            : windowPanes.find((candidate) => candidate.id !== paneId)!.id,
-          closedTabs: pushClosed(state.closedTabs, target),
-        };
-      }
-      // 単一ペインを空にせず、設定した新規タブページにも依存しないようホームを明示する。
-      if (pane.tabs.length <= 1) {
-        const replacement = createHomeTab();
-        return {
-          ...updatePane(state, paneId, (p) => ({
-            ...p,
-            tabs: [replacement],
-            activeTabId: replacement.id,
-          })),
-          // 別窓の終了で最後のタブを置き換える場合も、本窓のフォーカスは奪わない。
-          activePaneId: action.preserveActivePane ? state.activePaneId : paneId,
-          closedTabs: pushClosed(state.closedTabs, target),
-        };
-      }
-      const closingIndex = pane.tabs.indexOf(target);
-      const remaining = pane.tabs.filter((t) => t.id !== action.tabId);
-      let newActiveId = pane.activeTabId;
-      if (action.tabId === pane.activeTabId) {
-        const newIndex = Math.min(closingIndex, remaining.length - 1);
-        newActiveId = remaining[newIndex].id;
-      }
-      return {
-        ...updatePane(state, paneId, (p) => ({
-          ...p,
-          tabs: remaining,
-          activeTabId: newActiveId,
-        })),
-        // 別窓終了時は元窓のフォーカスペインを奪わない。通常のタブ閉じる操作では
-        // 従来どおり対象ペインへフォーカスを移すため、呼び出し側で明示的に指定する。
-        activePaneId: action.preserveActivePane ? state.activePaneId : paneId,
-        closedTabs: pushClosed(state.closedTabs, target),
-      };
-    }
+    case TAB_ACTION_TYPES.CLOSE_OTHER_TABS:
+      return closeOtherTabs(state, action);
 
-    case TAB_ACTION_TYPES.CLOSE_OTHER_TABS: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const pane = getPane(state, paneId);
-      // 指定タブと固定タブ以外を閉じる
-      if (!hasClosableOtherTabs(pane.tabs, action.tabId)) return state;
-      const closed = pane.tabs.filter((t) => t.id !== action.tabId && !t.pinned);
-      const remaining = pane.tabs.filter((t) => t.id === action.tabId || t.pinned);
-      if (remaining.length === 0) return state;
-      let newClosed = state.closedTabs;
-      for (const t of closed) {
-        newClosed = pushClosed(newClosed, t);
-      }
-      return {
-        ...updatePane(state, paneId, (p) => ({
-          ...p,
-          tabs: remaining,
-          activeTabId: action.tabId,
-        })),
-        activePaneId: paneId,
-        closedTabs: newClosed,
-      };
-    }
+    case TAB_ACTION_TYPES.CLOSE_RIGHT_TABS:
+      return closeRightTabs(state, action);
 
-    case TAB_ACTION_TYPES.CLOSE_RIGHT_TABS: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const pane = getPane(state, paneId);
-      const idx = pane.tabs.findIndex((t) => t.id === action.tabId);
-      if (idx === -1) return state;
-      if (!hasClosableRightTabs(pane.tabs, action.tabId)) return state;
-      const rightTabs = pane.tabs.slice(idx + 1).filter((t) => !t.pinned);
-      const rightIds = new Set(rightTabs.map((t) => t.id));
-      const remaining = pane.tabs.filter((t) => !rightIds.has(t.id));
-      let newClosed = state.closedTabs;
-      for (const t of rightTabs) {
-        newClosed = pushClosed(newClosed, t);
-      }
-      let newActiveId = pane.activeTabId;
-      if (rightIds.has(pane.activeTabId)) {
-        newActiveId = action.tabId;
-      }
-      return {
-        ...updatePane(state, paneId, (p) => ({
-          ...p,
-          tabs: remaining,
-          activeTabId: newActiveId,
-        })),
-        activePaneId: paneId,
-        closedTabs: newClosed,
-      };
-    }
+    case TAB_ACTION_TYPES.CLOSE_ALL_TABS:
+      return closeAllTabs(state, action);
 
-    case TAB_ACTION_TYPES.CLOSE_ALL_TABS: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const pane = getPane(state, paneId);
-      // 固定タブ以外をすべて閉じ、新しいタブを開く
-      const pinned = pane.tabs.filter((t) => t.pinned);
-      const closed = pane.tabs.filter((t) => !t.pinned);
-      let newClosed = state.closedTabs;
-      for (const t of closed) {
-        newClosed = pushClosed(newClosed, t);
-      }
-      const activeTab = getPaneActiveTab(pane);
-      const sourcePage = getCurrentPage(activeTab);
-      const newTab = createTab(sourcePage, activeTab);
-      return {
-        ...updatePane(state, paneId, (p) => ({
-          ...p,
-          tabs: [...pinned, newTab],
-          activeTabId: newTab.id,
-        })),
-        activePaneId: paneId,
-        closedTabs: newClosed,
-      };
-    }
-
-    case TAB_ACTION_TYPES.REOPEN_CLOSED_TAB: {
-      if (!canReopenClosedTab(state)) return state;
-      const paneId = resolvePaneId(state, action.paneId);
-      // 履歴から選択した項目だけを取り除き、残りの順序を保つ。
-      const index =
-        action.tabId === undefined
-          ? 0
-          : state.closedTabs.findIndex((tab) => tab.id === action.tabId);
-      if (index < 0) return state;
-      const reopened = state.closedTabs[index]!;
-      const rest = state.closedTabs.filter((_, i) => i !== index);
-      // 変更理由: 閉じたタブを新規タブとして開き直す時は、自動更新状態を引き継がない。
-      const restored: Tab = {
-        ...resetAutoRefreshState(reopened),
-        id: crypto.randomUUID(),
-      };
-      return {
-        ...updatePane(state, paneId, (p) => ({
-          ...p,
-          // 窓の終了では固定タブも履歴に入るため、復元時も固定領域の後ろへ戻す。
-          tabs: restored.pinned
-            ? [
-                ...p.tabs.filter((tab) => tab.pinned),
-                restored,
-                ...p.tabs.filter((tab) => !tab.pinned),
-              ]
-            : [...p.tabs, restored],
-          activeTabId: restored.id,
-        })),
-        activePaneId: paneId,
-        closedTabs: rest,
-      };
-    }
+    case TAB_ACTION_TYPES.REOPEN_CLOSED_TAB:
+      return reopenClosedTab(state, action);
 
     case TAB_ACTION_TYPES.TOGGLE_PIN: {
       const paneId = resolvePaneId(state, action.paneId);
@@ -404,569 +166,73 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
       };
     }
 
-    case TAB_ACTION_TYPES.NAVIGATE: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const targetTab = action.tabId
-        ? findTabAcrossPanes(state, action.tabId)
-        : getPaneActiveTab(getPane(state, paneId));
-      // ホームからの選択も現在タブの履歴に積み、同じタブへ戻れるようにする。
-      if (!targetTab) {
-        return state;
-      }
-      const currentPage = getCurrentPage(targetTab);
-      if (getPageIdentity(currentPage) === getPageIdentity(action.page)) {
-        return state;
-      }
+    case TAB_ACTION_TYPES.NAVIGATE:
+      return navigate(state, action);
 
-      // 固定したページを残し、遷移先は同じペインの別タブで表示する。
-      if (targetTab.pinned) {
-        const owner = state.panes.find((pane) => pane.tabs.some((tab) => tab.id === targetTab.id));
-        return reduceTabState(state, {
-          type: TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE,
-          page: action.page,
-          paneId: owner?.id ?? paneId,
-          focus: true,
-        });
-      }
+    case TAB_ACTION_TYPES.NAVIGATE_TAB:
+      return navigateTab(state, action);
 
-      const nextState = updateTargetTab(state, paneId, action.tabId, (tab) =>
-        resetAutoRefreshState(pushPageToTabHistory(tab, action.page)),
-      );
-      // 明示的なタブ指定でも、元画面の選択タブからの遷移は従来どおりペインをアクティブにする。
-      return action.tabId && !action.activatePane
-        ? nextState
-        : { ...nextState, activePaneId: paneId };
-    }
+    case TAB_ACTION_TYPES.GO_BACK:
+      return goBack(state, action);
 
-    case TAB_ACTION_TYPES.NAVIGATE_TAB: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const pane = getPane(state, paneId);
-      const targetTab = pane.tabs.find((tab) => tab.id === action.tabId);
-      // 指定したタブ内で遷移し、他のホームへ操作を転送しない。
-      if (!targetTab) {
-        return state;
-      }
+    case TAB_ACTION_TYPES.GO_FORWARD:
+      return goForward(state, action);
 
-      if (getPageIdentity(getCurrentPage(targetTab)) === getPageIdentity(action.page)) {
-        return {
-          ...updatePane(state, paneId, (p) => ({
-            ...p,
-            activeTabId: action.tabId,
-          })),
-          activePaneId: paneId,
-        };
-      }
+    case TAB_ACTION_TYPES.GO_TO_HISTORY_INDEX:
+      return goToHistoryIndex(state, action);
 
-      if (targetTab.pinned) {
-        return reduceTabState(state, {
-          type: TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE,
-          page: action.page,
-          paneId,
-          focus: true,
-        });
-      }
+    case TAB_ACTION_TYPES.UPDATE_TAB_VIEW_STATE:
+      return updateTabViewState(state, action);
 
-      // 指定タブの実履歴を保ったままページを追加する。
-      return {
-        ...updatePane(state, paneId, (p) => ({
-          ...p,
-          activeTabId: action.tabId,
-          tabs: p.tabs.map((t) =>
-            t.id === action.tabId ? resetAutoRefreshState(pushPageToTabHistory(t, action.page)) : t,
-          ),
-        })),
-        activePaneId: paneId,
-      };
-    }
+    case TAB_ACTION_TYPES.UPDATE_TITLE:
+      return updateTitle(state, action);
 
-    case TAB_ACTION_TYPES.GO_BACK: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const tab = action.tabId
-        ? findTabAcrossPanes(state, action.tabId)
-        : getPaneActiveTab(getPane(state, paneId));
-      if (!tab) return state;
-      // 戻るはタブ内の履歴を一つ戻すだけにし、別のホームタブへ転送しない。
-      if (tab.currentIndex <= 0) return state;
-      if (tab.pinned) return state;
-      return updateTargetTab(state, paneId, action.tabId, (t) =>
-        resetAutoRefreshState({
-          ...t,
-          currentIndex: t.currentIndex - 1,
-        }),
-      );
-    }
+    case TAB_ACTION_TYPES.UPDATE_TITLE_FOR_TAB:
+      return updateTitleForTab(state, action);
 
-    case TAB_ACTION_TYPES.GO_FORWARD: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const tab = action.tabId
-        ? findTabAcrossPanes(state, action.tabId)
-        : getPaneActiveTab(getPane(state, paneId));
-      if (!tab) return state;
-      if (tab.currentIndex >= tab.history.length - 1) return state;
-      if (tab.pinned) return state;
-      return updateTargetTab(state, paneId, action.tabId, (t) =>
-        resetAutoRefreshState({
-          ...t,
-          currentIndex: t.currentIndex + 1,
-        }),
-      );
-    }
+    case TAB_ACTION_TYPES.RELOAD:
+      return reload(state, action);
 
-    case TAB_ACTION_TYPES.GO_TO_HISTORY_INDEX: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const tab = action.tabId
-        ? findTabAcrossPanes(state, action.tabId)
-        : getPaneActiveTab(getPane(state, paneId));
-      if (!tab) return state;
-      if (action.index < 0 || action.index >= tab.history.length) return state;
-      if (action.index === tab.currentIndex) return state;
-      if (tab.pinned) return state;
-      return updateTargetTab(state, paneId, action.tabId, (t) =>
-        resetAutoRefreshState({
-          ...t,
-          currentIndex: action.index,
-        }),
-      );
-    }
+    case TAB_ACTION_TYPES.FOLLOW_NEXT_THREAD:
+      return followNextThread(state, action);
 
-    case TAB_ACTION_TYPES.UPDATE_TAB_VIEW_STATE: {
-      // view state はタブIDで一意に特定できるため、ペインを跨いだ更新にも耐える。
-      return {
-        ...state,
-        panes: state.panes.map((pane) => ({
-          ...pane,
-          tabs: pane.tabs.map((tab) => {
-            if (tab.id !== action.tabId) {
-              return tab;
-            }
+    case TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED:
+      return setAutoRefreshEnabled(state, action);
 
-            return {
-              ...tab,
-              viewStates: {
-                ...tab.viewStates,
-                [action.pageKey]: {
-                  ...tab.viewStates?.[action.pageKey],
-                  ...action.patch,
-                },
-              },
-            };
-          }),
-        })),
-      };
-    }
+    case TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY:
+      return setAutoRefreshStoppedPageKey(state, action);
 
-    case TAB_ACTION_TYPES.UPDATE_TITLE: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const tab = action.tabId
-        ? findTabAcrossPanes(state, action.tabId)
-        : getPaneActiveTab(getPane(state, paneId));
-      if (!tab) {
-        return state;
-      }
-
-      return updateTargetTab(state, paneId, action.tabId, (t) => {
-        const currentPage = { ...t.history[t.currentIndex] };
-        currentPage.title = action.title;
-        const newHistory = [...t.history];
-        newHistory[t.currentIndex] = currentPage;
-        return {
-          ...t,
-          history: newHistory,
-        };
-      });
-    }
-
-    case TAB_ACTION_TYPES.UPDATE_TITLE_FOR_TAB: {
-      // 背景ペイン/タブの非同期タイトル解決でも動くよう、全ペインを横断して該当タブを更新する。
-      // boardUrl がある場合は、現在ページではなく対象板の履歴を更新する。
-      // URL直開き後に板名解決が完了しても、履歴中の板一覧へ結果を残すため。
-      return {
-        ...state,
-        panes: state.panes.map((pane) => {
-          if (!pane.tabs.some((t) => t.id === action.tabId)) {
-            return pane;
-          }
-          return {
-            ...pane,
-            tabs: pane.tabs.map((tab) => {
-              if (tab.id !== action.tabId) {
-                return tab;
-              }
-
-              const targetBoardUrl = action.boardUrl
-                ? normalizePageLocation(action.boardUrl)
-                : null;
-              const updatedHistory = tab.history.map((page, index) => {
-                const isTargetPage = targetBoardUrl
-                  ? page.type === "threadList" &&
-                    normalizePageLocation(page.boardUrl) === targetBoardUrl
-                  : index === tab.currentIndex;
-                if (!isTargetPage || page.title === action.title) {
-                  return page;
-                }
-
-                if (page.type === "threadList") {
-                  return {
-                    ...page,
-                    // 変更理由: 板名解決がページ遷移後に完了しても、title と boardTitle を
-                    // 同時に更新して関連板導線と板名表示の不一致を防ぐ。
-                    title: action.title,
-                    boardTitle: action.title,
-                  };
-                }
-
-                return {
-                  ...page,
-                  title: action.title,
-                };
-              });
-
-              if (updatedHistory.every((page, index) => page === tab.history[index])) {
-                return tab;
-              }
-
-              return {
-                ...tab,
-                history: updatedHistory,
-              };
-            }),
-          };
-        }),
-      };
-    }
-
-    case TAB_ACTION_TYPES.RELOAD: {
-      // 履歴を変えずにreloadKeyをインクリメントする。
-      // ContentAreaがこれをkeyに使うことでページコンポーネントが再マウントされ、データ再取得が走る。
-      const paneId = resolvePaneId(state, action.paneId);
-      return updateTargetTab(state, paneId, action.tabId, (tab) => ({
-        ...tab,
-        reloadKey: tab.reloadKey + 1,
-      }));
-    }
-
-    case TAB_ACTION_TYPES.FOLLOW_NEXT_THREAD: {
-      const paneId = resolvePaneId(state, action.paneId);
-      const targetTab = action.tabId
-        ? findTabAcrossPanes(state, action.tabId)
-        : getPaneActiveTab(getPane(state, paneId));
-      if (targetTab?.pinned) {
-        const owner = state.panes.find((pane) => pane.tabs.some((tab) => tab.id === targetTab.id));
-        const destinationId = owner?.id ?? paneId;
-        const opened = reduceTabState(state, {
-          type: TAB_ACTION_TYPES.OPEN_IN_NEW_TAB_FORCE,
-          page: action.page,
-          paneId: destinationId,
-          focus: true,
-        });
-        if (!action.keepAutoRefresh) return opened;
-        // 次スレ待機の引き継ぎ先を新しいタブに束縛する。
-        return updatePane(opened, destinationId, (pane) => ({
-          ...pane,
-          tabs: pane.tabs.map((tab) =>
-            tab.id === pane.activeTabId
-              ? {
-                  ...tab,
-                  autoRefreshEnabled: true,
-                  autoRefreshPageKey: getAutoRefreshPageKey(action.page),
-                }
-              : tab,
-          ),
-        }));
-      }
-      return updateTargetTab(state, paneId, action.tabId, (tab) => {
-        const nextTab = pushPageToTabHistory(tab, action.page);
-        // 自動次スレ移動は「このタブの流れ」を保つのが目的なので、
-        // 既存タブ集約を経由せず現在タブの履歴と自動更新束縛を同時に更新する。
-        return {
-          ...nextTab,
-          autoRefreshEnabled: action.keepAutoRefresh ? true : nextTab.autoRefreshEnabled,
-          autoRefreshPageKey: action.keepAutoRefresh
-            ? getAutoRefreshPageKey(action.page)
-            : nextTab.autoRefreshPageKey,
-          // 変更理由: dat落ち確認は旧スレ固有なので、次スレへ自動更新を引き継ぐ時は解除する。
-          autoRefreshStoppedPageKey: null,
-          nextThreadWaitPageKey: null,
-        };
-      });
-    }
-
-    case TAB_ACTION_TYPES.SET_AUTO_REFRESH_ENABLED: {
-      const paneId = resolvePaneId(state, action.paneId);
-      return updateTargetTab(state, paneId, action.tabId, (tab) => {
-        const pageKey =
-          action.pageKey ?? tab.autoRefreshPageKey ?? getAutoRefreshPageKey(getCurrentPage(tab));
-        if (pageKey != null && pageKey === tab.nextThreadWaitPageKey) {
-          // 待機中のONは次スレ探索を開き直す操作になるため無視する。
-          // 待機中のOFFは待機の取り消しなので、同じスレで再開しないよう停止記録を付ける。
-          return action.enabled ? tab : applyAutoRefreshStopRecord(tab, pageKey);
-        }
-        // dat落ちや探索期限の終了を開始操作で解除すると、同じスレのsubject取得が連発する。
-        const enabled =
-          action.enabled && (pageKey == null || pageKey !== tab.autoRefreshStoppedPageKey);
-        return {
-          ...tab,
-          autoRefreshEnabled: enabled,
-          autoRefreshPageKey: enabled ? pageKey : null,
-        };
-      });
-    }
-
-    case TAB_ACTION_TYPES.SET_AUTO_REFRESH_STOPPED_PAGE_KEY: {
-      const paneId = resolvePaneId(state, action.paneId);
-      return updateTargetTab(state, paneId, action.tabId, (tab) =>
-        applyAutoRefreshStopRecord(tab, action.pageKey),
-      );
-    }
-
-    case TAB_ACTION_TYPES.START_NEXT_THREAD_WAIT: {
-      const paneId = resolvePaneId(state, action.paneId);
-      return updateTargetTab(state, paneId, action.tabId, (tab) => {
-        // 待機へ移せるのは、そのページで自動更新がONの間だけにする。
-        // 別ページへ移った後や既にOFFになった後に届いた通知で、待機を作らないため。
-        if (!tab.autoRefreshEnabled || tab.autoRefreshPageKey !== action.pageKey) {
-          return tab;
-        }
-        // 変更理由: 待機中もONにすると、ステータスバーが自動更新中と区別できなくなるため、
-        // 自動更新のONは外し、次スレ探索に必要な追従状態は呼び出し側で別に維持する。
-        return {
-          ...tab,
-          autoRefreshEnabled: false,
-          autoRefreshPageKey: null,
-          nextThreadWaitPageKey: action.pageKey,
-        };
-      });
-    }
+    case TAB_ACTION_TYPES.START_NEXT_THREAD_WAIT:
+      return startNextThreadWait(state, action);
 
     // --- ペイン操作 ---
 
     case TAB_ACTION_TYPES.TRANSFER_TAB:
       return transferTab(state, action);
 
-    case TAB_ACTION_TYPES.CLOSE_WORKSPACE_WINDOW: {
-      const target = state.windows.find(
-        (window) => window.id === action.windowId && window.kind === "aux",
-      );
-      if (!target) return state;
-      const removed = getWindowPanes(state, target.id);
-      const panes = state.panes.filter((pane) => getPaneWindowId(pane) !== target.id);
-      const main = state.windows.find((window) => window.id === MAIN_WINDOW_ID);
-      const fallback =
-        panes.find((pane) => pane.id === main?.activePaneId) ??
-        panes.find((pane) => getPaneWindowId(pane) === MAIN_WINDOW_ID);
-      if (!fallback) return state;
-      // OSの終了では固定タブも含めて閉じた履歴へ残し、再度本窓から開けるようにする。
-      const closedTabs = removed.flatMap((pane) => pane.tabs).reduce(pushClosed, state.closedTabs);
-      const bottomPanels =
-        state.bottomPanels &&
-        Object.fromEntries(
-          Object.entries(state.bottomPanels).filter(([id]) => panes.some((pane) => pane.id === id)),
-        );
-      return {
-        ...state,
-        panes,
-        windows: state.windows.filter((window) => window.id !== target.id),
-        activePaneId: removed.some((pane) => pane.id === state.activePaneId)
-          ? fallback.id
-          : state.activePaneId,
-        closedTabs,
-        ...(bottomPanels ? { bottomPanels } : {}),
-      };
-    }
+    case TAB_ACTION_TYPES.CLOSE_WORKSPACE_WINDOW:
+      return closeWorkspaceWindow(state, action);
 
-    case TAB_ACTION_TYPES.COLLAPSE_WORKSPACE_WINDOW: {
-      const target = state.windows.find(
-        (window) => window.id === action.windowId && window.kind === "aux",
-      );
-      if (!target) return state;
-      const removed = getWindowPanes(state, target.id);
-      const main = state.windows.find((window) => window.id === MAIN_WINDOW_ID);
-      const destination =
-        state.panes.find((pane) => pane.id === main?.activePaneId) ??
-        state.panes.find((pane) => getPaneWindowId(pane) === MAIN_WINDOW_ID);
-      if (!destination) return state;
-      // 変更理由: 窓を開けない環境でもタブを失わないよう、履歴へ積まずに本窓の末尾へ集める。
-      const movedTabs = removed.flatMap((pane) => pane.tabs);
-      const panes = state.panes
-        .filter((pane) => getPaneWindowId(pane) !== target.id)
-        .map((pane) =>
-          pane.id === destination.id ? { ...pane, tabs: [...pane.tabs, ...movedTabs] } : pane,
-        );
-      const bottomPanels =
-        state.bottomPanels &&
-        Object.fromEntries(
-          Object.entries(state.bottomPanels).filter(([id]) => panes.some((pane) => pane.id === id)),
-        );
-      return {
-        ...state,
-        panes,
-        windows: state.windows.filter((window) => window.id !== target.id),
-        activePaneId: removed.some((pane) => pane.id === state.activePaneId)
-          ? destination.id
-          : state.activePaneId,
-        ...(bottomPanels ? { bottomPanels } : {}),
-      };
-    }
+    case TAB_ACTION_TYPES.COLLAPSE_WORKSPACE_WINDOW:
+      return collapseWorkspaceWindow(state, action);
 
-    case TAB_ACTION_TYPES.SET_WORKSPACE_WINDOW_BOUNDS: {
-      const target = state.windows.find((window) => window.id === action.windowId);
-      const current = target?.bounds;
-      if (
-        !target ||
-        (current &&
-          current.left === action.bounds.left &&
-          current.top === action.bounds.top &&
-          current.width === action.bounds.width &&
-          current.height === action.bounds.height)
-      ) {
-        return state;
-      }
-      return {
-        ...state,
-        windows: state.windows.map((window) =>
-          window.id === target.id ? { ...window, bounds: action.bounds } : window,
-        ),
-      };
-    }
+    case TAB_ACTION_TYPES.SET_WORKSPACE_WINDOW_BOUNDS:
+      return setWorkspaceWindowBounds(state, action);
 
-    case TAB_ACTION_TYPES.SPLIT_PANE: {
-      // 最大ペイン数に達していれば分割しない（2ペイン固定運用）。
-      // 操作元ペインの右隣に、新規タブの設定（new_tab_page_mode）に従ったページのペインを作成してフォーカスする。
-      const sourcePaneId = resolvePaneId(state, action.paneId);
-      const sourceIndex = state.panes.findIndex((p) => p.id === sourcePaneId);
-      const sourcePane = state.panes[sourceIndex];
-      if (!sourcePane || getWindowPanes(state, getPaneWindowId(sourcePane)).length >= MAX_PANES)
-        return state;
-      const sourceActiveTab = sourcePane ? getPaneActiveTab(sourcePane) : null;
-      const sourcePage = sourceActiveTab ? getCurrentPage(sourceActiveTab) : null;
-      const newPane = {
-        ...createPane(createTab(sourcePage, sourceActiveTab)),
-        windowId: getPaneWindowId(sourcePane),
-      };
-      const panes = [...state.panes];
-      panes.splice(sourceIndex + 1, 0, newPane);
-      return { ...state, panes, activePaneId: newPane.id };
-    }
+    case TAB_ACTION_TYPES.SPLIT_PANE:
+      return splitPane(state, action);
 
-    case TAB_ACTION_TYPES.CLOSE_PANE: {
-      // 最低1ペインは維持する。
-      const paneId = resolvePaneId(state, action.paneId);
-      const index = state.panes.findIndex((p) => p.id === paneId);
-      if (index === -1) return state;
-      const windowPanes = getWindowPanes(state, getPaneWindowId(state.panes[index]));
-      if (windowPanes.length <= 1) return state;
-      // 変更理由: ペイン解除は表示レイアウトの変更なのでタブを閉じず、左ペインを
-      // 統合先にして左から右の順で並べる。選択中タブも維持して画面内容を失わない。
-      const leftPane = windowPanes[0];
-      const rightPane = windowPanes[1];
-      const selectedTabId =
-        windowPanes.find((candidate) => candidate.id === state.activePaneId)?.activeTabId ??
-        leftPane.activeTabId;
-      // 常設ホームの重複除去を行わず、両ペインの通常タブと選択をそのまま引き継ぐ。
-      const mergedPane: Pane = {
-        ...leftPane,
-        // 統合後も固定タブのグループを先頭に保ち、並べ替えと表示順を一致させる。
-        tabs: [...leftPane.tabs, ...rightPane.tabs].sort(
-          (a, b) => Number(b.pinned) - Number(a.pinned),
-        ),
-        activeTabId: selectedTabId,
-      };
-      return {
-        ...state,
-        panes: state.panes
-          .filter((pane) => pane.id !== rightPane.id)
-          .map((pane) => (pane.id === leftPane.id ? mergedPane : pane)),
-        activePaneId: leftPane.id,
-      };
-    }
+    case TAB_ACTION_TYPES.CLOSE_PANE:
+      return closePane(state, action);
 
-    case TAB_ACTION_TYPES.SWAP_PANE_TABS: {
-      // 変更理由: 2ペインの表示内容だけを交換し、各ペインが保持している
-      // 非選択タブの並びとペイン自体のフォーカスは維持する。
-      const sourcePaneId = resolvePaneId(state, action.paneId);
-      const sourceIndex = state.panes.findIndex((pane) => pane.id === sourcePaneId);
-      const sourcePane = state.panes[sourceIndex];
-      const targetPane =
-        sourcePane &&
-        getWindowPanes(state, getPaneWindowId(sourcePane)).find((pane) => pane.id !== sourcePaneId);
-      if (!sourcePane || !targetPane) return state;
+    case TAB_ACTION_TYPES.SWAP_PANE_TABS:
+      return swapPaneTabs(state, action);
 
-      const sourceTab = sourcePane.tabs.find((tab) => tab.id === sourcePane.activeTabId);
-      const targetTab = targetPane.tabs.find((tab) => tab.id === targetPane.activeTabId);
-      // ホームも他のページと同様にペイン間で交換する。
-      if (!sourceTab || !targetTab) return state;
+    case TAB_ACTION_TYPES.SET_ACTIVE_PANE:
+      return setActivePane(state, action);
 
-      const replaceActiveTab = (pane: Pane, currentTabId: string, replacement: Tab): Pane => ({
-        ...pane,
-        tabs: pane.tabs.map((tab) => (tab.id === currentTabId ? replacement : tab)),
-        activeTabId: replacement.id,
-      });
-      const updatedSourcePane = replaceActiveTab(sourcePane, sourceTab.id, targetTab);
-      const updatedTargetPane = replaceActiveTab(targetPane, targetTab.id, sourceTab);
-
-      return {
-        ...state,
-        panes: state.panes.map((pane) =>
-          pane.id === sourcePane.id
-            ? updatedSourcePane
-            : pane.id === targetPane.id
-              ? updatedTargetPane
-              : pane,
-        ),
-      };
-    }
-
-    case TAB_ACTION_TYPES.SET_ACTIVE_PANE: {
-      const paneId = resolvePaneId(state, action.paneId);
-      if (paneId === state.activePaneId) return state;
-      return { ...state, activePaneId: paneId };
-    }
-
-    case TAB_ACTION_TYPES.OPEN_IN_RIGHT_PANE: {
-      // 操作元ペインのタブを右隣ペインへ移動する。右隣が無ければ新規作成する。
-      const sourcePaneId = resolvePaneId(state, action.paneId);
-      const sourceIndex = state.panes.findIndex((p) => p.id === sourcePaneId);
-      if (sourceIndex === -1) return state;
-      const sourcePane = state.panes[sourceIndex];
-      const movingTab = sourcePane.tabs.find((t) => t.id === action.tabId);
-      // ホームも通常タブとして移動し、空になったペインは更新時に補う。
-      if (!movingTab) return state;
-      const windowPanes = getWindowPanes(state, getPaneWindowId(sourcePane));
-      const rightPane = windowPanes[windowPanes.findIndex((pane) => pane.id === sourcePaneId) + 1];
-      if (!rightPane && !canOpenInRightPane(state, sourcePaneId)) return state;
-
-      // 元ペインから対象タブを除く。空になるなら既定タブを補充してペインを維持する。
-      let remainingSourceTabs = sourcePane.tabs.filter((t) => t.id !== action.tabId);
-      if (remainingSourceTabs.length === 0) {
-        remainingSourceTabs = [createTab()];
-      }
-      const newSourceActiveId =
-        sourcePane.activeTabId === action.tabId
-          ? remainingSourceTabs[remainingSourceTabs.length - 1].id
-          : sourcePane.activeTabId;
-      const updatedSourcePane: Pane = {
-        ...sourcePane,
-        tabs: remainingSourceTabs,
-        activeTabId: newSourceActiveId,
-      };
-
-      if (rightPane) {
-        const updatedRightPane: Pane = {
-          ...rightPane,
-          tabs: [...rightPane.tabs, movingTab],
-          activeTabId: movingTab.id,
-        };
-        const panes = state.panes.map((p) =>
-          p.id === sourcePaneId ? updatedSourcePane : p.id === rightPane.id ? updatedRightPane : p,
-        );
-        return { ...state, panes, activePaneId: rightPane.id };
-      }
-
-      const newPane = { ...createPane(movingTab), windowId: getPaneWindowId(sourcePane) };
-      const panes = state.panes.map((p) => (p.id === sourcePaneId ? updatedSourcePane : p));
-      panes.splice(sourceIndex + 1, 0, newPane);
-      return { ...state, panes, activePaneId: newPane.id };
-    }
+    case TAB_ACTION_TYPES.OPEN_IN_RIGHT_PANE:
+      return openInRightPane(state, action);
 
     case TAB_ACTION_TYPES.RESTORE:
       return sanitizeTabStoreState(action.state);
