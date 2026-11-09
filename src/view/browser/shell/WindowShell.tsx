@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { openArchiveReplayWindow as openArchiveReplayNativeWindow } from "src/features/archive-replay/platform";
@@ -40,6 +41,17 @@ import {
 import browser from "webextension-polyfill";
 
 const logger = createLogger("view/browser");
+
+// 1ペインの縦タブ表示でステータスバーを置く窓の最下段。複数ペインや未配置のときは null。
+// 変更理由: ペイン内に置いたままだと縦タブバーが画面の下端まで伸びて、ステータスバーの左側を覆う。
+// 状態は各ペインの StatusBarProvider に残し、表示先の DOM だけをこの最下段へ移す。
+const StatusBarHostContext = createContext<HTMLElement | null>(null);
+
+const PaneStatusBar: React.FC = () => {
+  const host = useContext(StatusBarHostContext);
+  const bar = <StatusBar />;
+  return host ? createPortal(bar, host) : bar;
+};
 
 // MCPのURL省略要求とサービスワーカー用設定を保存する。
 // TabStoreはReact Context内の状態なので、UI外のサービスワーカーへはこの最小限の値だけ渡す。
@@ -146,7 +158,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
       <ThreadListLoadedStatusItem />
       <ThreadListPanelToggleItem />
       <WritePanelToggleItem />
-      <StatusBar />
+      <PaneStatusBar />
     </>
   );
 
@@ -214,7 +226,8 @@ const PaneRow: React.FC = () => {
 // タイトルバーとワークスペースの枠。1ペインの垂直モードでは、左端のタブバーを
 // タイトルバーの上端まで伸ばし、タイトルバー以下を右へ押しのける。
 export const WindowShell: React.FC<{ showSidePanel?: boolean }> = ({ showSidePanel = true }) => {
-  const { activePaneId } = useWindowPanes();
+  const { activePaneId, panes } = useWindowPanes();
+  const [statusBarSlot, setStatusBarSlot] = useState<HTMLElement | null>(null);
   const dispatch = useTabDispatch();
   const { window: viewWindow } = useViewSurface();
   useEffect(() => {
@@ -235,9 +248,15 @@ export const WindowShell: React.FC<{ showSidePanel?: boolean }> = ({ showSidePan
   );
 
   return (
-    <div className="browser-shell__vertical-frame">
-      <SharedTabBar orientation="vertical" />
-      <div className="browser-shell__vertical-main">{main}</div>
-    </div>
+    <StatusBarHostContext.Provider value={panes.length === 1 ? statusBarSlot : null}>
+      <div className="browser-shell__vertical-frame">
+        <div className="browser-shell__vertical-row">
+          <SharedTabBar orientation="vertical" />
+          <div className="browser-shell__vertical-main">{main}</div>
+        </div>
+        {/* 1ペインのときだけ中身が入り、空のときは高さを取らない。 */}
+        <div ref={setStatusBarSlot} className="browser-shell__status-slot" />
+      </div>
+    </StatusBarHostContext.Provider>
   );
 };
