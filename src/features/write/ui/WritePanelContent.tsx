@@ -23,6 +23,7 @@ import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { useImgurUpload } from "src/features/write/browser/use-imgur-upload";
 import { useWrite } from "src/features/write/browser/use-write";
+import { useWritePreSubmitWarnings } from "src/features/write/browser/use-write-pre-submit-warnings";
 import {
   useWriteDraft,
   useWriteDraftActions,
@@ -43,7 +44,6 @@ import { Popover } from "src/view/browser/ui/Popover";
 import { getResizeObserverForWindow } from "src/view/browser/utils/dom";
 import { sanitizeUrlsInText } from "src/view/browser/utils/url-tracking";
 import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
-import { findUrlTrackingWarning, findWriteWarnings } from "src/view/browser/utils/write-warning";
 
 const WRITE_SUBMIT_CTRL_ENTER_KEY = "write_submit_ctrl_enter";
 const WRITE_SANITIZE_URLS_ON_PASTE_KEY = "write_sanitize_urls_on_paste";
@@ -119,8 +119,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     portalContainer ?? null,
   );
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
-  const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
-  const [writeWarnings, setWriteWarnings] = useState<ReturnType<typeof findWriteWarnings>>([]);
   const confirmationFrameCleanupRef = useRef<(() => void) | null>(null);
   // 変更理由: 書き込み中の入力欄を増やさず、書き込みに関する設定を
   // パネル内の歯車モーダルへまとめて、必要な時だけ変更できるようにする。
@@ -150,7 +148,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     onDraftChange: handleDraftChange,
     tabId: targets.find((target) => target.threadUrl === threadUrl)?.tabId,
   });
-  const { value: preSubmitWarningsEnabled } = useConfigBooleanSetting("write_pre_submit_warnings");
 
   // 入力・折り返しに合わせて1行から20行まで伸ばし、それ以上は欄内をスクロールする。
   useLayoutEffect(() => {
@@ -269,23 +266,23 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     return () => setEditorBusy(false);
   }, [setEditorBusy, statusBarIsBusy]);
 
-  const requestSubmit = useCallback(() => {
-    if (!canSubmit || isSubmitting) return;
-    // 変更理由: 設定をOFFにした場合は投稿前の個人情報チェックと確認ダイアログを省略する。
-    if (!preSubmitWarningsEnabled) {
-      void submit();
-      return;
-    }
-    const warnings = findWriteWarnings([name, mail, message]);
-    const trackingWarning = findUrlTrackingWarning(message);
-    if (trackingWarning) warnings.push(trackingWarning);
-    if (warnings.length > 0) {
-      setWriteWarnings(warnings);
-      setIsWarningDialogOpen(true);
-      return;
-    }
-    void submit();
-  }, [canSubmit, isSubmitting, mail, message, name, preSubmitWarningsEnabled, submit]);
+  const {
+    requestSubmit,
+    writeWarnings,
+    isWarningDialogOpen,
+    setIsWarningDialogOpen,
+    removeTrackingParametersAndSubmit,
+    confirmWarningSubmit,
+  } = useWritePreSubmitWarnings({
+    name,
+    mail,
+    message,
+    canSubmit,
+    isSubmitting,
+    submit,
+    setMessage,
+    toast,
+  });
 
   const handleMessagePaste = useCallback(
     (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -311,29 +308,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     },
     [message, sanitizeUrlsOnPaste, setMessage, toast, viewWindow],
   );
-
-  const removeTrackingParametersAndSubmit = useCallback(() => {
-    const result = sanitizeUrlsInText(message);
-    if (result.removedParameters.length === 0) return;
-
-    // 変更理由: 除去を選んだ場合も編集欄へ反映し、実際の送信本文と表示内容を一致させる。
-    setMessage(result.text);
-    toast.success("URLパラメータを除去しました");
-    const remainingWarnings = findWriteWarnings([name, mail, result.text]);
-    const trackingWarning = findUrlTrackingWarning(result.text);
-    if (trackingWarning) remainingWarnings.push(trackingWarning);
-    setWriteWarnings(remainingWarnings);
-
-    if (remainingWarnings.length === 0) {
-      setIsWarningDialogOpen(false);
-      void submit(result.text);
-    }
-  }, [mail, message, name, setMessage, submit, toast]);
-
-  const confirmWarningSubmit = useCallback(() => {
-    setIsWarningDialogOpen(false);
-    void submit();
-  }, [submit]);
 
   const handleOpenWriteWindow = useCallback(() => {
     // 別窓のReactツリーを先に作成し、現在の下部パネルは表示場所の重複を避けて閉じる。
