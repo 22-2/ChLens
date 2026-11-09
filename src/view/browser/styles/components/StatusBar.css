@@ -32,6 +32,15 @@
   pointer-events: auto;
 }
 
+/* 変更理由: 帯の背景は消したまま、右側の項目のまとまりだけを背景付きの塊として見せる。 */
+.pane-column > .status-bar .status-bar__group--right {
+  background: var(--sys-color-tab-strip);
+  border: 1px solid var(--sys-color-status-border);
+  border-right: none;
+  border-bottom: none;
+  border-top-left-radius: var(--sys-radius-lg);
+}
+
 /* 変更理由: 待機は通知と同じ色にして、自動更新中の青と取り違えないようにする。 */
 .status-bar--waiting {
   color: var(--sys-color-status-waiting-fg);
