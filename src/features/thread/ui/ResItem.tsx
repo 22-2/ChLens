@@ -11,6 +11,7 @@ import { NgBadge } from "src/features/ng/ui/NgBadge";
 import { NgResponsePlaceholder } from "src/features/ng/ui/NgResponsePlaceholder";
 import type { ThreadFindField } from "src/features/thread/domain/thread-find";
 import { ResBody } from "src/features/thread/ui/ResBody";
+import { ResReplyPreview } from "src/features/thread/ui/ResReplyPreview";
 import type { IRes } from "src/service-container";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
@@ -18,6 +19,7 @@ import { getIdHeatColor } from "src/view/browser/utils/id-heat";
 import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/utils/link-routing";
 import { resolveNgDisplayMode } from "src/view/browser/utils/ng-display-mode";
 import { getReplyHeatLevel } from "src/view/browser/utils/reply-heat";
+import { buildReplyPreview } from "src/view/browser/utils/reply-preview";
 import { decodeResponseHtml } from "src/view/browser/utils/response-format";
 import {
   findMatcherRanges,
@@ -179,6 +181,11 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     const resolvedMedia = useImgurAlbumMedia(decoded.messageHtml, urls, threadUrl);
     const imageUrls = useMemo(() => urls.filter((url) => toViewerImageUrl(url) != null), [urls]);
     const replyHeat = getReplyHeatLevel(repCount);
+    // 返信先の要約は返信先レスの内容に依存するため、本文とスレッド索引が変わったときだけ作り直す。
+    const replyPreview = useMemo(
+      () => (resMap ? buildReplyPreview(res, resMap) : null),
+      [res, resMap],
+    );
     const resNumClassName = `res__num${
       replyHeat === "hot" ? " res__num--hot" : replyHeat === "warm" ? " res__num--warm" : ""
     }`;
@@ -318,6 +325,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
             </span>
           )}
         </header>
+        {replyPreview ? <ResReplyPreview preview={replyPreview} onClick={onAnchorClick} /> : null}
         <ResBody
           messageHtml={resolvedMedia.messageHtml}
           imageUrls={onToggleImage ? imageUrls : undefined}
@@ -388,7 +396,7 @@ export interface ResItemProps {
   imageBlurRadius: number;
   ngResNums?: ReadonlySet<number>;
   /** 本文アンカーの欠損判定をスレッド全体のレス索引と揃える。 */
-  resMap?: ReadonlyMap<number, unknown>;
+  resMap?: ReadonlyMap<number, IRes>;
   /** アルバムAPIの失敗抑止をスレッド単位で分離するためのキー */
   threadUrl?: string;
   /** スレフィルタの検索語から作った、欄ごとの強調用の判定器。 */
