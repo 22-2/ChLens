@@ -32,7 +32,7 @@ describe("TabBar vertical", () => {
 
   beforeEach(() => {
     configSetMock.mockReset();
-    configValues = { tab_bar_width: "208" };
+    configValues = { tab_bar_width: "184" };
     container.config = {
       get: vi.fn((key: string) => configValues[key] ?? "0"),
       set: configSetMock,
@@ -261,18 +261,18 @@ describe("TabBar vertical", () => {
     const tabBar = container.querySelector(".tab-bar") as HTMLDivElement;
     const handle = container.querySelector(".tab-bar__resize-handle") as HTMLDivElement;
 
-    expect(tabBar).toHaveStyle({ width: "208px" });
+    expect(tabBar).toHaveStyle({ width: "184px" });
 
     fireEvent.pointerDown(handle, { clientX: 200, pointerId: 1 });
     fireEvent.pointerMove(handle, { clientX: 240, pointerId: 1 });
 
-    expect(tabBar).toHaveStyle({ width: "248px" });
+    expect(tabBar).toHaveStyle({ width: "224px" });
     expect(configSetMock).not.toHaveBeenCalled();
 
     fireEvent.pointerUp(handle, { pointerId: 1 });
 
-    expect(configSetMock).toHaveBeenCalledWith("tab_bar_width", "248");
-    expect(tabBar).toHaveStyle({ width: "248px" });
+    expect(configSetMock).toHaveBeenCalledWith("tab_bar_width", "224");
+    expect(tabBar).toHaveStyle({ width: "224px" });
   });
 
   it("幅は160pxから280pxの範囲に収める", () => {

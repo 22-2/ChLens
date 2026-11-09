@@ -54,7 +54,7 @@ function TabBarHarness({
   const [nextTabNumber, setNextTabNumber] = useState(tabCount + 1);
   const [selectedTabId, setSelectedTabId] = useState(tabs[0]?.id ?? "");
   const [collapsed, setCollapsed] = useState(initialCollapsed);
-  const [width, setWidth] = useState(208);
+  const [width, setWidth] = useState(184);
 
   const items = useMemo<TabBarItem[]>(
     () =>
