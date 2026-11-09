@@ -51,5 +51,6 @@
   top: var(--sys-space-9);
 }
 .scroll-indicator.down {
-  bottom: var(--sys-space-9);
+  /* 変更理由: ステータスバーはペイン下端に重なって置かれるため、その高さ分だけ上へ避ける。 */
+  bottom: calc(var(--sys-space-12) + var(--sys-space-3));
 }
