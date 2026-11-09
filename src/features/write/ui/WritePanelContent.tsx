@@ -1,17 +1,6 @@
-import {
-  ArrowBigUp,
-  Clipboard,
-  ExternalLink,
-  ImagePlus,
-  MoreVertical,
-  Settings,
-} from "lucide-react";
-import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { ArrowBigUp } from "lucide-react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { extractUrlsFromMessage, toViewerImageUrl } from "src/core/util/url-media";
-import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
-import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
-import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { useImgurUpload } from "src/features/write/browser/use-imgur-upload";
 import { useWrite } from "src/features/write/browser/use-write";
@@ -27,6 +16,8 @@ import {
 import { useWriteTextareaAutosize } from "src/features/write/browser/use-write-textarea-autosize";
 import { WriteAuthDialog } from "src/features/write/ui/WriteAuthDialog";
 import { WriteEditorElsewhere } from "src/features/write/ui/WriteEditorElsewhere";
+import { WriteImagePreviews } from "src/features/write/ui/WriteImagePreviews";
+import { WriteMoreMenu } from "src/features/write/ui/WriteMoreMenu";
 import { WriteSettingsDialog } from "src/features/write/ui/WriteSettingsDialog";
 import { WriteWarningDialog } from "src/features/write/ui/WriteWarningDialog";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
@@ -35,7 +26,6 @@ import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boole
 import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
-import { Popover } from "src/view/browser/ui/Popover";
 import { sanitizeUrlsInText } from "src/view/browser/utils/url-tracking";
 import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
 
@@ -76,7 +66,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   const isInPane = surface === "bottom";
   const isWindow = surface === "window";
   const { viewPage } = useTabStore();
-  const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
   // 変更理由: 設定DialogのPortal先も書き込み窓と同じDocumentへ置き、別窓で
   // メイン窓のテーマ境界へ戻らないようにする。
   const viewSurface = useViewSurface();
@@ -145,15 +134,8 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   useWriteTextareaAutosize(textareaRef, viewWindow, { message, status });
 
   const isSubmitting = status === "submitting";
-  // 変更理由: 投稿前の本文から画像だけを既存ビューアへ渡し、URLの復元や
-  // 複数画像の前後移動をレス表示と同じ規則で利用できるようにする。
-  const previewImages = useMemo(
-    () => extractUrlsFromMessage(message).filter((url) => toViewerImageUrl(url)),
-    [message],
-  );
   const previewId = useId();
   const mediaViewerScopeId = `write-preview:${previewId}:${threadUrl}`;
-  const openMedia = useMediaViewerStore((state) => state.openMediaFromUrl);
   const { isImgurUploading, imgurUploadStatus, runImgurUpload, handlePasteClipboardImage } =
     useImgurUpload({
       threadUrl,
@@ -412,79 +394,18 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                 >
                   <ArrowBigUp size={18} aria-hidden="true" />
                 </button>
-                <Popover.Root open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-                  <Popover.Trigger asChild>
-                    <button
-                      type="button"
-                      className="write-panel__menu-trigger"
-                      aria-label="その他の操作"
-                      title="その他の操作"
-                    >
-                      <MoreVertical size={16} aria-hidden="true" />
-                    </button>
-                  </Popover.Trigger>
-                  {/* パネル外へ表示し、狭い画面では表示位置を自動調整する。 */}
-                  <Popover.Portal container={dialogPortalContainer ?? viewDocument.body}>
-                    <Popover.Content
-                      className="write-panel__menu-items"
-                      side="top"
-                      align="end"
-                      sideOffset={4}
-                      collisionPadding={8}
-                    >
-                      <button
-                        type="button"
-                        className="write-panel__menu-item"
-                        onClick={() => {
-                          setIsMenuOpen(false);
-                          setIsSettingsDialogOpen(true);
-                        }}
-                        disabled={isSubmitting || isImgurUploading}
-                      >
-                        <Settings size={14} aria-hidden="true" />
-                        <span>書き込み設定</span>
-                      </button>
-                      {!isWindow && (
-                        <button
-                          type="button"
-                          className="write-panel__menu-item"
-                          onClick={() => {
-                            setIsMenuOpen(false);
-                            handleOpenWriteWindow();
-                          }}
-                          disabled={isSubmitting || isImgurUploading}
-                        >
-                          <ExternalLink size={14} aria-hidden="true" />
-                          <span>書き込みを別窓で開く</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className="write-panel__menu-item"
-                        onClick={() => {
-                          setIsMenuOpen(false);
-                          imgurFileInputRef.current?.click();
-                        }}
-                        disabled={isSubmitting || isImgurUploading || !threadUrl}
-                      >
-                        <ImagePlus size={14} aria-hidden="true" />
-                        <span>ローカル画像をImgurに投稿</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="write-panel__menu-item"
-                        onClick={() => {
-                          setIsMenuOpen(false);
-                          handlePasteClipboardImage();
-                        }}
-                        disabled={isSubmitting || isImgurUploading || !threadUrl}
-                      >
-                        <Clipboard size={14} aria-hidden="true" />
-                        <span>クリップボード画像をImgurに投稿</span>
-                      </button>
-                    </Popover.Content>
-                  </Popover.Portal>
-                </Popover.Root>
+                <WriteMoreMenu
+                  open={isMenuOpen}
+                  onOpenChange={setIsMenuOpen}
+                  container={dialogPortalContainer ?? viewDocument.body}
+                  busy={isSubmitting || isImgurUploading}
+                  hasThread={Boolean(threadUrl)}
+                  canOpenWriteWindow={!isWindow}
+                  onOpenSettings={() => setIsSettingsDialogOpen(true)}
+                  onOpenWriteWindow={handleOpenWriteWindow}
+                  onPickLocalImage={() => imgurFileInputRef.current?.click()}
+                  onPasteClipboardImage={handlePasteClipboardImage}
+                />
               </div>
             </div>
             {status === "error" && (
@@ -496,40 +417,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
                 再入力
               </button>
             )}
-            {previewImages.length > 0 && (
-              <div
-                className="write-panel__image-previews"
-                role="group"
-                aria-label="投稿画像のプレビュー"
-              >
-                {/* 変更理由: 本文内の画像を投稿前に見分けて選べるよう、サムネイルから
-                    選んだ画像を開き、ビューアでは本文順に前後移動できるようにする。 */}
-                {previewImages.map((url, index) => (
-                  <button
-                    key={url}
-                    type="button"
-                    className="write-panel__image-preview"
-                    aria-label={`画像${index + 1}をプレビュー`}
-                    title={url}
-                    onClick={() => openMedia(url, previewImages, mediaViewerScopeId)}
-                  >
-                    {manualImageLoading ? (
-                      <span className="external-image-placeholder">
-                        クリックして画像をプレビュー
-                      </span>
-                    ) : (
-                      <ExternalImage
-                        src={toViewerImageUrl(url) ?? url}
-                        alt=""
-                        loading="lazy"
-                        manualLoad={false}
-                        insideControl
-                      />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
+            <WriteImagePreviews message={message} mediaViewerScopeId={mediaViewerScopeId} />
           </>
         )}
         <iframe
