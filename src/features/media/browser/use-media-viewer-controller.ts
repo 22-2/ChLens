@@ -25,6 +25,7 @@ import {
   type ViewerTransform,
 } from "./media-viewer-zoom";
 import { useImgurDeletableImage } from "./use-imgur-deletable-image";
+import { useMediaViewerPreload } from "./use-media-viewer-preload";
 import { useMediaViewerStore } from "./use-media-viewer-store";
 
 const logger = createLogger("media");
@@ -131,6 +132,7 @@ export function useMediaViewerController(
   const setImageLoading = useMediaViewerStore((state) => state.setImageLoading);
   const closeViewerForScope = useCallback(() => closeViewer(scopeId), [closeViewer, scopeId]);
   const canDeleteImage = useImgurDeletableImage(viewer?.label ?? null);
+  useMediaViewerPreload(viewer, isLoading, viewWindow);
 
   useEffect(() => {
     return () => {
