@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { createLogger } from "src/app/logger";
@@ -126,6 +127,12 @@ export function useOmnibar({
   // 利用者が入力するまで空の検索語として扱い、通常の候補一覧を維持する。
   const [isInputPristine, setIsInputPristine] = useState(false);
   const [hasMovedSelection, setHasMovedSelection] = useState(false);
+  // activate を安定した参照に保つため、最新の表示URLは ref から読む。
+  // 参照が変わると、編集中に開いたパレットの effect が再実行されて入力が巻き戻る。
+  const displayUrlRef = useRef(displayUrl);
+  useEffect(() => {
+    displayUrlRef.current = displayUrl;
+  }, [displayUrl]);
   const searchQuery = isInputPristine ? "" : inputValue;
   const availableModes = useMemo(
     () =>
@@ -481,8 +488,11 @@ export function useOmnibar({
 
   const activate = useCallback((nextMode: OmnibarInputMode) => {
     setMode(nextMode);
-    setInputValue("");
-    setIsInputPristine(false);
+    // URL表示の通常モードでは、現在のURLを選択状態で見せつつ候補は絞り込まない。
+    // タイトルバーのクリックもこの経路を通るため、ここでも空にしない。
+    const keepsDisplayUrl = nextMode === "navigation";
+    setInputValue(keepsDisplayUrl ? displayUrlRef.current : "");
+    setIsInputPristine(keepsDisplayUrl);
     setHasMovedSelection(false);
     setIsFocused(true);
     setActiveSuggestionIndex(0);
