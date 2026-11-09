@@ -153,6 +153,8 @@ export const CONFIG_KEYS_EDITABLE_OUTSIDE_SETTINGS_FORM = [
   "auto_load_second_board",
   // 垂直タブバーのドラッグ操作で幅を保存する。
   "tab_bar_width",
+  // タブバーのボタンで簡易表示を切り替えるため、通常の設定フォームには置かない。
+  "tab_bar_collapsed",
   // 表示設定のタイトルバー操作パネルで表示を切り替える。
   "title_bar_back",
   // 表示設定のタイトルバー操作パネルで表示を切り替える。

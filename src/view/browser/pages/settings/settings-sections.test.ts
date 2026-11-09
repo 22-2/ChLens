@@ -238,7 +238,8 @@ describe("設定項目の置き場所", () => {
     expect(keysOf("general")).not.toEqual(
       expect.arrayContaining(["tab_bar_orientation", "tab_bar_collapsed"]),
     );
-    expect(keysOf("display")).toEqual(expect.arrayContaining(["tab_bar_collapsed"]));
+    // 簡易表示はタブバーのボタンで切り替えるため、設定画面には置かない。
+    expect(keysOf("display")).not.toContain("tab_bar_collapsed");
     expect(keysOf("display")).not.toContain("tab_bar_orientation");
   });
 

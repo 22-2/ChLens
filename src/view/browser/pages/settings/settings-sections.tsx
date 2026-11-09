@@ -181,17 +181,6 @@ const ALL_SETTINGS_SECTIONS = [
       },
       {
         kind: "divider",
-        id: "tab-bar",
-        title: "タブバー",
-      },
-      {
-        kind: "boolean",
-        key: "tab_bar_collapsed",
-        title: "垂直タブバーを簡易表示にする",
-        description: "タイトルを隠してアイコンのみの細幅で表示します。",
-      },
-      {
-        kind: "divider",
         id: "thread-filter",
         title: "フィルタ",
       },
