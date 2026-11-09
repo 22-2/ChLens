@@ -474,8 +474,8 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
       onContextMenu={handleBarContextMenu}
     >
       {/* 変更理由: 更新ボタンはタイトルバーへ集約し、タブバー上部はタブ操作に使う。 */}
-      {isVertical ? (
-        <>
+      <div className="tab-bar__body">
+        {isVertical ? (
           <div className="tab-bar__vertical-header">
             <button
               type="button"
@@ -489,10 +489,10 @@ export const TabBarView: React.FC<TabBarViewProps> = ({
               {collapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
             </button>
           </div>
-        </>
-      ) : null}
-      {paneSection}
-      {extraSections}
+        ) : null}
+        {paneSection}
+        {extraSections}
+      </div>
       {footer}
       {/* タブが横幅を超えるときだけ、追加ボタンをスクロール領域の外へ固定する。 */}
       {isVertical ? (

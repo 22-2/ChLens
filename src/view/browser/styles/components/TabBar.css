@@ -420,9 +420,21 @@
   border-top: 1px solid var(--sys-color-border);
 }
 
-/* 各ペインの表示中タブだけを横に並べ、それ以外は同じ縦のレーンに置く。 */
+/* 変更理由: 設定ボタンをスクロール領域の外に置き、タブ数にかかわらず最下部へ固定する。
+   通常は本体ラッパーを素通しにし、複数ペインのときだけスクロールするグリッドにする。 */
+.tab-bar__body {
+  display: contents;
+}
+
 .tab-bar--vertical.tab-bar--multiple-panes {
+  overflow: hidden;
+}
+
+/* 各ペインの表示中タブだけを横に並べ、それ以外は同じ縦のレーンに置く。 */
+.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__body {
   display: grid;
+  flex: 1 1 0;
+  min-height: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-auto-rows: min-content;
   align-content: start;
@@ -434,14 +446,6 @@
 .tab-bar--vertical.tab-bar--multiple-panes .tab-bar__resize-handle {
   /* 縦スクロール領域の外側へはみ出すと横方向にもスクロール幅が生じる。 */
   right: 0;
-}
-
-.tab-bar--vertical.tab-bar--multiple-panes .tab-bar__footer {
-  /* 2ペインのグリッドでも区切り線をバー全幅に広げ、スクロール中も操作できるようにする。 */
-  grid-column: 1 / -1;
-  position: sticky;
-  bottom: 0;
-  background: var(--sys-color-tab-strip);
 }
 
 .tab-bar--multiple-panes .tab-bar__vertical-header {
