@@ -25,7 +25,10 @@ export function useQuickAccessFilterToolbar({
   setSearchQuery,
 }: UseQuickAccessFilterToolbarParams): UseQuickAccessFilterToolbarResult {
   const { window: viewWindow } = useViewSurface();
-  const [isFilterOpen, setIsFilterOpen] = useState(() => searchQuery.trim().length > 0);
+  const [isFilterToolbarOpen, setIsFilterOpen] = useState(() => searchQuery.trim().length > 0);
+  // 変更理由: 検索語が入っているあいだは絞り込み中だと分かるよう、バーを常に表示する。
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const isFilterOpen = isFilterToolbarOpen || hasSearchQuery;
   const openedByWheelRef = useRef(false);
 
   const closeFilterToolbar = useCallback(() => {
@@ -96,7 +99,7 @@ export function useQuickAccessFilterToolbar({
       const scrollContainer =
         table.closest<HTMLElement>(".simple-data-table__scroller") ?? tabPanel;
 
-      if (event.deltaY > 0 && isFilterOpen && openedByWheelRef.current) {
+      if (event.deltaY > 0 && isFilterOpen && openedByWheelRef.current && !hasSearchQuery) {
         // 変更理由: ホイールで開いた直後の逆方向操作はフィルタを戻す意図として消費し、
         // 同じ一操作で一覧までスクロールして位置が飛ぶのを防ぐ。
         event.preventDefault();
@@ -126,7 +129,7 @@ export function useQuickAccessFilterToolbar({
     return () => {
       viewWindow.removeEventListener("wheel", handleWheel);
     };
-  }, [isActive, isFilterOpen, isWheelToggleEnabled, tabId, viewWindow]);
+  }, [hasSearchQuery, isActive, isFilterOpen, isWheelToggleEnabled, tabId, viewWindow]);
 
   return {
     isFilterOpen,

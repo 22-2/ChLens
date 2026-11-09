@@ -46,7 +46,10 @@ export function useThreadTopBar({
   );
   // 変更理由: 設定がONのときは状態に関係なく常に開いた表示にし、閉じる操作を効かせない。
   // 状態は保持したままなので、設定をOFFに戻したときは直前の表示状態へ戻る。
-  const activeTopBar: TopBarMode = pinnedOpen ? "filter" : selectedTopBar;
+  // 変更理由: 検索語やフィルタが有効なあいだは、絞り込み中であることを見失わないよう、
+  // 閉じる操作の状態に関係なくバーを表示し続ける。
+  const isFilterActive = searchQuery.trim() !== "" || hasActiveFilter;
+  const activeTopBar: TopBarMode = pinnedOpen || isFilterActive ? "filter" : selectedTopBar;
   const [searchFocusKey, setSearchFocusKey] = useState(0);
   // 検索語やフィルタが無く、設定で開いた直後に限りフォーカスを移さない。
   const [suppressInitialFocus, setSuppressInitialFocus] = useState(
@@ -88,12 +91,13 @@ export function useThreadTopBar({
 
   const closeTopBarPreservingFilter = useCallback(() => {
     // 変更理由: ホイールで閉じる操作はツールバーの表示だけを戻し、
-    // 入力済みの検索語による絞り込みは維持する。常時表示のときは閉じない。
-    if (pinnedOpen) {
+    // 入力済みの検索語による絞り込みは維持する。常時表示のときと、
+    // 絞り込みが有効でバーを表示し続けるときは閉じない。
+    if (pinnedOpen || isFilterActive) {
       return;
     }
     setActiveTopBar("none");
-  }, [pinnedOpen, setActiveTopBar]);
+  }, [isFilterActive, pinnedOpen, setActiveTopBar]);
 
   const toggleFilterToolbar = useCallback(() => {
     // 検索欄を同じツールバーへ統合したので、フィルタ操作は表示状態だけを反転させる。

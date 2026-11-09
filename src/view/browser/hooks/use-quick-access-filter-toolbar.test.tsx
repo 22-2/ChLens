@@ -182,7 +182,7 @@ describe("クイックアクセスのフィルタ開閉", () => {
     expect(nextWheelEvent.defaultPrevented).toBe(false);
   });
 
-  it("ホイールで閉じても適用中の絞り込みは維持する", () => {
+  it("絞り込み中はホイールで戻してもフィルタバーを表示し続ける", () => {
     render(<QuickAccessFilterHarness />);
 
     const panel = screen.getByTestId("panel");
@@ -190,7 +190,7 @@ describe("クイックアクセスのフィルタ開閉", () => {
     fireEvent.change(screen.getByLabelText("search query"), { target: { value: "検索語" } });
     fireEvent.wheel(panel, { deltaY: 48 });
 
-    expect(screen.getByTestId("filter-state")).toHaveTextContent("closed");
+    expect(screen.getByTestId("filter-state")).toHaveTextContent("open");
     expect(screen.getByLabelText("search query")).toHaveValue("検索語");
   });
 

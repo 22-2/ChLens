@@ -176,14 +176,14 @@ describe("useThreadTopBar", () => {
     expect(toggleFilterForTab(window, "tab-1")).toBe("target-unavailable");
   });
 
-  it("ホイール相当のクローズでは検索語による絞り込みを維持する", () => {
+  it("絞り込み中はホイール相当のクローズでもフィルタバーを表示し続ける", () => {
     render(<TopBarHarness />);
 
     fireEvent.click(screen.getByRole("button", { name: "open filter" }));
     fireEvent.click(screen.getByRole("button", { name: "set query" }));
     fireEvent.click(screen.getByRole("button", { name: "wheel close" }));
 
-    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("none");
+    expect(screen.getByTestId("active-top-bar")).toHaveTextContent("filter");
     expect(screen.getByTestId("search-query")).toHaveTextContent("abc");
   });
 
