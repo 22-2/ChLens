@@ -112,7 +112,7 @@ describe("移動してもタブの状態が失われない", () => {
     );
   });
 
-  it("固定タブは移動先でも固定タブの並びに入る", () => {
+  it("固定タブは別のペインへ移せない", () => {
     const state: TabStoreState = {
       ...createState(),
       panes: [
@@ -121,11 +121,12 @@ describe("移動してもタブの状態が失われない", () => {
       ],
       windows: [{ id: "main", kind: "main", activePaneId: "main-1" }],
     };
-    const next = tabReducer(state, {
-      type: "TRANSFER_TAB",
-      tabId: "pin",
-      to: { windowId: "main", paneId: "main-2", index: 99 },
-    });
-    expect(next.panes[1]!.tabs.map((t) => t.id)).toEqual(["p2", "pin", "c"]);
+    expect(
+      tabReducer(state, {
+        type: "TRANSFER_TAB",
+        tabId: "pin",
+        to: { windowId: "main", paneId: "main-2", index: 99 },
+      }),
+    ).toBe(state);
   });
 });

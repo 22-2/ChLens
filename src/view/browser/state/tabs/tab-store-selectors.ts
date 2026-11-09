@@ -100,7 +100,8 @@ function listOrderedPanes(state: TabStoreState): Pane[] {
  */
 export function listTabMoveDestinations(state: TabStoreState, tabId: string): TabMoveDestination[] {
   const source = state.panes.find((pane) => pane.tabs.some((tab) => tab.id === tabId));
-  if (!source) return [];
+  // 固定タブは既存のペインや窓へ移動できないため、移動先を出さない。
+  if (!source || source.tabs.find((tab) => tab.id === tabId)?.pinned) return [];
   const sourceWindowId = getPaneWindowId(source);
   const auxWindowIds = state.windows
     .filter((window) => window.kind === "aux")

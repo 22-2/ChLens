@@ -402,7 +402,13 @@ export const WindowHost: React.FC<{ children: ReactNode }> = ({ children }) => {
       const state = stateRef.current;
       const found = locate(state.panes, tabId);
       if (!found) return "ignored";
+      const isPinned = found.pane.tabs.some((tab) => tab.id === tabId && tab.pinned);
       const target = resolveDrop(tabId, screenX, screenY, originWindow, clientPoint);
+      // 変更理由: 固定タブはドラッグでペインを作るときだけ動かせる。
+      // 既存ペインへの挿入や新しい窓への切り離しは行わない。
+      if (isPinned && target?.kind !== "split-left" && target?.kind !== "split-right") {
+        return "ignored";
+      }
       if (target) {
         const to =
           target.kind === "split-left" || target.kind === "split-right"

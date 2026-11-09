@@ -116,7 +116,7 @@ describe("窓ごとのペイン", () => {
 
 describe("別窓へのタブ移動と終了", () => {
   it("タブの状態を維持して新しい窓へ移し、本窓にはホームを補う", () => {
-    const original = { ...createHomeTab("moving"), pinned: true, autoRefreshEnabled: true };
+    const original = { ...createHomeTab("moving"), autoRefreshEnabled: true };
     const state = createState([original]);
     const next = tabReducer(state, {
       type: "TRANSFER_TAB",
@@ -137,13 +137,21 @@ describe("別窓へのタブ移動と終了", () => {
   });
 
   it("別窓を閉じると固定タブも履歴に積み、本窓の選択へ戻す", () => {
-    const original = { ...createHomeTab("moving"), pinned: true };
-    const initial = createState([original]);
-    const transferred = tabReducer(initial, {
+    const plain = createHomeTab("moving");
+    const original = { ...plain, pinned: true };
+    const initial = createState([plain]);
+    const moved = tabReducer(initial, {
       type: "TRANSFER_TAB",
-      tabId: original.id,
+      tabId: plain.id,
       to: { newWindowId: "aux", newPaneId: "aux-pane" },
     });
+    // 固定タブは窓へ移せないため、別窓へ移した後で固定した状態を作る。
+    const transferred = {
+      ...moved,
+      panes: moved.panes.map((pane) =>
+        pane.id === "aux-pane" ? { ...pane, tabs: [original], activeTabId: original.id } : pane,
+      ),
+    };
     const closed = tabReducer(transferred, { type: "CLOSE_WORKSPACE_WINDOW", windowId: "aux" });
     expect(closed.windows).toHaveLength(1);
     expect(closed.panes).toHaveLength(1);
@@ -237,15 +245,13 @@ describe("タブの並べ替えとピン留め", () => {
     expect(tabReducer(state, tabActions.moveTab("missing-tab", 0))).toBe(state);
   });
 
-  it("ピン留めタブを移動しても、通常のタブの前には入らない", () => {
+  it("ピン留めタブは並べ替えできない", () => {
     const pinnedA = { ...createTabWithHistory([thread(1)]), pinned: true };
     const pinnedB = { ...createTabWithHistory([thread(2)]), pinned: true };
     const plain = createTabWithHistory([thread(3)]);
     const state = createState([pinnedA, pinnedB, plain]);
 
-    const next = tabReducer(state, tabActions.moveTab(pinnedA.id, 5));
-
-    expect(tabIdsOf(next)).toEqual([pinnedB.id, pinnedA.id, plain.id]);
+    expect(tabReducer(state, tabActions.moveTab(pinnedA.id, 5))).toBe(state);
   });
 
   it("通常のタブを移動しても、ピン留めタブより前には入らない", () => {
@@ -665,6 +671,58 @@ describe("次スレ待機の状態", () => {
 
     expect(activeTabOf(next).nextThreadWaitPageKey).toBeNull();
     expect(activeTabOf(next).autoRefreshEnabled).toBe(false);
+  });
+});
+
+describe("2ペイン時のタブ操作", () => {
+  const twoPaneState = (left: Tab[], right: Tab[]): TabStoreState => ({
+    ...createState(left),
+    panes: [
+      { id: "p1", tabs: left, activeTabId: left[0]!.id },
+      { id: "p2", tabs: right, activeTabId: right[0]!.id },
+    ],
+    activePaneId: "p1",
+  });
+
+  it("表示中のタブを閉じると、ペインの分割を解除して反対側の表示中タブを残す", () => {
+    const [a1, a2, b1] = ["a1", "a2", "b1"].map((id) => createHomeTab(id));
+    const next = tabReducer(twoPaneState([a1!, a2!], [b1!]), {
+      type: "CLOSE_TAB",
+      paneId: "p1",
+      tabId: "a1",
+    });
+    expect(next.panes).toHaveLength(1);
+    expect(next.panes[0]!.activeTabId).toBe("b1");
+    expect(next.panes[0]!.tabs.map((tab) => tab.id).sort()).toEqual(["a2", "b1"]);
+    expect(next.closedTabs.map((tab) => tab.id)).toEqual(["a1"]);
+  });
+
+  it("固定タブは入れ替えも右ペインへの移動もできない", () => {
+    const [a1, b1] = ["a1", "b1"].map((id) => ({ ...createHomeTab(id), pinned: true }));
+    const state = twoPaneState([a1!], [b1!]);
+    expect(tabReducer(state, { type: "SWAP_PANE_TABS" })).toBe(state);
+    expect(tabReducer(state, { type: "OPEN_IN_RIGHT_PANE", paneId: "p1", tabId: "a1" })).toBe(
+      state,
+    );
+  });
+
+  it("固定タブはドラッグによる新しいペインの作成だけ行える", () => {
+    const pin = { ...createHomeTab("pin"), pinned: true };
+    const initial = createState([pin, createHomeTab("plain")]);
+    const paneId = initial.panes[0]!.id;
+    const split = tabReducer(initial, {
+      type: "TRANSFER_TAB",
+      tabId: "pin",
+      to: { windowId: "main", splitPaneId: paneId, newPaneId: "new", side: "right" },
+    });
+    expect(split.panes.map((pane) => pane.id)).toEqual([paneId, "new"]);
+    expect(split.panes[1]!.tabs.map((tab) => tab.id)).toEqual(["pin"]);
+    const window = tabReducer(initial, {
+      type: "TRANSFER_TAB",
+      tabId: "pin",
+      to: { newWindowId: "aux", newPaneId: "aux-pane" },
+    });
+    expect(window).toBe(initial);
   });
 });
 

@@ -39,6 +39,9 @@ export function transferTab(
   const source = state.panes.find((pane) => pane.tabs.some((tab) => tab.id === action.tabId));
   const tab = source?.tabs.find((candidate) => candidate.id === action.tabId);
   if (!source || !tab) return state;
+  // 変更理由: 固定タブは既存のペイン・窓へ移さない。新しいペインを作る分割だけ、
+  // ドラッグ操作で行えるようにする。
+  if (tab.pinned && !splitting) return state;
   if (!splitting && destination?.id === source.id) return state;
   const sourceWindowId = getPaneWindowId(source);
   const remaining = source.tabs.filter((candidate) => candidate.id !== tab.id);

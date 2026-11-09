@@ -131,6 +131,10 @@ function reduceTabState(state: TabStoreState, action: ScopedTabAction): TabStore
       if (!dragTab) {
         return state;
       }
+      // 変更理由: 固定タブは並べ替えない。
+      if (dragTab.pinned) {
+        return state;
+      }
 
       // 変更理由: @dnd-kit の OptimisticSortingPlugin はドラッグ中に DOM を物理的に
       // 並べ替え、最終位置を source.sortable.index（グループ内インデックス）として確定する。

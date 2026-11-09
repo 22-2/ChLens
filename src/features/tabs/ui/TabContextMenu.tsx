@@ -1,4 +1,14 @@
-import { ExternalLink, List, MoveRight, Pin, PinOff, RotateCcw, Trash2, X } from "lucide-react";
+import {
+  Columns2,
+  ExternalLink,
+  List,
+  MoveRight,
+  Pin,
+  PinOff,
+  RotateCcw,
+  Trash2,
+  X,
+} from "lucide-react";
 import React, { useCallback, useMemo } from "react";
 import {
   readBookmarkStatus,
@@ -21,9 +31,11 @@ import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import {
+  getWindowPanes,
   hasClosableOtherTabs,
   hasClosableRightTabs,
   listTabMoveDestinations,
+  MAX_PANES,
 } from "src/view/browser/state/tabs/tab-store-selectors";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { useWindowId } from "src/view/browser/state/tabs/use-window-scope";
@@ -105,17 +117,7 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         icon: <X />,
         onSelect: () => runTabCommand(TAB_COMMAND_IDS.CLOSE_RIGHT),
       },
-      {
-        id: "reopen",
-        label: "閉じたタブを開く",
-        disabled: !hasClosedTabs,
-        // 変更理由: 外部ブラウザで開く操作と混同しないよう、タブ復元らしい巻き戻しアイコンにする。
-        icon: <RotateCcw />,
-        onSelect: () => dispatch(tabActions.reopenClosedTab()),
-      },
-      ...closedTabMenuItems(state.closedTabs, dispatch),
-      // 履歴があるときは closedTabMenuItems が末尾に区切り線を出す。なければここで区切る。
-      ...(state.closedTabs.length === 0 ? [{ id: "sep-1", separator: true }] : []),
+      { id: "sep-1", separator: true },
     ];
 
     // 一括終了も対象タブの所有ペインに限定し、固定タブは既存コマンドの規則で残す。
@@ -124,6 +126,8 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
     result.push({
       id: "detach-tab",
       label: tabIsDetached ? "メイン画面へ戻す" : "別窓で開く",
+      // 固定タブは移動しない。
+      disabled: tab.pinned,
       icon: <ExternalLink />,
       onSelect: () => {
         if (tabIsDetached) {
@@ -160,6 +164,38 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
         onSelect: () => dispatch({ ...tabActions.closePane(), paneId: owner.id }),
       });
       result.push({ id: "sep-close-pane", separator: true });
+    }
+
+    // 変更理由: ドラッグしなくても、対象タブと直下のタブを左右に並べて見比べられるようにする。
+    // 分割できる余地があり、直下にタブがあるときだけ表示する。
+    const ownerIndex = owner?.tabs.findIndex((item) => item.id === tab.id) ?? -1;
+    const belowTab = owner && ownerIndex >= 0 ? owner.tabs[ownerIndex + 1] : undefined;
+    if (
+      owner &&
+      belowTab &&
+      stateRef?.current &&
+      getWindowPanes(stateRef.current, ownerWindowId).length < MAX_PANES
+    ) {
+      result.push({
+        id: "split-with-below",
+        label: "下のタブと2ペイン表示",
+        icon: <Columns2 />,
+        onSelect: () => {
+          // 左ペインに対象タブを表示してから、直下のタブを右の新しいペインへ移す。
+          dispatch(tabActions.selectTab(tab.id));
+          dispatch({
+            type: "TRANSFER_TAB",
+            tabId: belowTab.id,
+            to: {
+              windowId: ownerWindowId,
+              splitPaneId: owner.id,
+              newPaneId: crypto.randomUUID(),
+              side: "right",
+            },
+          });
+        },
+      });
+      result.push({ id: "sep-split-below", separator: true });
     }
 
     for (const destination of moveDestinations) {
@@ -242,6 +278,18 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
           pinned: !tab.pinned,
         }),
     });
+    // 変更理由: 閉じたタブの復元は使用頻度が低く、閉じる操作の近くに履歴が並ぶと誤操作しやすいため、
+    // 「閉じたタブを開く」とその履歴はメニューの最下部へまとめる。
+    result.push({ id: "sep-reopen", separator: true });
+    result.push({
+      id: "reopen",
+      label: "閉じたタブを開く",
+      disabled: !hasClosedTabs,
+      // 変更理由: 外部ブラウザで開く操作と混同しないよう、タブ復元らしい巻き戻しアイコンにする。
+      icon: <RotateCcw />,
+      onSelect: () => dispatch(tabActions.reopenClosedTab()),
+    });
+    result.push(...closedTabMenuItems(state.closedTabs, dispatch));
     return result;
   }, [
     currentPage,

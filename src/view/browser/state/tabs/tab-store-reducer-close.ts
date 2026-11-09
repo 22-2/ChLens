@@ -1,5 +1,6 @@
 import { resetAutoRefreshState } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { createTab } from "src/view/browser/state/tabs/tab-store-new-tab";
+import { closePane } from "src/view/browser/state/tabs/tab-store-reducer-panes";
 import { closeWorkspaceWindow } from "src/view/browser/state/tabs/tab-store-reducer-windows";
 import {
   canCloseTab,
@@ -74,6 +75,30 @@ export function closeTab(
   }
   const closingIndex = pane.tabs.indexOf(target);
   const remaining = pane.tabs.filter((t) => t.id !== action.tabId);
+  // 変更理由: 2ペインで表示中のタブを閉じると、同じペインに別のタブが入れ替わって表示され続ける。
+  // 分割は表示中のタブの組を見るための状態なので、片方を閉じたらペインを解除して、
+  // もう片方のペインの表示中タブを残す。別窓の終了処理では元窓のレイアウトを変えない。
+  if (
+    windowPanes.length > 1 &&
+    action.tabId === pane.activeTabId &&
+    !action.preserveActivePane &&
+    !action.replaceLastTab
+  ) {
+    const otherPane = windowPanes.find((candidate) => candidate.id !== paneId)!;
+    const closedState = updatePane(state, paneId, (p) => ({
+      ...p,
+      tabs: remaining,
+      activeTabId: remaining[Math.min(closingIndex, remaining.length - 1)].id,
+    }));
+    return closePane(
+      {
+        ...closedState,
+        activePaneId: otherPane.id,
+        closedTabs: pushClosed(state.closedTabs, target),
+      },
+      { type: TAB_ACTION_TYPES.CLOSE_PANE, paneId },
+    );
+  }
   let newActiveId = pane.activeTabId;
   if (action.tabId === pane.activeTabId) {
     const newIndex = Math.min(closingIndex, remaining.length - 1);

@@ -88,6 +88,8 @@ export function swapPaneTabs(
   const targetTab = targetPane.tabs.find((tab) => tab.id === targetPane.activeTabId);
   // ホームも他のページと同様にペイン間で交換する。
   if (!sourceTab || !targetTab) return state;
+  // 変更理由: 固定タブは位置を動かさない。どちらかが固定なら入れ替えない。
+  if (sourceTab.pinned || targetTab.pinned) return state;
 
   const replaceActiveTab = (pane: Pane, currentTabId: string, replacement: Tab): Pane => ({
     ...pane,
@@ -130,6 +132,8 @@ export function openInRightPane(
   const movingTab = sourcePane.tabs.find((t) => t.id === action.tabId);
   // ホームも通常タブとして移動し、空になったペインは更新時に補う。
   if (!movingTab) return state;
+  // 変更理由: 固定タブは別ペインへ移さず、元の位置に留める。
+  if (movingTab.pinned) return state;
   const windowPanes = getWindowPanes(state, getPaneWindowId(sourcePane));
   const rightPane = windowPanes[windowPanes.findIndex((pane) => pane.id === sourcePaneId) + 1];
   if (!rightPane && !canOpenInRightPane(state, sourcePaneId)) return state;

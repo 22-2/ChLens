@@ -27,6 +27,5 @@ export function closedTabMenuItems(
       icon: <History />,
       onSelect: () => dispatch(tabActions.reopenClosedTab(tab.id)),
     })),
-    { id: "closed-tabs-sep-end", separator: true },
   ];
 }
