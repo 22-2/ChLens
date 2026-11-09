@@ -52,6 +52,7 @@ describe("popup graph", () => {
     expect(isPopupDescendantOf(popups, "root", "root")).toBe(false);
     expect(isPopupDescendantOf(popups, "broken", "root")).toBe(false);
     expect(isPopupDescendantOf(popups, "cycle-a", "cycle-b")).toBe(true);
+    expect(isPopupDescendantOf(popups, "cycle-a", "cycle-a")).toBe(false);
     expect(isPopupDescendantOf(popups, "cycle-a", "missing-ancestor")).toBe(false);
   });
 

@@ -45,6 +45,8 @@ export function isPopupDescendantOf(
   popupId: string,
   ancestorId: string,
 ): boolean {
+  // 循環参照があっても、自分自身は子孫として扱わない。
+  if (popupId === ancestorId) return false;
   const popupsById = new Map(popups.map((item) => [item.id, item]));
   const visitedIds = new Set<string>();
   let currentId = popupsById.get(popupId)?.parentId;
