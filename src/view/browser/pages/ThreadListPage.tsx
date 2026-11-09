@@ -45,7 +45,6 @@ import {
   useSelectedThreadListSnapshot,
 } from "src/features/thread-list/ui/thread-list-snapshots";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
 import {
@@ -407,12 +406,6 @@ export const ThreadListPage: React.FC<Props> = ({
       }
       onDoubleClick={handleDoubleClick}
     >
-      <OperationStatusItem
-        id={`thread-list-fetch-status-${tabId}`}
-        message={loading && isAutoRefreshing ? "スレ一覧を読み込み中..." : null}
-        busy={loading && isAutoRefreshing}
-        visible={isActive}
-      />
       <WheelScrollIndicator
         {...wheelPagination}
         threshold={WHEEL_THRESHOLD}

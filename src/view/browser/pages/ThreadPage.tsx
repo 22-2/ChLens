@@ -61,7 +61,6 @@ import { ThreadScrollFloatingActions } from "src/features/thread/ui/ThreadScroll
 import { VirtualResList } from "src/features/thread/ui/VirtualResList";
 import { WheelScrollIndicator } from "src/features/thread/ui/WheelScrollIndicator";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
-import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
@@ -833,14 +832,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div ref={setThreadRoot} className="thread-page" onDoubleClick={handleDoubleClick}>
-      {/* 本文を残す再取得でも進捗を示し、非表示タブの通信状況は表示中のステータスへ混ぜない。 */}
-      <OperationStatusItem
-        id={`thread-fetch-status-${tabId}`}
-
-        message={loading ? "スレッドを読み込み中..." : null}
-        busy={loading}
-        visible={isActive}
-      />
       {pendingAutoNextThreadMove ? (
         <NextThreadSearchDialog
           state={{
