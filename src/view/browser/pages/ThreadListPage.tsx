@@ -29,10 +29,8 @@ import {
   createHighlightDividerStyle,
   type DisplayThread,
   getThreadListCache,
-  getThreadUnreadCount,
   isSortColumn,
   isSortDirection,
-  isThreadVisited,
   readThreadListSortPreference,
   setThreadListCache,
   THREAD_LIST_COLUMN_ORDER_STORAGE_KEY,
@@ -58,14 +56,20 @@ import { deleteThreadLogAndHistory } from "src/view/browser/commands/thread-log-
 import { ContextMenuNavigationActions } from "src/view/browser/components/ContextMenuNavigationActions";
 import { OperationStatusItem } from "src/view/browser/components/OperationStatusItem";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import {
-  type DataTableSection,
-  SimpleDataTable,
-} from "src/view/browser/components/SimpleDataTable";
+import { SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
 import {
   getThreadListPageCountKey,
   usePageCountStatus,
 } from "src/view/browser/hooks/use-page-count-status";
+import {
+  buildDisplayThreads,
+  buildThreadSections,
+  countThreadListFlags,
+  filterVisibleThreads,
+  getThreadRowClassName,
+  nextSortPreference,
+  resolveSortPreference,
+} from "src/view/browser/pages/thread-list/thread-list-display";
 import { useThreadListData } from "src/view/browser/pages/thread-list/use-thread-list-data";
 import { useThreadListReadStateSync } from "src/view/browser/pages/thread-list/use-thread-list-read-state-sync";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
@@ -86,12 +90,9 @@ import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/uti
 import { isPageRefreshable } from "src/view/browser/utils/refreshable-pages";
 import { SCOPED_SETTINGS_CONFIG_KEY } from "src/view/browser/utils/scoped-settings";
 import {
-  compileSearch,
   DEFAULT_SEARCH_OPTIONS,
-  matcherMatches,
   type SearchOptions,
 } from "src/view/browser/utils/search-normalize";
-import { buildDemotedThreadSections } from "src/view/browser/utils/thread-list-demoted-sections";
 import { ThreadListView } from "src/view/shared/ThreadListView";
 
 const logger = createLogger("view/browser");
@@ -240,22 +241,9 @@ export const ThreadListPage: React.FC<Props> = ({
   const [isDocumentVisible, setIsDocumentVisible] = useState(
     viewDocument.visibilityState === "visible",
   );
-  const [sortPreference, setSortPreference] = useState<ThreadListSortPreference>(() => {
-    const column = persistedSortColumn;
-    if (column === null) {
-      return {
-        column: null,
-        direction: persistedSortDirection === "desc" ? "desc" : "asc",
-      };
-    }
-    if (typeof column === "string" && isSortColumn(column)) {
-      return {
-        column,
-        direction: persistedSortDirection === "desc" ? "desc" : "asc",
-      };
-    }
-    return readThreadListSortPreference(page.boardUrl);
-  });
+  const [sortPreference, setSortPreference] = useState<ThreadListSortPreference>(() =>
+    resolveSortPreference(persistedSortColumn, persistedSortDirection, page.boardUrl),
+  );
   const [searchQuery, setSearchQuery] = useState(() => persistedSearchQuery ?? "");
   // 切り替えは検索欄の使い方の好みに近いため、板を移っても引き継ぎ、タブの復元時に戻す。
   const [searchOptions, setSearchOptions] = useState<SearchOptions>(() => ({
@@ -306,25 +294,16 @@ export const ThreadListPage: React.FC<Props> = ({
     previousBoardUrlRef.current = page.boardUrl;
     // 板切り替え直後は、復元前のローカル状態を新しい板へ保存しない。
     skipViewStateUpdateRef.current = true;
-    const column = persistedSortColumn;
-    const nextSortPreference: ThreadListSortPreference =
-      column === null
-        ? {
-            column: null,
-            direction: persistedSortDirection === "desc" ? "desc" : "asc",
-          }
-        : typeof column === "string" && isSortColumn(column)
-          ? {
-              column,
-              direction: persistedSortDirection === "desc" ? "desc" : "asc",
-            }
-          : readThreadListSortPreference(page.boardUrl);
-
+    const restoredSortPreference = resolveSortPreference(
+      persistedSortColumn,
+      persistedSortDirection,
+      page.boardUrl,
+    );
     setSortPreference((previous) =>
-      previous.column === nextSortPreference.column &&
-      previous.direction === nextSortPreference.direction
+      previous.column === restoredSortPreference.column &&
+      previous.direction === restoredSortPreference.direction
         ? previous
-        : nextSortPreference,
+        : restoredSortPreference,
     );
     setSearchQuery(persistedSearchQuery ?? "");
   }, [page.boardUrl, persistedSearchQuery, persistedSortColumn, persistedSortDirection]);
@@ -481,27 +460,7 @@ export const ThreadListPage: React.FC<Props> = ({
   // }, []);
 
   const handleSort = useCallback((column: ThreadListSortColumn) => {
-    setSortPreference((prev) => {
-      if (prev.column !== column) {
-        return {
-          column,
-          direction: "asc",
-        };
-      }
-
-      if (prev.direction === "asc") {
-        return {
-          column,
-          direction: "desc",
-        };
-      }
-
-      // 3状態ソート: 昇順 → 降順 → デフォルト(未ソート)
-      return {
-        column: null,
-        direction: "asc",
-      };
-    });
+    setSortPreference((previous) => nextSortPreference(previous, column));
   }, []);
 
   // ソート・検索フィルタ適用後のスレッド一覧
@@ -509,62 +468,15 @@ export const ThreadListPage: React.FC<Props> = ({
     // 変更理由: ブックマークは一覧取得とは別に更新されるため、revision を明示的に
     // 参照して、このメモ化結果だけを再計算すれば星表示を同期できるようにする。
     void bookmarkRevision;
-    const now = selectedSnapshot?.last_updated ?? Date.now();
-    let list = threads.map((t, i) => ({
-      thread: t,
-      originalIndex: i + 1,
-      isBookmarked: readBookmarkStatus(t.url),
-      unreadCount: getThreadUnreadCount(t),
-      heat: parseFloat(calcHeat(now, t.createdAt, t.resCount)),
-      highlightQuery: searchQuery,
-      highlightOptions: searchOptions,
-    }));
-
-    // テキスト検索フィルタ
-    if (searchQuery) {
-      // 正規表現が不正な間は matcher が無く、絞り込まない（入力欄が不正を示す）。
-      const { matcher } = compileSearch(searchQuery.trim(), searchOptions);
-      list = list.filter(({ thread }) => matcherMatches(matcher, thread.title));
-    }
-
-    // sortColumn が null の間は取得順を維持し、デフォルト状態へ戻せるようにする。
-    if (sortColumn) {
-      list.sort((a, b) => {
-        let cmp = 0;
-        switch (sortColumn) {
-          case "num":
-            cmp = a.originalIndex - b.originalIndex;
-            break;
-          case "title":
-            cmp = a.thread.title.localeCompare(b.thread.title, "ja");
-            break;
-          case "resCount":
-            cmp = a.thread.resCount - b.thread.resCount;
-            break;
-          case "unreadCount":
-            cmp = a.unreadCount - b.unreadCount;
-            break;
-          case "heat":
-            cmp = a.heat - b.heat;
-            break;
-          case "createdAt":
-            cmp = a.thread.createdAt - b.thread.createdAt;
-            break;
-        }
-        return sortDirection === "asc" ? cmp : -cmp;
-      });
-    }
-
-    return list;
-  }, [
-    bookmarkRevision,
-    threads,
-    sortColumn,
-    sortDirection,
-    searchOptions,
-    searchQuery,
-    selectedSnapshot,
-  ]);
+    return buildDisplayThreads({
+      threads,
+      now: selectedSnapshot?.last_updated ?? Date.now(),
+      searchQuery,
+      searchOptions,
+      sort: sortPreference,
+      isBookmarked: readBookmarkStatus,
+    });
+  }, [bookmarkRevision, threads, sortPreference, searchOptions, searchQuery, selectedSnapshot]);
 
   const handleThreadClick = useCallback(
     ({ thread }: DisplayThread) => {
@@ -679,16 +591,12 @@ export const ThreadListPage: React.FC<Props> = ({
     />
   ) : null;
 
-  const threadListNgCount = useMemo(
-    () => threads.filter((thread) => thread.ng != null || thread.demoted != null).length,
-    [threads],
-  );
-  const threadListHighlightCount = useMemo(
-    () => threads.filter((thread) => thread.highlight != null).length,
+  const { ngCount: threadListNgCount, highlightCount: threadListHighlightCount } = useMemo(
+    () => countThreadListFlags(threads),
     [threads],
   );
   const visibleDisplayThreads = useMemo(
-    () => displayThreads.filter(({ thread }) => thread.ng == null || isNgTemporarilyDisabled),
+    () => filterVisibleThreads(displayThreads, isNgTemporarilyDisabled),
     [displayThreads, isNgTemporarilyDisabled],
   );
 
@@ -702,54 +610,10 @@ export const ThreadListPage: React.FC<Props> = ({
     return () => setPageCount(pageCountKey, null);
   }, [loading, pageCountKey, setPageCount, threads.length, visibleDisplayThreads.length]);
 
-  const threadSections = useMemo<DataTableSection<DisplayThread>[]>(() => {
-    const highlightGroups = new Map<
-      string,
-      { label: string; color?: string; order: number; rows: DisplayThread[] }
-    >();
-    for (const item of visibleDisplayThreads) {
-      const result = item.thread.highlight;
-      if (!result) continue;
-      // 変更理由: labelやcolorが同じでも、別のDSLルールなら独立したセクションとして扱う。
-      const key =
-        result.ruleIndex != null
-          ? `rule-${result.ruleIndex}`
-          : `legacy-${result.name ?? ""}-${result.params?.label ?? ""}-${result.params?.bgColor ?? ""}`;
-      const existing = highlightGroups.get(key);
-      if (existing) {
-        existing.rows.push(item);
-      } else {
-        highlightGroups.set(key, {
-          label: result.params?.label || result.name || "注目スレ",
-          color: result.params?.bgColor,
-          order: result.ruleIndex ?? Number.MAX_SAFE_INTEGER,
-          rows: [item],
-        });
-      }
-    }
-    const normal = visibleDisplayThreads.filter(
-      ({ thread }) =>
-        thread.highlight == null && (isNgTemporarilyDisabled || thread.demoted == null),
-    );
-    const demoted = isNgTemporarilyDisabled
-      ? []
-      : visibleDisplayThreads.filter(({ thread }) => thread.demoted != null);
-
-    return [
-      ...Array.from(highlightGroups.entries())
-        .sort(([, left], [, right]) => left.order - right.order)
-        .map(([key, group]) => ({
-          key: `highlight-${key}`,
-          label: `${group.label}（${group.rows.length}）`,
-          rows: group.rows,
-          ...(group.color ? { dividerStyle: createHighlightDividerStyle(group.color) } : {}),
-        })),
-      ...(normal.length > 0
-        ? [{ key: "normal", label: `スレ一覧（${normal.length}）`, rows: normal }]
-        : []),
-      ...buildDemotedThreadSections(demoted, (item) => item.thread.demoted),
-    ];
-  }, [isNgTemporarilyDisabled, visibleDisplayThreads]);
+  const threadSections = useMemo(
+    () => buildThreadSections(visibleDisplayThreads, isNgTemporarilyDisabled),
+    [isNgTemporarilyDisabled, visibleDisplayThreads],
+  );
 
   useEffect(() => {
     // 件数表示は検索/ソートの表示結果ではなく、取得済み一覧全体を基準にする。
@@ -836,13 +700,7 @@ export const ThreadListPage: React.FC<Props> = ({
         sections={threadSections}
         getRowKey={({ thread }) => thread.url}
         getRowTooltip={({ thread }) => thread.title}
-        getRowClassName={({ thread }) => {
-          const classes: string[] = [];
-          if (isThreadVisited(thread)) classes.push("thread-list__row--visited");
-          if (thread.demoted && !isNgTemporarilyDisabled) classes.push("thread-list__row--ng");
-          if (thread.highlight) classes.push("thread-list__row--highlight");
-          return classes.join(" ") || undefined;
-        }}
+        getRowClassName={({ thread }) => getThreadRowClassName(thread, isNgTemporarilyDisabled)}
         onRowClick={handleThreadClick}
         onRowMiddleClick={openThreadInNewTab}
         onRowContextMenu={({ thread }, x, y) => setContextMenuState({ x, y, thread })}
