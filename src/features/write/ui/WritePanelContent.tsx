@@ -6,15 +6,7 @@ import {
   MoreVertical,
   Settings,
 } from "lucide-react";
-import React, {
-  useCallback,
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { extractUrlsFromMessage, toViewerImageUrl } from "src/core/util/url-media";
 import { useMediaViewerStore } from "src/features/media/browser/use-media-viewer-store";
@@ -23,6 +15,8 @@ import { ExternalImage } from "src/features/media/ui/ExternalImage";
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { useImgurUpload } from "src/features/write/browser/use-imgur-upload";
 import { useWrite } from "src/features/write/browser/use-write";
+import { useWriteEditorFocus } from "src/features/write/browser/use-write-editor-focus";
+import { useWriteInsertRequest } from "src/features/write/browser/use-write-insert-request";
 import { useWritePreSubmitWarnings } from "src/features/write/browser/use-write-pre-submit-warnings";
 import {
   useWriteDraft,
@@ -30,6 +24,7 @@ import {
   useWriteSessionControls,
   type WriteEditorPlace,
 } from "src/features/write/browser/use-write-session";
+import { useWriteTextareaAutosize } from "src/features/write/browser/use-write-textarea-autosize";
 import { WriteAuthDialog } from "src/features/write/ui/WriteAuthDialog";
 import { WriteEditorElsewhere } from "src/features/write/ui/WriteEditorElsewhere";
 import { WriteSettingsDialog } from "src/features/write/ui/WriteSettingsDialog";
@@ -41,7 +36,6 @@ import { useToast } from "src/view/browser/hooks/use-toast";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { Popover } from "src/view/browser/ui/Popover";
-import { getResizeObserverForWindow } from "src/view/browser/utils/dom";
 import { sanitizeUrlsInText } from "src/view/browser/utils/url-tracking";
 import { bindWriteConfirmationFrame } from "src/view/browser/utils/write-confirmation";
 
@@ -112,7 +106,6 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     [setDraft, threadUrl],
   );
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const appliedInsertRequestIdRef = useRef<number | null>(null);
   const writePanelFocusRequestId = bottomPanel?.writePanelFocusRequestId ?? null;
   const imgurFileInputRef = useRef<HTMLInputElement | null>(null);
   const [dialogPortalContainer, setDialogPortalContainer] = useState<HTMLElement | null>(
@@ -149,31 +142,7 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     tabId: targets.find((target) => target.threadUrl === threadUrl)?.tabId,
   });
 
-  // 入力・折り返しに合わせて1行から20行まで伸ばし、それ以上は欄内をスクロールする。
-  useLayoutEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const resize = () => {
-      const style = viewWindow.getComputedStyle(textarea);
-      const lineHeight =
-        Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.4;
-      const padding = Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom);
-      const border =
-        Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth);
-      // 測定のために一瞬縮めると親の行ごとパネルが縮み、スレの追従が外れるため、行の高さを保つ。
-      const row = textarea.parentElement;
-      if (row) row.style.minHeight = `${row.offsetHeight}px`;
-      textarea.style.height = "0px";
-      textarea.style.height = `${Math.min(textarea.scrollHeight + border, lineHeight * 20 + padding + border)}px`;
-      if (row) row.style.minHeight = "";
-    };
-    resize();
-    // 横幅が変わって改行位置だけが変わる場合も高さを更新する。
-    const ResizeObserverConstructor = getResizeObserverForWindow(viewWindow);
-    const observer = ResizeObserverConstructor ? new ResizeObserverConstructor(resize) : null;
-    if (textarea.parentElement) observer?.observe(textarea.parentElement);
-    return () => observer?.disconnect();
-  }, [message, status, viewWindow]);
+  useWriteTextareaAutosize(textareaRef, viewWindow, { message, status });
 
   const isSubmitting = status === "submitting";
   // 変更理由: 投稿前の本文から画像だけを既存ビューアへ渡し、URLの復元や
@@ -199,51 +168,19 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
   const isConfirmationSubmitting = confirmationPage != null && isSubmitting;
   const writeErrorMessage = statusText || "書き込みに失敗しました";
 
-  useEffect(() => {
-    const requestId = isInPane ? writePanelFocusRequestId : editorFocusRequestId;
-    if (requestId == null) {
-      return;
-    }
-
-    const frameId = viewWindow.requestAnimationFrame(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) {
-        return;
-      }
-
-      // パネルを開いた描画が終わってからフォーカスし、ユーザーがすぐ入力できる状態にする。
-      textarea.focus({ preventScroll: true });
-      if (isInPane) {
-        bottomPanel?.consumeWritePanelFocusRequest(requestId);
-      } else {
-        consumeEditorFocusRequest(requestId);
-      }
-    });
-
-    return () => viewWindow.cancelAnimationFrame(frameId);
-  }, [
-    bottomPanel,
-    consumeEditorFocusRequest,
-    isInPane,
+  useWriteEditorFocus({
+    textareaRef,
     viewWindow,
+    viewDocument,
+    isInPane,
+    bottomPanel,
     writePanelFocusRequestId,
     editorFocusRequestId,
-  ]);
-  const wasSubmittingRef = useRef(false);
-  useEffect(() => {
-    const wasSubmitting = wasSubmittingRef.current;
-    wasSubmittingRef.current = isSubmitting;
-    if (!wasSubmitting || isSubmitting) return;
-
-    // 変更理由: 送信中は本文欄がdisabledになりフォーカスが外れるため、成功・失敗のどちらでも
-    // 送信後にそのまま続けて入力できるよう戻す。エラーダイアログが出るときはそちらを優先する。
-    const textarea = textareaRef.current;
-    if (!textarea || (status === "error" && authCodeUrl != null)) return;
-    const activeElement = viewDocument.activeElement;
-    // 送信ボタンの無効化でフォーカスが残る場合もあるため、別の入力欄へ移していたときだけ奪わない。
-    if (activeElement?.matches("input, textarea, select") && activeElement !== textarea) return;
-    textarea.focus({ preventScroll: true });
-  }, [authCodeUrl, isSubmitting, status, viewDocument]);
+    consumeEditorFocusRequest,
+    isSubmitting,
+    status,
+    authCodeUrl,
+  });
   const uploadStatusIsVisible =
     isImgurUploading ||
     imgurUploadStatus?.type === "success" ||
@@ -350,52 +287,16 @@ const WritePanelEditor: React.FC<WritePanelContentProps & { surface: WriteSurfac
     setIsErrorDialogOpen(status === "error" && authCodeUrl != null);
   }, [authCodeUrl, status]);
 
-  useEffect(() => {
-    if (
-      !writePanelInsertRequest ||
-      appliedInsertRequestIdRef.current === writePanelInsertRequest.id
-    ) {
-      return;
-    }
-
-    const requestThreadUrl = writePanelInsertRequest.threadUrl;
-    if (
-      requestThreadUrl &&
-      requestThreadUrl !== threadUrl &&
-      targets.some((target) => target.threadUrl === requestThreadUrl)
-    ) {
-      // 返信操作が発生したペインと書き込み欄の表示場所が異なる場合でも、
-      // 先に対象スレを選び、次の描画でそのスレの下書きへ追記する。
-      selectThread(requestThreadUrl);
-      return;
-    }
-
-    const separator = message === "" || message.endsWith("\n") ? "" : "\n";
-    // 変更理由: 右クリックからの返信文は現在の下書きへ自然に追記し、
-    // 毎回置き換えるより「開いて貼り付けた」感覚に近い挙動へ揃える。
-    const nextMessage = `${message}${separator}${writePanelInsertRequest.text}`;
-    // 下書きの更新と要求の消費は別々に再描画されるため、同じ要求の再実行を防ぐ。
-    appliedInsertRequestIdRef.current = writePanelInsertRequest.id;
-    setMessage(nextMessage);
-    clearWritePanelInsertRequest(writePanelInsertRequest.id);
-
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-
-    textarea.focus();
-    const caretPosition = nextMessage.length;
-    textarea.setSelectionRange(caretPosition, caretPosition);
-  }, [
-    clearWritePanelInsertRequest,
-    message,
-    selectThread,
-    setMessage,
-    targets,
+  useWriteInsertRequest({
+    textareaRef,
+    request: writePanelInsertRequest,
+    clearRequest: clearWritePanelInsertRequest,
     threadUrl,
-    writePanelInsertRequest,
-  ]);
+    targets,
+    selectThread,
+    message,
+    setMessage,
+  });
 
   const handleTextareaKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
