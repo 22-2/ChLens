@@ -34,10 +34,11 @@
   white-space: nowrap;
 }
 
-/* メニューを開いている対象のレス（またはその要約）。枠だけで示し、レイアウトは動かさない。 */
-.res-menu-target {
-  outline: 1px solid var(--sys-color-accent);
-  outline-offset: -1px;
+/* メニューを開いている対象のレス（またはその要約）。メニュー項目のホバーと同じ色で全体を塗り、
+   レイアウトは動かさない。 */
+/* 変更理由: レスやプレビューが自身の背景を持つため、読み込み順に左右されないよう詳細度を上げる。 */
+.res-menu-target.res-menu-target {
+  background: var(--sys-color-surface-muted);
 }
 
 /* 変更理由: Windows 11風のコンテキストメニューでは頻繁な操作をラベルから分離し、
