@@ -6,6 +6,8 @@ import type { IRes } from "src/service-container";
 /** 返信先レスの表示用要約。 */
 export interface ReplyPreview {
   num: number;
+  /** 右クリックメニューなど、返信先レスそのものを対象にする操作で使う。 */
+  res: IRes;
   /** アンカーを除いた本文の要約。本文が画像だけなら空文字になる。 */
   text: string;
   hasImage: boolean;
@@ -37,5 +39,5 @@ export function buildReplyPreview(
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, PREVIEW_MAX_LENGTH);
-  return { num: target.num, text, hasImage };
+  return { num: target.num, res: target, text, hasImage };
 }

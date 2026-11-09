@@ -92,6 +92,7 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
     onAnchorHover,
     onAnchorLeave,
     onContextMenu,
+    onReplyPreviewClick,
     isOwn,
     isReplyToOwn,
     isImageBlurred,
@@ -325,7 +326,16 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
             </span>
           )}
         </header>
-        {replyPreview ? <ResReplyPreview preview={replyPreview} onClick={onAnchorClick} /> : null}
+        {replyPreview ? (
+          <ResReplyPreview
+            preview={replyPreview}
+            onClick={(resNum, event) =>
+              // ポップアップを開く処理がない呼び出し元では、従来どおり返信先へ移動する。
+              onReplyPreviewClick ? onReplyPreviewClick(resNum, event) : onAnchorClick(resNum)
+            }
+            onContextMenu={onContextMenu}
+          />
+        ) : null}
         <ResBody
           messageHtml={resolvedMedia.messageHtml}
           imageUrls={onToggleImage ? imageUrls : undefined}
@@ -390,6 +400,8 @@ export interface ResItemProps {
   onAnchorHover: (targets: number[], anchorRect: DOMRect, label: string, depth: number) => void;
   onAnchorLeave: (fromDepth: number) => void;
   onContextMenu: (e: React.MouseEvent, res: IRes) => void;
+  /** 返信先プレビューのクリック。返信先レスのポップアップを開く。 */
+  onReplyPreviewClick?: (resNum: number, e: React.MouseEvent) => void;
   isOwn: boolean;
   isReplyToOwn: boolean;
   isImageBlurred: boolean;

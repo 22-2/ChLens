@@ -121,6 +121,18 @@ export function useResInteractionHandlers({
     [hideAnchorPreviewImmediately, closeNonContextPopups, addTreePopup, openDirectReplyPopup],
   );
 
+  // 返信先プレビューのクリック → 返信先レスをポップアップ表示
+  const handleReplyPreviewClick = useCallback(
+    (resNum: number, e: MouseEvent) => {
+      const target = indexes.resMap.get(resNum);
+      if (!target) return;
+      hideAnchorPreviewImmediately();
+      closeNonContextPopups();
+      addIdPopup(e.clientX, e.clientY, [target], `>>${resNum}`);
+    },
+    [addIdPopup, closeNonContextPopups, hideAnchorPreviewImmediately, indexes.resMap],
+  );
+
   const closePopup = useCallback(() => {
     hideAnchorPreviewImmediately();
     closeNonContextPopups();
@@ -179,6 +191,7 @@ export function useResInteractionHandlers({
     handleIdClick,
     handlePopupIdClick,
     handleRepClick,
+    handleReplyPreviewClick,
     closePopup,
     handleRepClickInPopup,
     handleOpenRootReplyTreeInPopup,

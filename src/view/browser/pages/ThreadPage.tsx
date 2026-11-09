@@ -638,6 +638,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     handleIdClick,
     handlePopupIdClick,
     handleRepClick,
+    handleReplyPreviewClick,
     closePopup,
     handleRepClickInPopup,
     handleOpenRootReplyTreeInPopup,
@@ -810,6 +811,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         onAnchorHover={showAnchorPreview}
         onAnchorLeave={hideAnchorPreview}
         onContextMenu={openThreadResContextMenu}
+        onReplyPreviewClick={handleReplyPreviewClick}
         isOwn={ownResNums.has(res.num)}
         isReplyToOwn={replyToOwnResNums.has(res.num)}
         isImageBlurred={blurredResNums.has(res.num)}
