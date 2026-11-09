@@ -59,55 +59,6 @@
   color: var(--sys-color-text-muted);
 }
 
-.bookmark-root-dialog__close,
-.bookmark-root-dialog__button {
-  border: 1px solid var(--sys-color-border);
-  border-radius: var(--sys-radius-pill);
-  background: var(--sys-color-surface);
-  color: var(--sys-color-text);
-  font: inherit;
-  cursor: pointer;
-  transition:
-    background var(--sys-duration-normal) var(--sys-ease-out),
-    border-color var(--sys-duration-normal) var(--sys-ease-out),
-    color var(--sys-duration-normal) var(--sys-ease-out);
-}
-
-.bookmark-root-dialog__close {
-  padding: var(--sys-space-3) var(--sys-space-4);
-  font-size: var(--sys-font-size-sm);
-  font-weight: 600;
-}
-
-.bookmark-root-dialog__close:hover,
-.bookmark-root-dialog__button:hover:not(:disabled) {
-  background: var(--sys-color-surface-muted);
-}
-
-.bookmark-root-dialog__button {
-  min-width: 112px;
-  padding: var(--sys-space-5) var(--sys-space-8);
-  font-size: var(--sys-font-size-md);
-  font-weight: 700;
-}
-
-.bookmark-root-dialog__button--primary {
-  border-color: var(--sys-color-accent);
-  background: var(--sys-color-accent);
-  color: var(--sys-color-accent-fg);
-}
-
-.bookmark-root-dialog__button--primary:hover:not(:disabled) {
-  background: var(--sys-color-accent-hover);
-  border-color: var(--sys-color-accent-hover);
-}
-
-.bookmark-root-dialog__button:disabled,
-.bookmark-root-dialog__close:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
 .bookmark-root-dialog__error {
   padding: var(--sys-space-6) var(--sys-space-7);
   border: 1px solid var(--sys-color-error);
@@ -132,13 +83,6 @@
   align-items: center;
   justify-content: center;
   gap: var(--sys-space-4);
-}
-
-.bookmark-root-dialog__button--loading {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sys-space-3);
 }
 
 .thread-ng-dialog__panel {

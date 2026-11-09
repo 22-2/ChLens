@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { container } from "src/service-container/index";
+import { Button } from "src/view/browser/ui/Button";
 import { Spinner } from "src/view/browser/ui/Spinner";
 import {
   type BookmarkFolderNode,
@@ -170,9 +171,9 @@ export const BookmarkRootSelectorDialog: React.FC = () => {
             <h2 id="bookmark-root-dialog-title">ブックマーク保存先を選択</h2>
           </div>
           {!isRequiredPrompt && (
-            <button type="button" className="bookmark-root-dialog__close" onClick={handleClose}>
+            <Button variant="subtle" onClick={handleClose}>
               閉じる
-            </button>
+            </Button>
           )}
         </div>
 
@@ -204,32 +205,18 @@ export const BookmarkRootSelectorDialog: React.FC = () => {
 
         <div className="bookmark-root-dialog__actions">
           {!isRequiredPrompt && (
-            <button
-              type="button"
-              className="bookmark-root-dialog__button"
-              onClick={handleClose}
-              disabled={saving}
-            >
+            <Button variant="subtle" onClick={handleClose} disabled={saving}>
               キャンセル
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
-            className={`bookmark-root-dialog__button bookmark-root-dialog__button--primary${
-              saving ? " bookmark-root-dialog__button--loading" : ""
-            }`}
+          <Button
+            variant="default"
             onClick={handleSave}
-            disabled={!selectedId || loading || saving}
+            disabled={!selectedId || loading}
+            loading={saving}
           >
-            {saving ? (
-              <>
-                <Spinner size="xs" aria-label="保存中" />
-                <span>保存中...</span>
-              </>
-            ) : (
-              "決定"
-            )}
-          </button>
+            {saving ? "保存中..." : "決定"}
+          </Button>
         </div>
       </div>
     </div>
