@@ -1,5 +1,5 @@
 import { validateRuleDsl } from "@chlen/chlib";
-import { Archive, Bug, Eye, Image, ShieldAlert } from "lucide-react";
+import { Archive, Bug, Eye, Image, PenLine, ShieldAlert } from "lucide-react";
 import { DEFAULT_CONFIG } from "src/app/config-defaults";
 import { isTauriRuntime } from "src/app/platform/runtime";
 import { MANUAL_IMAGE_LOADING_CONFIG_KEY } from "src/features/media/domain/media-settings";
@@ -305,21 +305,6 @@ const ALL_SETTINGS_SECTIONS = [
           "標準は精度と追従性のバランスを取り、積極はスレタイの変化を広く許容します。どちらも別板や古いスレには移動しません。",
         options: AUTO_NEXT_THREAD_MODE_OPTIONS,
       },
-      {
-        kind: "boolean",
-        key: "write_sanitize_urls_on_paste",
-        ...WRITE_SETTING_COPY.write_sanitize_urls_on_paste,
-      },
-      {
-        kind: "boolean",
-        key: "write_submit_ctrl_enter",
-        ...WRITE_SETTING_COPY.write_submit_ctrl_enter,
-      },
-      {
-        kind: "boolean",
-        key: "write_pre_submit_warnings",
-        ...WRITE_SETTING_COPY.write_pre_submit_warnings,
-      },
       // 変更理由: スレ本文中のリンクを制御するため、一般設定からスレ設定へ移す。
       {
         kind: "divider",
@@ -343,6 +328,30 @@ const ALL_SETTINGS_SECTIONS = [
         label: "サイトの設定を開く",
       },
     },
+  ),
+  // 変更理由: 書き込みの送信や貼り付けの設定は自動次スレ移動と関係がないため、スレ設定から分けて探しやすくする。
+  defineSection(
+    "write",
+    "書き込み",
+    "書き込み欄の送信方法や、貼り付け・送信前の確認を調整します。",
+    <PenLine size={20} />,
+    [
+      {
+        kind: "boolean",
+        key: "write_sanitize_urls_on_paste",
+        ...WRITE_SETTING_COPY.write_sanitize_urls_on_paste,
+      },
+      {
+        kind: "boolean",
+        key: "write_submit_ctrl_enter",
+        ...WRITE_SETTING_COPY.write_submit_ctrl_enter,
+      },
+      {
+        kind: "boolean",
+        key: "write_pre_submit_warnings",
+        ...WRITE_SETTING_COPY.write_pre_submit_warnings,
+      },
+    ],
   ),
   // 変更理由: ドメイン共通から各板への継承は通常の全体設定フォームとは異なるため、
   // 専用パネルへ閉じ込めて項目追加時のフォーム分岐を増やさない。
@@ -568,6 +577,7 @@ const SETTINGS_SECTION_GROUP_OF = {
   thread: "browsing",
   overlay: "browsing",
   ng: "browsing",
+  write: "browsing",
   data: "manage",
   debug: "manage",
 } as const satisfies Record<SettingsSectionId, SettingsSectionGroupId>;

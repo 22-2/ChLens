@@ -181,12 +181,18 @@ describe("設定セクションの実行環境フィルター", () => {
     expect(readAllSettings().ng.display_ng).toBe("hard-ng");
   });
 
-  it("書き込みの確認とCtrl+Enter投稿を、板ごとではなくスレの全体設定に置く", () => {
-    const thread = getSettingsSections(false).find((section) => section.id === "thread");
-    const keys = thread?.fields.map((field) => ("key" in field ? field.key : field.id));
+  it("書き込みの確認とCtrl+Enter投稿を、スレではなく書き込みカテゴリに置く", () => {
+    const sections = getSettingsSections(false);
+    const thread = sections.find((section) => section.id === "thread");
+    const write = sections.find((section) => section.id === "write");
+    const keys = write?.fields.map((field) => ("key" in field ? field.key : field.id));
 
     expect(keys).toContain("write_submit_ctrl_enter");
     expect(keys).toContain("write_pre_submit_warnings");
+    expect(write?.title).toBe("書き込み");
+    expect(thread?.fields.some((field) => "key" in field && field.key.startsWith("write_"))).toBe(
+      false,
+    );
   });
 
   it("板設定のタブをサイトと呼び、タブバーの板と同じアイコンにする", () => {
@@ -313,7 +319,7 @@ describe("設定項目の置き場所", () => {
       thread?.fields.some(
         (field) => "key" in field && field.key === "write_sanitize_urls_on_paste",
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(thread?.relatedSection?.id).toBe("site-board");
     expect(
       thread?.fields.some((field) => "key" in field && field.key === "confirm_external_links"),
@@ -351,6 +357,7 @@ describe("設定カテゴリの見出しごとのまとめ", () => {
       "一般",
       "表示",
       "スレ",
+      "書き込み",
       "サイト",
       "画像",
       "NG",

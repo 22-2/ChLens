@@ -103,6 +103,7 @@ export type SettingsSectionId =
   | "display"
   | "images"
   | "thread"
+  | "write"
   | "site-board"
   | "overlay"
   | "ng"
