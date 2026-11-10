@@ -28,6 +28,12 @@
   pointer-events: none;
 }
 
+/* 下部パネルの操作や入力欄を覆わないよう、パネル表示中はバーの行を確保する。 */
+.pane-column > .bottom-panel ~ .status-bar {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .pane-column > .status-bar .status-bar__item {
   pointer-events: auto;
 }
@@ -48,6 +54,25 @@
 
 .pane-column > .status-bar--waiting .status-bar__group--right {
   background: var(--sys-color-status-waiting-bg);
+}
+
+/* パネル表示中は状態色をバー全体に広げ、浮いた項目用の枠を外す。 */
+.pane-column > .bottom-panel ~ .status-bar {
+  background: var(--sys-color-tab-strip);
+}
+
+.pane-column > .bottom-panel ~ .status-bar--active {
+  background: var(--sys-color-status-active-bg);
+}
+
+.pane-column > .bottom-panel ~ .status-bar--waiting {
+  background: var(--sys-color-status-waiting-bg);
+}
+
+.pane-column > .bottom-panel ~ .status-bar .status-bar__group--right {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 /* 変更理由: 待機は通知と同じ色にして、自動更新中の青と取り違えないようにする。 */
