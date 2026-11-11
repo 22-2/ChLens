@@ -133,12 +133,12 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
           .join(" ")}
         onContextMenu={(e) => {
           if (!onContextMenu) return;
+          const target = getEventTargetElement(e.target, viewWindow);
           if (
-            getEventTargetElement(e.target, viewWindow)?.closest(
-              "a, .res__thumb, .res__media-embed",
-            )
+            !target?.closest("a.anchor_id") &&
+            target?.closest("a, .res__thumb, .res__media-embed")
           ) {
-            // popup 内でもリンク/画像の右クリックは既定メニューを優先する。
+            // 本文中のIDもヘッダーと同じレスメニューへ渡し、他のリンクや画像は専用の動作に任せる。
             return;
           }
           e.preventDefault();

@@ -336,6 +336,45 @@ describe("ResItem", () => {
     expect(screen.getByRole("menuitem", { name: "ビューアで開く" })).toBeInTheDocument();
   });
 
+  it("本文のID右クリックはヘッダーと同じレスメニューを開く", () => {
+    const onContextMenu = vi.fn((event: React.MouseEvent, _res: IRes) => event.preventDefault());
+    const res = { ...BASE_RES, id: "HEADER" };
+    const { container } = render(
+      <ResItem
+        res={res}
+        idPos={0}
+        idCount={0}
+        repCount={0}
+        isOwn={false}
+        isReplyToOwn={false}
+        isImageBlurred={false}
+        imageBlurRadius={4}
+        miniAa={false}
+        messageProtocol="https:"
+        onIdClick={() => {}}
+        onRepClick={() => {}}
+        onUrlClick={() => true}
+        onUrlContextMenu={() => true}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={onContextMenu}
+      />,
+    );
+    const body = container.querySelector(".res__body")!;
+    body.insertAdjacentHTML("beforeend", '<a class="anchor_id"><span>ID:OTHER</span></a>');
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    act(() => {
+      container
+        .querySelector(".res__id")!
+        .dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+      body.querySelector(".anchor_id span")!.dispatchEvent(event);
+    });
+    expect(onContextMenu).toHaveBeenCalledTimes(2);
+    expect(onContextMenu.mock.calls.map((call) => call[1])).toEqual([res, res]);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
   it("状態クラスはNG、自分、自分宛て返信の優先順位で解決する", () => {
     const { container, rerender } = render(
       <ResItem

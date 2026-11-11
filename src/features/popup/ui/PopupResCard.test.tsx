@@ -401,6 +401,37 @@ describe("PopupResCard", () => {
     expect(screen.getByRole("menuitem", { name: "ビューアで開く" })).toBeInTheDocument();
   });
 
+  it("ポップアップ本文のID右クリックはヘッダーと同じレスメニューを開く", () => {
+    const onContextMenu = vi.fn((_event: React.MouseEvent, _res: IRes) => {});
+    const res = { ...BASE_RES, id: "HEADER" };
+    const { container } = render(
+      <PopupResCard
+        res={res}
+        messageProtocol="https:"
+        anchorPreviewDepth={0}
+        onUrlClick={() => {}}
+        onUrlContextMenu={() => {}}
+        onIdLinkClick={() => {}}
+        onAnchorClick={() => {}}
+        onAnchorHover={() => {}}
+        onAnchorLeave={() => {}}
+        onContextMenu={onContextMenu}
+      />,
+    );
+    const body = container.querySelector(".res__body")!;
+    body.insertAdjacentHTML("beforeend", '<a class="anchor_id"><span>ID:OTHER</span></a>');
+    const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+    act(() => {
+      container
+        .querySelector(".res__id")!
+        .dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+      body.querySelector(".anchor_id span")!.dispatchEvent(event);
+    });
+    expect(onContextMenu).toHaveBeenCalledTimes(2);
+    expect(onContextMenu.mock.calls.map((call) => call[1])).toEqual([res, res]);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
   it.each([
     { name: "起点が自分自身なら出さない", root: 10, displayed: undefined, visible: false },
     { name: "表示中のツリーと同じ起点なら出さない", root: 3, displayed: 3, visible: false },

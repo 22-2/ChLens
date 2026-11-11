@@ -256,8 +256,11 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         }}
         onContextMenu={(e) => {
           const target = getEventTargetElement(e.target, viewWindow);
-          if (target?.closest("a, .res__link, .res__thumb, .res__media-embed")) {
-            // リンクや画像の右クリックはブラウザ既定メニューへ委譲する。
+          if (
+            !target?.closest("a.anchor_id") &&
+            target?.closest("a, .res__link, .res__thumb, .res__media-embed")
+          ) {
+            // 本文中のIDはヘッダーと同じレスメニューへ渡し、他のリンクや画像は専用の動作に任せる。
             return;
           }
           onContextMenu(e, res);
