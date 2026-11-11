@@ -14,6 +14,7 @@ export interface FloatingPopupProps {
   className: string;
   x: number;
   y: number;
+  aboveY?: number;
   zIndex?: CSSProperties["zIndex"];
   popupId?: string;
   isPopupDescendantOf?: (popupId: string, ancestorId: string) => boolean;
@@ -39,6 +40,7 @@ export const FloatingPopup: React.FC<FloatingPopupProps> = ({
   className,
   x,
   y,
+  aboveY,
   zIndex,
   popupId,
   isPopupDescendantOf,
@@ -78,7 +80,7 @@ export const FloatingPopup: React.FC<FloatingPopupProps> = ({
   });
 
   // position:absolute のpopupをviewport内へ収める補正は全popupで共通化する。
-  useAdjustOverflow(popupRef);
+  useAdjustOverflow(popupRef, 8, aboveY);
 
   const content =
     typeof children === "function" ? children({ armMouseLeaveCloseSuppression }) : children;

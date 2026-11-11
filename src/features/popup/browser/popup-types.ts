@@ -11,6 +11,8 @@ export interface PopupItemBase {
   type: PopupItemType;
   x: number;
   y: number;
+  /** 下側に収まらない場合、操作位置の上側へ配置するための下端座標。 */
+  aboveY?: number;
   z: number;
   parentId?: string;
 }

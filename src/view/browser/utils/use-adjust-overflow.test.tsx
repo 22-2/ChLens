@@ -86,6 +86,28 @@ describe("useAdjustOverflow", () => {
     vi.restoreAllMocks();
   });
 
+  it.each([
+    { aboveY: 620, expected: "520px" },
+    { aboveY: 50, expected: "612px" },
+  ])("下に収まらないとき上側の余裕に応じて配置する: $aboveY", ({ aboveY, expected }) => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 720 });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.dataset.testid === "popup") {
+        return { left: 100, top: 650, right: 300, bottom: 750, width: 200, height: 100 } as DOMRect;
+      }
+      return { left: 0, top: 0, width: 0, height: 0 } as DOMRect;
+    });
+    function Harness() {
+      const ref = useRef<HTMLDivElement>(null);
+      useAdjustOverflow(ref, 8, aboveY);
+      return <div ref={ref} data-testid="popup" style={{ left: 100, top: 650 }} />;
+    }
+    expect((render(<Harness />).getByTestId("popup") as HTMLElement).style.top).toBe(expected);
+  });
+
   it("下端補正でステータスバー領域を避ける", () => {
     Object.defineProperty(window, "innerWidth", {
       configurable: true,

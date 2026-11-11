@@ -125,6 +125,7 @@ export const AnchorPreviewEntry: React.FC<{
       depth={payload.depth}
       x={item.x}
       y={item.y}
+      aboveY={item.aboveY}
       items={payload.items}
       label={payload.label}
       messageProtocol={context.messageProtocol}
@@ -189,6 +190,7 @@ export const IdPopupEntry: React.FC<{
     <ResPopup
       x={item.x}
       y={item.y}
+      aboveY={item.aboveY}
       title={payload.title}
       items={payload.items}
       messageProtocol={context.messageProtocol}
@@ -261,6 +263,7 @@ export const TreePopupEntry: React.FC<{
     <ReplyTreePopup
       x={item.x}
       y={item.y}
+      aboveY={item.aboveY}
       resNum={payload.resNum}
       focusResNum={payload.focusResNum}
       repIndex={context.repIndex}

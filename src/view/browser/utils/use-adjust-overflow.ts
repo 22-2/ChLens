@@ -45,6 +45,7 @@ function adjustPopupOverflow(
   margin: number,
   targetWindow: Window,
   targetDocument: Document,
+  aboveY?: number,
 ): void {
   const rect = el.getBoundingClientRect();
   // 変更理由: 非表示タブ（display:none）の中では寸法も座標も0になり、左上にはみ出していると誤判定して
@@ -64,7 +65,12 @@ function adjustPopupOverflow(
     nextLeft = viewport.right - rect.width - margin - cb.left;
   }
   if (rect.bottom > viewport.bottom - margin) {
-    nextTop = viewport.bottom - rect.height - margin - cb.top;
+    // 操作位置を覆わず上側に収まるときは反転し、無理なら表示領域内へ寄せる。
+    const flippedTop = aboveY == null ? undefined : aboveY - rect.height;
+    nextTop =
+      flippedTop != null && flippedTop >= viewport.top + margin
+        ? flippedTop - cb.top
+        : Math.max(viewport.top + margin, viewport.bottom - rect.height - margin) - cb.top;
   }
   if (rect.left < viewport.left + margin) {
     nextLeft = viewport.left + margin - cb.left;
@@ -95,7 +101,11 @@ function adjustPopupOverflow(
  * 返信ツリーの追加レスや画像の読み込みで高さが変わるポップアップは、マウント時だけの
  * 補正では画面下端・ステータスバー領域へはみ出すため、全ポップアップで変化を監視する。
  */
-export function useAdjustOverflow(ref: RefObject<HTMLElement | null>, margin = 8): void {
+export function useAdjustOverflow(
+  ref: RefObject<HTMLElement | null>,
+  margin = 8,
+  aboveY?: number,
+): void {
   // 変更理由: useEffectは描画後に遅れて走るため、はみ出した位置が一瞬見えてから補正されてガクッと動いていた。
   // useLayoutEffectで描画直後の初回補正を画面に出る前に終わらせる。
   useLayoutEffect(() => {
@@ -104,7 +114,7 @@ export function useAdjustOverflow(ref: RefObject<HTMLElement | null>, margin = 8
 
     const targetDocument = el.ownerDocument;
     const targetWindow = targetDocument.defaultView ?? globalThis.window;
-    const adjust = () => adjustPopupOverflow(el, margin, targetWindow, targetDocument);
+    const adjust = () => adjustPopupOverflow(el, margin, targetWindow, targetDocument, aboveY);
     adjust();
 
     targetWindow.addEventListener("resize", adjust);
@@ -122,5 +132,5 @@ export function useAdjustOverflow(ref: RefObject<HTMLElement | null>, margin = 8
       targetWindow.removeEventListener("resize", adjust);
       resizeObserver?.disconnect();
     };
-  }, [margin, ref]);
+  }, [aboveY, margin, ref]);
 }

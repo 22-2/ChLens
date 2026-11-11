@@ -17,7 +17,10 @@ import { usePopupCore } from "src/features/popup/browser/use-popup-core";
 import type { IRes } from "src/service-container/interfaces";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import { ANCHOR_PREVIEW_HIDE_DELAY_MS } from "src/view/browser/utils/constants";
+import {
+  ANCHOR_PREVIEW_HIDE_DELAY_MS,
+  ANCHOR_PREVIEW_OFFSET,
+} from "src/view/browser/utils/constants";
 import { POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY } from "src/view/browser/utils/popup-settings";
 import { getPopupViewportBounds } from "src/view/browser/utils/use-adjust-overflow";
 
@@ -244,6 +247,9 @@ export function useThreadPopupManager({
         type: "anchor",
         x,
         y,
+        aboveY:
+          (Number.isFinite(anchorRect.top) ? anchorRect.top : anchorRect.bottom) -
+          ANCHOR_PREVIEW_OFFSET,
         payload: { items, label, depth, pinned: false },
         parentId,
       });
@@ -273,6 +279,7 @@ export function useThreadPopupManager({
         type: "tree",
         x,
         y,
+        aboveY: clientY - ANCHOR_PREVIEW_OFFSET,
         payload: { resNum, anchorPreviewDepth, pinned: false, focusResNum },
         parentId,
       });
@@ -308,6 +315,7 @@ export function useThreadPopupManager({
         type: "id",
         x,
         y,
+        aboveY: clientY - ANCHOR_PREVIEW_OFFSET,
         // IDポップアップも返信ツリーと同じく、明示的に固定状態を持たせる。
         payload: { items, title, pinned: false },
         parentId,

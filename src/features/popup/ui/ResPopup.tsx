@@ -65,6 +65,7 @@ function PopupResponseList({
 export const ResPopup: React.FC<{
   x: number;
   y: number;
+  aboveY?: number;
   title: string;
   items: IRes[];
   messageProtocol: string;
@@ -114,6 +115,7 @@ export const ResPopup: React.FC<{
 }> = ({
   x,
   y,
+  aboveY,
   title,
   items,
   messageProtocol,
@@ -167,6 +169,7 @@ export const ResPopup: React.FC<{
       className="res-popup"
       x={x}
       y={y}
+      aboveY={aboveY}
       zIndex={zIndex}
       popupId={popupId}
       isPopupDescendantOf={isPopupDescendantOf}

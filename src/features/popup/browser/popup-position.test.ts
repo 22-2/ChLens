@@ -13,24 +13,14 @@ describe("ポップアップの配置", () => {
     });
   });
 
-  it("子は操作位置にかかわらず親の左上から右上に40pxずらす", () => {
+  it("子は親の右40px、操作位置の下に配置する", () => {
     expect(
       resolvePopupPosition({
         trigger: triggerFromPoint(400, 600),
-        parentRect: { left: 200, top: 300 },
+        parentRect: { left: 200 },
         viewport,
       }),
-    ).toEqual({ x: 240, y: 260 });
-  });
-
-  it("親が画面上端に近い場合は余白を確保する", () => {
-    expect(
-      resolvePopupPosition({
-        trigger: triggerFromPoint(400, 600),
-        parentRect: { left: 200, top: 30 },
-        viewport,
-      }),
-    ).toEqual({ x: 240, y: 16 });
+    ).toEqual({ x: 240, y: 612 });
   });
 
   it("画面右下では最大幅と余白を考慮して表示範囲内に収める", () => {

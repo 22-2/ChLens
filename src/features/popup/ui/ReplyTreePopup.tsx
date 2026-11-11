@@ -23,6 +23,7 @@ import type { UrlClickHandler, UrlContextMenuHandler } from "src/view/browser/ut
 export const ReplyTreePopup: React.FC<{
   x: number;
   y: number;
+  aboveY?: number;
   resNum: number;
   repIndex: Map<number, Set<number>>;
   /** ライブチャットでは入場が完了したレスだけを返信ツリーへ反映する。 */
@@ -73,6 +74,7 @@ export const ReplyTreePopup: React.FC<{
 }> = ({
   x,
   y,
+  aboveY,
   resNum,
   repIndex,
   replySourceNums,
@@ -153,6 +155,7 @@ export const ReplyTreePopup: React.FC<{
       className="res-popup"
       x={x}
       y={y}
+      aboveY={aboveY}
       zIndex={zIndex}
       popupId={popupId}
       isPopupDescendantOf={isPopupDescendantOf}

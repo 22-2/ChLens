@@ -16,6 +16,7 @@ export interface AnchorPreviewProps {
   depth: number;
   x: number;
   y: number;
+  aboveY?: number;
   items: IRes[];
   label: string;
   messageProtocol: string;
@@ -64,6 +65,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
   depth,
   x,
   y,
+  aboveY,
   items,
   label,
   messageProtocol,
@@ -129,6 +131,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       className="anchor-preview"
       x={x}
       y={y}
+      aboveY={aboveY}
       zIndex={zIndex}
       popupId={popupId}
       isPopupDescendantOf={isPopupDescendantOf}
