@@ -235,7 +235,7 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
     );
   };
 
-  it("子のID・返信・アンカーは親の右、操作位置の高さに配置する", () => {
+  it("子のID・返信・アンカーは親の右上に配置する", () => {
     const { result, unmount } = createThreadPopupHook("contract-child-position");
     let parentId = "";
     act(() => {
@@ -255,15 +255,15 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
     expect(
       children.filter((child) => child.type !== "anchor").map(({ x, y }) => ({ x, y })),
     ).toEqual([
-      { x: 240, y: 314 },
-      { x: 240, y: 315 },
+      { x: 240, y: 260 },
+      { x: 240, y: 260 },
     ]);
-    expect(children.find((child) => child.type === "anchor")).toMatchObject({ x: 240, y: 132 });
+    expect(children.find((child) => child.type === "anchor")).toMatchObject({ x: 240, y: 260 });
     parent.remove();
     unmount();
   });
 
-  it("返信ツリー内の子アンカーは表示元の横と操作位置の高さに配置する", () => {
+  it("返信ツリー内の子アンカーは表示元の右上に配置する", () => {
     const { result, unmount } = createThreadPopupHook("contract-nested-tree-position");
     act(() => {
       result.current.showAnchorPreview([1], createAnchorRect(), ">>1", 0);
@@ -281,7 +281,7 @@ describe("useThreadPopupManager Phase 0 contracts", () => {
       result.current.showAnchorPreview([3], createAnchorRect(420, 620), ">>3", 1, treeId);
     });
     const child = result.current.anchorPreviews.find((item) => item.payload.label === ">>3");
-    expect(child).toMatchObject({ parentId: treeId, x: 440, y: 632 });
+    expect(child).toMatchObject({ parentId: treeId, x: 440, y: 460 });
     expect(result.current.popups.some((item) => item.id === treeId)).toBe(true);
     tree.remove();
     unmount();
@@ -466,21 +466,18 @@ describe("ポップアップの種類によらない配置の契約", () => {
     hook.unmount();
   });
 
-  it.each(POPUP_KINDS)(
-    "$name: 長い親の下のほうから開くと、親の右・きっかけの直下に出る",
-    (kind) => {
-      const { hook, open } = setup(`contract-child-${kind.name}`);
-      let parentId = "";
-      act(() => {
-        parentId = hook.result.current.addTreePopup(1, 0, 0);
-      });
-      // 親の上端(100)ではなく、親の下のほうで触った位置(600)を基準にすることを確かめる。
-      const parent = mountParent(parentId, { left: 200, top: 100 });
-      expect(open(kind, 260, 600, parentId)).toMatchObject({ parentId, x: 240, y: 612 });
-      parent.remove();
-      hook.unmount();
-    },
-  );
+  it.each(POPUP_KINDS)("$name: 長い親の下のほうから開いても、親の右上に出る", (kind) => {
+    const { hook, open } = setup(`contract-child-${kind.name}`);
+    let parentId = "";
+    act(() => {
+      parentId = hook.result.current.addTreePopup(1, 0, 0);
+    });
+    // 操作位置ではなく、実際に表示されている親の左上を基準にする。
+    const parent = mountParent(parentId, { left: 200, top: 100 });
+    expect(open(kind, 260, 600, parentId)).toMatchObject({ parentId, x: 240, y: 60 });
+    parent.remove();
+    hook.unmount();
+  });
 
   it.each(POPUP_KINDS)("$name: 画面の右下端で開いても画面内に収める", (kind) => {
     const { hook, open } = setup(`contract-edge-${kind.name}`);
