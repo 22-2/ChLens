@@ -1,7 +1,9 @@
 /* Thread response metadata, body, and media/link-card layout. */
 .res {
-  padding: var(--sys-space-1) var(--sys-space-8) var(--sys-space-3);
+  /* 本文を追うときに隣のレスとの境目を見失わないよう、余白と控えめな区切りを設ける。 */
+  padding: var(--sys-space-4) var(--sys-space-8);
   border-inline-start: 3px solid transparent;
+  border-bottom: var(--sys-border-width-thin) solid var(--sys-color-table-row-border);
 }
 
 /*
@@ -30,8 +32,8 @@
 .res__header {
   display: flex;
   align-items: baseline;
-  gap: var(--sys-space-2);
-  font-size: var(--sys-font-size-xs);
+  gap: var(--sys-space-3);
+  font-size: var(--sys-font-size-sm);
   flex-wrap: wrap;
 }
 
@@ -111,6 +113,8 @@
 
 .res__id {
   /* A single-use ID stays quiet so metadata does not compete with the body. */
+  margin-inline-start: auto;
+  overflow-wrap: anywhere;
   color: var(--sys-color-res-id-muted);
   font-size: var(--sys-font-size-sm);
 }

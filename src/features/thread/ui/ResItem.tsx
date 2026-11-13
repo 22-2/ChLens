@@ -286,6 +286,25 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
               再非表示
             </button>
           ) : null}
+          <span className="res__date">{res.date ?? res.other}</span>
+          {repCount > 0 && (
+            <span
+              className={repClassName}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRepClick(res.num, e);
+              }}
+              onContextMenu={(e) => {
+                // 右クリックはツリーではなく、そのレスへの直接返信だけを開く操作として扱う。
+                e.preventDefault();
+                e.stopPropagation();
+                onRepClick(res.num, e);
+              }}
+            >
+              返信({repCount})
+            </span>
+          )}
+          {/* 日時や返信数を左にまとめ、IDは右端で探せるようにする。 */}
           {res.id && (
             <span
               className={`res__id${
@@ -308,24 +327,6 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                   )
                 : renderHighlightedText(res.id, searchHighlight?.id ?? null)}
               {idCount >= 2 && `(${idPos}/${idCount})`}
-            </span>
-          )}
-          <span className="res__date">{res.date ?? res.other}</span>
-          {repCount > 0 && (
-            <span
-              className={repClassName}
-              onClick={(e) => {
-                e.stopPropagation();
-                onRepClick(res.num, e);
-              }}
-              onContextMenu={(e) => {
-                // 右クリックはツリーではなく、そのレスへの直接返信だけを開く操作として扱う。
-                e.preventDefault();
-                e.stopPropagation();
-                onRepClick(res.num, e);
-              }}
-            >
-              返信({repCount})
             </span>
           )}
         </header>
