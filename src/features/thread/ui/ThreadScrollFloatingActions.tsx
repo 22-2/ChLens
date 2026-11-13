@@ -11,6 +11,7 @@ import {
   manualPauseKey,
   useManualPauseStore,
 } from "src/features/auto-refresh/browser/manual-pause-store";
+import { useThreadToolbarPosition } from "src/features/thread/browser/use-thread-toolbar-position";
 import { MINIMAP_CONTENT_GAP } from "src/features/thread/ui/thread-minimap-layout";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
@@ -108,7 +109,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
 }) => {
   const { window: viewWindow } = useViewSurface();
   const [layout, setLayout] = useState<ScrollFloatingLayout | null>(null);
-  const [position, setPosition] = useState(0.25);
+  const { position, move, commit } = useThreadToolbarPosition();
   const [toolbarHeight, setToolbarHeight] = useState(140);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startY: number; startTop: number } | null>(null);
@@ -284,9 +285,9 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
   const bottomLimit = Math.max(topLimit, layout.panelBottom - toolbarHeight - 8);
   const top = topLimit + (bottomLimit - topLimit) * position;
   const right = Math.max(layout.panelLeft + 32, layout.panelRight - layout.minimapReservation - 2);
-  const moveTo = (nextTop: number) => {
+  const moveTo = (nextTop: number, keyboard = false) => {
     const range = bottomLimit - topLimit;
-    setPosition(range > 0 ? Math.min(1, Math.max(0, (nextTop - topLimit) / range)) : 0);
+    if (range > 0) move((nextTop - topLimit) / range, keyboard);
   };
   const autoLabel = isNextThreadWaiting
     ? "次スレ待機中"
@@ -321,17 +322,21 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         }}
         onPointerUp={() => {
           dragRef.current = null;
+          commit();
         }}
         onPointerCancel={() => {
           dragRef.current = null;
+          commit();
         }}
         onLostPointerCapture={() => {
           dragRef.current = null;
+          commit();
         }}
+        onBlur={commit}
         onKeyDown={(event) => {
           if (event.key === "ArrowUp" || event.key === "ArrowDown") {
             event.preventDefault();
-            moveTo(top + (event.key === "ArrowUp" ? -20 : 20));
+            moveTo(top + (event.key === "ArrowUp" ? -20 : 20), true);
           }
         }}
       >

@@ -23,6 +23,8 @@ export const DEFAULT_CONFIG: Readonly<Record<string, string>> = {
   thread_display_mode: "normal",
   // 読み位置の復元は従来どおり自動で行い、必要な利用者だけ手動記録へ切り替える。
   thread_read_position_mode: "auto",
+  // 初回は操作バーを下寄りに置き、移動後はペインの高さに対する割合を共有する。
+  thread_toolbar_position: "0.8",
   image_blur: "on",
   image_blur_word: ".{0,5}[^ァ-ヺ^ー]グロ(?:[^ァ-ヺ^ー].{0,5}|$)|.{0,5}死ね.{0,5}",
   // 変更理由: 画像の自動取得はIP漏洩や不快な画像の即時表示につながるため、既定は手動取得にする。

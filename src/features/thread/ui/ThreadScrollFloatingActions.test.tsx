@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { useManualPauseStore } from "src/features/auto-refresh/browser/manual-pause-store";
 import { ThreadScrollFloatingActions } from "src/features/thread/ui/ThreadScrollFloatingActions";
+import { container } from "src/service-container/index";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 function createRect(): DOMRect {
@@ -25,6 +26,17 @@ describe("ThreadScrollFloatingActions", () => {
   let scrollHeight = 500;
 
   beforeEach(() => {
+    container.config = {
+      get: () => null,
+      set: vi.fn(),
+      getAll: () => ({}),
+      ready: (callback: () => void) => callback(),
+    };
+    container.message = {
+      on: vi.fn(),
+      off: vi.fn(),
+      send: vi.fn(),
+    } as unknown as typeof container.message;
     useManualPauseStore.setState({ paused: {} });
     scrollTop = 300;
     scrollHeight = 500;
