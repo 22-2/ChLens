@@ -41,8 +41,8 @@
     .number { color: var(--sys-color-res-num); font-weight: 700; }
     .name { color: var(--sys-color-success); font-weight: 600; }
     .post-id { margin-inline-start: auto; color: var(--sys-color-res-id-muted); }
-    /* 文字を足さずに単発IDを見分けられるよう、小さな輪郭だけを添える。 */
-    .post-id--single::before { content: ""; display: inline-block; width: var(--sys-space-3); height: var(--sys-space-3); margin-inline-end: var(--sys-space-3); border: var(--sys-border-width-thin) solid var(--sys-color-accent-text); transform: rotate(45deg); vertical-align: middle; }
+    /* 単発IDを文字を足さずに見分けられるよう、卵の小さな輪郭を添える。 */
+    .post-id--single::before { content: ""; display: inline-block; width: var(--sys-space-4); height: var(--sys-space-5); margin-inline-end: var(--sys-space-3); border: var(--sys-border-width-thin) solid var(--sys-color-accent-text); border-radius: 50% 50% 48% 48% / 65% 65% 35% 35%; vertical-align: middle; }
     .post-body { padding: var(--sys-space-1) 0 var(--sys-space-1) var(--sys-space-8); line-height: 1.6; }
     .manual-mark { display: none; margin-inline-start: var(--sys-space-2); padding: 0 var(--sys-space-2); color: var(--sys-color-accent-text); background: transparent; border: 0; font-size: var(--sys-font-size-xs); }
     .workspace[data-mode="manual"] .manual-mark { display: inline; }
@@ -102,7 +102,7 @@
       <button id="reset" type="button">最初に戻す</button>
     </div>
     <p id="hint" class="hint" aria-live="polite">スクロールしてから更新すると、既読の区切りが移動します。新着は架空のレスです。</p>
-    <p class="hint">IDの左の小さなひし形は、このスレで1回だけ出現したIDの見本です。</p>
+    <p class="hint">IDの左の小さな卵は、このスレで1回だけ出現したIDの見本です。</p>
     <section class="explanation" aria-label="表示の意味">
       <div><h2>ここから未読</h2><p>開いた時と更新した時の既読位置を示します。読む間は線が動きません。</p></div>
       <div><h2>END</h2><p>表示中のレスの末尾です。スレの終了やdat落ちを示すものではありません。</p></div>
