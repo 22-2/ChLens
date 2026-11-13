@@ -183,6 +183,8 @@
   --ref-board-start-title-font-size: 24px;
   /* 変更理由: 短い更新通知で本文を広く隠さないよう、通知専用の幅を定義する。 */
   --ref-toast-width: 250px;
+  /* 右クリックメニューが短い項目でも本文を広く隠さないようにする。 */
+  --ref-context-menu-min-width: 180px;
   /* 通信ステータスの表示を共通化しても、書き込み表示の幅とアイコン寸法を維持する。 */
   --ref-status-operation-max-width: min(40vw, 360px);
   --ref-status-operation-icon-size: 13px;
@@ -277,6 +279,7 @@
   --sys-rule-example-max-height: var(--ref-rule-example-max-height);
   --sys-space-0: var(--ref-space-0);
   --sys-toast-width: var(--ref-toast-width);
+  --sys-context-menu-min-width: var(--ref-context-menu-min-width);
   /* 変更理由: 書き込み欄の高さを本文に残しつつ、投稿画像を見分けられるサイズに揃える。 */
   --sys-size-write-preview-thumbnail: var(--ref-space-16);
   --sys-thread-inline-image-max-width: var(--ref-thread-inline-image-max-width);

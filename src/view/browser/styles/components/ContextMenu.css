@@ -6,7 +6,7 @@
    */
   box-sizing: border-box;
   z-index: var(--sys-z-context-menu);
-  min-width: 200px;
+  min-width: var(--sys-context-menu-min-width);
   max-width: min(420px, calc(100vw - 16px));
   max-height: min(
     calc(100dvh - 16px),
@@ -14,12 +14,12 @@
   );
   overflow-x: hidden;
   overflow-y: auto;
-  padding: var(--sys-space-2) 0;
+  padding: var(--sys-space-1) 0;
   background: var(--sys-color-surface);
   border: 1px solid var(--sys-color-border);
   border-radius: var(--sys-radius-md);
   box-shadow: var(--sys-shadow-popup);
-  font-size: var(--sys-font-size-md);
+  font-size: var(--sys-font-size-sm);
 }
 
 .context-menu__header {
@@ -28,7 +28,7 @@
 
 /* 変更理由: どのレスのメニューかを示す細い見出し。ナビゲーション操作の上に置く。 */
 .context-menu__target {
-  padding: var(--sys-space-2) var(--sys-space-5);
+  padding: var(--sys-space-1) var(--sys-space-4);
   color: var(--sys-color-text-muted);
   font-size: var(--sys-font-size-xs);
   white-space: nowrap;
@@ -46,17 +46,17 @@
 .context-menu__header-actions {
   display: flex;
   align-items: center;
-  gap: var(--sys-space-2);
-  padding: var(--sys-space-3) var(--sys-space-4);
+  gap: var(--sys-space-1);
+  padding: var(--sys-space-2) var(--sys-space-3);
 }
 
 .context-menu__header-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--sys-space-10);
-  height: var(--sys-space-10);
-  flex: 0 0 var(--sys-space-10);
+  width: var(--sys-space-9);
+  height: var(--sys-space-9);
+  flex: 0 0 var(--sys-space-9);
   border: none;
   border-radius: var(--sys-radius-sm);
   background: transparent;
@@ -67,9 +67,9 @@
 .context-menu__item {
   display: flex;
   align-items: center;
-  gap: var(--sys-space-4);
+  gap: var(--sys-space-3);
   width: 100%;
-  padding: var(--sys-space-3) var(--sys-space-8);
+  padding: var(--sys-space-2) var(--sys-space-6);
   border: none;
   background: transparent;
   color: var(--sys-color-text);
@@ -90,8 +90,8 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: var(--sys-space-8);
-  height: var(--sys-space-8);
+  width: var(--sys-space-7);
+  height: var(--sys-space-7);
   color: var(--sys-color-text-muted);
 }
 
@@ -125,6 +125,6 @@
 
 .context-menu__separator {
   height: 1px;
-  margin: var(--sys-space-2) 0;
+  margin: var(--sys-space-1) 0;
   background: var(--sys-color-tab-strip);
 }

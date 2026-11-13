@@ -28,7 +28,7 @@ export const ContextMenuNavigationActions: React.FC<ContextMenuNavigationActions
       title="戻る"
       aria-label="戻る"
     >
-      <ArrowLeft size={18} />
+      <ArrowLeft size={16} />
     </button>
     <button
       type="button"
@@ -38,7 +38,7 @@ export const ContextMenuNavigationActions: React.FC<ContextMenuNavigationActions
       title="進む"
       aria-label="進む"
     >
-      <ArrowRight size={18} />
+      <ArrowRight size={16} />
     </button>
     <button
       type="button"
@@ -48,7 +48,7 @@ export const ContextMenuNavigationActions: React.FC<ContextMenuNavigationActions
       title="更新"
       aria-label="更新"
     >
-      <RotateCw size={18} />
+      <RotateCw size={16} />
     </button>
   </div>
 );
