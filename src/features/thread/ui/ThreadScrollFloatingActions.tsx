@@ -326,13 +326,13 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
           }
         }}
       >
-        <Grip size={15} aria-hidden="true" />
+        <Grip size={13} aria-hidden="true" />
       </button>
       <button type="button" aria-label="上へジャンプ" title="上へジャンプ" onClick={scrollToTop}>
-        <ArrowUp size={17} aria-hidden="true" />
+        <ArrowUp size={15} aria-hidden="true" />
       </button>
       <button type="button" aria-label="下へジャンプ" title="下へジャンプ" onClick={scrollToBottom}>
-        <ArrowDown size={17} aria-hidden="true" />
+        <ArrowDown size={15} aria-hidden="true" />
       </button>
       {canAutoRefresh && (
         <>
@@ -353,9 +353,9 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
             }
           >
             {isAutoRefreshEnabled && !manuallyPaused ? (
-              <Pause size={17} aria-hidden="true" />
+              <Pause size={15} aria-hidden="true" />
             ) : (
-              <Play size={17} aria-hidden="true" />
+              <Play size={15} aria-hidden="true" />
             )}
           </button>
         </>

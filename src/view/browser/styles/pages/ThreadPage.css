@@ -134,8 +134,9 @@
 
 .thread-page__floating-toolbar button {
   display: grid;
-  width: var(--sys-space-12);
-  height: var(--sys-space-12);
+  /* 本文に重なる幅を抑えつつ、各操作の押せる面積を確保する。 */
+  width: var(--sys-space-11);
+  height: var(--sys-space-11);
   place-items: center;
   padding: 0;
   border: 0;
@@ -164,7 +165,7 @@
 }
 
 .thread-page__floating-toolbar .thread-page__floating-toolbar-handle {
-  height: var(--sys-space-9);
+  height: var(--sys-space-8);
   cursor: grab;
   touch-action: none;
 }
