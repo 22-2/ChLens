@@ -622,6 +622,24 @@
   height: 104px;
 }
 
+/* 変更理由: 「ぼかし中」の文字だけでは小さくて見落としやすいため、サムネイルの中央にも印を出す。 */
+.res__thumb-blur-icon {
+  position: absolute;
+  inset: 0;
+  z-index: var(--sys-z-local-raised);
+  display: grid;
+  place-items: center;
+  color: var(--sys-color-accent-fg);
+  pointer-events: none;
+}
+
+.res__thumb-blur-icon svg {
+  box-sizing: content-box;
+  padding: var(--sys-space-3);
+  border-radius: var(--sys-radius-pill);
+  background: var(--sys-color-media-badge-bg);
+}
+
 .res__thumb--blurred::after {
   content: "ぼかし中";
   position: absolute;

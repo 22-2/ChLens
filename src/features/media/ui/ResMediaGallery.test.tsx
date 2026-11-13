@@ -459,6 +459,18 @@ describe("ResMediaGallery", () => {
     expect(thumb.getAttribute("style")).toContain("--res-thumb-blur-radius: 8px");
   });
 
+  it("ぼかしているサムネの中にだけ、隠れていることを示すアイコンを出す", () => {
+    const { rerender } = render(
+      <ResMediaGallery urls={["https://example.com/image.jpg"]} onUrlClick={() => {}} isBlurred />,
+    );
+    const thumb = () => screen.getByRole("link", { name: "https://example.com/image.jpg" });
+
+    expect(thumb().querySelector(".res__thumb-blur-icon svg")).not.toBeNull();
+
+    rerender(<ResMediaGallery urls={["https://example.com/image.jpg"]} onUrlClick={() => {}} />);
+    expect(thumb().querySelector(".res__thumb-blur-icon")).toBeNull();
+  });
+
   describe("ぼかしの解除", () => {
     const firstUrl = "https://images.example.com/blurred-1.jpg";
     const secondUrl = "https://images.example.com/blurred-2.jpg";
@@ -480,6 +492,9 @@ describe("ResMediaGallery", () => {
 
       expect(getThumb(firstUrl)).not.toHaveClass("res__thumb--blurred");
       expect(getThumb(secondUrl)).toHaveClass("res__thumb--blurred");
+      // 解除した画像は隠れていないので、アイコンも外す。
+      expect(getThumb(firstUrl).querySelector(".res__thumb-blur-icon")).toBeNull();
+      expect(getThumb(secondUrl).querySelector(".res__thumb-blur-icon")).not.toBeNull();
     });
 
     it("解除した画像は類似画像NGの判定待ちでもぼかさない", () => {

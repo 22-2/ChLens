@@ -1,4 +1,4 @@
-import { AppWindow, Copy, Download, ExternalLink, Eye, Trash2 } from "lucide-react";
+import { AppWindow, Copy, Download, ExternalLink, Eye, EyeOff, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 import {
@@ -487,6 +487,13 @@ export function ResMediaGallery({
                       onLoad={requestImageHash}
                       onError={markImageUnavailable}
                     />
+                  )}
+                  {/* 隠れていることが文字だけでは目に留まりにくいため、中央のアイコンでも示す。
+                      アイコンは画像ではないので、画像だけに掛けるぼかしの影響を受けない。 */}
+                  {isThumbBlurred && (
+                    <span className="res__thumb-blur-icon" aria-hidden="true">
+                      <EyeOff size={20} />
+                    </span>
                   )}
                   {onToggleImage && expandedImageUrls?.has(item.rawUrl) && (
                     <span
