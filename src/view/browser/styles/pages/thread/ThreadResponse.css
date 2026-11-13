@@ -261,10 +261,16 @@
   margin-left: var(--sys-space-4);
 }
 
-/* IDの出現回数による色を保ち、同じ宛先への複数返信は形でも区別する。 */
+/* IDの出現回数による色を保ち、同じ宛先への複数返信は太字と印で区別する。 */
 .res__id--repeated-reply {
   font-weight: 700;
-  text-decoration: underline double;
+}
+
+/* 変更理由: 二重下線は細くて見逃しやすいため、色を継承するアイコンで連投を示す。 */
+.res__id-repeat {
+  display: inline-flex;
+  margin-inline-end: var(--sys-space-2);
+  vertical-align: middle;
 }
 
 .res__rep--link {

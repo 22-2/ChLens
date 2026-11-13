@@ -156,9 +156,12 @@ describe("ReplyTreePopup", () => {
     const { container, rerender } = render(<ReplyTreePopup {...BASE_PROPS} resMap={resMap} />);
     expect(container.querySelectorAll(".res__id--repeated-reply")).toHaveLength(2);
     expect(screen.getAllByTitle("このポップアップ内で同じレスに複数回返信したID")).toHaveLength(2);
+    // 下線ではなく、強調したIDごとに連投の印（アイコン）を付ける。
+    expect(screen.getAllByRole("img", { name: "同じレスへの連投" })).toHaveLength(2);
     // ライブチャットで入場していないレスは索引にも集計にも入れない。
     rerender(<ReplyTreePopup {...BASE_PROPS} resMap={resMap} replySourceNums={new Set([2, 4])} />);
     expect(container.querySelectorAll(".res__id--repeated-reply")).toHaveLength(0);
+    expect(screen.queryByRole("img", { name: "同じレスへの連投" })).not.toBeInTheDocument();
   });
 
   it("NGレスを強調の根拠として使わない", () => {

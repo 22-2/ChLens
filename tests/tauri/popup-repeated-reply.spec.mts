@@ -26,9 +26,11 @@ test("返信ツリーとIDポップアップで同じ宛先への複数返信ID�
   await expect(popup.locator(".res__id--repeated-reply")).toHaveCount(2);
   const emphasis = popup.locator(".res__id--repeated-reply").first();
   expect(await emphasis.evaluate((element) => getComputedStyle(element).fontWeight)).toBe("700");
-  expect(await emphasis.evaluate((element) => getComputedStyle(element).textDecorationStyle)).toBe(
-    "double",
+  // 二重下線は見逃しやすいため、下線ではなくアイコンで連投を示す。
+  expect(await emphasis.evaluate((element) => getComputedStyle(element).textDecorationLine)).toBe(
+    "none",
   );
+  await expect(emphasis.getByRole("img", { name: "同じレスへの連投" })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("repeated-reply.png") });
   await popup.getByRole("button", { name: "閉じる", exact: true }).click();
   await responses.locator('[data-res-num="2"] .res__id').click();

@@ -1,3 +1,4 @@
+import { ReplyAll } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { extractUrlsFromMessage } from "src/core/util/url-media";
 import { useImgurAlbumMedia } from "src/features/media/application/imgur-album";
@@ -187,6 +188,12 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
                   aria-label="単発ID"
                   title="単発ID（取得済みレスで1回）"
                 />
+              ) : null}
+              {/* 連投は下線では目に留まりにくいため、返信の矢印を重ねた印でIDの手前に示す。 */}
+              {isRepeatedReply ? (
+                <span className="res__id-repeat" role="img" aria-label="同じレスへの連投">
+                  <ReplyAll size={12} aria-hidden="true" />
+                </span>
               ) : null}
               {res.id}
               {idCount >= 2 && `(${idCount})`}
