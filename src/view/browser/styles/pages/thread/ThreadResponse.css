@@ -342,7 +342,7 @@
 
 .res--ng-placeholder:hover,
 .res--ng-placeholder:focus-visible {
-  background: var(--sys-color-popup-hover-bg);
+  background: var(--sys-color-response-hover);
   outline: none;
 }
 
