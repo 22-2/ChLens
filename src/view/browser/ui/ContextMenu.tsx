@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { ContextMenu as RadixContextMenu } from "radix-ui";
 import type { ReactNode, RefObject } from "react";
 import React, { useLayoutEffect, useMemo, useRef } from "react";
@@ -13,6 +14,8 @@ export interface ContextMenuItem {
   icon?: ReactNode;
   /** `icon`（チェックの印など）の次、ラベルの前に置く、項目の意味を表すアイコン。 */
   labelIcon?: ReactNode;
+  /** 関連する操作をポインター・矢印キーで開くサブメニューへまとめる。 */
+  submenu?: ContextMenuItem[];
   disabled?: boolean;
   checked?: boolean;
   danger?: boolean;
@@ -94,6 +97,79 @@ export const ContextMenu: React.FC<Props> = ({
     });
 
   const visibleItems = useMemo(() => items.filter((item) => item.separator || item.label), [items]);
+
+  function renderItems(menuItems: ContextMenuItem[]): ReactNode {
+    return menuItems.map((item) => {
+      if (item.separator) return <div key={item.id} className="context-menu__separator" />;
+
+      const button = (
+        <button
+          key={item.id}
+          className={`context-menu__item${item.danger ? " context-menu__item--danger" : ""}${
+            item.allowMultilineLabel ? " context-menu__item--multiline" : ""
+          }`}
+          disabled={item.disabled}
+          {...(item.checked === undefined
+            ? {}
+            : { role: "menuitemcheckbox", "aria-checked": item.checked })}
+          title={item.label}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            if (item.submenu && item.submenu.length > 0) return;
+            if (!item.disabled) item.onSelect?.();
+            onClose();
+          }}
+          onAuxClick={(event) => {
+            if (item.disabled || !item.onAuxSelect) return;
+            if (event.button === 1) event.preventDefault();
+            item.onAuxSelect(event.button);
+            onClose();
+          }}
+        >
+          {item.icon && <span className="context-menu__icon">{item.icon}</span>}
+          {item.labelIcon && <span className="context-menu__icon">{item.labelIcon}</span>}
+          <span
+            className={`context-menu__label${item.allowMultilineLabel ? " context-menu__label--multiline" : ""}`}
+          >
+            {item.label}
+            {item.accessKey && <span aria-hidden="true"> ({item.accessKey.toUpperCase()})</span>}
+          </span>
+          {item.submenu && item.submenu.length > 0 && (
+            <ChevronRight className="context-menu__submenu-indicator" aria-hidden="true" />
+          )}
+        </button>
+      );
+
+      if (item.submenu && item.submenu.length > 0) {
+        return (
+          <RadixContextMenu.Sub key={item.id}>
+            <RadixContextMenu.SubTrigger asChild disabled={item.disabled}>
+              {button}
+            </RadixContextMenu.SubTrigger>
+            <RadixContextMenu.Portal>
+              <RadixContextMenu.SubContent asChild avoidCollisions collisionPadding={8}>
+                <div
+                  className="context-menu context-menu--submenu"
+                  data-popup="true"
+                  data-popup-id={popupId}
+                >
+                  {renderItems(item.submenu)}
+                </div>
+              </RadixContextMenu.SubContent>
+            </RadixContextMenu.Portal>
+          </RadixContextMenu.Sub>
+        );
+      }
+
+      return enableKeyboardNavigation ? (
+        <RadixContextMenu.Item key={item.id} asChild disabled={item.disabled}>
+          {button}
+        </RadixContextMenu.Item>
+      ) : (
+        button
+      );
+    });
+  }
 
   const isPopupBranchTarget = (target: EventTarget | null) => {
     const targetElement = getEventTargetElement(target, viewWindow);
@@ -248,63 +324,7 @@ export const ContextMenu: React.FC<Props> = ({
             onMouseLeave={handleMouseLeave}
           >
             {header ? <div className="context-menu__header">{header}</div> : null}
-            {visibleItems.map((item) => {
-              if (item.separator) {
-                return <div key={item.id} className="context-menu__separator" />;
-              }
-
-              const button = (
-                <button
-                  key={item.id}
-                  className={`context-menu__item${item.danger ? " context-menu__item--danger" : ""}${
-                    item.allowMultilineLabel ? " context-menu__item--multiline" : ""
-                  }`}
-                  disabled={item.disabled}
-                  {...(item.checked === undefined
-                    ? {}
-                    : { role: "menuitemcheckbox", "aria-checked": item.checked })}
-                  title={item.label}
-                  // mousedown でフォーカスが移動するとページ上のテキスト選択が消えるため、
-                  // preventDefault でフォーカス移動を抑止し、選択状態を維持する。
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    if (!item.disabled) {
-                      item.onSelect?.();
-                    }
-                    onClose();
-                  }}
-                  onAuxClick={(event) => {
-                    if (item.disabled || !item.onAuxSelect) return;
-                    if (event.button === 1) {
-                      event.preventDefault();
-                    }
-                    item.onAuxSelect(event.button);
-                    onClose();
-                  }}
-                >
-                  {item.icon && <span className="context-menu__icon">{item.icon}</span>}
-                  {item.labelIcon && <span className="context-menu__icon">{item.labelIcon}</span>}
-                  <span
-                    className={`context-menu__label${
-                      item.allowMultilineLabel ? " context-menu__label--multiline" : ""
-                    }`}
-                  >
-                    {item.label}
-                    {item.accessKey && (
-                      <span aria-hidden="true"> ({item.accessKey.toUpperCase()})</span>
-                    )}
-                  </span>
-                </button>
-              );
-              // 外部リンク用の項目はRadixへ登録し、矢印キー・Enterでの選択も可能にする。
-              return enableKeyboardNavigation ? (
-                <RadixContextMenu.Item key={item.id} asChild disabled={item.disabled}>
-                  {button}
-                </RadixContextMenu.Item>
-              ) : (
-                button
-              );
-            })}
+            {renderItems(visibleItems)}
           </div>
         </RadixContextMenu.Content>
       </MenuPortal>

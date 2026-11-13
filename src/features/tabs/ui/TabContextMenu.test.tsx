@@ -100,14 +100,14 @@ describe("TabContextMenu", () => {
     extraPanes.length = 0;
   });
 
-  it("閉じた順に履歴を表示し、選択したタブを復元する", () => {
+  it("閉じたタブをサブメニューへまとめ、選択したタブを復元する", async () => {
     closedTabs.push(secondTab, threadTab);
     render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
-    const labels = Array.from(
-      document.querySelectorAll<HTMLButtonElement>(".context-menu__item"),
-    ).map((button) => button.textContent?.trim());
-    const reopenIndex = labels.indexOf("閉じたタブを開く");
-    expect(labels.slice(reopenIndex + 1, reopenIndex + 3)).toEqual(["Other Tab", "Current Thread"]);
+    const reopen = screen.getByRole("button", { name: "閉じたタブを開く" });
+    expect(reopen.querySelector(".context-menu__submenu-indicator")).toBeInTheDocument();
+    fireEvent.pointerMove(reopen);
+    expect(await screen.findByRole("button", { name: "Other Tab" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Current Thread" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Current Thread" }));
     expect(dispatchMock).toHaveBeenCalledWith({ type: "REOPEN_CLOSED_TAB", tabId: threadTab.id });
   });

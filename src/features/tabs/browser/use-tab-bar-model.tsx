@@ -186,10 +186,9 @@ export function useTabBarModel(): TabBarModel {
         id: "reopen",
         label: "閉じたタブを開く",
         disabled: state.closedTabs.length === 0,
+        submenu: closedTabMenuItems(state.closedTabs, dispatch),
         icon: <RotateCcw size={16} />,
-        onSelect: () => dispatch(tabActions.reopenClosedTab()),
       },
-      ...closedTabMenuItems(state.closedTabs, dispatch),
     ],
     [dispatch, state.closedTabs],
   );

@@ -285,11 +285,10 @@ export const TabContextMenu: React.FC<Props> = ({ tab, position, onClose }) => {
       id: "reopen",
       label: "閉じたタブを開く",
       disabled: !hasClosedTabs,
+      submenu: closedTabMenuItems(state.closedTabs, dispatch),
       // 変更理由: 外部ブラウザで開く操作と混同しないよう、タブ復元らしい巻き戻しアイコンにする。
       icon: <RotateCcw />,
-      onSelect: () => dispatch(tabActions.reopenClosedTab()),
     });
-    result.push(...closedTabMenuItems(state.closedTabs, dispatch));
     return result;
   }, [
     currentPage,

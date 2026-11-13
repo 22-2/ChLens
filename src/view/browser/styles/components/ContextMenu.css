@@ -102,6 +102,13 @@
   text-overflow: ellipsis;
 }
 
+.context-menu__submenu-indicator {
+  flex: 0 0 auto;
+  width: var(--sys-space-6);
+  height: var(--sys-space-6);
+  color: var(--sys-color-text-muted);
+}
+
 .context-menu__label--multiline {
   overflow: visible;
   text-overflow: clip;
