@@ -179,6 +179,15 @@ export const PopupResCard: React.FC<StaticResCardProps> = React.memo(
                 onIdLinkClick(res.id!, e);
               }}
             >
+              {/* スレ全体の索引がある場合だけ単発を示し、索引なしを単発と誤認しない。 */}
+              {idCount === 1 ? (
+                <span
+                  className="res__id-single"
+                  role="img"
+                  aria-label="単発ID"
+                  title="単発ID（取得済みレスで1回）"
+                />
+              ) : null}
               {res.id}
               {idCount >= 2 && `(${idCount})`}
             </span>

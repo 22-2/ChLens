@@ -212,6 +212,8 @@
   --ref-radius-lg: 6px;
   --ref-radius-xl: 8px;
   --ref-radius-pill: 999px;
+  /* 単発IDの印は文字を増やさずに卵の形を示す。 */
+  --ref-radius-single-id-egg: 50% 50% 48% 48% / 65% 65% 35% 35%;
   --ref-shadow-popup: 0 2px 8px var(--ref-color-alpha-black-15);
   --ref-shadow-tooltip: 0 2px 8px var(--ref-color-alpha-black-24);
   --ref-shadow-dialog: 0 18px 44px var(--ref-color-alpha-black-30);
@@ -306,6 +308,7 @@
   --sys-radius-lg: var(--ref-radius-lg);
   --sys-radius-xl: var(--ref-radius-xl);
   --sys-radius-pill: var(--ref-radius-pill);
+  --sys-radius-single-id-egg: var(--ref-radius-single-id-egg);
   --sys-shadow-popup: var(--ref-shadow-popup);
   --sys-shadow-tooltip: var(--ref-shadow-tooltip);
   --sys-shadow-dialog: var(--ref-shadow-dialog);

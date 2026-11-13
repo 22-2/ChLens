@@ -84,6 +84,20 @@ const BASE_RES: IRes = {
 };
 
 describe("ResItem", () => {
+  it("取得済みレスで1回のIDだけ卵を表示する", () => {
+    const single = renderNgRes({ ...BASE_RES, id: "example-id" }, { idCount: 1 });
+    expect(screen.getByRole("img", { name: "単発ID" })).toHaveAttribute(
+      "title",
+      "単発ID（取得済みレスで1回）",
+    );
+    single.unmount();
+    const repeated = renderNgRes({ ...BASE_RES, id: "example-id" }, { idCount: 2 });
+    expect(screen.queryByRole("img", { name: "単発ID" })).not.toBeInTheDocument();
+    repeated.unmount();
+    renderNgRes({ ...BASE_RES, id: "example-id" }, { idCount: 0 });
+    expect(screen.queryByRole("img", { name: "単発ID" })).not.toBeInTheDocument();
+  });
+
   it("レス自身の入場アニメーションが完了したときだけ表示完了を通知する", () => {
     const onEntryDisplayed = vi.fn();
     const { container } = renderNgRes(BASE_RES, { animateEntry: true, onEntryDisplayed });
@@ -562,9 +576,11 @@ function containerQueryByClass(className: string): HTMLElement {
 
 function renderNgRes(
   res: IRes,
-  entryProps: Pick<
-    ResItemProps,
-    "animateEntry" | "onEntryDisplayed" | "ngRevealed" | "onNgRevealedChange"
+  entryProps: Partial<
+    Pick<
+      ResItemProps,
+      "animateEntry" | "onEntryDisplayed" | "ngRevealed" | "onNgRevealedChange" | "idCount"
+    >
   > = {},
 ) {
   return render(
@@ -573,7 +589,7 @@ function renderNgRes(
         {...entryProps}
         res={res}
         idPos={0}
-        idCount={0}
+        idCount={entryProps.idCount ?? 0}
         repCount={0}
         isOwn={false}
         isReplyToOwn={false}

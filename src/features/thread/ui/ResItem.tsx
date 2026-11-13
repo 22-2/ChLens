@@ -317,6 +317,15 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
                 onIdClick(res.id!, e);
               }}
             >
+              {/* 単発は表示中の文字を増やさず、取得済みレス全体の件数から示す。 */}
+              {idCount === 1 ? (
+                <span
+                  className="res__id-single"
+                  role="img"
+                  aria-label="単発ID"
+                  title="単発ID（取得済みレスで1回）"
+                />
+              ) : null}
               {/* IDは文字だけなので強調を重ねられない。ページ内検索中はその一致を優先して見せる。 */}
               {findMatcher
                 ? renderHighlightedText(

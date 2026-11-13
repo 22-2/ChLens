@@ -1,9 +1,31 @@
 /* Thread response metadata, body, and media/link-card layout. */
 .res {
-  /* 本文を追うときに隣のレスとの境目を見失わないよう、余白と控えめな区切りを設ける。 */
+  /* 区切り線は使わず余白でレスを分け、未読線と末尾を見つけやすくする。 */
   padding: var(--sys-space-4) var(--sys-space-8);
   border-inline-start: 3px solid transparent;
-  border-bottom: var(--sys-border-width-thin) solid var(--sys-color-table-row-border);
+}
+
+/* NGやポップアップの選択状態は、ホバーより優先する。 */
+@media (hover: hover) {
+  .res:where(:hover):not(
+      .res--ng-highlight,
+      .res--highlighted,
+      .res--highlighted-persistent,
+      .res--highlighted-soft,
+      .res--ng-placeholder
+    ) {
+    background-color: var(--sys-color-response-hover);
+  }
+}
+
+.res:where(:focus-within):not(
+    .res--ng-highlight,
+    .res--highlighted,
+    .res--highlighted-persistent,
+    .res--highlighted-soft,
+    .res--ng-placeholder
+  ) {
+  background-color: var(--sys-color-response-hover);
 }
 
 /*
@@ -117,6 +139,16 @@
   overflow-wrap: anywhere;
   color: var(--sys-color-res-id-muted);
   font-size: var(--sys-font-size-sm);
+}
+
+.res__id-single {
+  display: inline-block;
+  width: var(--sys-space-4);
+  height: var(--sys-space-5);
+  margin-inline-end: var(--sys-space-3);
+  border: var(--sys-border-width-thin) solid var(--sys-color-accent-text);
+  border-radius: var(--sys-radius-single-id-egg);
+  vertical-align: middle;
 }
 
 .res__date {
