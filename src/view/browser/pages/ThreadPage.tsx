@@ -975,8 +975,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           <ThreadScrollFloatingActions
             rootRef={rootRef}
             isActive={isActive}
-            isAutoRefreshEnabled={isAutoRefreshEnabled || isNextThreadWaiting}
-            canAutoScroll={canAutoScroll}
+            isAutoRefreshEnabled={isAutoRefreshEnabled}
+            isNextThreadWaiting={isNextThreadWaiting}
+            tabId={tabId}
+            threadUrl={page.threadUrl}
             canAutoRefresh={threadCapabilities.canAutoRefresh}
             isFilterEnabled={isFilterEnabled}
             loading={loading}

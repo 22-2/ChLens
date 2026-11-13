@@ -287,7 +287,7 @@ function staticCopyPlugin(
  */
 const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
   "archive-replay": ["browser/position-store"],
-  "auto-refresh": ["browser/use-auto-scroll-state"],
+  "auto-refresh": ["browser/use-auto-scroll-state", "browser/manual-pause-store"],
   "auxiliary-window": ["browser/auxiliary-window-watcher", "browser/use-auxiliary-window"],
   bookmark: ["browser/use-bookmark-revision"],
   // domain・platform は comment-overlay の中でも使っている入口（index.ts）。

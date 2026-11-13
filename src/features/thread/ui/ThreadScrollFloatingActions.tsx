@@ -1,36 +1,42 @@
-import { ArrowDown, ArrowUp, Play } from "lucide-react";
-import React, { type RefObject, useCallback, useEffect, useState } from "react";
+import { ArrowDown, ArrowUp, Grip, Pause, Play } from "lucide-react";
+import React, {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  manualPauseKey,
+  useManualPauseStore,
+} from "src/features/auto-refresh/browser/manual-pause-store";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
 interface ThreadScrollFloatingActionsProps {
   rootRef: RefObject<HTMLDivElement | null>;
   isActive: boolean;
-  /** 自動更新が動いている間（次スレ待機を含む）は、開始ボタンを出さない。 */
+  /** 自動更新の開始後は、同じボタンで一時停止と再開を切り替える。 */
   isAutoRefreshEnabled: boolean;
-  canAutoScroll?: boolean;
   canAutoRefresh?: boolean;
   isFilterEnabled: boolean;
   loading: boolean;
   expired: boolean;
   responseCount: number;
   onEnableAutoRefresh: () => void;
+  tabId: string;
+  threadUrl: string;
+  isNextThreadWaiting: boolean;
 }
 
 interface ScrollFloatingLayout {
   panelLeft: number;
   panelRight: number;
   panelBottom: number;
-  isFarFromTop: boolean;
-  distanceToBottom: number;
-  isAtBottom: boolean;
-  isSlightlyAboveBottom: boolean;
+  panelTop: number;
   minimapReservation: number;
 }
-
-const BOTTOM_EPSILON = 2;
-const NEAR_BOTTOM_DISTANCE = 240;
-const ACTION_BOTTOM_OFFSET = 24;
 
 function getScrollContainer(
   root: HTMLElement,
@@ -73,35 +79,48 @@ function isSameLayout(left: ScrollFloatingLayout | null, right: ScrollFloatingLa
     left.panelLeft === right.panelLeft &&
     left.panelRight === right.panelRight &&
     left.panelBottom === right.panelBottom &&
-    left.isFarFromTop === right.isFarFromTop &&
-    left.distanceToBottom === right.distanceToBottom &&
-    left.isAtBottom === right.isAtBottom &&
-    left.isSlightlyAboveBottom === right.isSlightlyAboveBottom &&
+    left.panelTop === right.panelTop &&
     left.minimapReservation === right.minimapReservation
   );
 }
 
 /**
- * スレ本文のスクロール位置に合わせて、最下部操作を表示する。
+ * ミニマップに沿う位置へスレッド操作をまとめる。
  *
  * ミニマップはfixed配置でペインごとの矩形を使っているため、
  * この操作もviewport基準の座標へ変換する。これにより2ペイン時も
- * 画面全体の中央ではなく、現在のスレペインの中央へ表示できる。
+ * 画面全体ではなく現在のスレペインを基準に移動できる。
  */
 export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsProps> = ({
   rootRef,
   isActive,
   isAutoRefreshEnabled,
-  canAutoScroll = false,
   canAutoRefresh = true,
   isFilterEnabled,
   loading,
   expired,
   responseCount,
   onEnableAutoRefresh,
+  tabId,
+  threadUrl,
+  isNextThreadWaiting,
 }) => {
   const { window: viewWindow } = useViewSurface();
   const [layout, setLayout] = useState<ScrollFloatingLayout | null>(null);
+  const [position, setPosition] = useState(0.25);
+  const [toolbarHeight, setToolbarHeight] = useState(140);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ startY: number; startTop: number } | null>(null);
+  const pauseKey = manualPauseKey(tabId, threadUrl);
+  const manuallyPaused = useManualPauseStore((state) => !!state.paused[pauseKey]);
+  const setPaused = useManualPauseStore((state) => state.setPaused);
+
+  useLayoutEffect(() => {
+    const element = toolbarRef.current;
+    if (!element) return;
+    const height = element.getBoundingClientRect().height;
+    if (height > 0) setToolbarHeight(height);
+  }, [layout, canAutoRefresh]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -151,25 +170,16 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         sideRect.bottom > rect.top;
       const visibleRight = overlapsSidePanel ? Math.max(rect.left, sideRect.left) : rect.right;
 
-      const distanceToBottom = Math.max(
-        0,
-        currentScrollContainer.scrollHeight -
-          (currentScrollContainer.scrollTop + currentScrollContainer.clientHeight),
-      );
-      const isAtBottom = distanceToBottom <= BOTTOM_EPSILON;
       const nextLayout: ScrollFloatingLayout = {
         panelLeft: rect.left,
         panelRight: visibleRight,
         // 変更理由: ステータスバーは本文の下端に重なるため、操作ボタンの基準はその上端にする。
         panelBottom: rect.bottom - readStatusBarReservation(currentRoot),
-        // 上端から十分離れた位置でだけ戻りボタンを出し、短いスクロールでは本文を隠さない。
-        isFarFromTop: currentScrollContainer.scrollTop > NEAR_BOTTOM_DISTANCE,
-        distanceToBottom,
-        isAtBottom,
-        // 「ちょっとだけ上」は固定値とviewport高さの大きい方にして、
-        // 小さいペインでも下端操作を見失いにくくする。
-        isSlightlyAboveBottom:
-          !isAtBottom && distanceToBottom <= Math.max(NEAR_BOTTOM_DISTANCE, rect.height * 0.4),
+        panelTop: Math.max(
+          rect.top,
+          currentRoot.querySelector(".thread-page__top-bar")?.getBoundingClientRect().bottom ??
+            rect.top,
+        ),
         // ミニマップ自体がパネルに隠れる部分は二重に避けない。
         minimapReservation: Math.max(
           0,
@@ -257,71 +267,99 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
     scrollContainer.scrollTo({ top: 0, behavior: "auto" });
   }, [rootRef, viewWindow]);
 
-  // 変更理由: 自動更新のしきい線より下では新着へ追従するため、画面を覆う操作ボタンを隠す。
-  if (
-    !layout ||
-    layout.panelRight - layout.panelLeft < 48 ||
-    !isActive ||
-    canAutoScroll ||
-    isFilterEnabled ||
-    expired ||
-    responseCount === 0
-  ) {
+  if (!layout || layout.panelRight - layout.panelLeft < 48 || !isActive || responseCount === 0) {
     return null;
   }
 
-  const jumpBottom = Math.max(
-    ACTION_BOTTOM_OFFSET,
-    viewWindow.innerHeight - layout.panelBottom + ACTION_BOTTOM_OFFSET,
-  );
-  // CSS変数は「ミニマップ幅 + 左右の逃がし」を予約しているので、
-  // その開始位置から少し左へボタンを置けばミニマップに重ならない。
-  const jumpRightEdge = layout.panelRight - layout.minimapReservation - 8;
-  const jumpLeft = Math.max(layout.panelLeft + 48, jumpRightEdge);
+  const topLimit = layout.panelTop + 8;
+  const bottomLimit = Math.max(topLimit, layout.panelBottom - toolbarHeight - 8);
+  const top = topLimit + (bottomLimit - topLimit) * position;
+  const right = Math.max(layout.panelLeft + 40, layout.panelRight - layout.minimapReservation - 2);
+  const moveTo = (nextTop: number) => {
+    const range = bottomLimit - topLimit;
+    setPosition(range > 0 ? Math.min(1, Math.max(0, (nextTop - topLimit) / range)) : 0);
+  };
+  const autoLabel = isNextThreadWaiting
+    ? "次スレ待機中"
+    : !isAutoRefreshEnabled
+      ? "自動読み込みを開始"
+      : manuallyPaused
+        ? "自動更新を再開"
+        : "自動更新を一時停止";
 
   return (
-    <>
-      {/* 末尾では下への移動が不要になるため、同じ場所を自動更新の開始操作に使う。 */}
-      {layout.isAtBottom && !loading && !isAutoRefreshEnabled && canAutoRefresh && (
-        <button
-          type="button"
-          className="thread-page__floating-action thread-page__floating-action--jump"
-          style={{ left: `${jumpLeft}px`, bottom: `${jumpBottom}px` }}
-          aria-label="自動読み込みを開始"
-          title="自動読み込みを開始"
-          onClick={onEnableAutoRefresh}
-        >
-          <Play size={18} aria-hidden="true" />
-        </button>
-      )}
-
-      {/* 自動更新を開始できるときは、末尾で開始ボタンへ切り替わるまで下への操作を残す。 */}
-      {!layout.isAtBottom &&
-        (!layout.isSlightlyAboveBottom || (!isAutoRefreshEnabled && canAutoRefresh)) && (
+    <div
+      ref={toolbarRef}
+      className="thread-page__floating-toolbar"
+      role="toolbar"
+      aria-label="スレッド操作"
+      aria-orientation="vertical"
+      style={{ left: `${right}px`, top: `${top}px` }}
+    >
+      <button
+        type="button"
+        className="thread-page__floating-toolbar-handle"
+        aria-label="ツールバーを移動"
+        title="ドラッグまたは上下キーで移動"
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          dragRef.current = { startY: event.clientY, startTop: top };
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }}
+        onPointerMove={(event) => {
+          if (dragRef.current)
+            moveTo(dragRef.current.startTop + event.clientY - dragRef.current.startY);
+        }}
+        onPointerUp={() => {
+          dragRef.current = null;
+        }}
+        onPointerCancel={() => {
+          dragRef.current = null;
+        }}
+        onLostPointerCapture={() => {
+          dragRef.current = null;
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+            event.preventDefault();
+            moveTo(top + (event.key === "ArrowUp" ? -20 : 20));
+          }
+        }}
+      >
+        <Grip size={15} aria-hidden="true" />
+      </button>
+      <button type="button" aria-label="上へジャンプ" title="上へジャンプ" onClick={scrollToTop}>
+        <ArrowUp size={17} aria-hidden="true" />
+      </button>
+      <button type="button" aria-label="下へジャンプ" title="下へジャンプ" onClick={scrollToBottom}>
+        <ArrowDown size={17} aria-hidden="true" />
+      </button>
+      {canAutoRefresh && (
+        <>
+          <span className="thread-page__floating-toolbar-separator" />
           <button
             type="button"
-            className="thread-page__floating-action thread-page__floating-action--jump"
-            style={{ left: `${jumpLeft}px`, bottom: `${jumpBottom}px` }}
-            aria-label="下へジャンプ"
-            title="下へジャンプ"
-            onClick={scrollToBottom}
+            aria-label={autoLabel}
+            title={autoLabel}
+            disabled={
+              isNextThreadWaiting ||
+              isFilterEnabled ||
+              expired ||
+              (!isAutoRefreshEnabled && loading)
+            }
+            aria-pressed={isAutoRefreshEnabled && !manuallyPaused}
+            onClick={() =>
+              isAutoRefreshEnabled ? setPaused(pauseKey, !manuallyPaused) : onEnableAutoRefresh()
+            }
           >
-            <ArrowDown size={18} aria-hidden="true" />
+            {isAutoRefreshEnabled && !manuallyPaused ? (
+              <Pause size={17} aria-hidden="true" />
+            ) : (
+              <Play size={17} aria-hidden="true" />
+            )}
           </button>
-        )}
-
-      {layout.isFarFromTop && (
-        <button
-          type="button"
-          className="thread-page__floating-action thread-page__floating-action--jump"
-          style={{ left: `${jumpLeft}px`, bottom: `${jumpBottom + 48}px` }}
-          aria-label="上へジャンプ"
-          title="上へジャンプ"
-          onClick={scrollToTop}
-        >
-          <ArrowUp size={18} aria-hidden="true" />
-        </button>
+        </>
       )}
-    </>
+    </div>
   );
 };

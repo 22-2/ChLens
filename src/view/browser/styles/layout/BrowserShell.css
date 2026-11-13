@@ -26,7 +26,7 @@
 .browser-shell[data-zen-mode="true"] .thread-page__top-bar,
 .browser-shell[data-zen-mode="true"] .thread-page__minimap,
 .browser-shell[data-zen-mode="true"] .thread-page__minimap-tooltip,
-.browser-shell[data-zen-mode="true"] .thread-page__floating-action,
+.browser-shell[data-zen-mode="true"] .thread-page__floating-toolbar,
 .browser-shell[data-zen-mode="true"] .search-bar {
   display: none;
 }

@@ -119,62 +119,64 @@
   pointer-events: none;
 }
 
-/* 変更理由: 最下部操作を本文の流れから切り離し、レスの高さやミニマップの再描画で
-   ボタン位置がずれないようviewport固定のフローティング操作にする。 */
-.thread-page__floating-action {
+.thread-page__floating-toolbar {
   position: fixed;
   z-index: calc(var(--sys-z-minimap) + 1);
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--sys-space-2);
-  min-height: 36px;
-  padding: 0 var(--sys-space-5);
-  border: 1px solid var(--sys-color-accent);
-  border-radius: var(--sys-radius-pill);
-  background: var(--sys-color-surface);
-  color: var(--sys-color-accent);
-  box-shadow: var(--sys-shadow-floating);
-  cursor: pointer;
-  font: inherit;
-  font-size: var(--sys-font-size-sm);
-  white-space: nowrap;
-  transform: translateX(-50%);
-  transition:
-    background var(--sys-duration-fast),
-    color var(--sys-duration-fast),
-    box-shadow var(--sys-duration-fast),
-    transform var(--sys-duration-fast);
-  pointer-events: auto;
-}
-
-.thread-page__floating-action:hover {
-  background: var(--sys-color-accent);
-  color: var(--sys-color-accent-fg);
-  box-shadow: var(--sys-shadow-focus);
-}
-
-.thread-page__floating-action:focus-visible {
-  outline: 2px solid var(--sys-color-focus-ring);
-  outline-offset: 2px;
-}
-
-/* 変更理由: スクロール操作を見つけやすくするため、下へジャンプも青い主操作色に揃える。 */
-.thread-page__floating-action--jump {
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
-  padding: 0;
-  border-color: var(--sys-color-accent);
-  background: var(--sys-color-accent);
-  color: var(--sys-color-accent-fg);
+  padding: var(--sys-space-1);
+  border: var(--sys-border-width-thin) solid var(--sys-color-border);
+  border-radius: var(--sys-radius-md);
+  background: var(--sys-color-surface-muted);
   transform: translateX(-100%);
 }
 
-.thread-page__floating-action--jump:hover {
-  border-color: var(--sys-color-accent-hover);
-  background: var(--sys-color-accent-hover);
-  color: var(--sys-color-accent-fg);
+.thread-page__floating-toolbar button {
+  display: grid;
+  width: var(--sys-space-12);
+  height: var(--sys-space-12);
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sys-radius-sm);
+  background: transparent;
+  color: var(--sys-color-icon-button-fg);
+  cursor: pointer;
+}
+
+.thread-page__floating-toolbar button:hover:not(:disabled) {
+  background: var(--sys-color-icon-button-hover-bg);
+  color: var(--sys-color-icon-button-hover-fg);
+}
+
+.thread-page__floating-toolbar button:focus-visible {
+  outline: var(--sys-border-width-strong) solid var(--sys-color-focus-ring);
+}
+
+.thread-page__floating-toolbar button:disabled {
+  color: var(--sys-color-text-disabled);
+  cursor: default;
+}
+
+.thread-page__floating-toolbar button[aria-pressed="true"] {
+  color: var(--sys-color-icon-button-active-fg);
+}
+
+.thread-page__floating-toolbar .thread-page__floating-toolbar-handle {
+  height: var(--sys-space-9);
+  cursor: grab;
+  touch-action: none;
+}
+
+.thread-page__floating-toolbar-handle:active {
+  cursor: grabbing;
+}
+
+.thread-page__floating-toolbar-separator {
+  align-self: stretch;
+  margin: var(--sys-space-1) var(--sys-space-2);
+  border-top: var(--sys-border-width-thin) solid var(--sys-color-border);
 }
 
 /*

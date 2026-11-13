@@ -1,6 +1,37 @@
 import { expect, test } from "./fixtures.mjs";
 import { openThreadFromBoard, waitForThreadLoaded } from "./thread-scroll-helpers.mjs";
 
+test("縦ツールバーをドラッグしてもミニマップの左に沿い、スクロールで位置が変わらない", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const thread = localBoard.addLargeThread(200);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, 200);
+  const panel = page.locator('.content-area__tab-panel[data-active="true"]');
+  const toolbar = panel.getByRole("toolbar", { name: "スレッド操作" });
+  const minimap = panel.locator(".thread-page__minimap-canvas");
+  const handle = toolbar.getByRole("button", { name: "ツールバーを移動" });
+  const before = (await toolbar.boundingBox())!;
+  const grip = (await handle.boundingBox())!;
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2 + 120, { steps: 8 });
+  await page.mouse.up();
+  const moved = (await toolbar.boundingBox())!;
+  const map = (await minimap.boundingBox())!;
+  expect(moved.y).toBeGreaterThan(before.y + 50);
+  expect(moved.x + moved.width).toBeLessThanOrEqual(map.x);
+  await toolbar.getByRole("button", { name: "下へジャンプ" }).click();
+  await expect.poll(async () => (await toolbar.boundingBox())!.y).toBeCloseTo(moved.y, 0);
+  await toolbar.getByRole("button", { name: "自動読み込みを開始" }).click();
+  await expect(toolbar.getByRole("button", { name: "自動更新を一時停止" })).toBeVisible();
+  await toolbar.getByRole("button", { name: "自動更新を一時停止" }).click();
+  await expect(toolbar.getByRole("button", { name: "自動更新を再開" })).toBeVisible();
+  await expect(page.locator(".status-bar").getByText("一時停止中")).toBeVisible();
+});
+
 test("フローティングボタンはサイドパネルの開閉とリサイズに追従する", async ({
   page,
   extensionId,
