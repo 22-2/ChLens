@@ -33,7 +33,10 @@
     .thread-heading strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .thread-heading span { color: var(--sys-color-text-muted); font-size: var(--sys-font-size-sm); white-space: nowrap; }
     .responses { height: min(56vh, calc(var(--sys-space-16) * 11)); min-height: calc(var(--sys-space-16) * 6); overflow-y: auto; overscroll-behavior: contain; scrollbar-color: var(--sys-color-border) transparent; scrollbar-width: thin; }
-    .post { padding: var(--sys-space-4) var(--sys-space-8); border-bottom: var(--sys-border-width-thin) solid var(--sys-color-table-row-border); }
+    /* レスを線で囲まず、操作対象はポインターの位置だけで控えめに示す。 */
+    .post { padding: var(--sys-space-4) var(--sys-space-8); }
+    @media (hover: hover) { .workspace[data-hover="true"] .post:hover { background: color-mix(in srgb, var(--sys-color-text) 6%, var(--sys-color-surface)); } }
+    .workspace[data-hover="true"] .post:focus-within { background: color-mix(in srgb, var(--sys-color-text) 6%, var(--sys-color-surface)); }
     .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sys-space-3); font-size: var(--sys-font-size-sm); color: var(--sys-color-text-muted); }
     .number { color: var(--sys-color-res-num); font-weight: 700; }
     .name { color: var(--sys-color-success); font-weight: 600; }
@@ -76,7 +79,7 @@
       <button type="button" data-design="edge" aria-pressed="false">案B　左端に表示</button>
     </div>
     <p id="description" class="description">線の中央に文字を置き、レスの区切りをはっきり見せます。</p>
-    <section id="workspace" class="workspace browser-shell" data-theme="dark" data-mode="auto" data-variant="center" aria-label="スレッド表示の見本">
+    <section id="workspace" class="workspace browser-shell" data-theme="dark" data-mode="auto" data-variant="center" data-hover="true" aria-label="スレッド表示の見本">
       <div class="app-top"><span>‹　›　↻</span><span class="app-title">週末の予定を話すスレッド ★1</span><span>⋯</span></div>
       <div class="app-layout">
         <aside class="rail" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="14" rx="2"></rect><path d="M8 21v-3m3-10h6m-6 4h6M7 8h1m-1 4h1"></path></svg><svg viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"></path></svg></aside>
@@ -93,6 +96,7 @@
       <button id="refresh-empty" type="button">新着なしで更新</button>
       <button id="reopen" type="button">スレを開き直す</button>
       <label class="check"><input id="filter" type="checkbox"> 画像ありを絞り込む</label>
+      <label class="check"><input id="hover" type="checkbox" checked> レスのホバー色</label>
       <button id="reset" type="button">最初に戻す</button>
     </div>
     <p id="hint" class="hint" aria-live="polite">スクロールしてから更新すると、既読の区切りが移動します。新着は架空のレスです。</p>
@@ -189,6 +193,7 @@
       el('reopen').addEventListener('click', () => { boundary = read; render(); const unread = view.querySelector('.unread'); if (unread) view.scrollTop += unread.getBoundingClientRect().top - view.getBoundingClientRect().top - view.clientHeight / 2; setHint('開き直した時の既読位置に線を合わせました。'); });
       el('filter').addEventListener('change', () => { render(false); setHint(el('filter').checked ? '絞り込み中は既読位置を進めません。' : '絞り込みを解除しました。'); });
       el('mode').addEventListener('change', (event) => { shell.dataset.mode = event.target.value; setHint(event.target.value === 'manual' ? '各レスの「ここまで読んだ」で位置を指定できます。' : '自動で既読位置を記録します。'); });
+      el('hover').addEventListener('change', (event) => { shell.dataset.hover = String(event.target.checked); });
       el('theme').addEventListener('change', (event) => { document.documentElement.dataset.theme = event.target.value; shell.dataset.theme = event.target.value; });
       document.querySelectorAll('[data-design]').forEach((button) => button.addEventListener('click', () => {
         shell.dataset.variant = button.dataset.design;
