@@ -51,6 +51,7 @@ describe("useTheme", () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     document.documentElement.removeAttribute("data-theme");
+    document.documentElement.removeAttribute("data-theme-id");
     document.querySelector('meta[name="color-scheme"]')?.remove();
   });
 
@@ -98,6 +99,18 @@ describe("useTheme", () => {
     const { result } = renderHook(() => useTheme());
 
     expect(result.current).toBe("light");
+  });
+
+  it("同じダーク基調のテーマへの切り替えでもテーマIDを更新する", () => {
+    mocks.configGet.mockReturnValue("dark");
+    const { result } = renderHook(() => useTheme());
+    const handleConfigUpdated = mocks.messageOn.mock.calls.find(
+      ([type]) => type === "config_updated",
+    )?.[1] as (event: { key: string; val: string }) => void;
+    act(() => handleConfigUpdated({ key: "theme_id", val: "midnight" }));
+    expect(result.current).toBe("dark");
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(document.documentElement.dataset.themeId).toBe("midnight");
   });
 
   it("未知の値はsystemと同じくOSのダーク配色に従う", () => {

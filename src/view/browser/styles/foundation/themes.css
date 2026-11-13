@@ -293,6 +293,22 @@
   color-scheme: dark;
 }
 
+/* 各面で参照色を差し替えることで、ダークの意味トークンを追加テーマでも共有する。 */
+:root[data-theme-id="midnight"],
+:root[data-theme-id="midnight"] .browser-shell[data-theme="dark"] {
+  --ref-color-dark-neutral-0: var(--ref-color-midnight-base);
+  --ref-color-dark-surface-hover: var(--ref-color-midnight-raised);
+  --ref-color-dark-neutral-50: var(--ref-color-midnight-raised);
+  --ref-color-dark-neutral-100: var(--ref-color-midnight-control);
+  --ref-color-dark-neutral-200: var(--ref-color-midnight-raised);
+  --ref-color-dark-neutral-300: var(--ref-color-midnight-border);
+  --ref-color-dark-neutral-600: var(--ref-color-midnight-muted);
+  --ref-color-dark-neutral-950: var(--ref-color-midnight-text);
+  --ref-color-dark-blue-300: var(--ref-color-midnight-link);
+  --ref-color-dark-blue-600: var(--ref-color-midnight-accent);
+  --ref-color-dark-blue-700: var(--ref-color-midnight-accent-hover);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

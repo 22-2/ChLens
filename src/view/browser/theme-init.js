@@ -1,3 +1,5 @@
+import { parseThemeId, resolveTheme } from "./theme-registry";
+
 // ReactとConfigの起動完了を待たず、初回描画前に保存済みテーマを反映する。
 let themeId = null;
 
@@ -8,11 +10,8 @@ try {
 }
 
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-// "default" はライトの旧ID。未設定・"system"・未知の値はuse-theme.tsと同じくOSの配色に従う。
-const isLight = themeId === "light" || themeId === "default";
-const isDark = themeId === "dark" || (!isLight && prefersDark);
-
-const theme = isDark ? "dark" : "light";
-document.documentElement.dataset.theme = theme;
+const theme = resolveTheme(parseThemeId(themeId), prefersDark ? "dark" : "light");
+document.documentElement.dataset.theme = theme.scheme;
+document.documentElement.dataset.themeId = theme.id;
 // 属性だけではCSSの読み込みを待つため、ブラウザの初期背景にも保存済みの配色を指定する。
-document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", theme);
+document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", theme.scheme);

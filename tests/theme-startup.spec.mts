@@ -63,6 +63,20 @@ async function hasDarkCanvas(page: Page): Promise<boolean> {
   return channels.every((channel) => Number(channel) < 128);
 }
 
+test("追加テーマの配色はルートとブラウザーシェルの両方へ反映される", async ({ page }) => {
+  await page.setContent('<div class="browser-shell" data-theme="dark"></div>');
+  await page.addStyleTag({ content: await readFile("debug/chrome/browser.css", "utf8") });
+  const colors = await page.evaluate(() => {
+    document.documentElement.dataset.theme = "dark";
+    document.documentElement.dataset.themeId = "midnight";
+    const shell = document.querySelector(".browser-shell")!;
+    return [document.documentElement, shell].map((element) =>
+      getComputedStyle(element).getPropertyValue("--sys-color-surface").trim(),
+    );
+  });
+  expect(colors).toEqual(["#10131a", "#10131a"]);
+});
+
 test("テーマスクリプトの読み込み前からOSのダーク配色で背景を描画する", async ({ page }) => {
   await inspectBeforeStyles(page, null, "dark", true, async () => {
     expect(await hasDarkCanvas(page)).toBe(true);
@@ -70,6 +84,12 @@ test("テーマスクリプトの読み込み前からOSのダーク配色で背
 });
 
 for (const scenario of [
+  {
+    name: "OSがライトでも保存済みミッドナイトを優先する",
+    saved: "midnight",
+    system: "light",
+    dark: true,
+  },
   {
     name: "OSがライトでも保存済みダーク設定を優先する",
     saved: "dark",
@@ -99,6 +119,9 @@ for (const scenario of [
   test(`CSSの読み込み前に${scenario.name}`, async ({ page }) => {
     await inspectBeforeStyles(page, scenario.saved, scenario.system, false, async () => {
       expect(await hasDarkCanvas(page)).toBe(scenario.dark);
+      if (scenario.saved === "midnight") {
+        await expect(page.locator("html")).toHaveAttribute("data-theme-id", "midnight");
+      }
     });
   });
 }

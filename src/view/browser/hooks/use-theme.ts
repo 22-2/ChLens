@@ -1,20 +1,9 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { container } from "src/service-container/index";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
+import { parseThemeId, resolveTheme, type ThemeId } from "src/view/browser/theme-registry";
 
-type ThemeId = "light" | "dark" | "system";
 export type ResolvedTheme = "light" | "dark";
-
-/** ライトの旧ID。保存済みの値は起動時に "light" へ移行する（Config.ts）。 */
-const LEGACY_LIGHT_THEME_ID = "default";
-
-function parseThemeId(raw: string | null | undefined): ThemeId {
-  if (raw === "light" || raw === "dark") return raw;
-  if (raw === LEGACY_LIGHT_THEME_ID) return "light";
-  // 変更理由: 未設定や未知の値は既定の "system" と同じくOSの配色に従わせる。
-  // 以前はライトに固定していたため、theme-init.js の起動時の配色と食い違っていた。
-  return "system";
-}
 
 function resolveSystemTheme(targetWindow: Window): ResolvedTheme {
   return targetWindow.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -46,25 +35,21 @@ export function useTheme(): ResolvedTheme {
 
   const [resolved, setResolved] = useState<ResolvedTheme>(() => {
     const id = parseThemeId(container.config.get("theme_id"));
-    if (id === "dark") return "dark";
-    if (id === "light") return "light";
-    return resolveSystemTheme(viewWindow);
+    return resolveTheme(id, id === "system" ? resolveSystemTheme(viewWindow) : "light").scheme;
   });
 
   useLayoutEffect(() => {
     // 起動時のルート配色も追従させないと、ライトへ戻してもダーク用トークンが継承される。
     const viewDocument = viewWindow.document;
     viewDocument.documentElement.setAttribute("data-theme", resolved);
+    // 同じダーク基調のテーマ間でもIDの変更を反映する。
+    viewDocument.documentElement.setAttribute("data-theme-id", resolveTheme(themeId, resolved).id);
     viewDocument.querySelector('meta[name="color-scheme"]')?.setAttribute("content", resolved);
-  }, [resolved, viewWindow]);
+  }, [resolved, themeId, viewWindow]);
 
   useEffect(() => {
-    if (themeId === "dark") {
-      setResolved("dark");
-      return;
-    }
-    if (themeId === "light") {
-      setResolved("light");
+    if (themeId !== "system") {
+      setResolved(resolveTheme(themeId, "light").scheme);
       return;
     }
 

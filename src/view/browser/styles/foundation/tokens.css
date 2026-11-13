@@ -100,6 +100,17 @@
   --ref-color-dark-red-600: #f28b82;
   --ref-color-dark-bookmark-yellow: #fdd663;
 
+  /* ミッドナイトは暗い青灰色の面と紫寄りのアクセントで階層を作る。 */
+  --ref-color-midnight-base: #10131a;
+  --ref-color-midnight-raised: #191e29;
+  --ref-color-midnight-control: #232a38;
+  --ref-color-midnight-border: #343d50;
+  --ref-color-midnight-muted: #aab6c9;
+  --ref-color-midnight-text: #e7edf7;
+  --ref-color-midnight-accent: #625aba;
+  --ref-color-midnight-accent-hover: #50489c;
+  --ref-color-midnight-link: #bebaff;
+
   /* Reference effects and typography. */
   --ref-color-alpha-black-05: rgb(0 0 0 / 5%);
   --ref-color-alpha-black-08: rgb(0 0 0 / 8%);

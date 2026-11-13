@@ -237,7 +237,16 @@ function staticCopyPlugin(
           ? [["src/rules.json", `${outputDir}/rules.json`] as [string, string]]
           : [];
 
-      copies.push(["src/view/browser/theme-init.js", `${outputDir}/theme-init.js`]);
+      // 初回描画前に同期実行しながら、設定画面と同じテーマ一覧を使う。
+      await esbuildBuild({
+        entryPoints: ["src/view/browser/theme-init.js"],
+        bundle: true,
+        format: "iife",
+        platform: "browser",
+        target: "esnext",
+        outfile: path.join(outputDir, "theme-init.js"),
+        minify: minifyJs,
+      });
 
       const imageOutputDir = path.join(outputDir, "img");
       await fs.remove(imageOutputDir);
