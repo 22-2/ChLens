@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { registerDebugStateProvider } from "src/app/debug/debug-api";
 import type { ThreadResponseLayout } from "src/features/thread/browser/use-thread-virtual-list";
+import { MINIMAP_CONTENT_GAP } from "src/features/thread/ui/thread-minimap-layout";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
@@ -80,7 +81,6 @@ const MINIMAP_MIN_WIDTH = 30;
 const MINIMAP_MAX_WIDTH = 180;
 // 本文の表示領域を広げつつ、マーカーの操作幅を確保する。
 const MINIMAP_WIDTH_RATIO = 0.06;
-const MINIMAP_CONTENT_GAP = 10;
 const MINIMAP_MIN_DRAWABLE_HEIGHT = 80;
 const MINIMAP_MARKER_SNAP_DISTANCE = 8;
 const MINIMAP_MARKER_WIDTH = 8;

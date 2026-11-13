@@ -11,6 +11,7 @@ import {
   manualPauseKey,
   useManualPauseStore,
 } from "src/features/auto-refresh/browser/manual-pause-store";
+import { MINIMAP_CONTENT_GAP } from "src/features/thread/ui/thread-minimap-layout";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
 
@@ -169,6 +170,11 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         sideRect.top < rect.bottom &&
         sideRect.bottom > rect.top;
       const visibleRight = overlapsSidePanel ? Math.max(rect.left, sideRect.left) : rect.right;
+      const minimapWidth = readMinimapReservation(currentRoot, viewWindow);
+      const scrollbarWidth = Math.max(
+        0,
+        currentScrollContainer.offsetWidth - currentScrollContainer.clientWidth,
+      );
 
       const nextLayout: ScrollFloatingLayout = {
         panelLeft: rect.left,
@@ -180,10 +186,13 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
           currentRoot.querySelector(".thread-page__top-bar")?.getBoundingClientRect().bottom ??
             rect.top,
         ),
-        // ミニマップ自体がパネルに隠れる部分は二重に避けない。
+        // 本文用の余白を除き、スクロールバーを避けたミニマップの実際の左端に寄せる。
         minimapReservation: Math.max(
           0,
-          visibleRight - (rect.right - readMinimapReservation(currentRoot, viewWindow)),
+          visibleRight -
+            (rect.right -
+              minimapWidth +
+              (minimapWidth > 0 ? MINIMAP_CONTENT_GAP - scrollbarWidth : 0)),
         ),
       };
 
@@ -274,7 +283,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
   const topLimit = layout.panelTop + 8;
   const bottomLimit = Math.max(topLimit, layout.panelBottom - toolbarHeight - 8);
   const top = topLimit + (bottomLimit - topLimit) * position;
-  const right = Math.max(layout.panelLeft + 40, layout.panelRight - layout.minimapReservation - 2);
+  const right = Math.max(layout.panelLeft + 32, layout.panelRight - layout.minimapReservation - 2);
   const moveTo = (nextTop: number) => {
     const range = bottomLimit - topLimit;
     setPosition(range > 0 ? Math.min(1, Math.max(0, (nextTop - topLimit) / range)) : 0);
@@ -326,13 +335,13 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
           }
         }}
       >
-        <Grip size={13} aria-hidden="true" />
+        <Grip size={12} aria-hidden="true" />
       </button>
       <button type="button" aria-label="上へジャンプ" title="上へジャンプ" onClick={scrollToTop}>
-        <ArrowUp size={15} aria-hidden="true" />
+        <ArrowUp size={14} aria-hidden="true" />
       </button>
       <button type="button" aria-label="下へジャンプ" title="下へジャンプ" onClick={scrollToBottom}>
-        <ArrowDown size={15} aria-hidden="true" />
+        <ArrowDown size={14} aria-hidden="true" />
       </button>
       {canAutoRefresh && (
         <>
@@ -353,9 +362,9 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
             }
           >
             {isAutoRefreshEnabled && !manuallyPaused ? (
-              <Pause size={15} aria-hidden="true" />
+              <Pause size={14} aria-hidden="true" />
             ) : (
-              <Play size={15} aria-hidden="true" />
+              <Play size={14} aria-hidden="true" />
             )}
           </button>
         </>

@@ -111,7 +111,7 @@ describe("ThreadScrollFloatingActions", () => {
 
     const button = screen.getByRole("button", { name: "自動読み込みを開始" });
     expect(button).toBeInTheDocument();
-    expect(button.closest('[role="toolbar"]')).toHaveStyle({ left: "808px" });
+    expect(button.closest('[role="toolbar"]')).toHaveStyle({ left: "818px" });
     expect(button.querySelector(".lucide-play")).toBeInTheDocument();
     expect(button.textContent).toBe("");
     fireEvent.click(button);
@@ -138,7 +138,7 @@ describe("ThreadScrollFloatingActions", () => {
 
     const button = screen.getByRole("button", { name: "下へジャンプ" });
     expect(button).toBeInTheDocument();
-    expect(button.closest('[role="toolbar"]')).toHaveStyle({ left: "808px" });
+    expect(button.closest('[role="toolbar"]')).toHaveStyle({ left: "818px" });
 
     fireEvent.click(button);
     expect(scrollTo).toHaveBeenCalledWith({ top: 500, behavior: "auto" });

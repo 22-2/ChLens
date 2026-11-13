@@ -23,6 +23,7 @@ test("縦ツールバーをドラッグしてもミニマップの左に沿い�
   const map = (await minimap.boundingBox())!;
   expect(moved.y).toBeGreaterThan(before.y + 50);
   expect(moved.x + moved.width).toBeLessThanOrEqual(map.x);
+  expect(map.x - (moved.x + moved.width)).toBeLessThanOrEqual(3);
   await toolbar.getByRole("button", { name: "下へジャンプ" }).click();
   await expect.poll(async () => (await toolbar.boundingBox())!.y).toBeCloseTo(moved.y, 0);
   await toolbar.getByRole("button", { name: "自動読み込みを開始" }).click();
