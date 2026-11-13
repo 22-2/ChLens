@@ -121,7 +121,10 @@
 
 .thread-page__floating-toolbar {
   position: fixed;
-  z-index: calc(var(--sys-z-minimap) + 1);
+  /* 変更理由: ミニマップの一段上に置くと、ステータスバーから開くミニウィンドウ（ミニマップと同じ層）の
+     上に操作ボタンが重なり、ウィンドウ内の操作を邪魔していた。ミニマップは横に並ぶだけで重ならないため、
+     ミニウィンドウの一段下へ下げる。 */
+  z-index: calc(var(--sys-z-mini-window) - 1);
   display: flex;
   flex-direction: column;
   align-items: center;

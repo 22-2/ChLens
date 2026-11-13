@@ -36,6 +36,42 @@ test("縦ツールバーはミニマップに沿って移動し、再読み込�
   await expect.poll(async () => (await toolbar.boundingBox())?.y ?? 0).toBeCloseTo(moved.y, 0);
 });
 
+test("縦ツールバーはステータスバーのミニウィンドウより背面に置く", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  // ミニウィンドウは下端の項目から上へ開くため、ツールバーを最下端へ置いて確実に重ねる。
+  await page.addInitScript(() => localStorage.setItem("config_thread_toolbar_position", "1"));
+  const thread = localBoard.addLargeThread(200);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, 200);
+  const toolbar = page.getByRole("toolbar", { name: "スレッド操作" });
+  await expect(toolbar).toBeVisible();
+  await page.getByRole("button", { name: /^スレッド自動更新: / }).click();
+  const miniWindow = page.locator(".mini-window");
+  await expect(miniWindow).toBeVisible();
+
+  const toolbarBox = (await toolbar.boundingBox())!;
+  const miniWindowBox = (await miniWindow.boundingBox())!;
+  const left = Math.max(toolbarBox.x, miniWindowBox.x);
+  const right = Math.min(toolbarBox.x + toolbarBox.width, miniWindowBox.x + miniWindowBox.width);
+  const top = Math.max(toolbarBox.y, miniWindowBox.y);
+  const bottom = Math.min(
+    toolbarBox.y + toolbarBox.height,
+    miniWindowBox.y + miniWindowBox.height,
+  );
+  // 重なりがなければ前後関係を確かめられないため、配置が変わったときはここで気づけるようにする。
+  expect(right - left).toBeGreaterThan(0);
+  expect(bottom - top).toBeGreaterThan(0);
+
+  const topmostIsMiniWindow = await page.evaluate(
+    ([x, y]) => document.elementFromPoint(x, y)?.closest(".mini-window") != null,
+    [(left + right) / 2, (top + bottom) / 2],
+  );
+  expect(topmostIsMiniWindow).toBe(true);
+});
+
 test("フローティングボタンはサイドパネルの開閉とリサイズに追従する", async ({
   page,
   extensionId,
