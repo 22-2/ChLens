@@ -65,8 +65,8 @@ import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
 import { ReadPositionLine } from "src/view/browser/pages/thread/ReadPositionLine";
-import { ThreadAutoScrollThreshold } from "src/view/browser/pages/thread/ThreadAutoScrollThreshold";
-import { ThreadEndLine } from "src/view/browser/pages/thread/ThreadEndLine";
+import { ThreadFooter } from "src/view/browser/pages/thread/ThreadFooter";
+import { ThreadLoadStatus } from "src/view/browser/pages/thread/ThreadLoadStatus";
 import { ThreadPageNotices } from "src/view/browser/pages/thread/ThreadPageNotices";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
 import { useAutoRefreshReset } from "src/view/browser/pages/thread/use-auto-refresh-reset";
@@ -87,6 +87,10 @@ import { useThreadFilterModeToggle } from "src/view/browser/pages/thread/use-thr
 import { useThreadFilterReset } from "src/view/browser/pages/thread/use-thread-filter-reset";
 import { useThreadImageExpansion } from "src/view/browser/pages/thread/use-thread-image-expansion";
 import { useThreadMoveToBottomOnEnable } from "src/view/browser/pages/thread/use-thread-move-to-bottom-on-enable";
+import {
+  getReadBoundaryIndex,
+  useThreadReadBoundary,
+} from "src/view/browser/pages/thread/use-thread-read-boundary";
 import { useThreadReadPositionMode } from "src/view/browser/pages/thread/use-thread-read-position-mode";
 import { useThreadReadState } from "src/view/browser/pages/thread/use-thread-read-state";
 import { useThreadReplyNotification } from "src/view/browser/pages/thread/use-thread-reply-notification";
@@ -103,7 +107,6 @@ import {
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { registerThreadResInteractions } from "src/view/browser/state/thread-res-interactions";
 import { type Tab, type ThreadPage as ThreadPageType } from "src/view/browser/types";
-import { Spinner } from "src/view/browser/ui/Spinner";
 import { getManualRefreshScopeKey, runManualRefresh } from "src/view/browser/utils/manual-refresh";
 import { buildReplyToWrittenResSet } from "src/view/browser/utils/thread-emphasis";
 interface ThreadPageProps {
@@ -156,6 +159,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const fallbackScrollContainerRef = useRef<HTMLDivElement>(null);
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const refreshController = useThreadRefreshController(refreshKey);
+  const readSnapshot = useThreadReadBoundary(page.threadUrl);
   const {
     responses,
     visibleResponses,
@@ -181,7 +185,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
     similarImageBlurredResNums,
-  } = useThreadData(tabId, page, rootRef, refreshController);
+  } = useThreadData(tabId, page, rootRef, refreshController, readSnapshot.refreshSuccessRef);
   const clearFilter = useThreadFilterReset({ tabId, page, setFilter, setSearchQuery });
   const requestManualRefresh = useCallback(() => {
     if (!threadCapabilities.canRefresh) return;
@@ -565,12 +569,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           replayPosition.responseNumber,
         )
       : -1;
-  const readBoundary =
-    !isArchiveReplay && readPositionMode === "manual" && manualReadNum != null
-      ? displayedResponses.findIndex((response) => response.num > manualReadNum) >= 0
-        ? displayedResponses.findIndex((response) => response.num > manualReadNum)
-        : displayedResponses.length
-      : -1;
+  const readBoundary = getReadBoundaryIndex(
+    displayedResponses,
+    readPositionMode === "manual" ? manualReadNum : readSnapshot.read,
+    readPositionMode,
+    isArchiveReplay || isFilterEnabled,
+  );
 
   // 変更理由: 全レスを描画すると、レス数とタブ数に比例して描画負荷とメモリが増えるため、
   // 表示範囲のレスだけを描画する。位置の計算・ジャンプ・既読位置の計測はここへまとめる。
@@ -612,6 +616,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     scrollToResponse: virtualList.scrollToResponse,
     measureReadState: virtualList.measureReadState,
     readPositionMode,
+    isFiltering: isFilterEnabled,
+    onInitialRead: readSnapshot.setBoundary,
+    refreshSuccessRef: readSnapshot.refreshSuccessRef,
   });
   const handleMinimapResponseClick = useCallback(
     (resNum: number, options: { scroll: boolean; align?: "start" | "center" }) => {
@@ -763,7 +770,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         active={isActive && !loading && isInitialReadStateResolved}
       />
     ) : null;
-  const readLine = readBoundary >= 0 ? <ReadPositionLine /> : null;
+  const readLine =
+    readBoundary >= 0 ? <ReadPositionLine manual={readPositionMode === "manual"} /> : null;
 
   const displayedResponseByNum = useMemo(
     () => new Map(displayedResponses.map((res) => [res.num, res])),
@@ -856,21 +864,12 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         threshold={WHEEL_THRESHOLD}
         portalContainerRef={effectiveScrollContainerRef}
       />
-      {isInitialLoading ? (
-        <div className="page-status">
-          <Spinner size="sm" aria-label="スレッドを読み込み中" />
-          <span>スレッドを読み込み中...</span>
-        </div>
-      ) : isCacheResolved && error && responses.length === 0 ? (
-        <div className="page-status page-status--error">
-          <p>{error}</p>
-          <button
-            className="page-status__retry"
-            onClick={() => runManualRefresh(manualRefreshScopeKey, () => void fetchThread(true))}
-          >
-            再試行
-          </button>
-        </div>
+      {isInitialLoading || (isCacheResolved && error && responses.length === 0) ? (
+        <ThreadLoadStatus
+          loading={isInitialLoading}
+          error={error}
+          onRetry={() => runManualRefresh(manualRefreshScopeKey, () => void fetchThread(true))}
+        />
       ) : (
         <>
           <div className="thread-page__sticky-header" data-toast-avoid="">
@@ -916,18 +915,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             ) : null}
           </div>
 
-          {displayedResponses.length > 0 ? <ThreadEndLine filtered={isFilterEnabled} /> : null}
-
-          {isActiveAutoRefreshTracking &&
-            /* 自動更新はフィルターが有効な場合は無効化 */
-            !isFilterEnabled && (
-              <ThreadAutoScrollThreshold
-                canAutoScroll={canAutoScroll}
-                isAutoScrolling={isAutoScrolling}
-                boundaryRef={autoScrollBoundaryRef}
-              />
-            )}
-
+          <ThreadFooter
+            hasResponses={displayedResponses.length > 0}
+            filtered={isFilterEnabled}
+            tracking={isActiveAutoRefreshTracking}
+            canAutoScroll={canAutoScroll}
+            isAutoScrolling={isAutoScrolling}
+            boundaryRef={autoScrollBoundaryRef}
+          />
           <PopupRenderer
             host={popupHost}
             anchorPreviews={anchorPreviews}

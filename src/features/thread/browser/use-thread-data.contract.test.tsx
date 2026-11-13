@@ -578,6 +578,33 @@ describe("useThreadData Phase 0 contracts", () => {
     expect(result.current.loading).toBe(false);
   });
 
+  it("初回取得と失敗時には既読境界を更新せず、更新成功時だけ通知する", async () => {
+    const notify = vi.fn();
+    const refreshSuccessRef = { current: notify };
+    const page = createPage();
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+    const getThread = vi
+      .fn()
+      .mockResolvedValueOnce({ url: THREAD_URL, res: RESPONSES })
+      .mockResolvedValueOnce({ url: THREAD_URL, res: RESPONSES, message: "取得失敗" })
+      .mockResolvedValueOnce({ url: THREAD_URL, res: RESPONSES });
+    container.thread = { getThread } as IThreadService;
+    const { result, rerender } = renderHook(
+      ({ refreshKey }: { refreshKey: number }) => {
+        const controller = useThreadRefreshController(refreshKey);
+        return useThreadData("tab-1", page, rootRef, controller, refreshSuccessRef);
+      },
+      { initialProps: { refreshKey: 0 } },
+    );
+    await waitFor(() => expect(result.current.responses).toHaveLength(RESPONSES.length));
+    expect(notify).not.toHaveBeenCalled();
+    rerender({ refreshKey: 1 });
+    await waitFor(() => expect(result.current.error).toBe("取得失敗"));
+    expect(notify).not.toHaveBeenCalled();
+    rerender({ refreshKey: 2 });
+    await waitFor(() => expect(notify).toHaveBeenCalledTimes(1));
+  });
+
   it("更新中は表示中のレスを古いキャッシュで巻き戻さない", async () => {
     const refreshedResult = createDeferred<{
       url: string;

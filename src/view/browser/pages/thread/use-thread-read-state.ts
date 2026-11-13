@@ -4,6 +4,7 @@ import { createLogger } from "src/app/logger";
 import type { ThreadScrollToResponseOptions } from "src/features/thread/browser/use-thread-virtual-list";
 import { container } from "src/service-container/index";
 import type { IReadState, IRes } from "src/service-container/interfaces";
+import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import type { ThreadReadPositionMode } from "src/view/browser/pages/thread/use-thread-read-position-mode";
 import {
@@ -35,6 +36,9 @@ interface UseThreadReadStateParams {
     received: number,
   ) => Pick<IReadState, "last" | "read" | "received" | "offset"> | null;
   readPositionMode?: ThreadReadPositionMode;
+  isFiltering?: boolean;
+  onInitialRead?: (read: number | null) => void;
+  refreshSuccessRef?: RefObject<(() => void) | null>;
 }
 
 interface UseThreadReadStateResult {
@@ -54,6 +58,9 @@ export function useThreadReadState({
   scrollToResponse,
   measureReadState,
   readPositionMode = "auto",
+  isFiltering = false,
+  onInitialRead,
+  refreshSuccessRef,
 }: UseThreadReadStateParams): UseThreadReadStateResult {
   const { window: viewWindow } = useViewSurface();
   const [initialReadState, setInitialReadState] = useState<IReadState | null>(null);
@@ -62,9 +69,17 @@ export function useThreadReadState({
   const [pendingThreadJump, setPendingThreadJump] = useState<PendingThreadJump | null>(null);
   const latestReadStateRef = useRef<IReadState | null>(null);
   const saveReadStateTimerRef = useRef<number | null>(null);
+  const isFilteringRef = useLatestRef(isFiltering);
 
   const saveCurrentReadState = useCallback(async () => {
-    if (readPositionMode !== "auto" || !isActive || !isInitialReadStateResolved) return;
+    // 絞り込みで見えないレスを、表示しただけで既読に進めない。
+    if (
+      readPositionMode !== "auto" ||
+      !isActive ||
+      !isInitialReadStateResolved ||
+      isFilteringRef.current
+    )
+      return;
 
     const measuredReadState = measureReadState(responses.length);
     if (!measuredReadState) return;
@@ -102,6 +117,34 @@ export function useThreadReadState({
     threadUrl,
     responses.length,
     measureReadState,
+    isFilteringRef,
+  ]);
+
+  useLayoutEffect(() => {
+    if (!refreshSuccessRef) return;
+    const capture = () => {
+      if (readPositionMode !== "auto" || !isInitialReadStateResolved) return;
+      // 最新の描画はまだ古い本文なので、更新前に見えていた既読を確定できる。
+      const measured =
+        isActive && !isFilteringRef.current ? measureReadState(responses.length) : null;
+      const read = Math.max(latestReadStateRef.current?.read ?? 0, measured?.read ?? 0);
+      onInitialRead?.(read > 0 ? read : null);
+      if (measured) void saveCurrentReadState();
+    };
+    refreshSuccessRef.current = capture;
+    return () => {
+      if (refreshSuccessRef.current === capture) refreshSuccessRef.current = null;
+    };
+  }, [
+    refreshSuccessRef,
+    readPositionMode,
+    isInitialReadStateResolved,
+    isActive,
+    isFilteringRef,
+    measureReadState,
+    responses.length,
+    onInitialRead,
+    saveCurrentReadState,
   ]);
 
   const markReadThrough = useCallback(
@@ -165,6 +208,7 @@ export function useThreadReadState({
       if (cancelled) return;
 
       latestReadStateRef.current = nextReadState;
+      onInitialRead?.(nextReadState?.read ?? null);
       setInitialReadState(nextReadState);
       setHasLoadedInitialReadState(true);
     };
@@ -174,7 +218,7 @@ export function useThreadReadState({
     return () => {
       cancelled = true;
     };
-  }, [threadUrl]);
+  }, [threadUrl, onInitialRead]);
 
   useEffect(() => {
     return subscribeThreadResJump((jump) => {
@@ -319,6 +363,7 @@ export function useThreadReadState({
     isInitialReadStateResolved,
     loading,
     readPositionMode,
+    isFiltering,
     responses.length,
     scheduleReadStateSave,
   ]);

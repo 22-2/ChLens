@@ -152,4 +152,59 @@ describe("useThreadReadState Phase 0 contracts", () => {
       }),
     );
   });
+
+  it("自動保存では区切りを動かさず、更新成功時に表示中の位置を記録する", async () => {
+    const set = vi.fn(async () => undefined);
+    const onInitialRead = vi.fn();
+    const refreshSuccessRef: RefObject<(() => void) | null> = { current: null };
+    let read = 2;
+    container.bookmark = { get: () => undefined } as unknown as IBookmark;
+    container.readState = {
+      get: vi.fn(async () => ({ url: THREAD_URL, last: 2, read: 2, received: 3, offset: 0 })),
+      set,
+    } as unknown as IReadStateService;
+    container.util = { isNewerReadState: () => false } as unknown as IUtil;
+    const host = createThreadRoot();
+    const responses = [createResponse(1), createResponse(2), createResponse(3)];
+    const measureReadState = () => ({ last: read, read, received: 3, offset: 0 });
+    const { rerender } = renderHook(
+      ({ isFiltering }: { isFiltering: boolean }) =>
+        useThreadReadState({
+          tabId: "thread-tab",
+          threadUrl: THREAD_URL,
+          isActive: true,
+          responses,
+          loading: false,
+          rootRef: { current: host },
+          scrollToResponse: () => true,
+          measureReadState,
+          onInitialRead,
+          refreshSuccessRef,
+          isFiltering,
+        }),
+      { initialProps: { isFiltering: false } },
+    );
+    await act(async () => {
+      await Promise.resolve();
+      await vi.runAllTimersAsync();
+    });
+    expect(onInitialRead).toHaveBeenLastCalledWith(2);
+
+    read = 3;
+    await act(async () => {
+      host.parentElement?.dispatchEvent(new Event("scroll"));
+      await vi.runAllTimersAsync();
+    });
+    expect(set).toHaveBeenLastCalledWith(expect.objectContaining({ read: 3 }));
+    expect(onInitialRead).toHaveBeenCalledTimes(1);
+    act(() => refreshSuccessRef.current?.());
+    expect(onInitialRead).toHaveBeenLastCalledWith(3);
+
+    // 絞り込み表示の計測値で既読を進めない。
+    rerender({ isFiltering: true });
+    read = 9;
+    act(() => refreshSuccessRef.current?.());
+    expect(onInitialRead).toHaveBeenLastCalledWith(3);
+    expect(set).not.toHaveBeenCalledWith(expect.objectContaining({ read: 9 }));
+  });
 });

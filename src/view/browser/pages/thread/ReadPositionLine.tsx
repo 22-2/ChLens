@@ -1,8 +1,9 @@
-/** 「ここまで読んだ」の区切り線。仮想リストの中に、読んだ位置の境目として差し込む。 */
-export function ReadPositionLine() {
+/** 自動記録では未読の始まり、手動記録では指定した既読位置を示す。 */
+export function ReadPositionLine({ manual = false }: { manual?: boolean }) {
+  const label = manual ? "ここまで読んだ" : "ここから未読";
   return (
-    <div className="thread-page__replay-position" role="separator" aria-label="ここまで読んだ">
-      <span>ここまで読んだ</span>
+    <div className="thread-page__replay-position" role="separator" aria-label={label}>
+      <span>{label}</span>
     </div>
   );
 }

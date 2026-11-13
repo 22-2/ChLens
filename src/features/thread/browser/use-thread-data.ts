@@ -108,6 +108,7 @@ export function useThreadData(
   page: ThreadPageType,
   rootRef: RefObject<HTMLDivElement | null>,
   refreshController: ThreadRefreshController,
+  refreshSuccessRef?: RefObject<(() => void) | null>,
 ): ThreadData {
   const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
   const ngDisplayMode = useNgDisplayMode();
@@ -149,6 +150,7 @@ export function useThreadData(
   const [showSearch, setShowSearch] = useState(false);
   const titleUpdatedRef = useRef(false);
   const fetchedThreadUrlRef = useRef(page.threadUrl);
+  const requestedThreadUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     updateViewState({
@@ -222,6 +224,9 @@ export function useThreadData(
     async (forceUpdate = false, { throttleSubjectCheck = false }: FetchThreadOptions = {}) => {
       const requestId = beginRequest();
       const isCurrentRequest = () => isLatestRequest(requestId);
+      // 開くときの初回取得では、先に読み込んだ既読境界を動かさない。
+      const isOpeningRequest = requestedThreadUrlRef.current !== page.threadUrl;
+      requestedThreadUrlRef.current = page.threadUrl;
       const isDifferentThread = fetchedThreadUrlRef.current !== page.threadUrl;
       fetchedThreadUrlRef.current = page.threadUrl;
 
@@ -264,6 +269,7 @@ export function useThreadData(
           // 依存は通常スレの ThreadService と同じサービスコンテナを渡す。
           container,
         );
+        if (!isOpeningRequest) refreshSuccessRef?.current?.();
         setResponses(
           importedThread.responses.map((response) => ({
             ...response,
@@ -343,6 +349,8 @@ export function useThreadData(
         // 短くなると、レス一覧の巻き戻しと高さの変動が連続して自動追従が
         // ガクつき、アイドル停止判定まで誤って進むため、同じスレの表示とcacheを
         // すでに見えている新しいsnapshotへ揃える。
+        // 本文を差し替える前に読んだ位置を確定する。エラー時は古い線を保つ。
+        if (!isOpeningRequest && !result.message) refreshSuccessRef?.current?.();
         setResponses(acceptedResponses);
         void setThreadResponseCache(page.threadUrl, acceptedResponses);
         setExpired(result.expired ?? false);
@@ -381,6 +389,7 @@ export function useThreadData(
       manualRefreshScopeKey,
       page.threadUrl,
       page.title,
+      refreshSuccessRef,
       setResponses,
       tabId,
       toast,
