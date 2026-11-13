@@ -35,6 +35,12 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await expect(saveOne).toBeVisible();
   await expect(saveOne.locator("svg")).toHaveCount(1);
   await expect(saveOne).toHaveText("");
+  // サムネイルの保存ボタンは、ポインターが載っているときだけ見せる。本文のURL横のボタンと区別するためexactで探す。
+  const thumbSave = first.getByRole("button", { name: "画像を保存", exact: true });
+  await page.mouse.move(0, 0);
+  await expect(thumbSave).toHaveCSS("opacity", "0");
+  await first.locator(".res__thumb--image").hover();
+  await expect(thumbSave).toHaveCSS("opacity", "1");
   await first.locator(".res__thumb--image").first().click();
   await expect(first.getByRole("button", { name: "画像を折りたたむ" })).toBeVisible();
   const image = first.locator(".res__inline-image img");

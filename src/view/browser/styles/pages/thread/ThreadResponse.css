@@ -451,10 +451,10 @@
   color: var(--sys-color-accent-fg);
   pointer-events: none;
 }
-.res__thumb:has(+ .res__inline-image--loading) .res__inline-image-loading {
+.res__thumb-frame:has(+ .res__inline-image--loading) .res__inline-image-loading {
   display: grid;
 }
-.res__thumb:has(+ .res__inline-image:not(.res__inline-image--loading)) {
+.res__thumb-frame:has(+ .res__inline-image:not(.res__inline-image--loading)) {
   display: none;
 }
 .res__inline-image--resized {
@@ -477,7 +477,8 @@
   gap: var(--sys-space-1);
   z-index: var(--sys-z-local-raised);
 }
-.res__inline-image-actions button {
+.res__inline-image-actions button,
+.res__thumb-save {
   display: grid;
   place-items: center;
   padding: var(--sys-space-2);
@@ -487,7 +488,8 @@
   background: var(--sys-color-media-badge-bg);
   cursor: pointer;
 }
-.res__inline-image-actions button:hover {
+.res__inline-image-actions button:hover,
+.res__thumb-save:hover:not(:disabled) {
   opacity: 0.8;
 }
 /* つまむ場所はホバーとキーボード操作中に強調する。 */
@@ -598,11 +600,44 @@
 .res__image-save-all:focus-visible,
 .res__inline-image-content:focus-visible,
 .res__inline-image-actions button:focus-visible,
+.res__thumb-save:focus-visible,
 .res__inline-image-resize:focus-visible {
   outline: 2px solid var(--sys-color-focus-ring);
 }
 .res__image-save-all:disabled {
   color: var(--sys-color-text-muted);
+  cursor: wait;
+}
+
+/* 変更理由: サムネイルはリンクで中にボタンを置けないため、枠を基準に保存ボタンを右上へ重ねる。
+   展開画像で列が広がっても枠をサムネイルの幅に保ち、ボタンが列の端へずれないようにする。 */
+.res__thumb-frame {
+  position: relative;
+  display: block;
+  justify-self: start;
+}
+/* ポインターが載っているか、キーボードで操作しているときだけ見せる。 */
+.res__thumb-save {
+  position: absolute;
+  top: var(--sys-space-2);
+  right: var(--sys-space-2);
+  z-index: var(--sys-z-local-raised);
+  opacity: 0;
+  pointer-events: none;
+}
+.res__thumb-frame:hover .res__thumb-save,
+.res__thumb-frame:has(:focus-visible) .res__thumb-save {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* ホバーできない入力では出せなくなるため、常に表示する。 */
+@media (hover: none) {
+  .res__thumb-save {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+.res__thumb-save:disabled {
   cursor: wait;
 }
 

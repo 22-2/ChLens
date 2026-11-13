@@ -113,7 +113,10 @@ export function ResMediaGallery({
   >(new Map());
   const openImageContextMenu = (url: string, event: React.MouseEvent<HTMLElement>) => {
     const imageIsLoaded = useMediaImageStore.getState().images.get(url)?.status === "loaded";
-    const image = event.currentTarget.querySelector<HTMLImageElement>("img[data-image-key]");
+    // 保存ボタンの上で開いたときも、同じ枠の中のサムネイル画像を対象にする。
+    const imageScope =
+      event.currentTarget.closest<HTMLElement>(".res__thumb-frame") ?? event.currentTarget;
+    const image = imageScope.querySelector<HTMLImageElement>("img[data-image-key]");
     const targetWindow = event.currentTarget.ownerDocument.defaultView;
 
     const viewerImages = imageUrls.includes(url) ? imageUrls : saveImageUrls;
@@ -438,66 +441,89 @@ export function ResMediaGallery({
             };
             return (
               <React.Fragment key={`image:${item.rawUrl}`}>
-                <ConfirmableLink
-                  href={item.rawUrl}
-                  className={`res__thumb res__thumb--image${isThumbBlurred ? " res__thumb--blurred" : ""}${isHashPending ? " res__thumb--hash-pending" : ""}`}
-                  style={isThumbBlurred ? blurStyle : undefined}
-                  onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (isImgurVideoResolutionCandidate(item.rawUrl)) {
-                      // 共有URLは静止画か動画かAPIでしか確定できないため、クリックされるまで照会しない。
-                      void imgurVideoResolver.resolve(item.rawUrl).then((videoUrl) => {
-                        if (videoUrl) {
-                          setImgurVideoUrls((current) =>
-                            new Map(current).set(item.rawUrl, videoUrl),
-                          );
-                          setExpandedVideoUrl(item.rawUrl);
-                          return;
-                        }
-                        openImage(item.rawUrl);
-                      });
-                      return;
-                    }
-                    openImage(item.rawUrl);
-                  }}
-                  onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
-                  onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
-                  title={thumbTitle(item.rawUrl)}
-                >
-                  {manualImageLoading ? (
-                    <ManualLoadExternalImage
-                      src={item.src}
-                      data-image-key={item.rawUrl}
-                      alt={item.rawUrl}
-                      loading="lazy"
-                      insideControl
-                      onLoad={requestImageHash}
-                      onError={markImageUnavailable}
-                    />
-                  ) : (
-                    <ExternalImage
-                      src={item.src}
-                      data-image-key={item.rawUrl}
-                      alt={item.rawUrl}
-                      loading="lazy"
-                      manualLoad={false}
-                      insideControl
-                      onLoad={requestImageHash}
-                      onError={markImageUnavailable}
-                    />
-                  )}
-                  {onToggleImage && expandedImageUrls?.has(item.rawUrl) && (
-                    <span
-                      className="res__inline-image-loading"
-                      role="status"
-                      aria-label="画像を展開中"
+                {/* サムネイルはリンクで、中にボタンを置けない。そのため枠で包み、リンクと保存ボタンを並べる。 */}
+                <span className="res__thumb-frame">
+                  <ConfirmableLink
+                    href={item.rawUrl}
+                    className={`res__thumb res__thumb--image${isThumbBlurred ? " res__thumb--blurred" : ""}${isHashPending ? " res__thumb--hash-pending" : ""}`}
+                    style={isThumbBlurred ? blurStyle : undefined}
+                    onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (isImgurVideoResolutionCandidate(item.rawUrl)) {
+                        // 共有URLは静止画か動画かAPIでしか確定できないため、クリックされるまで照会しない。
+                        void imgurVideoResolver.resolve(item.rawUrl).then((videoUrl) => {
+                          if (videoUrl) {
+                            setImgurVideoUrls((current) =>
+                              new Map(current).set(item.rawUrl, videoUrl),
+                            );
+                            setExpandedVideoUrl(item.rawUrl);
+                            return;
+                          }
+                          openImage(item.rawUrl);
+                        });
+                        return;
+                      }
+                      openImage(item.rawUrl);
+                    }}
+                    onMouseDown={(event) => handleMiddleMouseDown(event, item.rawUrl, imageUrls)}
+                    onAuxClick={(event) => handleMiddleAuxClick(event, item.rawUrl, imageUrls)}
+                    title={thumbTitle(item.rawUrl)}
+                  >
+                    {manualImageLoading ? (
+                      <ManualLoadExternalImage
+                        src={item.src}
+                        data-image-key={item.rawUrl}
+                        alt={item.rawUrl}
+                        loading="lazy"
+                        insideControl
+                        onLoad={requestImageHash}
+                        onError={markImageUnavailable}
+                      />
+                    ) : (
+                      <ExternalImage
+                        src={item.src}
+                        data-image-key={item.rawUrl}
+                        alt={item.rawUrl}
+                        loading="lazy"
+                        manualLoad={false}
+                        insideControl
+                        onLoad={requestImageHash}
+                        onError={markImageUnavailable}
+                      />
+                    )}
+                    {onToggleImage && expandedImageUrls?.has(item.rawUrl) && (
+                      <span
+                        className="res__inline-image-loading"
+                        role="status"
+                        aria-label="画像を展開中"
+                      >
+                        <Spinner size="sm" aria-hidden="true" />
+                      </span>
+                    )}
+                  </ConfirmableLink>
+                  {/* 右クリックの「画像を保存」や一括保存と同じく、保存を出すのは展開に対応した本文だけにする。 */}
+                  {onToggleImage && (
+                    <button
+                      type="button"
+                      className="res__thumb-save"
+                      aria-label="画像を保存"
+                      title="画像を保存"
+                      disabled={saving}
+                      // ConfirmableLink は右クリックを自分で受けて止めるため、枠でまとめず各要素から開く。
+                      onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
+                      onClick={(event) => {
+                        // 親のリンクや本文の操作（展開・ビューア）へ伝えず、保存だけを行う。
+                        event.preventDefault();
+                        event.stopPropagation();
+                        void save([item.rawUrl]);
+                      }}
                     >
-                      <Spinner size="sm" aria-hidden="true" />
-                    </span>
+                      <Download size={14} aria-hidden="true" />
+                    </button>
                   )}
-                </ConfirmableLink>
+                </span>
                 {onToggleImage && expandedImageUrls?.has(item.rawUrl) && (
                   <InlineExpandedImage
                     key={`image:${item.rawUrl}`}

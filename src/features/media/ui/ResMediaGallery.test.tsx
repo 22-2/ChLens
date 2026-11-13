@@ -8,6 +8,7 @@ const requestMediaImageDownloadMock = vi.hoisted(() =>
   vi.fn<(key: string, url: string) => Promise<void>>(),
 );
 const copyMediaImageMock = vi.hoisted(() => vi.fn<(rawUrl: string) => Promise<void>>());
+const saveMediaImageMock = vi.hoisted(() => vi.fn<(rawUrl: string) => Promise<void>>());
 vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
   useConfigBooleanSetting: (key: string) => ({
     value: key === "manual_image_loading" && manualImageLoadingMock.value,
@@ -23,6 +24,9 @@ vi.mock("../browser/image-download-preflight", () => ({
 }));
 vi.mock("../browser/media-viewer-copy", () => ({
   copyMediaImageWithNotice: (rawUrl: string) => copyMediaImageMock(rawUrl),
+}));
+vi.mock("../browser/image-save", () => ({
+  saveMediaImage: (rawUrl: string) => saveMediaImageMock(rawUrl),
 }));
 
 import { imgurVideoResolver } from "../application/imgur-album";
@@ -211,6 +215,46 @@ describe("ResMediaGallery", () => {
       "画像を保存 (V)",
       "画像を破棄",
     ]);
+  });
+
+  describe("サムネイルの保存ボタン", () => {
+    it("押すと本文のURLを保存へ渡し、画像の展開やビューアは開かない", async () => {
+      saveMediaImageMock.mockReset();
+      saveMediaImageMock.mockResolvedValue(undefined);
+      const imageUrl = "https://images.example.com/save-thumb.jpg";
+      const onToggleImage = vi.fn();
+      const onUrlClick = vi.fn();
+      render(
+        <ResMediaGallery urls={[imageUrl]} onUrlClick={onUrlClick} onToggleImage={onToggleImage} />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "画像を保存" }));
+
+      await waitFor(() => expect(saveMediaImageMock).toHaveBeenCalledExactlyOnceWith(imageUrl));
+      expect(onToggleImage).not.toHaveBeenCalled();
+      expect(onUrlClick).not.toHaveBeenCalled();
+    });
+
+    it("展開に対応していない表示（ポップアップなど）には出さない", () => {
+      render(
+        <ResMediaGallery urls={["https://images.example.com/no-save.jpg"]} onUrlClick={() => {}} />,
+      );
+
+      expect(screen.queryByRole("button", { name: "画像を保存" })).not.toBeInTheDocument();
+    });
+
+    it("ボタンの上の右クリックでも、サムネイルと同じ画像メニューを開く", async () => {
+      const imageUrl = "https://images.example.com/menu-thumb.jpg";
+      render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} onToggleImage={() => {}} />);
+      fireEvent.load(screen.getByRole("img", { name: imageUrl }));
+
+      fireEvent.contextMenu(screen.getByRole("button", { name: "画像を保存" }));
+
+      // メニュー項目の名前はアクセスキー表記を含まないため、並び順テストと同じく表示文字で確かめる。
+      expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toContain(
+        "画像を保存 (V)",
+      );
+    });
   });
 
   it("画像をコピーを選ぶと、本文のURLを元画像としてコピーに渡す", async () => {
