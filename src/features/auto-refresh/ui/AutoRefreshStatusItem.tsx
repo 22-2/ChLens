@@ -279,7 +279,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
           ? `スレッド自動更新: 一時停止中（${manuallyPaused ? "手動" : "ポップアップ表示中"}, ${intervalSec}秒間隔）`
           : canAutoScroll || isAutoScrolling
             ? `スレッド自動更新: 追従中（${intervalSec}秒間隔）`
-            : `スレッド自動更新: 待機中（しきい線より上, ${intervalSec}秒間隔）`
+            : `スレッド自動更新: 待機中（末尾から離れています, ${intervalSec}秒間隔）`
       : !isEnabled
         ? "スレ一覧自動更新: OFF"
         : `スレ一覧自動更新: ON（${intervalSec}秒間隔）`;
@@ -309,6 +309,15 @@ export const AutoRefreshStatusItem: React.FC = () => {
   };
 
   const windowTitle = panelKind === "thread" ? "スレッド自動更新" : "スレ一覧自動更新";
+  const followLabel = isStatusWaiting
+    ? "次スレ待機中"
+    : panelKind === "thread" && isEnabled
+      ? isPaused
+        ? "一時停止中"
+        : canAutoScroll || isAutoScrolling
+          ? "追従中"
+          : "待機中"
+      : null;
 
   return (
     <>
@@ -370,6 +379,7 @@ export const AutoRefreshStatusItem: React.FC = () => {
               // ミニウィンドウを開くまで更新間隔を確認できず操作往復が増えるため。
             }
             <span className="status-bar__btn-label">{intervalLabel}</span>
+            {followLabel ? <span className="status-bar__btn-label">{followLabel}</span> : null}
           </button>
         </div>
       </StatusBarItem>

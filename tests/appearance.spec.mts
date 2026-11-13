@@ -31,6 +31,7 @@ test("ミッドナイトのスレ一覧とレスで文字の階層とIDの位置
   expect(sizes.title).toBe(sizes.table);
   await page.screenshot({ path: testInfo.outputPath("thread-list.png") });
   await title.click();
+  await expect(panel.getByRole("separator", { name: "END", exact: true })).toBeAttached();
   const response = panel.locator('.thread-page__responses [data-res-num="1"]');
   await expect(response).toBeVisible();
   const header = response.locator(".res__header");

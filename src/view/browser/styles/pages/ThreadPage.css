@@ -80,6 +80,7 @@
  */
 .thread-page--with-minimap .thread-page__notice,
 .thread-page--with-minimap .thread-page__responses,
+.thread-page--with-minimap .thread-page__end,
 .thread-page--with-minimap .thread-page__auto-scroll-threshold {
   padding-right: calc(var(--sys-space-8) + var(--thread-minimap-width, 0px));
 }
@@ -182,12 +183,32 @@
  * ラベルと破線だけが入る最小限の余白にする。追従判定は破線の実位置で行うため、高さに依存しない。
  */
 .thread-page__auto-scroll-threshold {
+  /* 判定点と高さを保ったまま、追従の状態はステータスバーに集約する。 */
+  visibility: hidden;
+  pointer-events: none;
   position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: flex-end;
   padding: 0 var(--sys-space-8) var(--sys-space-6);
   color: var(--sys-color-text-muted);
+}
+
+/* ENDは取得済みの表示範囲を示し、スレッドの終了状態とは区別する。 */
+.thread-page__end {
+  display: flex;
+  align-items: center;
+  gap: var(--sys-space-4);
+  padding: var(--sys-space-4) var(--sys-space-8);
+  color: var(--sys-color-text-muted);
+  font-size: var(--sys-font-size-sm);
+}
+
+.thread-page__end::before,
+.thread-page__end::after {
+  content: "";
+  flex: 1;
+  border-top: var(--sys-border-width-thin) solid var(--sys-color-border);
 }
 
 .thread-page__auto-scroll-threshold-line {

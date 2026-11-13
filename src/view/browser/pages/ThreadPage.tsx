@@ -66,6 +66,7 @@ import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
 import { ReadPositionLine } from "src/view/browser/pages/thread/ReadPositionLine";
 import { ThreadAutoScrollThreshold } from "src/view/browser/pages/thread/ThreadAutoScrollThreshold";
+import { ThreadEndLine } from "src/view/browser/pages/thread/ThreadEndLine";
 import { ThreadPageNotices } from "src/view/browser/pages/thread/ThreadPageNotices";
 import { ThreadPageTopBar } from "src/view/browser/pages/thread/ThreadPageTopBar";
 import { useAutoRefreshReset } from "src/view/browser/pages/thread/use-auto-refresh-reset";
@@ -914,6 +915,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
               />
             ) : null}
           </div>
+
+          {displayedResponses.length > 0 ? <ThreadEndLine filtered={isFilterEnabled} /> : null}
 
           {isActiveAutoRefreshTracking &&
             /* 自動更新はフィルターが有効な場合は無効化 */

@@ -12,6 +12,7 @@ export function ThreadAutoScrollThreshold({
 }) {
   return (
     <div
+      aria-hidden="true"
       className={`thread-page__auto-scroll-threshold${
         canAutoScroll ? " thread-page__auto-scroll-threshold--armed" : ""
       }${isAutoScrolling ? " thread-page__auto-scroll-threshold--scrolling" : ""}`}

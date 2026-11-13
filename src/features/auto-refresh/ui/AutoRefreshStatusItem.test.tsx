@@ -317,6 +317,18 @@ describe("AutoRefreshStatusItem", () => {
     expect(screen.getByText("30 s")).toBeInTheDocument();
   });
 
+  it.each([
+    { follow: true, paused: false, label: "追従中" },
+    { follow: false, paused: false, label: "待機中" },
+    { follow: true, paused: true, label: "一時停止中" },
+  ])("追従状態をステータスバーに表示する: $label", ({ follow, paused, label }) => {
+    mocks.autoRefreshPanel.isEnabled = true;
+    mocks.canAutoScroll = follow;
+    mocks.isPaused = paused;
+    renderItem();
+    expect(screen.getByText(label, { exact: true })).toBeVisible();
+  });
+
   it("次スレ待機中は自動更新のONとして示さず、待機の色と砂時計アイコンで表示する", () => {
     mocks.autoRefreshPanel.isEnabled = false;
     mocks.autoRefreshPanel.isNextThreadWaiting = true;
