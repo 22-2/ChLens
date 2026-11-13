@@ -9,6 +9,7 @@ import { formatSimilarImageBlurReason } from "src/features/ng/browser/similar-im
 import { useIsNgTemporarilyDisabled } from "src/features/ng/browser/use-ng-status";
 import { container } from "src/service-container/index";
 import type { IRes } from "src/service-container/interfaces";
+import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 
 interface UseSimilarImageNgOptions {
   responses: readonly IRes[];
@@ -40,6 +41,7 @@ export function useSimilarImageNg({
   messageProtocol,
 }: UseSimilarImageNgOptions): SimilarImageNgResult {
   const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
+  const { value: excludeFirstResponse } = useConfigBooleanSetting("ng_exclude_first_response");
   const [ruleState, setRuleState] = useState(() => ({
     hasImageRules: container.ng.hasImageRules(),
     revision: 0,
@@ -75,6 +77,9 @@ export function useSimilarImageNg({
     // ルールの更新をこの判定に結び付ける（ルール本体はcontainer.ngが持つ）。
     void revision;
     for (const res of responses) {
+      // 変更理由: 類似画像NGは evaluateThreadNg を通らず描画中に別経路で判定するため、
+      // 「>>1をNG対象から除外する」設定がここでは効かず、画像だけの>>1が隠れていた。
+      if (excludeFirstResponse && res.num === 1) continue;
       const hashes = readyImageHashes(res, messageProtocol, imageHashEntries);
       if (hashes.length === 0) continue;
       const blurResult = container.ng.isSimilarImageNG(res, threadTitle, threadUrl, hashes);
@@ -87,6 +92,7 @@ export function useSimilarImageNg({
     }
     return { blurredResNums, responseNgByNum, blurReasonByNum };
   }, [
+    excludeFirstResponse,
     hashingEnabled,
     imageHashEntries,
     messageProtocol,

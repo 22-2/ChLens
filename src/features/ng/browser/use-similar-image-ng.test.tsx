@@ -13,6 +13,14 @@ vi.mock("src/features/ng/browser/use-ng-status", () => ({
   useIsNgTemporarilyDisabled: () => ngStatus.temporarilyDisabled,
 }));
 
+const ngConfig = vi.hoisted(() => ({ excludeFirstResponse: false }));
+vi.mock("src/view/browser/hooks/use-config-boolean-setting", () => ({
+  useConfigBooleanSetting: (key: string) => ({
+    value: key === "ng_exclude_first_response" ? ngConfig.excludeFirstResponse : false,
+    setValue: vi.fn(),
+  }),
+}));
+
 const IMAGE_URL = "https://images.example.com/a.jpg";
 const responses: IRes[] = [
   { num: 1, name: "", mail: "", date: "", message: "画像なし" },
@@ -37,6 +45,7 @@ const READY_ENTRIES = new Map<string, ImageHashEntry>([
 describe("類似画像NGでぼかすレス", () => {
   beforeEach(() => {
     ngStatus.temporarilyDisabled = false;
+    ngConfig.excludeFirstResponse = false;
     hasImageRules.mockReset().mockReturnValue(true);
     isSimilarImageNG.mockReset().mockReturnValue({ type: "SimilarImage", action: "blur" });
     isSimilarImageResponseNG.mockReset().mockReturnValue(null);
@@ -161,5 +170,46 @@ describe("類似画像NGでぼかすレス", () => {
     const { result } = renderHook(() => useSimilarImageNg(options));
     expect(isSimilarImageResponseNG).not.toHaveBeenCalled();
     expect(result.current.responseNgByNum.size).toBe(0);
+  });
+
+  describe(">>1をNG対象から除外する設定", () => {
+    const firstImageResponses: IRes[] = [
+      { num: 1, name: "", mail: "", date: "", message: IMAGE_URL },
+      { num: 2, name: "", mail: "", date: "", message: IMAGE_URL },
+    ];
+    const firstImageOptions = { ...options, responses: firstImageResponses };
+    const hideResult = { type: "SimilarImage", action: "hide", ruleIndex: 0 } as const;
+
+    beforeEach(() => {
+      isSimilarImageResponseNG.mockReturnValue(hideResult);
+      useImageHashStore.setState({ entries: READY_ENTRIES });
+    });
+
+    it("有効なら、画像が一致しても>>1はぼかさず、隠す・折りたたむ対象にもしない", () => {
+      ngConfig.excludeFirstResponse = true;
+      const { result } = renderHook(() => useSimilarImageNg(firstImageOptions));
+
+      expect(result.current.blurredResNums).toEqual(new Set([2]));
+      expect(result.current.blurReasonByNum.has(1)).toBe(false);
+      expect(result.current.responseNgByNum).toEqual(new Map([[2, hideResult]]));
+      expect(isSimilarImageNG).not.toHaveBeenCalledWith(
+        firstImageResponses[0],
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it("無効なら、>>1も他のレスと同じく判定する", () => {
+      const { result } = renderHook(() => useSimilarImageNg(firstImageOptions));
+
+      expect(result.current.blurredResNums).toEqual(new Set([1, 2]));
+      expect(result.current.responseNgByNum).toEqual(
+        new Map([
+          [1, hideResult],
+          [2, hideResult],
+        ]),
+      );
+    });
   });
 });
