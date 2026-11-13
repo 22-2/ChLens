@@ -84,6 +84,20 @@ describe("レス内の画像展開", () => {
     fireEvent.click(screen.getByRole("button", { name: "画像を縮小" }));
     expect(screen.getByRole("link", { name: image1 })).toBeInTheDocument();
   });
+  it("展開画像の操作から、展開している画像を保存できる", async () => {
+    mocks.save.mockResolvedValue(undefined);
+    render(<Gallery urls={[image1]} />);
+    // 保存を出すのは展開した画像の操作だけで、畳んだサムネイルには出さない。
+    expect(screen.queryByRole("button", { name: "画像を保存" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("link", { name: image1 }));
+    fireEvent.load(document.querySelector(".res__inline-image img")!);
+    fireEvent.click(screen.getByRole("button", { name: "画像を保存" }));
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledExactlyOnceWith(image1));
+    // 保存しても展開は畳まない。
+    expect(screen.getByRole("button", { name: "画像を折りたたむ" })).toBeInTheDocument();
+  });
   it("画像が複数あるレスではクリックでビューアを開く", () => {
     const onUrlClick = vi.fn();
     render(<Gallery onUrlClick={onUrlClick} />);

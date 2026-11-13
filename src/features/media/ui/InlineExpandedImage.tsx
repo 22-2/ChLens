@@ -1,4 +1,4 @@
-import { ExternalLink, Minimize2 } from "lucide-react";
+import { Download, ExternalLink, Minimize2 } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { createLogger } from "src/app/logger";
 
@@ -41,6 +41,8 @@ export function InlineExpandedImage({
   blurStyle,
   onClose,
   onOpenViewer,
+  onSave,
+  saving = false,
   width,
   onResize,
   onContextMenu,
@@ -55,6 +57,10 @@ export function InlineExpandedImage({
   blurStyle: ThumbStyle;
   onClose: () => void;
   onOpenViewer: () => void;
+  /** 指定したときだけ、操作の並びに保存ボタンを出す。 */
+  onSave?: () => void;
+  /** 保存中は連打で二重に保存しないよう、保存ボタンを押せなくする。 */
+  saving?: boolean;
   width?: number;
   onResize?: (width: number) => void;
   onContextMenu: (event: React.MouseEvent<HTMLElement>) => void;
@@ -126,6 +132,20 @@ export function InlineExpandedImage({
         >
           <ExternalLink size={16} aria-hidden="true" />
         </button>
+        {onSave && (
+          <button
+            type="button"
+            aria-label="画像を保存"
+            title="画像を保存"
+            disabled={saving}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSave();
+            }}
+          >
+            <Download size={16} aria-hidden="true" />
+          </button>
+        )}
         <button
           type="button"
           aria-label="画像を縮小"

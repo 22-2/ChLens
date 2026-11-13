@@ -144,6 +144,28 @@ describe("InlineExpandedImage", () => {
     expect(parentClick).not.toHaveBeenCalled();
   });
 
+  it("保存ボタンは、保存だけを行い、折りたたまず親へもクリックを伝えない", () => {
+    const onSave = vi.fn();
+    const { props, parentClick } = renderInline({ onSave });
+
+    fireEvent.click(screen.getByRole("button", { name: "画像を保存" }));
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(props.onClose).not.toHaveBeenCalled();
+    expect(parentClick).not.toHaveBeenCalled();
+  });
+
+  it("保存中は保存ボタンを押せず、保存の指定がなければボタンを出さない", () => {
+    const { unmount } = render(
+      <InlineExpandedImage {...createProps({ onSave: vi.fn(), saving: true })} />,
+    );
+    expect(screen.getByRole("button", { name: "画像を保存" })).toBeDisabled();
+    unmount();
+
+    render(<InlineExpandedImage {...createProps()} />);
+    expect(screen.queryByRole("button", { name: "画像を保存" })).not.toBeInTheDocument();
+  });
+
   it("縮小ボタンは折りたたみ、親へはクリックを伝えない", () => {
     const { props, parentClick } = renderInline();
 

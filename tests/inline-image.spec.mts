@@ -35,12 +35,6 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await expect(saveOne).toBeVisible();
   await expect(saveOne.locator("svg")).toHaveCount(1);
   await expect(saveOne).toHaveText("");
-  // サムネイルの保存ボタンは、ポインターが載っているときだけ見せる。本文のURL横のボタンと区別するためexactで探す。
-  const thumbSave = first.getByRole("button", { name: "画像を保存", exact: true });
-  await page.mouse.move(0, 0);
-  await expect(thumbSave).toHaveCSS("opacity", "0");
-  await first.locator(".res__thumb--image").hover();
-  await expect(thumbSave).toHaveCSS("opacity", "1");
   await first.locator(".res__thumb--image").first().click();
   await expect(first.getByRole("button", { name: "画像を折りたたむ" })).toBeVisible();
   const image = first.locator(".res__inline-image img");
@@ -85,6 +79,8 @@ test("画像をレス内で展開し、仮想スクロール後も状態を保�
   await first.locator(".res__inline-image").hover();
   await expect(handle).toHaveCSS("opacity", "1");
   await expect(actions).toHaveCSS("opacity", "1");
+  // 保存は展開画像の操作に並べる。本文のURL横のボタン（名前が「画像を保存: URL」）とは範囲で区別する。
+  await expect(actions.getByRole("button", { name: "画像を保存" })).toBeVisible();
   await page.mouse.move(0, 0);
   await page.keyboard.press("Tab");
   await handle.focus();
