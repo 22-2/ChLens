@@ -64,6 +64,13 @@
   gap: var(--sys-space-2);
 }
 
+/* スレ名を件数などの補助情報より目立たせつつ、固定高の一行表示を保つ。 */
+.thread-list__title {
+  color: var(--sys-color-text);
+  font-size: var(--sys-font-size-body);
+  font-weight: 500;
+}
+
 .thread-list__title-text {
   min-width: 0;
   overflow: hidden;
