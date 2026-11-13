@@ -41,6 +41,11 @@
     var(--sys-color-text) 6%,
     var(--sys-color-surface)
   );
+  --sys-color-response-hover-popup: color-mix(
+    in srgb,
+    var(--sys-color-text) 6%,
+    var(--sys-color-popup-background)
+  );
   --sys-color-text-muted: var(--ref-color-neutral-600);
   --sys-color-text-disabled: var(--ref-color-neutral-400);
   --sys-color-placeholder: var(--ref-color-neutral-500);
@@ -190,6 +195,11 @@
     in srgb,
     var(--sys-color-text) 6%,
     var(--sys-color-surface)
+  );
+  --sys-color-response-hover-popup: color-mix(
+    in srgb,
+    var(--sys-color-text) 6%,
+    var(--sys-color-popup-background)
   );
   --sys-color-text-muted: var(--ref-color-dark-neutral-600);
   --sys-color-text-disabled: var(--ref-color-dark-neutral-400);

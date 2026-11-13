@@ -1,5 +1,7 @@
 /* ID, reply-tree, and anchor preview popups share the thread popup layer. */
 .res-popup {
+  /* 本文と同じホバー強度を、ポップアップ固有の背景色を基準に作る。 */
+  --sys-color-response-hover: var(--sys-color-response-hover-popup);
   /* Keep popup children in the fixed thread popup layer while preserving inline coordinates. */
   position: absolute;
   z-index: var(--sys-z-popup-layer);
@@ -110,6 +112,8 @@
 }
 
 .anchor-preview {
+  /* アンカー参照も本文と同じレスホバー色になるよう、背景面だけを差し替える。 */
+  --sys-color-response-hover: var(--sys-color-response-hover-popup);
   /* Keep the preview interactive while it is hosted by the fixed popup layer. */
   position: absolute;
   z-index: var(--sys-z-popup-layer);
