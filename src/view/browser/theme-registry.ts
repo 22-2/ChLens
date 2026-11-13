@@ -1,19 +1,20 @@
-/** 配色を追加するときは基調を指定し、CSS側で同じIDの意味トークンを定義する。 */
-export const THEMES = [
-  { id: "light", title: "ライト", scheme: "light" },
-  { id: "dark", title: "ダーク", scheme: "dark" },
-  { id: "midnight", title: "ミッドナイト", scheme: "dark" },
+/** 基調と配色は独立して選べる。各配色はライトとダークの両方を定義する。 */
+export const COLOR_SCHEMES = [
+  { id: "default", title: "標準" },
+  { id: "midnight", title: "ミッドナイト" },
 ] as const;
 
-export type ColorScheme = "light" | "dark";
-export type ThemeId = (typeof THEMES)[number]["id"] | "system";
+export type ThemeId = "system" | "light" | "dark";
+export type ColorSchemeId = (typeof COLOR_SCHEMES)[number]["id"];
+export type ResolvedTheme = "light" | "dark";
 
 export function parseThemeId(raw: string | null | undefined): ThemeId {
   if (raw === "default") return "light";
-  return THEMES.find((theme) => theme.id === raw)?.id ?? "system";
+  // 分離前のミッドナイトはダーク基調だった。
+  if (raw === "midnight") return "dark";
+  return raw === "light" || raw === "dark" ? raw : "system";
 }
 
-export function resolveTheme(id: ThemeId, systemScheme: ColorScheme) {
-  const theme = THEMES.find((candidate) => candidate.id === id);
-  return theme ?? THEMES.find((candidate) => candidate.id === systemScheme)!;
+export function parseColorSchemeId(raw: string | null | undefined): ColorSchemeId {
+  return COLOR_SCHEMES.find((scheme) => scheme.id === raw)?.id ?? "default";
 }

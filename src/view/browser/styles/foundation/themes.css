@@ -294,8 +294,8 @@
 }
 
 /* 各面で参照色を差し替えることで、ダークの意味トークンを追加テーマでも共有する。 */
-:root[data-theme-id="midnight"],
-:root[data-theme-id="midnight"] .browser-shell[data-theme="dark"] {
+:root[data-theme="dark"][data-color-scheme="midnight"],
+:root[data-color-scheme="midnight"] .browser-shell[data-theme="dark"] {
   --ref-color-dark-neutral-0: var(--ref-color-midnight-base);
   --ref-color-dark-surface-hover: var(--ref-color-midnight-raised);
   --ref-color-dark-neutral-50: var(--ref-color-midnight-raised);
@@ -307,6 +307,25 @@
   --ref-color-dark-blue-300: var(--ref-color-midnight-link);
   --ref-color-dark-blue-600: var(--ref-color-midnight-accent);
   --ref-color-dark-blue-700: var(--ref-color-midnight-accent-hover);
+  /* 長い一覧で罫線が文字より目立たないよう、枠より控えめにする。 */
+  --sys-color-table-row-border: color-mix(
+    in srgb,
+    var(--ref-color-midnight-border) 55%,
+    var(--ref-color-midnight-base)
+  );
+}
+
+/* ライト基調でも同じスキームを選べるよう、明るい面と濃い文字を用意する。 */
+:root[data-theme="light"][data-color-scheme="midnight"] {
+  --ref-color-neutral-0: var(--ref-color-midnight-light-surface);
+  --ref-color-neutral-50: var(--ref-color-midnight-light-raised);
+  --ref-color-neutral-100: var(--ref-color-midnight-light-raised);
+  --ref-color-neutral-200: var(--ref-color-midnight-light-control);
+  --ref-color-neutral-300: var(--ref-color-midnight-light-border);
+  --ref-color-neutral-600: var(--ref-color-midnight-light-muted);
+  --ref-color-neutral-950: var(--ref-color-midnight-light-text);
+  --ref-color-blue-600: var(--ref-color-midnight-light-accent);
+  --ref-color-blue-700: var(--ref-color-midnight-light-accent-hover);
 }
 
 @media (prefers-reduced-motion: reduce) {

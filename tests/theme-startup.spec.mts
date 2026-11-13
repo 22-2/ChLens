@@ -9,12 +9,17 @@ async function inspectBeforeStyles(
   systemTheme: "light" | "dark",
   pauseThemeInit: boolean,
   inspect: () => Promise<void>,
+  savedScheme: string | null = null,
 ): Promise<void> {
   const pendingAssets = Promise.withResolvers<void>();
   await page.emulateMedia({ colorScheme: systemTheme });
-  await page.addInitScript((theme) => {
-    if (theme !== null) localStorage.setItem("config_theme_id", theme);
-  }, savedTheme);
+  await page.addInitScript(
+    ({ theme, scheme }) => {
+      if (theme !== null) localStorage.setItem("config_theme_id", theme);
+      if (scheme !== null) localStorage.setItem("config_color_scheme_id", scheme);
+    },
+    { theme: savedTheme, scheme: savedScheme },
+  );
   await page.route("http://example.com/**", async (route) => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname === "/browser.js") {
@@ -68,13 +73,28 @@ test("追加テーマの配色はルートとブラウザーシェルの両方�
   await page.addStyleTag({ content: await readFile("debug/chrome/browser.css", "utf8") });
   const colors = await page.evaluate(() => {
     document.documentElement.dataset.theme = "dark";
-    document.documentElement.dataset.themeId = "midnight";
+    document.documentElement.dataset.colorScheme = "midnight";
     const shell = document.querySelector(".browser-shell")!;
     return [document.documentElement, shell].map((element) =>
       getComputedStyle(element).getPropertyValue("--sys-color-surface").trim(),
     );
   });
   expect(colors).toEqual(["#10131a", "#10131a"]);
+});
+
+test("ミッドナイトのライト基調は明るい背景と濃い文字になる", async ({ page }) => {
+  await page.setContent('<div class="browser-shell" data-theme="light"></div>');
+  await page.addStyleTag({ content: await readFile("debug/chrome/browser.css", "utf8") });
+  const colors = await page.evaluate(() => {
+    document.documentElement.dataset.theme = "light";
+    document.documentElement.dataset.colorScheme = "midnight";
+    const style = getComputedStyle(document.querySelector(".browser-shell")!);
+    return [
+      style.getPropertyValue("--sys-color-surface").trim(),
+      style.getPropertyValue("--sys-color-text").trim(),
+    ];
+  });
+  expect(colors).toEqual(["#f7f8fd", "#202738"]);
 });
 
 test("テーマスクリプトの読み込み前からOSのダーク配色で背景を描画する", async ({ page }) => {
@@ -120,8 +140,23 @@ for (const scenario of [
     await inspectBeforeStyles(page, scenario.saved, scenario.system, false, async () => {
       expect(await hasDarkCanvas(page)).toBe(scenario.dark);
       if (scenario.saved === "midnight") {
-        await expect(page.locator("html")).toHaveAttribute("data-theme-id", "midnight");
+        await expect(page.locator("html")).toHaveAttribute("data-color-scheme", "midnight");
       }
     });
   });
 }
+
+test("ライト基調とミッドナイト配色を別々に初期描画へ反映する", async ({ page }) => {
+  await inspectBeforeStyles(
+    page,
+    "light",
+    "dark",
+    false,
+    async () => {
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+      await expect(page.locator("html")).toHaveAttribute("data-color-scheme", "midnight");
+      expect(await hasDarkCanvas(page)).toBe(false);
+    },
+    "midnight",
+  );
+});

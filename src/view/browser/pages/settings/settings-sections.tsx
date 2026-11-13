@@ -28,7 +28,7 @@ import {
   isSettingsDividerItem,
   isSettingsFieldItem,
 } from "src/view/browser/pages/settings/settings-types";
-import { THEMES } from "src/view/browser/theme-registry";
+import { COLOR_SCHEMES } from "src/view/browser/theme-registry";
 import type { SettingsSectionId } from "src/view/browser/types";
 import {
   CommentOverlayIcon,
@@ -46,8 +46,11 @@ import { WRITE_SETTING_COPY } from "src/view/browser/utils/write-settings";
 
 const THEME_ID_OPTIONS = [
   { const: "system", title: "OSに合わせる" },
-  ...THEMES.map(({ id, title }) => ({ const: id, title })),
+  { const: "light", title: "ライト" },
+  { const: "dark", title: "ダーク" },
 ] satisfies readonly SettingsOption[];
+
+const COLOR_SCHEME_OPTIONS = COLOR_SCHEMES.map(({ id, title }) => ({ const: id, title }));
 
 const NEW_TAB_PAGE_MODE_OPTIONS = [
   // 初期ページの設定値は維持し、統一した入口の名前を表示する。
@@ -178,6 +181,12 @@ const ALL_SETTINGS_SECTIONS = [
         key: "theme_id",
         title: "テーマ",
         options: THEME_ID_OPTIONS,
+      },
+      {
+        kind: "string",
+        key: "color_scheme_id",
+        title: "カラースキーム",
+        options: COLOR_SCHEME_OPTIONS,
       },
       {
         kind: "divider",

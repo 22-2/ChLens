@@ -5,13 +5,25 @@ import { assertArg, log } from "src/app/Log";
 import message from "src/app/Message";
 
 const THEME_ID_STORAGE_KEY = "config_theme_id";
+const COLOR_SCHEME_STORAGE_KEY = "config_color_scheme_id";
 
 /**
- * ライトのテーマIDを "default" から "light" に改めたため、保存済みの旧IDを書き換える。
- *
- * 読み込み時に変換するだけでは、設定画面のラジオボタンが旧IDに一致せず未選択に見える。
+ * 旧テーマIDを現在の基調・配色へ移行し、設定画面と初回描画を一致させる。
  */
 async function migrateLegacyThemeId(cache: Map<string, string>): Promise<void> {
+  if (cache.get(THEME_ID_STORAGE_KEY) === "midnight") {
+    // 配色を先に保存することで、途中で失敗しても次回の起動で移行を再試行できる。
+    const scheme = cache.get(COLOR_SCHEME_STORAGE_KEY) ?? "midnight";
+    cache.set(COLOR_SCHEME_STORAGE_KEY, scheme);
+    cache.set(THEME_ID_STORAGE_KEY, "dark");
+    try {
+      await LocalStorage.set(COLOR_SCHEME_STORAGE_KEY, scheme);
+      await LocalStorage.set(THEME_ID_STORAGE_KEY, "dark");
+    } catch (error) {
+      log("error", "テーマとカラースキームの設定を移行できませんでした", error);
+    }
+    return;
+  }
   if (cache.get(THEME_ID_STORAGE_KEY) !== "default") return;
   cache.set(THEME_ID_STORAGE_KEY, "light");
   try {

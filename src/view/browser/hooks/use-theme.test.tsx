@@ -51,7 +51,7 @@ describe("useTheme", () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
     document.documentElement.removeAttribute("data-theme");
-    document.documentElement.removeAttribute("data-theme-id");
+    document.documentElement.removeAttribute("data-color-scheme");
     document.querySelector('meta[name="color-scheme"]')?.remove();
   });
 
@@ -101,16 +101,19 @@ describe("useTheme", () => {
     expect(result.current).toBe("light");
   });
 
-  it("同じダーク基調のテーマへの切り替えでもテーマIDを更新する", () => {
+  it("基調を維持してカラースキームを切り替える", () => {
     mocks.configGet.mockReturnValue("dark");
     const { result } = renderHook(() => useTheme());
     const handleConfigUpdated = mocks.messageOn.mock.calls.find(
       ([type]) => type === "config_updated",
     )?.[1] as (event: { key: string; val: string }) => void;
-    act(() => handleConfigUpdated({ key: "theme_id", val: "midnight" }));
+    act(() => handleConfigUpdated({ key: "color_scheme_id", val: "midnight" }));
     expect(result.current).toBe("dark");
     expect(document.documentElement.dataset.theme).toBe("dark");
-    expect(document.documentElement.dataset.themeId).toBe("midnight");
+    expect(document.documentElement.dataset.colorScheme).toBe("midnight");
+    act(() => handleConfigUpdated({ key: "theme_id", val: "light" }));
+    expect(result.current).toBe("light");
+    expect(document.documentElement.dataset.colorScheme).toBe("midnight");
   });
 
   it("未知の値はsystemと同じくOSのダーク配色に従う", () => {
@@ -122,5 +125,30 @@ describe("useTheme", () => {
     const { result } = renderHook(() => useTheme());
 
     expect(result.current).toBe("dark");
+  });
+
+  it("システムの明暗が変わっても選択中の配色を保つ", () => {
+    let change: (() => void) | undefined;
+    const media = {
+      matches: false,
+      addEventListener: vi.fn((_type: string, listener: () => void) => {
+        change = listener;
+      }),
+      removeEventListener: vi.fn(),
+    };
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => media),
+    );
+    mocks.configGet.mockImplementation((key?: string) =>
+      key === "color_scheme_id" ? "midnight" : "system",
+    );
+    const { result } = renderHook(() => useTheme());
+    expect(result.current).toBe("light");
+    expect(document.documentElement.dataset.colorScheme).toBe("midnight");
+    media.matches = true;
+    act(() => change?.());
+    expect(result.current).toBe("dark");
+    expect(document.documentElement.dataset.colorScheme).toBe("midnight");
   });
 });

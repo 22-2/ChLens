@@ -9,9 +9,12 @@ test("ミッドナイトのスレ一覧とレスで文字の階層とIDの位置
   seedScreenshotThreads(localBoard);
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
-  await page.evaluate(() => localStorage.setItem("config_theme_id", "midnight"));
+  await page.evaluate(() => {
+    localStorage.setItem("config_theme_id", "dark");
+    localStorage.setItem("config_color_scheme_id", "midnight");
+  });
   await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("data-theme-id", "midnight");
+  await expect(page.locator("html")).toHaveAttribute("data-color-scheme", "midnight");
   await page.getByRole("button", { name: "板一覧を開く", exact: true }).click();
   const menu = page.getByRole("button", { name: "テスト板メニュー", exact: true });
   if ((await menu.getAttribute("aria-expanded")) === "false") await menu.click();
@@ -25,7 +28,7 @@ test("ミッドナイトのスレ一覧とレスで文字の階層とIDの位置
     title: parseFloat(getComputedStyle(element).fontSize),
     table: parseFloat(getComputedStyle(element.closest("table")!).fontSize),
   }));
-  expect(sizes.title).toBeGreaterThan(sizes.table);
+  expect(sizes.title).toBe(sizes.table);
   await page.screenshot({ path: testInfo.outputPath("thread-list.png") });
   await title.click();
   const response = panel.locator('.thread-page__responses [data-res-num="1"]');
@@ -51,6 +54,7 @@ test("ミッドナイトのスレ一覧とレスで文字の階層とIDの位置
 });
 
 test("設定画面から追加テーマを選び再読み込み後も復元する", async ({ page, extensionId }) => {
+  await page.emulateMedia({ colorScheme: "light" });
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.getByTitle("設定を開く", { exact: true }).first().click();
   await page.getByRole("button", { name: "表示", exact: true }).click();
@@ -58,7 +62,21 @@ test("設定画面から追加テーマを選び再読み込み後も復元す�
     .locator("select")
     .filter({ has: page.locator('option[value="midnight"]') })
     .selectOption("midnight");
-  await expect(page.locator("html")).toHaveAttribute("data-theme-id", "midnight");
+  await expect(page.locator("html")).toHaveAttribute("data-color-scheme", "midnight");
+  const themeSelect = page
+    .locator("select")
+    .filter({ has: page.locator('option[value="system"]') });
+  await themeSelect.selectOption("light");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("html")).toHaveAttribute("data-color-scheme", "midnight");
   await page.reload();
-  await expect(page.locator("html")).toHaveAttribute("data-theme-id", "midnight");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("html")).toHaveAttribute("data-color-scheme", "midnight");
+  await page
+    .locator("select")
+    .filter({ has: page.locator('option[value="system"]') })
+    .selectOption("system");
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("html")).toHaveAttribute("data-color-scheme", "midnight");
 });

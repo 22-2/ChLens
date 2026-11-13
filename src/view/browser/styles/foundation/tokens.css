@@ -110,6 +110,14 @@
   --ref-color-midnight-accent: #625aba;
   --ref-color-midnight-accent-hover: #50489c;
   --ref-color-midnight-link: #bebaff;
+  --ref-color-midnight-light-surface: #f7f8fd;
+  --ref-color-midnight-light-raised: #edf0f8;
+  --ref-color-midnight-light-control: #e0e5f1;
+  --ref-color-midnight-light-border: #c3cbdd;
+  --ref-color-midnight-light-muted: #536078;
+  --ref-color-midnight-light-text: #202738;
+  --ref-color-midnight-light-accent: #51489d;
+  --ref-color-midnight-light-accent-hover: #40377e;
 
   /* Reference effects and typography. */
   --ref-color-alpha-black-05: rgb(0 0 0 / 5%);

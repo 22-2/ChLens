@@ -13,6 +13,7 @@ describe("Configのテーマ設定の移行", () => {
     config?.destroy();
     config = null;
     await removeStore2Value("config_theme_id");
+    await removeStore2Value("config_color_scheme_id");
   });
 
   it("保存済みのライトの旧ID defaultを lightへ書き換える", async () => {
@@ -31,6 +32,25 @@ describe("Configのテーマ設定の移行", () => {
 
     expect(config.get("theme_id")).toBe("dark");
     expect(getStore2String("config_theme_id")).toBe("dark");
+  });
+
+  it("旧ミッドナイトをダーク基調とミッドナイト配色へ移行する", async () => {
+    await setStore2String("config_theme_id", "midnight");
+    config = new Config();
+    await waitReady(config);
+    expect(config.get("theme_id")).toBe("dark");
+    expect(config.get("color_scheme_id")).toBe("midnight");
+    expect(getStore2String("config_theme_id")).toBe("dark");
+    expect(getStore2String("config_color_scheme_id")).toBe("midnight");
+  });
+
+  it("移行時に保存済みの配色を上書きしない", async () => {
+    await setStore2String("config_theme_id", "midnight");
+    await setStore2String("config_color_scheme_id", "default");
+    config = new Config();
+    await waitReady(config);
+    expect(config.get("theme_id")).toBe("dark");
+    expect(config.get("color_scheme_id")).toBe("default");
   });
 
   it("未設定なら既定のsystemを返す", async () => {

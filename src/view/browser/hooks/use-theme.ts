@@ -1,7 +1,12 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { container } from "src/service-container/index";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
-import { parseThemeId, resolveTheme, type ThemeId } from "src/view/browser/theme-registry";
+import {
+  type ColorSchemeId,
+  parseColorSchemeId,
+  parseThemeId,
+  type ThemeId,
+} from "src/view/browser/theme-registry";
 
 export type ResolvedTheme = "light" | "dark";
 
@@ -15,17 +20,24 @@ export function useTheme(): ResolvedTheme {
   const [themeId, setThemeId] = useState<ThemeId>(() =>
     parseThemeId(container.config.get("theme_id")),
   );
+  const [colorSchemeId, setColorSchemeId] = useState<ColorSchemeId>(() =>
+    parseColorSchemeId(container.config.get("color_scheme_id")),
+  );
 
-  // config_updated メッセージを購読し、theme_id の変更をリアルタイムで反映する
+  // 設定変更を購読し、基調とカラースキームの両方をリアルタイムで反映する。
   useEffect(() => {
     const syncThemeId = () => {
       // Config は localStorage の読み込み後に確定するため、初回レンダー時の既定値だけで
       // テーマを決めると、再起動後に保存済みの dark 設定を取りこぼしてしまう。
       setThemeId(parseThemeId(container.config.get("theme_id")));
+      setColorSchemeId(parseColorSchemeId(container.config.get("color_scheme_id")));
     };
     const handleConfigUpdated = ({ key, val }: { key: string; val: string }) => {
       if (key === "theme_id") {
         setThemeId(parseThemeId(val));
+      }
+      if (key === "color_scheme_id") {
+        setColorSchemeId(parseColorSchemeId(val));
       }
     };
     container.config.ready(syncThemeId);
@@ -35,21 +47,21 @@ export function useTheme(): ResolvedTheme {
 
   const [resolved, setResolved] = useState<ResolvedTheme>(() => {
     const id = parseThemeId(container.config.get("theme_id"));
-    return resolveTheme(id, id === "system" ? resolveSystemTheme(viewWindow) : "light").scheme;
+    return id === "system" ? resolveSystemTheme(viewWindow) : id;
   });
 
   useLayoutEffect(() => {
     // 起動時のルート配色も追従させないと、ライトへ戻してもダーク用トークンが継承される。
     const viewDocument = viewWindow.document;
     viewDocument.documentElement.setAttribute("data-theme", resolved);
-    // 同じダーク基調のテーマ間でもIDの変更を反映する。
-    viewDocument.documentElement.setAttribute("data-theme-id", resolveTheme(themeId, resolved).id);
+    // 基調と独立して配色を変更できるよう、別の属性でCSSへ伝える。
+    viewDocument.documentElement.setAttribute("data-color-scheme", colorSchemeId);
     viewDocument.querySelector('meta[name="color-scheme"]')?.setAttribute("content", resolved);
-  }, [resolved, themeId, viewWindow]);
+  }, [resolved, colorSchemeId, viewWindow]);
 
   useEffect(() => {
     if (themeId !== "system") {
-      setResolved(resolveTheme(themeId, "light").scheme);
+      setResolved(themeId);
       return;
     }
 
