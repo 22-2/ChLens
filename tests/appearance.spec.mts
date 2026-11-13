@@ -38,4 +38,27 @@ test("ミッドナイトのスレ一覧とレスで文字の階層とIDの位置
   });
   expect(bounds.rightGap).toBeLessThan(2);
   await page.screenshot({ path: testInfo.outputPath("thread.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(response).toBeVisible();
+  const narrowBounds = await header.evaluate((element) => {
+    const id = element.querySelector(".res__id")!.getBoundingClientRect();
+    const headerBox = element.getBoundingClientRect();
+    return { rightGap: headerBox.right - id.right, leftGap: id.left - headerBox.left };
+  });
+  expect(narrowBounds.rightGap).toBeLessThan(2);
+  expect(narrowBounds.leftGap).toBeGreaterThanOrEqual(0);
+  await page.screenshot({ path: testInfo.outputPath("thread-narrow.png") });
+});
+
+test("設定画面から追加テーマを選び再読み込み後も復元する", async ({ page, extensionId }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTitle("設定を開く", { exact: true }).first().click();
+  await page.getByRole("button", { name: "表示", exact: true }).click();
+  await page
+    .locator("select")
+    .filter({ has: page.locator('option[value="midnight"]') })
+    .selectOption("midnight");
+  await expect(page.locator("html")).toHaveAttribute("data-theme-id", "midnight");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme-id", "midnight");
 });
