@@ -1,3 +1,4 @@
+import { createLogger } from "src/app/logger";
 import { platform } from "src/app/platform";
 import { container } from "src/service-container";
 
@@ -8,6 +9,7 @@ const ARCHIVE_ORIGIN = "https://eddiarchive3rd.boy.jp/";
 const BOARD_ORIGIN = "https://bbs.eddibb.cc";
 const PAGE_SIZE = 50;
 const MAX_PAGES = 10;
+const logger = createLogger("archive-replay");
 
 export interface EdgeArchivePage {
   threads: ArchivedThreadListing[];
@@ -49,12 +51,11 @@ function japanDate(seconds: number): string {
   return new Date(seconds * 1000 + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-export async function fetchEdgeArchive(
-  query: string,
+export async function fetchEdgeArchiveRange(
+  keyword: string,
   startSeconds: number,
   endSeconds: number,
 ): Promise<{ threads: ArchivedThreadListing[]; truncated: boolean }> {
-  if (!query.trim()) throw new Error("検索語を入力してください");
   const cache = new Map<number, EdgeArchivePage>();
   let expectedTotal: number | undefined;
   async function fetchPage(page: number): Promise<EdgeArchivePage> {
@@ -63,8 +64,7 @@ export async function fetchEdgeArchive(
     const url = new URL(ARCHIVE_ORIGIN);
     url.search = new URLSearchParams({
       page: String(page),
-      // 題名が途中で変わったスレも候補判定へ渡すため、日付のみで索引を読む。
-      keyword: "",
+      keyword,
       sort: "new",
       start_date: japanDate(startSeconds),
       // 索引の終了日はその日の午前0時を含まないため、利用者が選んだ日を全て含める。
@@ -128,6 +128,43 @@ export async function fetchEdgeArchive(
     previousLast = page.threads.at(-1)?.createdAtSeconds;
   }
   return { threads, truncated: false };
+}
+
+export async function fetchEdgeArchive(
+  query: string,
+  startSeconds: number,
+  endSeconds: number,
+): Promise<{
+  threads: ArchivedThreadListing[];
+  matchingTruncated: boolean;
+  broadTruncated: boolean;
+  failures: string[];
+}> {
+  if (!query.trim()) throw new Error("検索語を入力してください");
+  // 一覧全体だけでは新しい無関係なスレで上限に達するため、検索語一致も別に取得する。
+  // 題名が変わった続きの候補は、検索語なしの一覧から補う。
+  const [matching, broad] = await Promise.allSettled([
+    fetchEdgeArchiveRange(query.trim(), startSeconds, endSeconds),
+    fetchEdgeArchiveRange("", startSeconds, endSeconds),
+  ]);
+  const failures: string[] = [];
+  if (matching.status === "rejected") {
+    logger.error("検索語に一致する過去ログ索引の取得に失敗しました", matching.reason);
+    failures.push("検索語に一致する過去ログを取得できませんでした。");
+  }
+  if (broad.status === "rejected") {
+    logger.error("続き候補の過去ログ索引の取得に失敗しました", broad.reason);
+    failures.push("続き候補の過去ログ一覧を取得できませんでした。");
+  }
+  return {
+    threads: [
+      ...(matching.status === "fulfilled" ? matching.value.threads : []),
+      ...(broad.status === "fulfilled" ? broad.value.threads : []),
+    ],
+    matchingTruncated: matching.status === "fulfilled" && matching.value.truncated,
+    broadTruncated: broad.status === "fulfilled" && broad.value.truncated,
+    failures,
+  };
 }
 
 export async function fetchEdgeCurrentThreads(): Promise<ArchivedThreadListing[]> {

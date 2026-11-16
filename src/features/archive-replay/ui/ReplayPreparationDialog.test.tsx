@@ -24,7 +24,9 @@ describe("リプレイ準備", () => {
           responseCount: 200,
         },
       ],
-      truncated: false,
+      matchingTruncated: false,
+      broadTruncated: true,
+      failures: [],
     });
     sources.current.mockRejectedValue(new Error("取得失敗"));
     const apply = vi.fn();
@@ -38,6 +40,11 @@ describe("リプレイ準備", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "候補を集める" }));
     expect(await screen.findByText("現行スレ一覧を取得できませんでした。")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "続きの可能性があるスレは一部のみ調べました。日時を絞ると他にも見つかる場合があります。",
+      ),
+    ).toBeInTheDocument();
     const checkbox = screen.getByRole("checkbox");
     expect(checkbox).toBeChecked();
     fireEvent.click(checkbox);

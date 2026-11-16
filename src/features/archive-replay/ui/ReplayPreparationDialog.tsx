@@ -80,8 +80,16 @@ export function ReplayPreparationDialog({
       if (archive.status === "rejected") {
         logger.error("過去ログ索引の取得に失敗しました", archive.reason);
         notices.push("過去ログ索引を取得できませんでした。");
-      } else if (archive.value.truncated) {
-        notices.push("検索範囲のスレが多いため一部のみ表示しています。日時を絞ってください。");
+      } else {
+        notices.push(...archive.value.failures);
+        if (archive.value.matchingTruncated)
+          notices.push(
+            "検索語に一致するスレが多いため一部のみ表示しています。日時を絞ってください。",
+          );
+        if (archive.value.broadTruncated)
+          notices.push(
+            "続きの可能性があるスレは一部のみ調べました。日時を絞ると他にも見つかる場合があります。",
+          );
       }
       if (current.status === "rejected") {
         logger.error("現行スレ一覧の取得に失敗しました", current.reason);
