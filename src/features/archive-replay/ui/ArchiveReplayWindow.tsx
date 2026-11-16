@@ -809,19 +809,19 @@ export function ArchiveReplayWindow({
         </Button>
         <Button
           className="archive-replay-window__secondary-button"
-          onClick={() => seek(position - 10)}
+          onClick={() => seek(position - 5)}
           disabled={!loadedReplay}
         >
           <SkipBack size={15} />
-          10秒戻す
+          5秒戻す
         </Button>
         <Button
           className="archive-replay-window__secondary-button"
-          onClick={() => seek(position + 10)}
+          onClick={() => seek(position + 5)}
           disabled={!loadedReplay}
         >
           <SkipForward size={15} />
-          10秒進める
+          5秒進める
         </Button>
         <span className="archive-replay-window__position">
           {loadedReplay ? `${formatReplayDuration(position)} / ` : ""}

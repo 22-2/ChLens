@@ -141,6 +141,11 @@ describe("過去実況再生ウィンドウ", () => {
       ).toBe(true);
     });
 
+    fireEvent.click(screen.getByRole("button", { name: "5秒進める" }));
+    expect(screen.getByRole("slider", { name: "過去実況の再生位置" })).toHaveValue("5");
+    fireEvent.click(screen.getByRole("button", { name: "5秒戻す" }));
+    expect(screen.getByRole("slider", { name: "過去実況の再生位置" })).toHaveValue("0");
+
     fireEvent.click(screen.getByRole("button", { name: "再生中のスレをアプリ本体で開く" }));
     expect(mainThreadSyncPublisher).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -153,8 +158,10 @@ describe("過去実況再生ウィンドウ", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "アプリ本体のスレ画面を再生に追従" }));
     expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(2);
 
-    fireEvent.click(screen.getByRole("button", { name: "10秒進める" }));
-    expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(3);
+    fireEvent.click(screen.getByRole("button", { name: "5秒進める" }));
+    expect(screen.getByRole("slider", { name: "過去実況の再生位置" })).toHaveValue("5");
+    fireEvent.click(screen.getByRole("button", { name: "5秒進める" }));
+    expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(4);
     expect(mainThreadSyncPublisher).toHaveBeenLastCalledWith(
       expect.objectContaining({
         responseNumber: 2,
@@ -269,7 +276,8 @@ describe("過去実況再生ウィンドウ", () => {
       expect.objectContaining({ threadUrl: "https://example.com/thread-a/" }),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "10秒進める" }));
+    fireEvent.click(screen.getByRole("button", { name: "5秒進める" }));
+    fireEvent.click(screen.getByRole("button", { name: "5秒進める" }));
     expect(mainThreadSyncPublisher).toHaveBeenLastCalledWith(
       expect.objectContaining({
         threadUrl: "https://example.com/thread-b/",

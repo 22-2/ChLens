@@ -65,9 +65,11 @@ describe("過去実況の再生位置操作", () => {
     const slider = screen.getByRole("slider", { name: "過去実況の再生位置" });
     expect(slider).toHaveValue("20");
     expect(screen.getByTestId("投入レス")).toHaveTextContent("1,2");
-    fireEvent.click(screen.getByRole("button", { name: "10秒進める" }));
+    fireEvent.click(screen.getByRole("button", { name: "5秒進める" }));
+    expect(slider).toHaveValue("25");
     expect(screen.getByTestId("投入レス").textContent).toBe("");
-    fireEvent.click(screen.getByRole("button", { name: "10秒戻す" }));
+    fireEvent.click(screen.getByRole("button", { name: "5秒戻す" }));
+    expect(slider).toHaveValue("20");
     expect(screen.getByTestId("投入レス").textContent).toBe("");
     fireEvent.change(slider, { target: { value: "5" } });
     frame(1_000);

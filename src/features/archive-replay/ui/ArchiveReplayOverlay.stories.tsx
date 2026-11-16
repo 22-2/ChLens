@@ -426,11 +426,11 @@ export function PastThreadReplayStory(args: OverlayStageProps) {
         <button type="button" onClick={restart} disabled={!loadedReplay}>
           最初から
         </button>
-        <button type="button" onClick={() => seek(position - 10)} disabled={!loadedReplay}>
-          10秒戻す
+        <button type="button" onClick={() => seek(position - 5)} disabled={!loadedReplay}>
+          5秒戻す
         </button>
-        <button type="button" onClick={() => seek(position + 10)} disabled={!loadedReplay}>
-          10秒進める
+        <button type="button" onClick={() => seek(position + 5)} disabled={!loadedReplay}>
+          5秒進める
         </button>
         <label
           style={{ display: "flex", gap: 4, alignItems: "center", color: "#a9c1db", fontSize: 13 }}
