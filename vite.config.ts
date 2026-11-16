@@ -311,6 +311,8 @@ const FEATURE_PUBLIC_MODULES: Readonly<Record<string, readonly string[]>> = {
     "ui/ResMediaGallery",
   ],
   "next-thread": [
+    "domain/title-similarity",
+    "domain/thread-sequence",
     "browser/use-auto-next-thread",
     "browser/use-auto-next-thread-setting",
     "domain/auto-next-thread-trigger",
