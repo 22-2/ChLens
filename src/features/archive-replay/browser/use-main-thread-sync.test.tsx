@@ -189,16 +189,7 @@ describe("useArchiveReplayMainThreadSync", () => {
       mocks.listener?.({ ...request, generation: 1 });
     });
 
-    expect(mocks.dispatch).toHaveBeenNthCalledWith(2, {
-      type: "NAVIGATE_TAB",
-      paneId: "pane-1",
-      tabId: "tab-replay",
-      page: {
-        type: "thread",
-        title: "架空の実況1",
-        threadUrl: request.threadUrl,
-      },
-    });
-    expect(mocks.dispatch).toHaveBeenCalledTimes(2);
+    // 同一スレの位置更新ではタブ遷移を発行せず、別タブの選択も奪わない。
+    expect(mocks.dispatch).toHaveBeenCalledTimes(1);
   });
 });

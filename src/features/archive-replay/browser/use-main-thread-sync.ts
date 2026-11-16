@@ -57,14 +57,23 @@ export function useArchiveReplayMainThreadSync(): void {
       // 購読の再作成やタブ移動で一時的に専用タブIDを失っても、同じスレを新規タブ化しない。
       target ??= findThreadTabByUrl(stateRef.current, request.threadUrl);
 
-      if (target) {
+      const targetPane = stateRef.current.panes.find((pane) => pane.id === target?.paneId);
+      const targetTab = targetPane?.tabs.find((tab) => tab.id === target?.tabId);
+      const currentPage = targetTab?.history[targetTab.currentIndex];
+      const alreadyShowingThread =
+        currentPage?.type === "thread" &&
+        normalizeArchiveReplayThreadUrl(currentPage.threadUrl) ===
+          normalizeArchiveReplayThreadUrl(request.threadUrl);
+
+      // 同一スレの時刻通知は位置だけ更新し、毎秒の遷移で選択タブを奪わない。
+      if (target && !alreadyShowingThread) {
         dispatch({
           type: "NAVIGATE_TAB",
           paneId: target.paneId,
           tabId: target.tabId,
           page,
         });
-      } else {
+      } else if (!target) {
         const beforeTabIds = new Set(
           stateRef.current.panes.flatMap((pane) => pane.tabs.map((tab) => tab.id)),
         );
