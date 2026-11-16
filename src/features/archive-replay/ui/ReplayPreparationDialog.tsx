@@ -53,10 +53,16 @@ export function ReplayPreparationDialog({
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  async function search() {
+  function clearResults() {
+    // 検索条件を書き換えたあとに古い候補を確定しないよう、結果も破棄する。
     setCandidates([]);
     setSelected(new Set());
     setSearched(false);
+    setMessages([]);
+  }
+
+  async function search() {
+    clearResults();
     const startAt = parseArchiveReplayStartInput(start);
     const endAt = parseArchiveReplayStartInput(end);
     if (!query.trim() || startAt === null || endAt === null || startAt > endAt) {
@@ -134,7 +140,10 @@ export function ReplayPreparationDialog({
               <input
                 disabled={loading}
                 value={query}
-                onChange={(event) => setQuery(event.currentTarget.value)}
+                onChange={(event) => {
+                  setQuery(event.currentTarget.value);
+                  clearResults();
+                }}
               />
             </label>
             <label className="archive-replay-window__field">
@@ -143,7 +152,10 @@ export function ReplayPreparationDialog({
                 type="datetime-local"
                 disabled={loading}
                 value={start}
-                onChange={(event) => setStart(event.currentTarget.value)}
+                onChange={(event) => {
+                  setStart(event.currentTarget.value);
+                  clearResults();
+                }}
               />
             </label>
             <label className="archive-replay-window__field">
@@ -152,7 +164,10 @@ export function ReplayPreparationDialog({
                 type="datetime-local"
                 disabled={loading}
                 value={end}
-                onChange={(event) => setEnd(event.currentTarget.value)}
+                onChange={(event) => {
+                  setEnd(event.currentTarget.value);
+                  clearResults();
+                }}
               />
             </label>
             <Button type="button" loading={loading} onClick={() => void search()}>

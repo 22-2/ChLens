@@ -48,5 +48,8 @@ describe("リプレイ準備", () => {
       [expect.objectContaining({ kind: "search-match" })],
       "架空番組",
     );
+    fireEvent.change(screen.getByLabelText("検索語"), { target: { value: "別番組" } });
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "この内容を使う" })).toBeDisabled();
   });
 });
