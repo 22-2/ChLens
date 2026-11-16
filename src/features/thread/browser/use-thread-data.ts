@@ -149,6 +149,9 @@ export function useThreadData(
   }));
   const [showSearch, setShowSearch] = useState(false);
   const titleUpdatedRef = useRef(false);
+  // 取得結果でタイトルが更新されても、同じスレをもう一度取得しない。
+  const pageTitleRef = useRef(page.title);
+  pageTitleRef.current = page.title;
   const fetchedThreadUrlRef = useRef(page.threadUrl);
   const requestedThreadUrlRef = useRef<string | null>(null);
 
@@ -276,7 +279,7 @@ export function useThreadData(
             ng: importedNgResults.get(response.num),
           })),
         );
-        if (importedThread.title && importedThread.title !== page.title) {
+        if (importedThread.title && importedThread.title !== pageTitleRef.current) {
           dispatch(tabActions.updateTitleForTab(tabId, importedThread.title));
         }
         setError(null);
@@ -388,7 +391,6 @@ export function useThreadData(
       isLatestRequest,
       manualRefreshScopeKey,
       page.threadUrl,
-      page.title,
       refreshSuccessRef,
       setResponses,
       tabId,

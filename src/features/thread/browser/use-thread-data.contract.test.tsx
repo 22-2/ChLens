@@ -168,6 +168,21 @@ describe("useThreadData Phase 0 contracts", () => {
     cleanup();
   });
 
+  it("取得後にタイトルが更新されても同じスレを再取得しない", async () => {
+    const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/140/" };
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+    const { result, rerender } = renderHook(
+      ({ title }) => {
+        const controller = useThreadRefreshController(0);
+        return useThreadData("title-change", { ...page, title }, rootRef, controller);
+      },
+      { initialProps: { title: page.title } },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    rerender({ title: "取得したスレタイトル" });
+    expect(container.thread.getThread).toHaveBeenCalledTimes(1);
+  });
+
   it.each([false, true])(
     "キャッシュ確認が遅れても本文がなく通信中なら初回読み込みを示す（通信完了: %s）",
     async (completeRequest) => {
