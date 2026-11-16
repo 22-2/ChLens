@@ -42,6 +42,7 @@ import {
   subscribeArchiveReplaySeekRequests,
   subscribeArchiveReplayWindowClose,
 } from "../platform";
+import { formatCollectionInput, ReplayPreparationDialog } from "./ReplayPreparationDialog";
 
 const logger = createLogger("archive-replay");
 
@@ -84,6 +85,7 @@ export function ArchiveReplayWindow({
   const archiveReplayEventBus = providedArchiveReplayEventBus ?? defaultArchiveReplayEventBus;
 
   const [urls, setUrls] = useState("");
+  const [preparing, setPreparing] = useState(false);
   const [startInput, setStartInput] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(DEFAULT_DURATION_MINUTES);
   const [replayRateInput, setReplayRateInput] = useState(DEFAULT_REPLAY_RATE);
@@ -578,6 +580,13 @@ export function ArchiveReplayWindow({
           void load();
         }}
       >
+        <Button
+          type="button"
+          className="archive-replay-window__secondary-button"
+          onClick={() => setPreparing(true)}
+        >
+          リプレイ準備
+        </Button>
         <label className="archive-replay-window__field archive-replay-window__field--urls">
           <span>実況スレッドURL（1行に1件）</span>
           <textarea
@@ -629,6 +638,18 @@ export function ArchiveReplayWindow({
           開始日時を空欄にすると、取得したログの最初の投稿から開始します。ThreadViewのレスを右クリックして、この位置まで再生できます。
         </span>
       </form>
+
+      {preparing ? (
+        <ReplayPreparationDialog
+          onClose={() => setPreparing(false)}
+          onApply={(items) => {
+            setUrls(items.map((item) => item.listing.threadUrl).join("\n"));
+            if (!startInput && items[0])
+              setStartInput(formatCollectionInput(items[0].listing.createdAtSeconds));
+            setPreparing(false);
+          }}
+        />
+      ) : null}
 
       {error ? (
         <p

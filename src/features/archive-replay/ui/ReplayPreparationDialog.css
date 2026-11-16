@@ -1,0 +1,41 @@
+.replay-preparation {
+  display: grid;
+  width: min(90vw, 50rem);
+  max-height: 90vh;
+  gap: var(--sys-space-3);
+  overflow: auto;
+}
+
+.replay-preparation__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--sys-space-2);
+}
+
+.replay-preparation__list {
+  display: grid;
+  gap: var(--sys-space-1);
+  overflow: auto;
+}
+
+.replay-preparation__candidate {
+  display: flex;
+  align-items: start;
+  gap: var(--sys-space-2);
+  padding: var(--sys-space-2);
+  border-bottom: 1px solid var(--sys-color-border);
+}
+
+.replay-preparation__candidate small {
+  display: block;
+  color: var(--sys-color-text-muted);
+}
+
+.replay-preparation__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: end;
+  gap: var(--sys-space-2);
+}

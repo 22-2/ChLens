@@ -10,6 +10,11 @@ import { ArchiveReplayWindow } from "./ArchiveReplayWindow";
 const getThreadMock = vi.hoisted(() => vi.fn());
 const mainThreadSyncPublisher = vi.hoisted(() => vi.fn<() => Promise<void>>());
 
+vi.mock("src/features/archive-replay/browser/edge-archive-source", () => ({
+  fetchEdgeArchive: vi.fn(),
+  fetchEdgeCurrentThreads: vi.fn(),
+}));
+
 vi.mock("src/service-container", () => ({
   container: {
     config: {
