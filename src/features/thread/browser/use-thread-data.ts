@@ -109,6 +109,7 @@ export function useThreadData(
   rootRef: RefObject<HTMLDivElement | null>,
   refreshController: ThreadRefreshController,
   refreshSuccessRef?: RefObject<(() => void) | null>,
+  responseFilter?: (response: IRes) => boolean,
 ): ThreadData {
   const isNgTemporarilyDisabled = useIsNgTemporarilyDisabled();
   const ngDisplayMode = useNgDisplayMode();
@@ -211,10 +212,11 @@ export function useThreadData(
     () => applySimilarImageNg(rawResponses, similarImageNg.responseNgByNum),
     [rawResponses, similarImageNg.responseNgByNum],
   );
-  const responses = useMemo(
-    () => attachSimilarImageBlurReason(ngAppliedResponses, similarImageNg.blurReasonByNum),
-    [ngAppliedResponses, similarImageNg.blurReasonByNum],
-  );
+  const responses = useMemo(() => {
+    const all = attachSimilarImageBlurReason(ngAppliedResponses, similarImageNg.blurReasonByNum);
+    // 再生時刻より後をインデックスや検索にも含めず、取得済み本文自体は保持する。
+    return responseFilter ? all.filter(responseFilter) : all;
+  }, [ngAppliedResponses, responseFilter, similarImageNg.blurReasonByNum]);
   const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const isCacheResolved =
     cacheResolvedThreadUrl === page.threadUrl || isImportedThreadUrl(page.threadUrl);

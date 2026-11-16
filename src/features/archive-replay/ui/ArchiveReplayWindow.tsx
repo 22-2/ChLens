@@ -107,7 +107,7 @@ export function ArchiveReplayWindow({
   const positionRef = useRef(0);
   const [syncOffset, setSyncOffset] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [followMainThread, setFollowMainThread] = useState(false);
+  const [followMode, setFollowMode] = useState<"off" | "live" | "position">("live");
   const playingRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -393,11 +393,11 @@ export function ArchiveReplayWindow({
   );
 
   const publishMainThreadSync = useCallback(
-    (selection: ArchiveReplayThreadSelection | null, force = false) => {
+    (selection: ArchiveReplayThreadSelection | null, force = false, mode = followMode) => {
       if (!loadedReplay || !selection) return;
       // スレURLだけでは同一スレ内を追従できないため、レスとログ時刻も通知の識別子に含める。
       const playbackAt = loadedReplay.timeline.startAt + (position - syncOffset) * 1_000;
-      const positionKey = `${selection.threadUrl}:${selection.responseNumber}:${Math.floor(playbackAt / 1_000)}`;
+      const positionKey = `${mode}:${selection.threadUrl}:${selection.responseNumber}:${Math.floor(playbackAt / 1_000)}`;
       if (!force && lastMainThreadUrlRef.current === positionKey) return;
 
       const request: ArchiveReplayMainThreadRequest = {
@@ -408,6 +408,7 @@ export function ArchiveReplayWindow({
         responseNumber: selection.responseNumber,
         title: selection.title,
         playbackAt,
+        followMode: mode,
       };
       lastMainThreadUrlRef.current = positionKey;
       void mainThreadSyncPublisher(request).catch((publishError: unknown) => {
@@ -417,14 +418,14 @@ export function ArchiveReplayWindow({
         logger.error("MainのThreadView同期に失敗しました", publishError);
       });
     },
-    [loadedReplay, mainThreadSyncPublisher, position, syncOffset],
+    [followMode, loadedReplay, mainThreadSyncPublisher, position, syncOffset],
   );
 
   useEffect(() => {
-    if (!followMainThread) return;
+    if (followMode === "off") return;
     // レス境界と秒単位の位置を共有し、同じ位置のフレームだけ通知を抑制する。
     publishMainThreadSync(currentReplayThread);
-  }, [currentReplayThread, followMainThread, publishMainThreadSync]);
+  }, [currentReplayThread, followMode, publishMainThreadSync]);
 
   useEffect(() => {
     let disposed = false;
@@ -774,23 +775,34 @@ export function ArchiveReplayWindow({
       <div className="archive-replay-window__main-thread-controls">
         <Button
           className="archive-replay-window__secondary-button"
-          onClick={() => publishMainThreadSync(currentReplayThread, true)}
+          onClick={() =>
+            publishMainThreadSync(
+              currentReplayThread,
+              true,
+              followMode === "off" ? "position" : followMode,
+            )
+          }
           disabled={!currentReplayThread}
         >
           再生中のスレをアプリ本体で開く
         </Button>
         <label className="archive-replay-window__follow-toggle">
-          <input
-            aria-label="アプリ本体のスレ画面を再生に追従"
-            type="checkbox"
-            checked={followMainThread}
+          アプリ本体のスレ画面の追従
+          <select
+            aria-label="アプリ本体のスレ画面の追従"
+            value={followMode}
             disabled={!loadedReplay}
             onChange={(event) => {
+              const mode = event.currentTarget.value as "off" | "live" | "position";
+              if (mode === "off") publishMainThreadSync(currentReplayThread, true, "off");
               lastMainThreadUrlRef.current = null;
-              setFollowMainThread(event.currentTarget.checked);
+              setFollowMode(mode);
             }}
-          />
-          アプリ本体のスレ画面を再生に追従
+          >
+            <option value="off">無効</option>
+            <option value="live">ライブ再現</option>
+            <option value="position">再生位置バー</option>
+          </select>
         </label>
       </div>
 

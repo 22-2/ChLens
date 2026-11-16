@@ -1,9 +1,11 @@
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
   type ArchiveReplayPosition,
   getArchiveReplayThreadCapabilities,
   isArchiveReplayThread,
+  useArchiveReplayResponseFilter,
 } from "./position-store";
 
 const position: ArchiveReplayPosition = {
@@ -16,6 +18,22 @@ const position: ArchiveReplayPosition = {
   title: "架空の実況スレ",
   playbackAt: Date.parse("2026-10-02T12:01:00+09:00"),
 };
+
+it("ライブ再現は時刻でレスを出し分け、バー表示では全レスを表示する", () => {
+  const live = { ...position, followMode: "live" as const };
+  const { result, rerender } = renderHook(
+    ({ current }) => useArchiveReplayResponseFilter(current, true),
+    { initialProps: { current: live as ArchiveReplayPosition } },
+  );
+  const earlier = { num: 1, date: "2026/10/02(金) 12:00:59" };
+  const later = { num: 2, date: "2026/10/02(金) 12:01:01" };
+  expect(result.current?.(earlier)).toBe(true);
+  expect(result.current?.(later)).toBe(false);
+  rerender({ current: { ...live, playbackAt: live.playbackAt! + 2000 } });
+  expect(result.current?.(later)).toBe(true);
+  rerender({ current: { ...live, followMode: "position" } });
+  expect(result.current).toBeUndefined();
+});
 
 describe("過去実況スレッドの判定", () => {
   it("同期先のタブと正規化したURLが一致するスレッドを過去実況として扱う", () => {

@@ -172,12 +172,6 @@
   cursor: pointer;
 }
 
-.archive-replay-window__follow-toggle input {
-  width: var(--sys-space-4);
-  height: var(--sys-space-4);
-  accent-color: var(--sys-color-accent);
-}
-
 .archive-replay-window__controls,
 .archive-replay-window__seek-row {
   display: flex;

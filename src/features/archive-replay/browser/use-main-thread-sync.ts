@@ -48,6 +48,15 @@ export function useArchiveReplayMainThreadSync(): void {
         return;
       }
 
+      if (request.followMode === "off") {
+        // 停止通知で表示の絞り込みと読み取り専用状態を解除し、古い通知は無視する。
+        if (previousTarget?.sessionId === request.sessionId) {
+          targetRef.current = { ...previousTarget, generation: request.generation };
+          useArchiveReplayPositionStore.setState({ position: null });
+        }
+        return;
+      }
+
       const page = {
         type: "thread" as const,
         title: request.title,

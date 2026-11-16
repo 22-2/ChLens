@@ -62,6 +62,8 @@ export interface ArchiveReplayMainThreadRequest {
   title: string;
   /** 同期補正を差し引いたログ上の時刻。古い通知との互換性のため省略可能。 */
   playbackAt?: number;
+  /** 省略時は旧版の再生位置バーとして扱う。 */
+  followMode?: "off" | "live" | "position";
 }
 
 export type ArchiveReplayOverlayEvent =
@@ -112,7 +114,16 @@ export function isArchiveReplayMainThreadRequest(
   payload: unknown,
 ): payload is ArchiveReplayMainThreadRequest {
   if (!isRecord(payload)) return false;
-  const { version, sessionId, generation, threadUrl, responseNumber, title, playbackAt } = payload;
+  const {
+    version,
+    sessionId,
+    generation,
+    threadUrl,
+    responseNumber,
+    title,
+    playbackAt,
+    followMode,
+  } = payload;
   return (
     version === 1 &&
     isNonEmptyString(sessionId) &&
@@ -122,7 +133,11 @@ export function isArchiveReplayMainThreadRequest(
     isNonEmptyString(threadUrl) &&
     isPositiveInteger(responseNumber) &&
     isNonEmptyString(title) &&
-    (playbackAt === undefined || (typeof playbackAt === "number" && Number.isFinite(playbackAt)))
+    (playbackAt === undefined || (typeof playbackAt === "number" && Number.isFinite(playbackAt))) &&
+    (followMode === undefined ||
+      followMode === "off" ||
+      followMode === "live" ||
+      followMode === "position")
   );
 }
 

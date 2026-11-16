@@ -170,6 +170,12 @@ describe("useThreadData Phase 0 contracts", () => {
 
   it("取得後にタイトルが更新されても同じスレを再取得しない", async () => {
     const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/140/" };
+    const getThread = vi.fn(async () => ({
+      url: page.threadUrl,
+      title: page.title,
+      res: RESPONSES,
+    }));
+    container.thread = { getThread } as IThreadService;
     const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
     const { result, rerender } = renderHook(
       ({ title }) => {
@@ -180,7 +186,39 @@ describe("useThreadData Phase 0 contracts", () => {
     );
     await waitFor(() => expect(result.current.loading).toBe(false));
     rerender({ title: "取得したスレタイトル" });
-    expect(container.thread.getThread).toHaveBeenCalledTimes(1);
+    expect(getThread).toHaveBeenCalledTimes(1);
+  });
+
+  it("表示条件を巻き戻しや進行に合わせて変えても取得し直さず検索対象も切り替える", async () => {
+    const page = { ...createPage(), threadUrl: "https://example.com/test/read.cgi/board/141/" };
+    const getThread = vi.fn(async () => ({
+      url: page.threadUrl,
+      title: page.title,
+      res: RESPONSES,
+    }));
+    container.thread = { getThread } as IThreadService;
+    const rootRef = { current: null } as RefObject<HTMLDivElement | null>;
+    const { result, rerender } = renderHook(
+      ({ cutoff }) => {
+        const controller = useThreadRefreshController(0);
+        return useThreadData(
+          "replay",
+          page,
+          rootRef,
+          controller,
+          undefined,
+          (res) => res.num <= cutoff,
+        );
+      },
+      { initialProps: { cutoff: 2 } },
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.responses.map((res) => res.num)).toEqual([1, 2]);
+    rerender({ cutoff: 4 });
+    expect(result.current.filteredResponses.map((res) => res.num)).toEqual([1, 2, 3, 4]);
+    rerender({ cutoff: 1 });
+    expect(result.current.visibleResponses.map((res) => res.num)).toEqual([1]);
+    expect(getThread).toHaveBeenCalledTimes(1);
   });
 
   it.each([false, true])(

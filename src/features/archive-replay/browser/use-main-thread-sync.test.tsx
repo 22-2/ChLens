@@ -3,6 +3,7 @@ import type { ScopedTabAction, TabStoreState } from "src/view/browser/state/tabs
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import type { ArchiveReplayMainThreadRequest } from "../platform";
+import { useArchiveReplayPositionStore } from "./position-store";
 import { useArchiveReplayMainThreadSync } from "./use-main-thread-sync";
 
 const mocks = vi.hoisted(() => ({
@@ -102,7 +103,30 @@ describe("useArchiveReplayMainThreadSync", () => {
 
   afterEach(() => {
     cleanup();
+    useArchiveReplayPositionStore.setState({ position: null });
     delete (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
+  });
+
+  it("追従停止で絞り込みを解除し、遅れて届いた旧通知を無視する", async () => {
+    renderHook(() => useArchiveReplayMainThreadSync());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const request = {
+      version: 1 as const,
+      sessionId: "replay-1",
+      generation: 1,
+      threadUrl: "https://example.com/test/read.cgi/live/1/",
+      responseNumber: 1,
+      title: "架空の実況",
+      followMode: "live" as const,
+    };
+    act(() => mocks.listener?.(request));
+    expect(useArchiveReplayPositionStore.getState().position?.followMode).toBe("live");
+    act(() => mocks.listener?.({ ...request, generation: 3, followMode: "off" }));
+    expect(useArchiveReplayPositionStore.getState().position).toBeNull();
+    act(() => mocks.listener?.({ ...request, generation: 2 }));
+    expect(useArchiveReplayPositionStore.getState().position).toBeNull();
   });
 
   it("初回は専用タブを作り、同一セッションでは同じタブを遷移させる", async () => {

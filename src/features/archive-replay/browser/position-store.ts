@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 
-import { normalizeArchiveReplayThreadUrl } from "../domain";
+import { normalizeArchiveReplayThreadUrl, parseArchiveReplayTimestamp } from "../domain";
 import type { ArchiveReplayMainThreadRequest } from "../platform";
 
 // ThreadViewの取得完了より先に届く位置も保持し、マウント後にラインと追従を復元する。
@@ -9,6 +10,24 @@ export type ArchiveReplayPosition = ArchiveReplayMainThreadRequest & { tabId: st
 export const useArchiveReplayPositionStore = create<{
   position: ArchiveReplayPosition | null;
 }>(() => ({ position: null }));
+
+/** ライブ再現中は時刻までのレスだけを検索・表示へ渡す。 */
+export function useArchiveReplayResponseFilter(
+  position: ArchiveReplayPosition | null,
+  active: boolean,
+) {
+  return useMemo(() => {
+    if (!active || position?.followMode !== "live") return undefined;
+    const { playbackAt, responseNumber } = position;
+    return (response: { num: number; date: string }) => {
+      const timestamp = parseArchiveReplayTimestamp(response.date);
+      // 日時を解釈できない場合はレス番号を使い、未来の本文を先に見せない。
+      return timestamp !== null && playbackAt !== undefined
+        ? timestamp <= playbackAt
+        : response.num <= responseNumber;
+    };
+  }, [active, position]);
+}
 
 /** 再生位置を同期した専用ThreadViewかどうかを、タブと正規化URLの両方で判定する。 */
 export function isArchiveReplayThread(

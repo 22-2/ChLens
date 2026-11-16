@@ -12,6 +12,7 @@ import { recordDebugEvent } from "src/app/debug/debug-log";
 import {
   getArchiveReplayThreadCapabilities,
   useArchiveReplayPositionStore,
+  useArchiveReplayResponseFilter,
 } from "src/features/archive-replay/browser/position-store";
 import {
   ArchiveReplayPositionLine,
@@ -149,8 +150,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const isAutoRefreshEnabled = tabAutoRefreshEnabled && threadCapabilities.canAutoRefresh;
   const manualRefreshScopeKey = getManualRefreshScopeKey(tabId, page);
   const rootRef = useRef<HTMLDivElement>(null);
-  // 変更理由: refの代入だけでは再描画されないため、別窓の初回描画でもPortal先を
-  // 直ちに渡せるよう、同じrootをstateにも同期する。
+  // refの代入だけでは再描画されないため、Portal先をstateにも同期する。
   const [popupHost, setPopupHost] = useState<HTMLDivElement | null>(null);
   const setThreadRoot = useCallback((node: HTMLDivElement | null) => {
     rootRef.current = node;
@@ -160,6 +160,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const effectiveScrollContainerRef = scrollContainerRef ?? fallbackScrollContainerRef;
   const refreshController = useThreadRefreshController(refreshKey);
   const readSnapshot = useThreadReadBoundary(page.threadUrl);
+  const replayResponseFilter = useArchiveReplayResponseFilter(replayPosition, isArchiveReplay);
   const {
     responses,
     visibleResponses,
@@ -185,7 +186,14 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     setResponses,
     messageProtocol,
     similarImageBlurredResNums,
-  } = useThreadData(tabId, page, rootRef, refreshController, readSnapshot.refreshSuccessRef);
+  } = useThreadData(
+    tabId,
+    page,
+    rootRef,
+    refreshController,
+    readSnapshot.refreshSuccessRef,
+    replayResponseFilter,
+  );
   const clearFilter = useThreadFilterReset({ tabId, page, setFilter, setSearchQuery });
   const requestManualRefresh = useCallback(() => {
     if (!threadCapabilities.canRefresh) return;
@@ -562,7 +570,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const manualReadNum = storedReadState?.read ?? null;
 
   const replayBoundary =
-    isArchiveReplay && replayPosition
+    isArchiveReplay && replayPosition && replayPosition.followMode !== "live"
       ? getReplayBoundaryIndex(
           displayedResponses,
           replayPosition.playbackAt,
@@ -576,8 +584,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     isArchiveReplay || isFilterEnabled,
   );
 
-  // 変更理由: 全レスを描画すると、レス数とタブ数に比例して描画負荷とメモリが増えるため、
-  // 表示範囲のレスだけを描画する。位置の計算・ジャンプ・既読位置の計測はここへまとめる。
+  // 描画負荷を抑えるため表示範囲のレスだけを描画し、位置計算もここへまとめる。
   const virtualList = useThreadVirtualList({
     responses: displayedResponses,
     replayBoundary,
@@ -596,7 +603,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     () => measureVirtualReadState(1)?.last ?? null,
     [measureVirtualReadState],
   );
-  // 変更理由: ブラウザのページ内検索は描画していないレスを探せないため、Ctrl+F を置き換える。
   const find = useThreadFind({
     isActive,
     responses: displayedResponses,

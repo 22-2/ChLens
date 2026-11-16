@@ -155,13 +155,21 @@ describe("過去実況再生ウィンドウ", () => {
       }),
     );
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "アプリ本体のスレ画面を再生に追従" }));
-    expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("combobox", { name: "アプリ本体のスレ画面の追従" })).toHaveValue(
+      "live",
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "アプリ本体のスレ画面の追従" }), {
+      target: { value: "position" },
+    });
+    expect(mainThreadSyncPublisher).toHaveBeenLastCalledWith(
+      expect.objectContaining({ followMode: "position" }),
+    );
+    mainThreadSyncPublisher.mockClear();
 
     fireEvent.click(screen.getByRole("button", { name: "5秒進める" }));
     expect(screen.getByRole("slider", { name: "過去実況の再生位置" })).toHaveValue("5");
     fireEvent.click(screen.getByRole("button", { name: "5秒進める" }));
-    expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(4);
+    expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(2);
     expect(mainThreadSyncPublisher).toHaveBeenLastCalledWith(
       expect.objectContaining({
         responseNumber: 2,
@@ -175,6 +183,15 @@ describe("過去実況再生ウィンドウ", () => {
         ),
       ).toBe(true);
     });
+    fireEvent.change(screen.getByRole("combobox", { name: "アプリ本体のスレ画面の追従" }), {
+      target: { value: "off" },
+    });
+    expect(mainThreadSyncPublisher).toHaveBeenLastCalledWith(
+      expect.objectContaining({ followMode: "off" }),
+    );
+    mainThreadSyncPublisher.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "5秒戻す" }));
+    expect(mainThreadSyncPublisher).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "最初から" }));
     expect(archiveReplayEventBus.events.filter((event) => event.type === "reset")).not.toHaveLength(
@@ -271,7 +288,6 @@ describe("過去実況再生ウィンドウ", () => {
     fireEvent.click(screen.getByRole("button", { name: "スレ一覧を読み込む" }));
     expect(await screen.findByText("スレ2: 架空の実況B")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "アプリ本体のスレ画面を再生に追従" }));
     expect(mainThreadSyncPublisher).toHaveBeenLastCalledWith(
       expect.objectContaining({ threadUrl: "https://example.com/thread-a/" }),
     );
