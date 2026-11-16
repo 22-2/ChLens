@@ -132,6 +132,18 @@ export function InlineExpandedImage({
         >
           <ExternalLink size={16} aria-hidden="true" />
         </button>
+        <button
+          type="button"
+          aria-label="画像を縮小"
+          title="画像を縮小"
+          onClick={(event) => {
+            event.stopPropagation();
+            onClose();
+          }}
+        >
+          <Minimize2 size={16} aria-hidden="true" />
+        </button>
+        {/* 保存操作を右端に置き、表示操作と区別する。 */}
         {onSave && (
           <button
             type="button"
@@ -146,17 +158,6 @@ export function InlineExpandedImage({
             <Download size={16} aria-hidden="true" />
           </button>
         )}
-        <button
-          type="button"
-          aria-label="画像を縮小"
-          title="画像を縮小"
-          onClick={(event) => {
-            event.stopPropagation();
-            onClose();
-          }}
-        >
-          <Minimize2 size={16} aria-hidden="true" />
-        </button>
       </div>
       {status === "loaded" && onResize && (
         <button
