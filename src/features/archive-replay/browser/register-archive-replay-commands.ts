@@ -53,7 +53,7 @@ export function registerArchiveReplayCommands(api: ExtensionApi): void {
         }
       },
     },
-    { beforeCommandId: "filter.toggle" },
+    { beforeCommandId: "next-thread.search" },
   );
   api.addCommand(
     {

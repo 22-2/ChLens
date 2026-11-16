@@ -54,6 +54,9 @@ export function ReplayPreparationDialog({
   const [loading, setLoading] = useState(false);
 
   async function search() {
+    setCandidates([]);
+    setSelected(new Set());
+    setSearched(false);
     const startAt = parseArchiveReplayStartInput(start);
     const endAt = parseArchiveReplayStartInput(end);
     if (!query.trim() || startAt === null || endAt === null || startAt > endAt) {
@@ -101,6 +104,9 @@ export function ReplayPreparationDialog({
       );
       setMessages(notices);
       setSearched(true);
+    } catch (error) {
+      logger.error("候補の判定に失敗しました", error);
+      setMessages(["候補を判定できませんでした。条件を確認してやり直してください。"]);
     } finally {
       setLoading(false);
     }
@@ -124,12 +130,17 @@ export function ReplayPreparationDialog({
           <div className="replay-preparation__fields">
             <label className="archive-replay-window__field">
               <span>検索語</span>
-              <input value={query} onChange={(event) => setQuery(event.currentTarget.value)} />
+              <input
+                disabled={loading}
+                value={query}
+                onChange={(event) => setQuery(event.currentTarget.value)}
+              />
             </label>
             <label className="archive-replay-window__field">
               <span>開始日時（日本時間）</span>
               <input
                 type="datetime-local"
+                disabled={loading}
                 value={start}
                 onChange={(event) => setStart(event.currentTarget.value)}
               />
@@ -138,6 +149,7 @@ export function ReplayPreparationDialog({
               <span>終了日時（日本時間）</span>
               <input
                 type="datetime-local"
+                disabled={loading}
                 value={end}
                 onChange={(event) => setEnd(event.currentTarget.value)}
               />
@@ -147,14 +159,16 @@ export function ReplayPreparationDialog({
             </Button>
           </div>
           <p className="archive-replay-window__note">
-            過去ログは検索語を含む題名から探します。題名が変わったスレは見つからないことがあります。
+            検索対象はエッヂです。過去ログは検索語を含む題名から探すため、題名が変わったスレは見つからないことがあります。
           </p>
           {messages.map((message) => (
             <p role="status" key={message}>
               {message}
             </p>
           ))}
-          {searched && !candidates.length ? <p>候補が見つかりませんでした。</p> : null}
+          {searched && !candidates.length && !messages.length ? (
+            <p>候補が見つかりませんでした。</p>
+          ) : null}
           <div className="replay-preparation__list">
             {candidates.map((candidate) => (
               <label
