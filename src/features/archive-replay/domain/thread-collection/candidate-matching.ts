@@ -1,3 +1,4 @@
+import { ChURL } from "@chlen/chlib";
 import { extractThreadSequenceNumber } from "src/features/next-thread/domain/thread-sequence";
 import {
   calculateBaseTitleSimilarity,
@@ -23,6 +24,9 @@ export function defaultCollectionQuery(title: string): string {
 
 function identity(url: string): string {
   try {
+    // dat形式やHTTP・HTTPS違いでも同じスレを二重に選ばない。
+    const threadKey = new ChURL(url).getThreadKey();
+    if (threadKey) return threadKey.replace(/\/+$/, "");
     const parsed = new URL(url);
     parsed.hash = "";
     parsed.search = "";

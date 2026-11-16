@@ -61,4 +61,18 @@ describe("スレ収集の候補判定", () => {
     expect(candidates).toHaveLength(3);
     expect(candidates[1].reasons).toContain("連番が進行");
   });
+
+  it("datと通常URLや通信方式が違っても同じスレをまとめる", () => {
+    const thread = listing(1601000001, "架空番組 ★1");
+    const seed = { ...thread, threadUrl: "http://example.com/board/dat/1601000001.dat" };
+    const candidates = collectThreadCandidates(
+      [thread],
+      "架空番組",
+      { startSeconds: 1601000000, endSeconds: 1601000002 },
+      params,
+      seed,
+    );
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0].kind).toBe("seed");
+  });
 });
