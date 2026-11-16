@@ -277,6 +277,8 @@ function canOpenRootReplyTree(
   treeRootResNum: number,
   displayedTreeRootResNum: number | undefined,
 ): boolean {
+  // 返信ツリーの子レスは既にツリー内に見えているため、遡る操作は参照元にだけ表示する。
+  if (displayedTreeRootResNum !== undefined && resNum !== displayedTreeRootResNum) return false;
   if (treeRootResNum === resNum) return false;
   return treeRootResNum !== displayedTreeRootResNum;
 }

@@ -436,7 +436,8 @@ describe("PopupResCard", () => {
     { name: "起点が自分自身なら出さない", root: 10, displayed: undefined, visible: false },
     { name: "表示中のツリーと同じ起点なら出さない", root: 3, displayed: 3, visible: false },
     { name: "別のツリーへ遡れるなら出す", root: 3, displayed: undefined, visible: true },
-    { name: "表示中のツリーより上へ遡れるなら出す", root: 3, displayed: 5, visible: true },
+    { name: "表示中のツリーの子レスには出さない", root: 3, displayed: 5, visible: false },
+    { name: "参照元から上へ遡れるなら出す", root: 3, displayed: 10, visible: true },
   ])("「ツリー先頭から」: $name", ({ root, displayed, visible }) => {
     render(
       <PopupResCard

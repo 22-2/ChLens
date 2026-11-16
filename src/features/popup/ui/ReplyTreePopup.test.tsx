@@ -142,7 +142,9 @@ describe("ReplyTreePopup", () => {
   it("表示中のツリーより上へ遡れるときは「ツリー先頭から」を出す", () => {
     render(<ReplyTreePopup {...BASE_PROPS} resNum={2} resolveReplyTreeRoot={() => 1} />);
 
-    expect(screen.getAllByRole("button", { name: "ツリー先頭から" }).length).toBeGreaterThan(0);
+    const buttons = screen.getAllByRole("button", { name: "ツリー先頭から" });
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].closest("article")).toHaveTextContent("reply message");
   });
 
   it("単一ツリー内の同じ宛先への複数返信だけIDを強調し、別の枝は合算しない", () => {
