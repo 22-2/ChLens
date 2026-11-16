@@ -14,10 +14,10 @@ export function registerArchiveReplayCommands(api: ExtensionApi): void {
   api.addCommand(
     {
       id: "archive-replay.prepare-from-thread",
-      label: "このスレから過去実況リプレイを準備",
-      englishLabel: "Prepare Archive Replay from Thread",
+      label: "このスレから過去スレを検索",
+      englishLabel: "Search Past Threads from Current Thread",
       description: "現在のスレを起点に実況スレを集めます",
-      keywords: ["過去実況", "リプレイ準備", "replay"],
+      keywords: ["過去実況", "過去スレを検索", "リプレイ準備", "replay"],
       group: "page",
       icon: PlayCircle,
       when: ({ viewPage }) => isTauriRuntime() && viewPage.type === "thread",

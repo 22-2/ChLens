@@ -120,7 +120,7 @@ function ArchiveReplayForm({
           />
         </label>
         <button type="submit" disabled={loading || !urls.trim()} style={{ flexShrink: 0 }}>
-          {loading ? "取得中…" : "複数スレを読み込む"}
+          {loading ? "取得中…" : "スレ一覧を読み込む"}
         </button>
       </div>
       <span style={{ color: "#a9c1db", fontSize: 12 }}>

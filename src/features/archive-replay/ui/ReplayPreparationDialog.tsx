@@ -138,7 +138,7 @@ export function ReplayPreparationDialog({
       <Dialog.Portal>
         <Dialog.Overlay className="browser-dialog-overlay" />
         <Dialog.Content className="browser-dialog-content replay-preparation">
-          <Dialog.Title>リプレイ準備</Dialog.Title>
+          <Dialog.Title>過去スレを検索</Dialog.Title>
           <Dialog.Description>
             エッヂの候補を確認して、再生するスレを選んでください。
           </Dialog.Description>

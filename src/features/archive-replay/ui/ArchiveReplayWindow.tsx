@@ -632,7 +632,7 @@ export function ArchiveReplayWindow({
             setPreparing(true);
           }}
         >
-          リプレイ準備
+          過去スレを検索
         </Button>
         <label className="archive-replay-window__field archive-replay-window__field--urls">
           <span>実況スレッドURL（1行に1件）</span>
@@ -678,7 +678,7 @@ export function ArchiveReplayWindow({
             />
           </label>
           <Button type="submit" loading={loading} disabled={!urls.trim()}>
-            複数スレを読み込む
+            スレ一覧を読み込む
           </Button>
         </div>
         <span className="archive-replay-window__note">
@@ -777,11 +777,11 @@ export function ArchiveReplayWindow({
           onClick={() => publishMainThreadSync(currentReplayThread, true)}
           disabled={!currentReplayThread}
         >
-          現在の実況スレをメインで開く
+          再生中のスレをアプリ本体で開く
         </Button>
         <label className="archive-replay-window__follow-toggle">
           <input
-            aria-label="メインを実況スレに追従"
+            aria-label="アプリ本体のスレ画面を再生に追従"
             type="checkbox"
             checked={followMainThread}
             disabled={!loadedReplay}
@@ -790,7 +790,7 @@ export function ArchiveReplayWindow({
               setFollowMainThread(event.currentTarget.checked);
             }}
           />
-          メインを実況スレに追従
+          アプリ本体のスレ画面を再生に追従
         </label>
       </div>
 
@@ -866,7 +866,7 @@ export function ArchiveReplayWindow({
 
       <p className="archive-replay-window__overlay-note" role="status">
         コメントはこの窓ではなく、コメントOverlayに表示されます。追従を有効にすると、
-        Mainの専用タブが再生中の実況スレへ切り替わります。
+        アプリ本体の専用タブが再生中のスレと位置に追従します。
       </p>
     </main>
   );

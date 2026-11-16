@@ -99,7 +99,7 @@ describe("過去実況再生ウィンドウ", () => {
     fireEvent.change(screen.getByLabelText("実況スレッドURL"), {
       target: { value: "https://example.com/thread-a/\nhttps://example.com/thread-b/" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "複数スレを読み込む" }));
+    fireEvent.click(screen.getByRole("button", { name: "スレ一覧を読み込む" }));
     fireEvent.click(await screen.findByRole("button", { name: "候補を探し直す" }));
     expect(screen.getByLabelText("開始日時（日本時間）")).toHaveValue("2026-09-16T23:30");
     expect(screen.getByLabelText("終了日時（日本時間）")).toHaveValue("2026-09-16T23:40");
@@ -128,7 +128,7 @@ describe("過去実況再生ウィンドウ", () => {
     fireEvent.change(screen.getByLabelText("実況スレッドURL"), {
       target: { value: "https://example.com/thread-a/" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "複数スレを読み込む" }));
+    fireEvent.click(screen.getByRole("button", { name: "スレ一覧を読み込む" }));
 
     expect(await screen.findByText("スレ1: 架空の実況")).toBeInTheDocument();
     expect(getThreadMock).toHaveBeenCalledWith("https://example.com/thread-a/");
@@ -141,7 +141,7 @@ describe("過去実況再生ウィンドウ", () => {
       ).toBe(true);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "現在の実況スレをメインで開く" }));
+    fireEvent.click(screen.getByRole("button", { name: "再生中のスレをアプリ本体で開く" }));
     expect(mainThreadSyncPublisher).toHaveBeenCalledWith(
       expect.objectContaining({
         threadUrl: "https://example.com/thread-a/",
@@ -150,7 +150,7 @@ describe("過去実況再生ウィンドウ", () => {
       }),
     );
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "メインを実況スレに追従" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "アプリ本体のスレ画面を再生に追従" }));
     expect(mainThreadSyncPublisher).toHaveBeenCalledTimes(2);
 
     fireEvent.click(screen.getByRole("button", { name: "10秒進める" }));
@@ -204,7 +204,7 @@ describe("過去実況再生ウィンドウ", () => {
     fireEvent.change(screen.getByLabelText("実況スレッドURL"), {
       target: { value: "https://example.com/thread-a/" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "複数スレを読み込む" }));
+    fireEvent.click(screen.getByRole("button", { name: "スレ一覧を読み込む" }));
     expect(await screen.findByText("スレ1: 架空の実況")).toBeInTheDocument();
     await waitFor(() => expect(showOverlay).toHaveBeenCalled());
     expect(archiveReplayEventBus.events.some((event) => event.type === "comment")).toBe(false);
@@ -261,10 +261,10 @@ describe("過去実況再生ウィンドウ", () => {
         value: "https://example.com/thread-a/\nhttps://example.com/thread-b/",
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: "複数スレを読み込む" }));
+    fireEvent.click(screen.getByRole("button", { name: "スレ一覧を読み込む" }));
     expect(await screen.findByText("スレ2: 架空の実況B")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "メインを実況スレに追従" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "アプリ本体のスレ画面を再生に追従" }));
     expect(mainThreadSyncPublisher).toHaveBeenLastCalledWith(
       expect.objectContaining({ threadUrl: "https://example.com/thread-a/" }),
     );

@@ -48,9 +48,9 @@ test("再生中に表示領域を全画面と初期位置へ再指定しても�
   await page.getByRole("option", { name: /過去実況再生を開く/u }).click();
 
   await replay.getByLabel("実況スレッドURL").fill(localBoard.threadUrl);
-  await replay.getByRole("button", { name: "複数スレを読み込む" }).click();
+  await replay.getByRole("button", { name: "スレ一覧を読み込む" }).click();
   await expect(replay.getByText("スレ1: ローカルテストスレッド")).toBeVisible();
-  await replay.getByRole("button", { name: "現在の実況スレをメインで開く" }).click();
+  await replay.getByRole("button", { name: "再生中のスレをアプリ本体で開く" }).click();
   await replay.getByRole("button", { name: "再生", exact: true }).click();
 
   const overlay = await tauri.window("overlay");

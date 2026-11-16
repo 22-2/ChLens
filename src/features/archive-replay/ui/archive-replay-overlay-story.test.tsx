@@ -57,7 +57,7 @@ describe("過去実況の再生位置操作", () => {
     fireEvent.change(screen.getByLabelText("実況スレッドURL"), {
       target: { value: "https://example.com/thread-a" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "複数スレを読み込む" }));
+    fireEvent.click(screen.getByRole("button", { name: "スレ一覧を読み込む" }));
     await screen.findByText("スレ1: 架空の実況");
     fireEvent.change(screen.getByLabelText("試作再生倍率"), { target: { value: "1" } });
     fireEvent.click(screen.getByRole("button", { name: "再生" }));
