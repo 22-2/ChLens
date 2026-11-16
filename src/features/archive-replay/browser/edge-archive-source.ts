@@ -51,6 +51,16 @@ function japanDate(seconds: number): string {
   return new Date(seconds * 1000 + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
+function archiveSearchKeyword(query: string): string {
+  // 索引は記号の全角・半角を区別するため、文字と数字の連続部分で広めに探す。
+  // 元の検索語を使った正規化・絞り込みは候補判定側で行う。
+  const parts = query.trim().match(/[\p{L}\p{N}]+/gu) ?? [];
+  return (
+    parts.reduce((longest, part) => (part.length > longest.length ? part : longest), "") ||
+    query.trim()
+  );
+}
+
 export async function fetchEdgeArchiveRange(
   keyword: string,
   startSeconds: number,
@@ -144,7 +154,7 @@ export async function fetchEdgeArchive(
   // 一覧全体だけでは新しい無関係なスレで上限に達するため、検索語一致も別に取得する。
   // 題名が変わった続きの候補は、検索語なしの一覧から補う。
   const [matching, broad] = await Promise.allSettled([
-    fetchEdgeArchiveRange(query.trim(), startSeconds, endSeconds),
+    fetchEdgeArchiveRange(archiveSearchKeyword(query), startSeconds, endSeconds),
     fetchEdgeArchiveRange("", startSeconds, endSeconds),
   ]);
   const failures: string[] = [];

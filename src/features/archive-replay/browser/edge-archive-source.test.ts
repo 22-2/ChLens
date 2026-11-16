@@ -5,6 +5,8 @@ vi.mock("src/app/platform", () => ({ platform: { http: { fetch: httpFetch } } })
 
 vi.mock("webextension-polyfill", () => ({ default: {} }));
 
+import { collectThreadCandidates } from "../domain/thread-collection/candidate-matching";
+import { DEFAULT_THREAD_COLLECTION_PARAMS } from "../domain/thread-collection/types";
 import {
   fetchEdgeArchive,
   fetchEdgeArchiveRange,
@@ -113,6 +115,46 @@ describe("エッヂ過去ログ索引の解析", () => {
     expect(result.matchingTruncated).toBe(false);
     expect(result.broadTruncated).toBe(true);
     expect(result.failures).toEqual([]);
+  });
+
+  it("半角記号の検索語で全角記号を含む複数スレを取りこぼさない", async () => {
+    httpFetch.mockReset();
+    httpFetch.mockImplementation(async (input: string) => {
+      const url = new URL(input);
+      const keyword = url.searchParams.get("keyword");
+      if (!keyword)
+        return {
+          status: 200,
+          body: '<p id="result">検索結果：0件</p><div id="threadContainer"></div>',
+        };
+      const titles =
+        keyword === "架空番組" ? ["架空番組！ ★1", "架空番組！ ★2", "架空番組の話"] : [];
+      const rows = titles
+        .map(
+          (title, index) =>
+            `<div class="thread"><a class="title" href="/test/read.cgi/liveedge/${1601000003 - index}/">${title} (10)</a></div>`,
+        )
+        .join("");
+      return {
+        status: 200,
+        body: `<p id="result">検索結果：${titles.length}件</p><div id="threadContainer">${rows}</div>`,
+      };
+    });
+    const result = await fetchEdgeArchive("架空番組!", 1601000000, 1601000010);
+    const candidates = collectThreadCandidates(
+      result.threads,
+      "架空番組!",
+      { startSeconds: 1601000000, endSeconds: 1601000010 },
+      DEFAULT_THREAD_COLLECTION_PARAMS,
+    );
+    expect(
+      candidates.filter((item) => item.kind === "search-match").map((item) => item.listing.title),
+    ).toEqual(["架空番組！ ★2", "架空番組！ ★1"]);
+    expect(
+      httpFetch.mock.calls.some(
+        ([input]) => new URL(input).searchParams.get("keyword") === "架空番組",
+      ),
+    ).toBe(true);
   });
 
   it("片方の索引が失敗しても取得できた候補と失敗理由を返す", async () => {
