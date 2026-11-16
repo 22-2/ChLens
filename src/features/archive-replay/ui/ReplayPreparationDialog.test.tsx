@@ -44,6 +44,9 @@ describe("リプレイ準備", () => {
     expect(screen.getByRole("button", { name: "この内容を使う" })).toBeDisabled();
     fireEvent.click(checkbox);
     fireEvent.click(screen.getByRole("button", { name: "この内容を使う" }));
-    expect(apply).toHaveBeenCalledWith([expect.objectContaining({ kind: "search-match" })]);
+    expect(apply).toHaveBeenCalledWith(
+      [expect.objectContaining({ kind: "search-match" })],
+      "架空番組",
+    );
   });
 });

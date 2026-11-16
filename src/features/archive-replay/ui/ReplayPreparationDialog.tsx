@@ -31,7 +31,7 @@ interface Props {
   initialTitle?: string;
   initialRange?: { startSeconds: number; endSeconds: number };
   onClose: () => void;
-  onApply: (candidates: readonly ThreadCollectionCandidate[]) => void;
+  onApply: (candidates: readonly ThreadCollectionCandidate[], query: string) => void;
 }
 
 export function ReplayPreparationDialog({
@@ -199,7 +199,7 @@ export function ReplayPreparationDialog({
             <Button type="button" variant="subtle" onClick={onClose}>
               キャンセル
             </Button>
-            <Button type="button" disabled={!chosen.length} onClick={() => onApply(chosen)}>
+            <Button type="button" disabled={!chosen.length} onClick={() => onApply(chosen, query)}>
               この内容を使う
             </Button>
           </div>

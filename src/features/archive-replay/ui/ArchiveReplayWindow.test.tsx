@@ -68,6 +68,43 @@ describe("過去実況再生ウィンドウ", () => {
     });
   });
 
+  it("スレ間の空白から範囲を指定して準備画面を開く", async () => {
+    getThreadMock.mockImplementation(async (threadUrl: string) => ({
+      url: threadUrl,
+      title: "架空の実況",
+      res: [
+        {
+          num: 1,
+          name: "名無し",
+          mail: "",
+          date: threadUrl.includes("thread-b")
+            ? "2026/09/16(水) 23:40:00"
+            : "2026/09/16(水) 23:30:00",
+          message: "投稿",
+        },
+      ],
+    }));
+    render(
+      <ArchiveReplayWindow
+        archiveReplayEventBus={new MemoryArchiveReplayOverlayEventBus()}
+        overlayPlatform={
+          {
+            show: vi.fn(async () => {}),
+            hide: vi.fn(async () => {}),
+          } as unknown as CommentOverlayWindowPlatform
+        }
+        seekRequestSubscriber={async () => () => {}}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText("実況スレッドURL"), {
+      target: { value: "https://example.com/thread-a/\nhttps://example.com/thread-b/" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "複数スレを読み込む" }));
+    fireEvent.click(await screen.findByRole("button", { name: "候補を探し直す" }));
+    expect(screen.getByLabelText("開始日時（日本時間）")).toHaveValue("2026-09-16T23:30");
+    expect(screen.getByLabelText("終了日時（日本時間）")).toHaveValue("2026-09-16T23:40");
+  });
+
   it("開始日時を省略して読み込み、レスの時刻へシークできる", async () => {
     const archiveReplayEventBus = new MemoryArchiveReplayOverlayEventBus();
     const hide = vi.fn(async () => {});

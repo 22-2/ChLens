@@ -9,6 +9,10 @@ import {
   MAX_CONCURRENT_BATCH_REQUESTS,
 } from "src/core/util/map-with-concurrency";
 import {
+  detectThreadGaps,
+  type ThreadTimeRange,
+} from "src/features/archive-replay/domain/thread-collection/gap-detection";
+import {
   type ArchiveReplayThreadSelection,
   createReplaySessionId,
   formatReplayClock,
@@ -60,6 +64,7 @@ interface LoadedArchiveReplayData {
   threadTitles: Readonly<Record<string, string>>;
   titles: readonly string[];
   errors: readonly string[];
+  gaps: readonly ThreadTimeRange[];
 }
 
 interface LoadedThreadData {
@@ -88,6 +93,8 @@ export function ArchiveReplayWindow({
 
   const [urls, setUrls] = useState("");
   const [preparing, setPreparing] = useState(false);
+  const [preparationRange, setPreparationRange] = useState<ThreadTimeRange | undefined>();
+  const [preparationQuery, setPreparationQuery] = useState("");
   const [preparationRequest, setPreparationRequest] = useState<ArchiveReplayPrepareRequest | null>(
     null,
   );
@@ -285,8 +292,20 @@ export function ArchiveReplayWindow({
           durationSeconds: parsedDurationMinutes * 60,
         },
       );
+      const ranges = loadedThreads.flatMap(({ source }) => {
+        let first = Infinity;
+        let last = -Infinity;
+        for (const comment of source.comments) {
+          const timestamp = parseArchiveReplayTimestamp(comment.date ?? "");
+          if (timestamp === null) continue;
+          first = Math.min(first, timestamp / 1000);
+          last = Math.max(last, timestamp / 1000);
+        }
+        return Number.isFinite(first) ? [{ startSeconds: first, endSeconds: last }] : [];
+      });
       setLoadedReplay({
         timeline,
+        gaps: detectThreadGaps(ranges, 120),
         threadTitles: Object.fromEntries(
           loadedThreads.map(({ source, title }) => [source.threadUrl, title]),
         ),
@@ -439,6 +458,7 @@ export function ArchiveReplayWindow({
     let unsubscribe: (() => void) | undefined;
     void subscribeArchiveReplayPreparationRequests((request) => {
       setPreparationRequest(request);
+      setPreparationRange(undefined);
       setPreparing(true);
     })
       .then((cleanup) => {
@@ -608,6 +628,7 @@ export function ArchiveReplayWindow({
           className="archive-replay-window__secondary-button"
           onClick={() => {
             setPreparationRequest(null);
+            setPreparationRange(undefined);
             setPreparing(true);
           }}
         >
@@ -672,7 +693,8 @@ export function ArchiveReplayWindow({
               ? `${preparationRequest.threadUrl}:${preparationRequest.createdAtSeconds}`
               : "search"
           }
-          initialTitle={preparationRequest?.title}
+          initialTitle={preparationRequest?.title ?? preparationQuery}
+          initialRange={preparationRange}
           seed={
             preparationRequest?.createdAtSeconds === undefined
               ? undefined
@@ -683,8 +705,14 @@ export function ArchiveReplayWindow({
                 }
           }
           onClose={() => setPreparing(false)}
-          onApply={(items) => {
-            setUrls(items.map((item) => item.listing.threadUrl).join("\n"));
+          onApply={(items, query) => {
+            const selectedUrls = items.map((item) => item.listing.threadUrl);
+            setUrls(
+              preparationRange
+                ? [...new Set([...urls.split(/\r?\n/).filter(Boolean), ...selectedUrls])].join("\n")
+                : selectedUrls.join("\n"),
+            );
+            setPreparationQuery(query);
             if (!startInput && items[0])
               setStartInput(formatCollectionInput(items[0].listing.createdAtSeconds));
             setPreparing(false);
@@ -720,6 +748,26 @@ export function ArchiveReplayWindow({
             対象{loadedReplay.timeline.comments.length}件 / 除外
             {loadedReplay.timeline.skipped.length}件
           </span>
+          {loadedReplay.gaps.map((gap) => (
+            <div key={`${gap.startSeconds}-${gap.endSeconds}`}>
+              <span>
+                {formatCollectionInput(gap.startSeconds).replace("T", " ")}〜
+                {formatCollectionInput(gap.endSeconds).replace("T", " ")}{" "}
+                の投稿範囲が空いている可能性があります。
+              </span>{" "}
+              <Button
+                type="button"
+                variant="subtle"
+                onClick={() => {
+                  setPreparationRequest(null);
+                  setPreparationRange(gap);
+                  setPreparing(true);
+                }}
+              >
+                候補を探し直す
+              </Button>
+            </div>
+          ))}
         </div>
       ) : null}
 
