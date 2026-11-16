@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../platform", () => ({
   subscribeArchiveReplayMainThreadRequests: mocks.subscribe,
+  subscribeArchiveReplayVisibility: async () => () => {},
 }));
 
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({

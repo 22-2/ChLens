@@ -61,6 +61,17 @@ test("ライブ再現はシークに応じて未来のレスを隠し、表示�
     .selectOption("position");
   await expect(page.getByText("後のレス", { exact: true })).toBeVisible();
   await expect(page.locator(".thread-page__replay-position")).toBeVisible();
+  await expect(page.locator(".status-bar--replay")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "過去実況再生ウィンドウを前面に表示" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /コメントOverlay制御: 過去実況/u })).toBeVisible();
+  await replay.getByRole("button", { name: "過去実況再生を閉じる" }).click();
+  await expect(page.locator(".status-bar--replay")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "過去実況再生ウィンドウを前面に表示" }),
+  ).toHaveCount(0);
+  await expect(page.locator(".thread-page__replay-position")).toHaveCount(0);
 });
 
 test("再生中に表示領域を全画面と初期位置へ再指定しても読み取り専用スレッドとOverlayを保つ", async ({
@@ -116,7 +127,7 @@ test("再生中に表示領域を全画面と初期位置へ再指定しても�
     element.scrollTop = element.scrollHeight;
   });
   await expect(page.getByRole("button", { name: "自動読み込みを開始" })).toHaveCount(0);
-  await expect(statusBar.getByRole("button", { name: /コメントOverlay制御/u })).toHaveCount(0);
+  await expect(statusBar.getByRole("button", { name: /コメントOverlay制御/u })).toBeVisible();
   await expect(statusBar.getByRole("button", { name: "書き込みパネルを開閉" })).toHaveCount(0);
   await expect(statusBar.getByRole("button", { name: /現在のレス数/u })).toBeVisible();
 

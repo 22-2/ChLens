@@ -51,6 +51,11 @@
   --sys-color-placeholder: var(--ref-color-neutral-500);
   --sys-color-selection: var(--ref-color-blue-100);
   --sys-color-accent: var(--ref-color-blue-600);
+  --sys-color-status-replay-bg: color-mix(
+    in srgb,
+    var(--sys-color-accent) 22%,
+    var(--sys-color-tab-strip)
+  );
   /* タブ列で選択中のタブを示す下線。暗い背景でも見えるよう、テーマごとに明るさを決める。 */
   --sys-color-tab-indicator: var(--ref-color-blue-600);
   --sys-color-accent-hover: var(--ref-color-blue-700);
@@ -174,6 +179,11 @@
 /* 初回描画ではルート属性、起動後はシェル属性から同じダーク配色を適用する。 */
 :root[data-theme="dark"],
 .browser-shell[data-theme="dark"] {
+  --sys-color-status-replay-bg: color-mix(
+    in srgb,
+    var(--sys-color-accent) 22%,
+    var(--sys-color-tab-strip)
+  );
   --sys-color-surface: var(--ref-color-dark-neutral-0);
   --sys-color-surface-hover: var(--ref-color-dark-surface-hover);
   --sys-color-surface-muted: var(--ref-color-dark-neutral-100);

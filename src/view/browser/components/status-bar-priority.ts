@@ -3,6 +3,7 @@
 export const STATUS_BAR_PRIORITY = {
   right: {
     commentOverlay: -5,
+    archiveReplay: -4,
     autoRefresh: 0,
     ikioi: 10,
     popularFilter: 12,

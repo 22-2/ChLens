@@ -32,7 +32,9 @@ interface CommentOverlayStatusItemProps {
 /** Tauri版のスレッドだけに実況操作を表示し、Browser版のUI契約を変えない。 */
 export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> = ({ isActive }) => {
   const { viewPage, viewTab } = useTabStore();
-  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
+  const replayPosition = useArchiveReplayPositionStore((state) =>
+    state.windowVisible ? state.position : null,
+  );
   const { controller, snapshot } = useCommentOverlay();
   const openOverlayPlacementWindow = useOpenOverlayPlacementWindow();
   const [isFlowChanging, setIsFlowChanging] = useState(false);
@@ -83,19 +85,16 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
     openOverlayPlacementWindow(sourceWindow);
   }, [closeMiniWindow, miniWindowTriggerRef, openOverlayPlacementWindow]);
 
-  if (
-    !isTauri ||
-    !isActive ||
-    threadCapabilities?.canControlLiveOverlay === false ||
-    (threadUrl == null && !isRunning)
-  ) {
+  if (!isTauri || !isActive || (threadUrl == null && !isRunning)) {
     return null;
   }
 
   const flowLabel = isFlowing ? "コメントを画面に流す: ON" : "コメントを画面に流す: OFF";
-  const statusLabel =
-    errorLabel ??
-    (isFlowing ? "コメントOverlay制御: 実況中・表示中" : "コメントOverlay制御: 停止中");
+  const isReplay = threadCapabilities?.isReadOnly === true;
+  const statusLabel = isReplay
+    ? "コメントOverlay制御: 過去実況"
+    : (errorLabel ??
+      (isFlowing ? "コメントOverlay制御: 実況中・表示中" : "コメントOverlay制御: 停止中"));
 
   return (
     <>
@@ -132,17 +131,23 @@ export const CommentOverlayStatusItem: React.FC<CommentOverlayStatusItemProps> =
           onClose={closeMiniWindow}
           triggerRef={miniWindowTriggerRef}
         >
-          <MiniWindowSection>
-            <MiniWindowToggle
-              label="コメントを画面に流す"
-              checked={isFlowing}
-              onToggle={handleFlowToggle}
-              disabled={isFlowChanging || (!isRunning && threadUrl == null)}
-              busy={isFlowChanging}
-              buttonLabel={flowLabel}
-            />
-            <MiniWindowNote>表示中のスレッドの新着レスをOverlayへ流します</MiniWindowNote>
-          </MiniWindowSection>
+          {isReplay ? (
+            <MiniWindowSection>
+              <MiniWindowNote>再生の開始・停止は過去実況再生ウィンドウで操作します</MiniWindowNote>
+            </MiniWindowSection>
+          ) : (
+            <MiniWindowSection>
+              <MiniWindowToggle
+                label="コメントを画面に流す"
+                checked={isFlowing}
+                onToggle={handleFlowToggle}
+                disabled={isFlowChanging || (!isRunning && threadUrl == null)}
+                busy={isFlowChanging}
+                buttonLabel={flowLabel}
+              />
+              <MiniWindowNote>表示中のスレッドの新着レスをOverlayへ流します</MiniWindowNote>
+            </MiniWindowSection>
+          )}
 
           <MiniWindowSeparator />
 

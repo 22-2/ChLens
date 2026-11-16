@@ -112,7 +112,9 @@ export interface UseAutoRefreshPanelResult {
 
 export function useAutoRefreshPanel(): UseAutoRefreshPanelResult {
   const { viewPage, viewTab, dispatch } = useTabStore();
-  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
+  const replayPosition = useArchiveReplayPositionStore((state) =>
+    state.windowVisible ? state.position : null,
+  );
   const threadCapabilities =
     viewPage.type === "thread"
       ? getArchiveReplayThreadCapabilities(replayPosition, viewTab.id, viewPage.threadUrl)

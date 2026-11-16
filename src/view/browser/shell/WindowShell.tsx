@@ -1,6 +1,8 @@
+import { History } from "lucide-react";
 import React, { useCallback, useEffect } from "react";
 import { createLogger } from "src/app/logger";
 import { isTauriRuntime } from "src/app/platform/runtime";
+import { useArchiveReplayPositionStore } from "src/features/archive-replay/browser/position-store";
 import { openArchiveReplayWindow as openArchiveReplayNativeWindow } from "src/features/archive-replay/platform";
 import { AutoScrollStateProvider } from "src/features/auto-refresh/browser/use-auto-scroll-state";
 import { AutoRefreshStatusItem } from "src/features/auto-refresh/ui/AutoRefreshStatusItem";
@@ -15,7 +17,13 @@ import { IkioiStatusItem } from "src/features/thread/ui/IkioiStatusItem";
 import { PopularFilterStatusItem } from "src/features/thread/ui/PopularFilterStatusItem";
 import { WritePanelToggleItem } from "src/features/write/ui/WritePanelToggleItem";
 import { container } from "src/service-container/index";
-import { StatusBar, StatusBarProvider } from "src/view/browser/components/StatusBar";
+import { STATUS_BAR_PRIORITY } from "src/view/browser/components/status-bar-priority";
+import {
+  StatusBar,
+  StatusBarItem,
+  StatusBarMode,
+  StatusBarProvider,
+} from "src/view/browser/components/StatusBar";
 import { BottomPanelProvider } from "src/view/browser/hooks/use-bottom-panel";
 import { PageCountStatusProvider } from "src/view/browser/hooks/use-page-count-status";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
@@ -82,6 +90,7 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   const { viewPage, viewTab, paneId } = useTabStore();
   const focusedPaneId = useActivePaneId();
   const isFocusedPane = isActive && paneId === focusedPaneId;
+  const replayWindowVisible = useArchiveReplayPositionStore((state) => state.windowVisible);
   const initialBottomPanel = useBottomPanelLayout(paneId);
   const tabBarOrientation = useTabBarOrientation();
   const {
@@ -139,6 +148,27 @@ const PaneColumnInner: React.FC<{ isActive: boolean }> = ({ isActive }) => {
       <IkioiStatusItem />
       <PopularFilterStatusItem />
       <AutoRefreshStatusItem />
+      {isFocusedPane && replayWindowVisible ? (
+        <>
+          <StatusBarMode id="archive-replay-mode" appearance="replay" />
+          <StatusBarItem
+            id="archive-replay"
+            alignment="right"
+            priority={STATUS_BAR_PRIORITY.right.archiveReplay}
+            interactive
+          >
+            <button
+              type="button"
+              className="status-bar__btn"
+              onClick={openArchiveReplayWindow}
+              title="過去実況再生ウィンドウを前面に表示"
+              aria-label="過去実況再生ウィンドウを前面に表示"
+            >
+              <History size={16} aria-hidden="true" /> <span>過去実況</span>
+            </button>
+          </StatusBarItem>
+        </>
+      ) : null}
       <CommentOverlayStatusItem isActive={isFocusedPane} />
       <PageCountStatusItem />
       <WritePanelToggleItem />

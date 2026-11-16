@@ -11,6 +11,7 @@ import { normalizeArchiveReplayThreadUrl } from "../domain";
 import {
   type ArchiveReplayMainThreadRequest,
   subscribeArchiveReplayMainThreadRequests,
+  subscribeArchiveReplayVisibility,
 } from "../platform";
 import { useArchiveReplayPositionStore } from "./position-store";
 
@@ -38,6 +39,16 @@ export function useArchiveReplayMainThreadSync(): void {
 
     let disposed = false;
     let unsubscribe: (() => void) | null = null;
+    let unsubscribeVisibility: (() => void) | null = null;
+
+    void subscribeArchiveReplayVisibility((windowVisible) => {
+      useArchiveReplayPositionStore.setState({ windowVisible });
+    })
+      .then((cleanup) => {
+        if (disposed) cleanup();
+        else unsubscribeVisibility = cleanup;
+      })
+      .catch((error: unknown) => logger.error("再生窓の表示状態を購読できませんでした", error));
 
     const handleRequest = (request: ArchiveReplayMainThreadRequest): void => {
       const previousTarget = targetRef.current;
@@ -127,6 +138,7 @@ export function useArchiveReplayMainThreadSync(): void {
     return () => {
       disposed = true;
       unsubscribe?.();
+      unsubscribeVisibility?.();
     };
   }, [dispatch, stateRef]);
 }

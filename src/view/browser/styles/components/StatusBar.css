@@ -18,6 +18,10 @@
   color: var(--sys-color-status-active-fg);
 }
 
+.status-bar--replay {
+  color: var(--sys-color-text);
+}
+
 /* 変更理由: 本文の下に帯の行を取ると、行の背景が本文と色違いで残って見えるため、
    ペインの右下に項目だけを重ねる。重なった部分の本文は項目の上の領域だけ操作を奪う。 */
 .pane-column > .status-bar {
@@ -52,6 +56,10 @@
   background: var(--sys-color-status-active-bg);
 }
 
+.pane-column > .status-bar--replay .status-bar__group--right {
+  background: var(--sys-color-status-replay-bg);
+}
+
 .pane-column > .status-bar--waiting .status-bar__group--right {
   background: var(--sys-color-status-waiting-bg);
 }
@@ -63,6 +71,10 @@
 
 .pane-column > .bottom-panel ~ .status-bar--active {
   background: var(--sys-color-status-active-bg);
+}
+
+.pane-column > .bottom-panel ~ .status-bar--replay {
+  background: var(--sys-color-status-replay-bg);
 }
 
 .pane-column > .bottom-panel ~ .status-bar--waiting {

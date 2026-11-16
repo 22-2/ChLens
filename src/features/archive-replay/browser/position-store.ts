@@ -9,7 +9,8 @@ export type ArchiveReplayPosition = ArchiveReplayMainThreadRequest & { tabId: st
 
 export const useArchiveReplayPositionStore = create<{
   position: ArchiveReplayPosition | null;
-}>(() => ({ position: null }));
+  windowVisible: boolean;
+}>(() => ({ position: null, windowVisible: false }));
 
 /** ライブ再現中は時刻までのレスだけを検索・表示へ渡す。 */
 export function useArchiveReplayResponseFilter(

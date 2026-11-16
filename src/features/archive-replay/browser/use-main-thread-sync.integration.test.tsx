@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../platform", () => ({
   subscribeArchiveReplayMainThreadRequests: mocks.subscribe,
+  subscribeArchiveReplayVisibility: async () => () => {},
 }));
 
 vi.mock("src/app/platform", () => ({

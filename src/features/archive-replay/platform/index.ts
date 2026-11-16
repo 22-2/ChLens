@@ -29,5 +29,6 @@ export {
   ARCHIVE_REPLAY_WINDOW_LABEL,
   hideArchiveReplayWindow,
   openArchiveReplayWindow,
+  subscribeArchiveReplayVisibility,
   subscribeArchiveReplayWindowClose,
 } from "./archive-replay-window";

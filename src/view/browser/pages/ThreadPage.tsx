@@ -139,7 +139,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const { surface: viewSurface, dispatch, toast } = useTabViewRuntime(tabId);
   const runTabCommand = useTabCommandRunner(tabId);
   const { window: viewWindow } = viewSurface;
-  const replayPosition = useArchiveReplayPositionStore((state) => state.position);
+  const replayPosition = useArchiveReplayPositionStore((state) =>
+    state.windowVisible ? state.position : null,
+  );
   const threadCapabilities = getArchiveReplayThreadCapabilities(
     replayPosition,
     tabId,
@@ -359,8 +361,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const isNextThreadWaiting = tab ? isNextThreadWaitingForPage(tab, page) : false;
   const isActiveAutoRefreshTracking =
     (isActive || isCommentOverlayFlowing) && (isAutoRefreshEnabled || isNextThreadWaiting);
-  // 変更理由: 画面上はいずれも dat 落ち案内を表示する状態であり、
-  // 自動更新中にどちらかを取得したら、Issue #29 の完了条件に従って停止処理へ渡す。
   const autoRefreshPageKey = getAutoRefreshPageKey(page);
   useAutoRefreshReset(dispatch, autoRefreshPageKey, tabAutoRefreshEnabled, threadCapabilities);
   const responseLimit = useBoardResponseLimit(page.threadUrl);
@@ -519,8 +519,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     onSearchExhausted: handleNextThreadSearchExhausted,
   });
 
-  // 変更理由: 不具合の再現時に、どのスレを開いた直後の出来事か追えるよう、表示したURLを記録する。
-  // スタックは呼び出し元が常に同じで情報にならないため付けない。
+  // 再現時に対象を特定できるよう表示したURLを記録する。
   useEffect(() => {
     recordDebugEvent(
       "thread",
@@ -896,8 +895,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             />
 
             <ThreadPageNotices
-              expired={expired}
-              missingFromSubject={missingFromSubject}
+              expired={!isArchiveReplay && expired}
+              missingFromSubject={!isArchiveReplay && missingFromSubject}
               error={error}
               isNextThreadWaiting={isNextThreadWaiting}
               onCancelNextThreadWaiting={() =>
@@ -974,6 +973,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
             layout={virtualList.layout}
             repIndex={liveChatReplies.repIndex}
             responseCount={displayedResponses.length}
+            replayBoundary={replayBoundary >= 0 ? replayBoundary : undefined}
             activeTopBar={activeTopBar}
             onResponseClick={handleMinimapResponseClick}
             debugKey={`thread-minimap:${tabId}`}

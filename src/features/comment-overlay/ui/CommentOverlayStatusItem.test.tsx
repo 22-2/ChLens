@@ -51,8 +51,9 @@ vi.mock("src/features/archive-replay/browser/position-store", () => ({
     canControlLiveOverlay: position == null,
     canShowMomentum: position == null,
   }),
-  useArchiveReplayPositionStore: (selector: (state: { position: unknown }) => unknown) =>
-    selector({ position: mocks.replayPosition }),
+  useArchiveReplayPositionStore: (
+    selector: (state: { position: unknown; windowVisible: boolean }) => unknown,
+  ) => selector({ position: mocks.replayPosition, windowVisible: true }),
 }));
 
 vi.mock("src/features/comment-overlay/application/use-comment-overlay", () => ({
@@ -122,12 +123,14 @@ describe("CommentOverlayStatusItem", () => {
     expect(screen.queryByRole("button", { name: /コメントOverlay制御/ })).toBeNull();
   });
 
-  it("過去実況スレッドでは通常実況の操作を表示しない", () => {
+  it("過去実況スレッドでは表示調整を開けるが通常実況を開始しない", () => {
     mocks.replayPosition = { threadUrl: THREAD_URL, tabId: "tab-1" };
 
     renderItem();
 
-    expect(screen.queryByRole("button", { name: /コメントOverlay制御/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /コメントOverlay制御/ }));
+    expect(screen.getByText("表示位置を調整…")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /コメントを画面に流す/ })).toBeNull();
   });
 
   it("スレッドでは単一ボタンからコメント表示を開始する", () => {
