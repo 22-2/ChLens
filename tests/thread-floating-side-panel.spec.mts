@@ -57,10 +57,7 @@ test("縦ツールバーはステータスバーのミニウィンドウより�
   const left = Math.max(toolbarBox.x, miniWindowBox.x);
   const right = Math.min(toolbarBox.x + toolbarBox.width, miniWindowBox.x + miniWindowBox.width);
   const top = Math.max(toolbarBox.y, miniWindowBox.y);
-  const bottom = Math.min(
-    toolbarBox.y + toolbarBox.height,
-    miniWindowBox.y + miniWindowBox.height,
-  );
+  const bottom = Math.min(toolbarBox.y + toolbarBox.height, miniWindowBox.y + miniWindowBox.height);
   // 重なりがなければ前後関係を確かめられないため、配置が変わったときはここで気づけるようにする。
   expect(right - left).toBeGreaterThan(0);
   expect(bottom - top).toBeGreaterThan(0);

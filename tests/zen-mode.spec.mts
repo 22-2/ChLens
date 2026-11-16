@@ -46,7 +46,9 @@ test("オムニバーのルートから各モードに入り戻れる", async ({
     await expect(input).toBeFocused();
     await input.press("Backspace");
     await expect(page.getByPlaceholder("URLを入力")).toBeFocused();
-    await expect(page.getByRole("option", { name: new RegExp(`${label}.*モード`) })).toHaveAttribute("aria-selected", "true");
+    await expect(
+      page.getByRole("option", { name: new RegExp(`${label}.*モード`) }),
+    ).toHaveAttribute("aria-selected", "true");
   }
 });
 
@@ -61,7 +63,10 @@ test("モードでEscを押すか外側をクリックすると閉じる", async
   await expect(page.getByPlaceholder("URLを入力")).toHaveCount(0);
 });
 
-test("コマンド候補の件数を示し、キーボード選択に合わせてスクロールする", async ({ page, extensionId }) => {
+test("コマンド候補の件数を示し、キーボード選択に合わせてスクロールする", async ({
+  page,
+  extensionId,
+}) => {
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.keyboard.press("Control+Shift+P");
   const input = page.getByPlaceholder("コマンドを検索...");
@@ -79,13 +84,16 @@ test("コマンド候補の件数を示し、キーボード選択に合わせ�
     const listElement = element.closest('[role="listbox"]')!;
     const item = element.getBoundingClientRect();
     const container = listElement.getBoundingClientRect();
-    const footer = listElement.querySelector('.nav-bar__omnibar-count')!.getBoundingClientRect();
+    const footer = listElement.querySelector(".nav-bar__omnibar-count")!.getBoundingClientRect();
     return item.top >= container.top && item.bottom <= footer.top + 1;
   });
   expect(isVisibleInList).toBe(true);
 });
 
-test("候補の上でホイールを回しても自動追従がスクロールに重ならない", async ({ page, extensionId }) => {
+test("候補の上でホイールを回しても自動追従がスクロールに重ならない", async ({
+  page,
+  extensionId,
+}) => {
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.keyboard.press("Control+Shift+P");
   const list = page.getByRole("listbox", { name: "コマンド候補" });
@@ -96,7 +104,12 @@ test("候補の上でホイールを回しても自動追従がスクロール�
   await page.mouse.wheel(0, 80);
   await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(before);
   // スクロールに伴うhover処理まで完了してから、余分な移動がないか確認する。
-  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   const after = await list.evaluate((element) => element.scrollTop);
   expect(after - before).toBeCloseTo(80, 0);
 });
