@@ -103,9 +103,10 @@ describe("TabContextMenu", () => {
   it("閉じたタブをサブメニューへまとめ、選択したタブを復元する", async () => {
     closedTabs.push(secondTab, threadTab);
     render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
-    const reopen = screen.getByRole("button", { name: "閉じたタブを開く" });
+    // サブメニューの親はRadixがmenuitemとして公開し、ポインター種別を見て開く。
+    const reopen = screen.getByRole("menuitem", { name: "閉じたタブを開く" });
     expect(reopen.querySelector(".context-menu__submenu-indicator")).toBeInTheDocument();
-    fireEvent.pointerMove(reopen);
+    fireEvent.pointerMove(reopen, { pointerType: "mouse" });
     expect(await screen.findByRole("button", { name: "Other Tab" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Current Thread" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Current Thread" }));

@@ -665,7 +665,11 @@ describe("ThreadPage の組み立て", () => {
 
       renderThreadPage({ tab: waitingTab, isAutoRefreshEnabled: false });
 
-      expect(h.floatingActions.props).toMatchObject({ isAutoRefreshEnabled: true });
+      // 待機専用フラグで開始操作を無効化し、自動更新ONとは区別する。
+      expect(h.floatingActions.props).toMatchObject({
+        isAutoRefreshEnabled: false,
+        isNextThreadWaiting: true,
+      });
     });
 
     it("手動一時停止中は自動更新を有効のまま取得と追従を止める", () => {
