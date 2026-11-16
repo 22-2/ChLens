@@ -64,7 +64,8 @@ export async function fetchEdgeArchive(
       keyword: query.trim(),
       sort: "new",
       start_date: japanDate(startSeconds),
-      end_date: japanDate(endSeconds),
+      // 索引の終了日はその日の午前0時を含まないため、利用者が選んだ日を全て含める。
+      end_date: japanDate(endSeconds + 24 * 60 * 60),
     }).toString();
     const response = await platform.http.fetch(url.href, {
       mimeType: "text/html; charset=utf-8",

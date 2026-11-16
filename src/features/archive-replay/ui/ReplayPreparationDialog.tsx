@@ -88,7 +88,8 @@ export function ReplayPreparationDialog({
       const result = collectThreadCandidates(
         listings,
         query,
-        { startSeconds: startAt / 1000, endSeconds: endAt / 1000 },
+        // 入力は分単位なので、終了分の59秒までを検索対象に含める。
+        { startSeconds: startAt / 1000, endSeconds: endAt / 1000 + 59 },
         DEFAULT_THREAD_COLLECTION_PARAMS,
         seed,
       );
