@@ -235,8 +235,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     controller: commentOverlayController,
     threadUrl: page.threadUrl,
     responses,
-    // 変更理由: Overlay対象のタブを画面上で隠しても、新着snapshotの共有を続けて
-    // コメント表示を止めない。未開始スレッドのsnapshot保持はフォーカス中だけでよい。
+    // 非表示でもOverlay対象の新着snapshotは共有し、未開始スレはフォーカス中だけ保持する。
     isActive: isOverlayTarget || isCommentOverlayTarget,
     isAutoRefreshEnabled,
     ownResponseNumbers: ownResNums,
@@ -253,9 +252,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     commentOverlayController,
     ownResNums,
   });
-  // 変更理由: 更新開始後のloading中もwheel更新の共有cooldownとindicatorを維持し、
-  // 画面切替で別の一覧/スレッドから連続更新できる隙間を作らない。RELOADへ集約することで、
-  // ホイール更新も自動更新・更新ボタンと同じsubject.txt再確認の対象にする。
+  // loading中もwheel更新の共有cooldownを維持し、RELOADでsubject.txtの再確認を揃える。
   const wheelPagination = useWheelPagination({
     isEnabled: isActive && threadCapabilities.canRefresh,
     isLoading: loading,
@@ -354,19 +351,18 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     rootRef,
     isActive,
   });
-  // 自動更新とステータスバー強調の条件を揃え、非アクティブタブの状態を残さない。
-  // Overlay対象はタブ切替後も実況と自動次スレ探索を続ける。
+  // 非アクティブタブの強調は消すが、Overlay対象の実況と次スレ探索は続ける。
   const isActiveAutoRefreshEnabled = (isActive || isCommentOverlayFlowing) && isAutoRefreshEnabled;
   // 次スレ待機中も、追従位置の計測と次スレ探索の経路（トラッキング）は止めない。
   const isNextThreadWaiting = tab ? isNextThreadWaitingForPage(tab, page) : false;
   const isActiveAutoRefreshTracking =
     (isActive || isCommentOverlayFlowing) && (isAutoRefreshEnabled || isNextThreadWaiting);
+  const isReplayFollowing = isActive && isArchiveReplay && replayPosition?.followMode === "live";
   const autoRefreshPageKey = getAutoRefreshPageKey(page);
   useAutoRefreshReset(dispatch, autoRefreshPageKey, tabAutoRefreshEnabled, threadCapabilities);
   const responseLimit = useBoardResponseLimit(page.threadUrl);
   const isAutoRefreshStopped = tab ? isAutoRefreshStoppedForPage(tab, page) : false;
-  // dat落ちや探索終了の停止記録は、不確定subject応答や別窓再マウントでも保持する。
-  // 本文タイマーと次スレ探索を同時に止めるため、ThreadDataの取得結果とは別に扱う。
+  // dat落ちの停止記録は不確定subject応答や別窓再マウントでも保持し、次スレ探索も止める。
   const {
     autoRefreshExpired,
     hasReachedThreadLimit,
@@ -455,7 +451,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   });
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useThreadAutoRefresh({
     enabled: isActiveAutoRefreshTracking,
-    startAtBottom: startAutoRefreshAtBottom,
+    followWithoutRefresh: isReplayFollowing,
+    startAtBottom: !isReplayFollowing && startAutoRefreshAtBottom,
     moveToBottomOnEnable,
     threadUrl: page.threadUrl,
     refreshController,
@@ -591,7 +588,10 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     scrollContainerRef: effectiveScrollContainerRef,
     // 自動更新で追従している間は、新着の実測で高さが変わっても最下部に留める。
     stickToEnd:
-      isActiveAutoRefreshTracking && !isFilterEnabled && canAutoScroll && !isThreadDisplayPaused,
+      (isActiveAutoRefreshTracking || isReplayFollowing) &&
+      !isFilterEnabled &&
+      canAutoScroll &&
+      !isThreadDisplayPaused,
     debugKey: `virtual-list:${tabId}`,
     isActive,
   });
@@ -923,7 +923,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
           <ThreadFooter
             hasResponses={displayedResponses.length > 0}
             filtered={isFilterEnabled}
-            tracking={isActiveAutoRefreshTracking}
+            tracking={isActiveAutoRefreshTracking || isReplayFollowing}
             canAutoScroll={canAutoScroll}
             isAutoScrolling={isAutoScrolling}
             boundaryRef={autoScrollBoundaryRef}

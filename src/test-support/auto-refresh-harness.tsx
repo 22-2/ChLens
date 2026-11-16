@@ -61,6 +61,7 @@ class ResizeObserverStub implements TestResizeObserver {
 
 export function AutoRefreshHarness({
   enabled = true,
+  followWithoutRefresh = false,
   startAtBottom = false,
   active = true,
   refreshKey = 0,
@@ -82,6 +83,7 @@ export function AutoRefreshHarness({
   hasReachedThreadLimit = false,
 }: {
   enabled?: boolean;
+  followWithoutRefresh?: boolean;
   startAtBottom?: boolean;
   active?: boolean;
   refreshKey?: number;
@@ -129,6 +131,7 @@ export function AutoRefreshHarness({
   );
   const { autoScrollBoundaryRef, canAutoScroll, isAutoScrolling } = useAutoRefresh({
     enabled,
+    followWithoutRefresh,
     scopeUrl,
     startAtBottom,
     expired: expired || stopped || hasReachedThreadLimit,
@@ -216,7 +219,12 @@ export function AutoRefreshHarness({
 }
 
 export function renderScrollableHarness(
-  options: { liveChatMode?: boolean; pauseAutoScroll?: boolean } = {},
+  options: {
+    liveChatMode?: boolean;
+    pauseAutoScroll?: boolean;
+    enabled?: boolean;
+    followWithoutRefresh?: boolean;
+  } = {},
 ) {
   let scrollTop = 200;
   let extraHeight = 0;
@@ -259,6 +267,7 @@ export function renderScrollableHarness(
   return {
     panel,
     scrollBy,
+    onRequestRefresh,
     scrollHeight,
     getScrollTop: () => scrollTop,
     setScrollTop: (value: number) => {

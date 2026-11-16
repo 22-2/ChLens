@@ -29,6 +29,50 @@ async function resizeOverlay(page: Page, width: number, height: number): Promise
   );
 }
 
+test("ライブ再現は末尾の線より下にいる間だけ新しいレスへ追従する", async ({
+  tauri,
+  localBoard,
+}) => {
+  const page = tauri.page;
+  const replay = await tauri.window("replay");
+  const rows = Array.from(
+    { length: 30 },
+    (_, index) =>
+      `名無し<>sage<>2026/10/02(金) 12:00:00 ID:local${index}<>開始時のレス${index}<>ローカルテストスレッド`,
+  );
+  rows.push("名無し<>sage<>2026/10/02(金) 12:00:10 ID:later<>10秒後のレス<>ローカルテストスレッド");
+  rows.push(
+    "名無し<>sage<>2026/10/02(金) 12:00:20 ID:later2<>20秒後のレス<>ローカルテストスレッド",
+  );
+  localBoard.setDat(rows.join("\n"));
+  await page.getByTitle("メニュー", { exact: true }).click();
+  await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
+  await page.getByPlaceholder("コマンドを検索...").fill("過去実況");
+  await page.getByRole("option", { name: /過去実況再生を開く/u }).click();
+  await replay.getByLabel("実況スレッドURL").fill(localBoard.threadUrl);
+  await replay.getByRole("button", { name: "スレ一覧を読み込む" }).click();
+  const panel = page.locator('.content-area__tab-panel[data-active="true"]');
+  const threshold = page.locator(".thread-page__auto-scroll-threshold");
+  await expect(threshold).toHaveCount(1);
+  await expect(page.locator(".thread-page__end")).toBeVisible();
+  await panel.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    element.dispatchEvent(new Event("scroll"));
+  });
+  await expect(threshold).toHaveClass(/--armed/u);
+  await replay.getByRole("button", { name: "5秒進める" }).click({ clickCount: 2, delay: 100 });
+  await expect(page.getByText("10秒後のレス", { exact: true })).toBeVisible();
+  await expect(threshold).toHaveClass(/--armed/u);
+  await panel.evaluate((element) => {
+    element.scrollTop = 0;
+    element.dispatchEvent(new Event("scroll"));
+  });
+  await expect(threshold).not.toHaveClass(/--armed/u);
+  await replay.getByRole("button", { name: "5秒進める" }).click({ clickCount: 2, delay: 100 });
+  await expect.poll(() => panel.evaluate((element) => element.scrollTop)).toBe(0);
+  await expect(threshold).not.toHaveClass(/--armed/u);
+});
+
 test("ライブ再現はシークに応じて未来のレスを隠し、表示モードを切り替えられる", async ({
   tauri,
   localBoard,

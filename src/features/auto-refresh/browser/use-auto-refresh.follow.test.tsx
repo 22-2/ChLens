@@ -15,6 +15,34 @@ import { describe, expect, it, vi } from "vite-plus/test";
 describe("useAutoRefresh", () => {
   setupAutoRefreshTest();
 
+  it("通信なしの再生でも線の下だけ追従し、上へ離れた後に戻れば再開する", () => {
+    const { panel, scrollBy, scrollHeight, setScrollTop, getScrollTop, onRequestRefresh } =
+      renderScrollableHarness({ enabled: false, followWithoutRefresh: true });
+    fireEvent.click(screen.getByText("新着ありで完了"));
+    expect(getScrollTop()).toBe(scrollHeight() - 100);
+    fireEvent.wheel(panel, { deltaY: -100 });
+    setScrollTop(100);
+    fireEvent.scroll(panel);
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    scrollBy.mockClear();
+    fireEvent.click(screen.getByText("新着ありで完了"));
+    expect(getScrollTop()).toBe(100);
+    expect(scrollBy).not.toHaveBeenCalled();
+    setScrollTop(scrollHeight() - 100);
+    fireEvent.scroll(panel);
+    act(() => {
+      vi.advanceTimersByTime(0);
+    });
+    fireEvent.click(screen.getByText("新着ありで完了"));
+    expect(getScrollTop()).toBe(scrollHeight() - 100);
+    act(() => {
+      vi.advanceTimersByTime(10000);
+    });
+    expect(onRequestRefresh).not.toHaveBeenCalled();
+  });
+
   it.each([false, true])(
     "通常・ライブチャットの新着描画で追従を外さず二重補正しない（ライブ=%s）",
     (liveChatMode) => {

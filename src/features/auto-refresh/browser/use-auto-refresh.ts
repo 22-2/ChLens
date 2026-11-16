@@ -21,6 +21,8 @@ type AutoRefreshPhase = "idle" | "scrolling";
 
 export interface UseAutoRefreshOptions {
   enabled: boolean;
+  /** 通信を行わずスクロールの境界判定だけを使う場合に有効にする。 */
+  followWithoutRefresh?: boolean;
   /** 自動更新間隔のサイト・板スコープを決めるURL。 */
   scopeUrl?: string;
   /** 自動更新が有効なまま新しいスレッドを表示するとき、最初に最下部へ同期する。 */
@@ -74,6 +76,7 @@ export interface UseAutoRefreshResult {
  */
 export function useAutoRefresh({
   enabled,
+  followWithoutRefresh = false,
   scopeUrl,
   startAtBottom = false,
   moveToBottomOnEnable = true,
@@ -178,7 +181,8 @@ export function useAutoRefresh({
     syncCanAutoScroll,
     clearScrollingIndicator,
   } = useAutoFollowScroll({
-    enabled,
+    // 過去実況はタイマーを動かさず、通常の自動更新と同じ線で追従を判定する。
+    enabled: enabled || followWithoutRefresh,
     loading,
     startAtBottom,
     pauseAutoScroll,
