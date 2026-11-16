@@ -43,4 +43,47 @@ describe("エッヂ過去ログ索引の解析", () => {
     expect(url.searchParams.get("start_date")).toBe("2020-09-25");
     expect(url.searchParams.get("end_date")).toBe("2020-09-26");
   });
+
+  it("日付だけで索引を二分探索し、時刻範囲の題名を集める", async () => {
+    httpFetch.mockReset();
+    httpFetch.mockImplementation(async (input: string) => {
+      const url = new URL(input);
+      const page = Number(url.searchParams.get("page"));
+      const rows = Array.from({ length: 50 }, (_, index) => {
+        const key = 1601001000 - ((page - 1) * 50 + index);
+        return `<div class="thread"><a class="title" href="/test/read.cgi/liveedge/${key}/">架空番組 ${key} (10)</a></div>`;
+      }).join("");
+      return {
+        status: 200,
+        body: `<p id="result">検索結果：250件</p><div id="threadContainer">${rows}</div>`,
+      };
+    });
+    const result = await fetchEdgeArchive("番組", 1601000800, 1601000825);
+    expect(result.threads).toHaveLength(26);
+    expect(result.threads[0].createdAtSeconds).toBe(1601000825);
+    expect(result.threads.at(-1)?.createdAtSeconds).toBe(1601000800);
+    expect(result.truncated).toBe(false);
+    expect(
+      httpFetch.mock.calls.every(([input]) => new URL(input).searchParams.get("keyword") === ""),
+    ).toBe(true);
+    expect(httpFetch.mock.calls.length).toBeLessThan(6);
+  });
+
+  it("索引のページ上限に達したら途中結果と不足を返す", async () => {
+    httpFetch.mockReset();
+    httpFetch.mockImplementation(async (input: string) => {
+      const page = Number(new URL(input).searchParams.get("page"));
+      const rows = Array.from({ length: 50 }, (_, index) => {
+        const key = 1601001000 - ((page - 1) * 50 + index);
+        return `<div class="thread"><a class="title" href="/test/read.cgi/liveedge/${key}/">架空 (10)</a></div>`;
+      }).join("");
+      return {
+        status: 200,
+        body: `<p id="result">検索結果：600件</p><div id="threadContainer">${rows}</div>`,
+      };
+    });
+    const result = await fetchEdgeArchive("架空", 1601000000, 1601001000);
+    expect(result.threads).toHaveLength(500);
+    expect(result.truncated).toBe(true);
+  });
 });

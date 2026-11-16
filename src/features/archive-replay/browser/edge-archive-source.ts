@@ -55,13 +55,16 @@ export async function fetchEdgeArchive(
   endSeconds: number,
 ): Promise<{ threads: ArchivedThreadListing[]; truncated: boolean }> {
   if (!query.trim()) throw new Error("検索語を入力してください");
-  const threads: ArchivedThreadListing[] = [];
-  let total = 0;
-  for (let page = 1; page <= MAX_PAGES; page += 1) {
+  const cache = new Map<number, EdgeArchivePage>();
+  let expectedTotal: number | undefined;
+  async function fetchPage(page: number): Promise<EdgeArchivePage> {
+    const existing = cache.get(page);
+    if (existing) return existing;
     const url = new URL(ARCHIVE_ORIGIN);
     url.search = new URLSearchParams({
       page: String(page),
-      keyword: query.trim(),
+      // 題名が途中で変わったスレも候補判定へ渡すため、日付のみで索引を読む。
+      keyword: "",
       sort: "new",
       start_date: japanDate(startSeconds),
       // 索引の終了日はその日の午前0時を含まないため、利用者が選んだ日を全て含める。
@@ -74,13 +77,57 @@ export async function fetchEdgeArchive(
     if (response.status !== 200)
       throw new Error(`過去ログ索引の取得に失敗しました (HTTP ${response.status})`);
     const parsed = parseEdgeArchivePage(response.body);
-    total = parsed.total;
-    if (!parsed.threads.length && (page - 1) * PAGE_SIZE < total)
+    if (expectedTotal !== undefined && parsed.total !== expectedTotal)
+      throw new Error("過去ログ索引の件数が取得中に変化しました。もう一度検索してください");
+    expectedTotal = parsed.total;
+    const expectedCount = Math.min(PAGE_SIZE, parsed.total - (page - 1) * PAGE_SIZE);
+    if (expectedCount > 0 && parsed.threads.length !== expectedCount)
       throw new Error("過去ログ索引の一覧が途中で欠けています");
-    threads.push(...parsed.threads);
-    if (page * PAGE_SIZE >= total) break;
+    for (let index = 1; index < parsed.threads.length; index += 1) {
+      if (parsed.threads[index - 1].createdAtSeconds < parsed.threads[index].createdAtSeconds)
+        throw new Error("過去ログ索引の並び順が変わりました");
+    }
+    for (const [cachedNumber, cached] of cache) {
+      const newer = cachedNumber < page ? cached : parsed;
+      const older = cachedNumber < page ? parsed : cached;
+      const newerLast = newer.threads.at(-1);
+      const olderFirst = older.threads[0];
+      if (newerLast && olderFirst && newerLast.createdAtSeconds < olderFirst.createdAtSeconds)
+        throw new Error("過去ログ索引のページ順が変わりました");
+    }
+    cache.set(page, parsed);
+    return parsed;
   }
-  return { threads, truncated: threads.length < total };
+
+  const first = await fetchPage(1);
+  const totalPages = Math.ceil(first.total / PAGE_SIZE);
+  if (totalPages === 0) return { threads: [], truncated: false };
+  // 全ページを列挙せず、最初に終了時刻以下のスレを含むページを二分探索する。
+  let low = 1;
+  let high = totalPages + 1;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    const page = await fetchPage(middle);
+    const last = page.threads.at(-1);
+    if (last && last.createdAtSeconds <= endSeconds) high = middle;
+    else low = middle + 1;
+  }
+
+  const threads: ArchivedThreadListing[] = [];
+  let previousLast: number | undefined;
+  for (let pageNumber = low; pageNumber <= totalPages; pageNumber += 1) {
+    if (pageNumber - low >= MAX_PAGES) return { threads, truncated: true };
+    const page = await fetchPage(pageNumber);
+    const firstItem = page.threads[0];
+    if (previousLast !== undefined && firstItem && firstItem.createdAtSeconds > previousLast)
+      throw new Error("過去ログ索引のページ順が変わりました");
+    for (const thread of page.threads) {
+      if (thread.createdAtSeconds < startSeconds) return { threads, truncated: false };
+      if (thread.createdAtSeconds <= endSeconds) threads.push(thread);
+    }
+    previousLast = page.threads.at(-1)?.createdAtSeconds;
+  }
+  return { threads, truncated: false };
 }
 
 export async function fetchEdgeCurrentThreads(): Promise<ArchivedThreadListing[]> {

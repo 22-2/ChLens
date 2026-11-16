@@ -81,7 +81,7 @@ export function ReplayPreparationDialog({
         logger.error("過去ログ索引の取得に失敗しました", archive.reason);
         notices.push("過去ログ索引を取得できませんでした。");
       } else if (archive.value.truncated) {
-        notices.push("検索結果が多いため一部のみ表示しています。検索語か日時を絞ってください。");
+        notices.push("検索範囲のスレが多いため一部のみ表示しています。日時を絞ってください。");
       }
       if (current.status === "rejected") {
         logger.error("現行スレ一覧の取得に失敗しました", current.reason);
@@ -175,7 +175,7 @@ export function ReplayPreparationDialog({
             </Button>
           </div>
           <p className="archive-replay-window__note">
-            検索対象はエッヂです。過去ログは検索語を含む題名から探すため、題名が変わったスレは見つからないことがあります。
+            検索対象はエッヂです。題名が似たスレも候補に含むため、内容を確認して選んでください。
           </p>
           {messages.map((message) => (
             <p role="status" key={message}>
