@@ -27,12 +27,15 @@ vi.mock("@tauri-apps/api/window", () => ({
 import {
   ARCHIVE_REPLAY_MAIN_THREAD_EVENT_NAME,
   ARCHIVE_REPLAY_MAIN_WINDOW_LABEL,
+  ARCHIVE_REPLAY_PREPARE_EVENT_NAME,
   ARCHIVE_REPLAY_SEEK_EVENT_NAME,
   ARCHIVE_REPLAY_WINDOW_LABEL,
   isArchiveReplayMainThreadRequest,
+  isArchiveReplayPrepareRequest,
   isArchiveReplaySeekRequest,
   openArchiveReplayWindow,
   requestArchiveReplayMainThread,
+  requestArchiveReplayPreparation,
   requestArchiveReplaySeek,
   subscribeArchiveReplayMainThreadRequests,
   subscribeArchiveReplayWindowClose,
@@ -86,6 +89,26 @@ describe("過去実況操作窓のTauri platform", () => {
       ARCHIVE_REPLAY_WINDOW_LABEL,
       ARCHIVE_REPLAY_SEEK_EVENT_NAME,
       request,
+    );
+  });
+
+  it("準備要求を検証して窓の表示後に送る", async () => {
+    const request = {
+      version: 1 as const,
+      threadUrl: "https://example.com/thread/",
+      title: "架空の実況",
+      createdAtSeconds: 1601000000,
+    };
+    expect(isArchiveReplayPrepareRequest(request)).toBe(true);
+    expect(isArchiveReplayPrepareRequest({ ...request, createdAtSeconds: -1 })).toBe(false);
+    await requestArchiveReplayPreparation(request);
+    expect(mocks.emitTo).toHaveBeenCalledWith(
+      ARCHIVE_REPLAY_WINDOW_LABEL,
+      ARCHIVE_REPLAY_PREPARE_EVENT_NAME,
+      request,
+    );
+    expect(mocks.replayWindow.setFocus.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.emitTo.mock.invocationCallOrder[0],
     );
   });
 

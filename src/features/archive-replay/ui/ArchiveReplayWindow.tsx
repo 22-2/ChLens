@@ -35,10 +35,12 @@ import {
 import {
   type ArchiveReplayMainThreadRequest,
   type ArchiveReplayOverlayEventBus,
+  type ArchiveReplayPrepareRequest,
   type ArchiveReplaySeekRequest,
   createArchiveReplayOverlayEventBus,
   hideArchiveReplayWindow,
   requestArchiveReplayMainThread,
+  subscribeArchiveReplayPreparationRequests,
   subscribeArchiveReplaySeekRequests,
   subscribeArchiveReplayWindowClose,
 } from "../platform";
@@ -86,6 +88,9 @@ export function ArchiveReplayWindow({
 
   const [urls, setUrls] = useState("");
   const [preparing, setPreparing] = useState(false);
+  const [preparationRequest, setPreparationRequest] = useState<ArchiveReplayPrepareRequest | null>(
+    null,
+  );
   const [startInput, setStartInput] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(DEFAULT_DURATION_MINUTES);
   const [replayRateInput, setReplayRateInput] = useState(DEFAULT_REPLAY_RATE);
@@ -430,6 +435,24 @@ export function ArchiveReplayWindow({
   }, [loadedReplay, seekToRequest]);
 
   useEffect(() => {
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
+    void subscribeArchiveReplayPreparationRequests((request) => {
+      setPreparationRequest(request);
+      setPreparing(true);
+    })
+      .then((cleanup) => {
+        if (disposed) cleanup();
+        else unsubscribe = cleanup;
+      })
+      .catch((error: unknown) => logger.error("準備要求の購読に失敗しました", error));
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!loadedReplay) return;
     void resetOverlaySession().catch((publishError: unknown) => {
       logger.error("コメントOverlayの再接続に失敗しました", publishError);
@@ -583,7 +606,10 @@ export function ArchiveReplayWindow({
         <Button
           type="button"
           className="archive-replay-window__secondary-button"
-          onClick={() => setPreparing(true)}
+          onClick={() => {
+            setPreparationRequest(null);
+            setPreparing(true);
+          }}
         >
           リプレイ準備
         </Button>
@@ -641,6 +667,21 @@ export function ArchiveReplayWindow({
 
       {preparing ? (
         <ReplayPreparationDialog
+          key={
+            preparationRequest
+              ? `${preparationRequest.threadUrl}:${preparationRequest.createdAtSeconds}`
+              : "search"
+          }
+          initialTitle={preparationRequest?.title}
+          seed={
+            preparationRequest?.createdAtSeconds === undefined
+              ? undefined
+              : {
+                  threadUrl: preparationRequest.threadUrl,
+                  title: preparationRequest.title,
+                  createdAtSeconds: preparationRequest.createdAtSeconds,
+                }
+          }
           onClose={() => setPreparing(false)}
           onApply={(items) => {
             setUrls(items.map((item) => item.listing.threadUrl).join("\n"));

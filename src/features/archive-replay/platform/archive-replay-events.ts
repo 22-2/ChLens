@@ -21,6 +21,7 @@ const LOG_LABEL = "ArchiveReplay";
 
 export const ARCHIVE_REPLAY_MAIN_WINDOW_LABEL = "main";
 export const ARCHIVE_REPLAY_SEEK_EVENT_NAME = "chlens://archive-replay-seek";
+export const ARCHIVE_REPLAY_PREPARE_EVENT_NAME = "chlens://archive-replay-prepare";
 export const ARCHIVE_REPLAY_MAIN_THREAD_EVENT_NAME = "chlens://archive-replay-main-thread";
 export const ARCHIVE_REPLAY_OVERLAY_EVENT_NAME = "chlens://archive-replay-overlay";
 
@@ -31,6 +32,25 @@ export const ARCHIVE_REPLAY_OVERLAY_EVENT_NAME = "chlens://archive-replay-overla
 export interface ArchiveReplaySeekRequest {
   threadUrl: string;
   responseNumber: number;
+}
+
+export interface ArchiveReplayPrepareRequest {
+  version: 1;
+  threadUrl: string;
+  title: string;
+  createdAtSeconds?: number;
+}
+
+export function isArchiveReplayPrepareRequest(
+  payload: unknown,
+): payload is ArchiveReplayPrepareRequest {
+  return (
+    isRecord(payload) &&
+    payload.version === 1 &&
+    isNonEmptyString(payload.threadUrl) &&
+    isNonEmptyString(payload.title) &&
+    (payload.createdAtSeconds === undefined || isPositiveInteger(payload.createdAtSeconds))
+  );
 }
 
 export interface ArchiveReplayMainThreadRequest {
@@ -134,6 +154,29 @@ const seekChannel = defineTauriEventChannel({
   logLabel: LOG_LABEL,
   isPayload: isArchiveReplaySeekRequest,
 });
+
+const prepareChannel = defineTauriEventChannel({
+  name: ARCHIVE_REPLAY_PREPARE_EVENT_NAME,
+  target: ARCHIVE_REPLAY_WINDOW_LABEL,
+  logLabel: LOG_LABEL,
+  isPayload: isArchiveReplayPrepareRequest,
+});
+
+export async function requestArchiveReplayPreparation(
+  request: ArchiveReplayPrepareRequest,
+): Promise<void> {
+  assertTauriRuntime("過去実況再生窓");
+  if (!isArchiveReplayPrepareRequest(request)) throw new TypeError("過去実況の準備要求が不正です");
+  await openArchiveReplayWindow();
+  await prepareChannel.emit(request);
+}
+
+export async function subscribeArchiveReplayPreparationRequests(
+  listener: (request: ArchiveReplayPrepareRequest) => void,
+): Promise<() => void> {
+  if (!isTauriRuntime()) return () => {};
+  return prepareChannel.listen(listener);
+}
 
 const mainThreadChannel = defineTauriEventChannel({
   name: ARCHIVE_REPLAY_MAIN_THREAD_EVENT_NAME,

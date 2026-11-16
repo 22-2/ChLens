@@ -28,16 +28,23 @@ export function formatCollectionInput(seconds: number): string {
 
 interface Props {
   seed?: ThreadCollectionSeed;
+  initialTitle?: string;
   initialRange?: { startSeconds: number; endSeconds: number };
   onClose: () => void;
   onApply: (candidates: readonly ThreadCollectionCandidate[]) => void;
 }
 
-export function ReplayPreparationDialog({ seed, initialRange, onClose, onApply }: Props) {
+export function ReplayPreparationDialog({
+  seed,
+  initialTitle,
+  initialRange,
+  onClose,
+  onApply,
+}: Props) {
   const range =
     initialRange ??
     (seed ? collectionWindowFromSeed(seed, DEFAULT_THREAD_COLLECTION_PARAMS) : undefined);
-  const [query, setQuery] = useState(seed ? defaultCollectionQuery(seed.title) : "");
+  const [query, setQuery] = useState(defaultCollectionQuery(seed?.title ?? initialTitle ?? ""));
   const [start, setStart] = useState(range ? formatCollectionInput(range.startSeconds) : "");
   const [end, setEnd] = useState(range ? formatCollectionInput(range.endSeconds) : "");
   const [candidates, setCandidates] = useState<ThreadCollectionCandidate[]>([]);
