@@ -14,6 +14,8 @@ interface ThreadMinimapProps {
   layout: ThreadResponseLayout;
   repIndex: Map<number, Set<number>>;
   responseCount: number;
+  /** 表示中レスの先頭から数えた再生位置。再生位置バー以外では省略する。 */
+  replayBoundary?: number;
   activeTopBar: "none" | "search" | "filter";
   /**
    * ミニマップ上のレスをクリックしたときの処理。
@@ -173,6 +175,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   layout,
   repIndex,
   responseCount,
+  replayBoundary,
   activeTopBar,
   onResponseClick,
   debugKey,
@@ -454,6 +457,17 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
       Math.max(metrics.viewportHeightPx - 1, 1),
     );
 
+    if (replayBoundary !== undefined && responseTotal > 0) {
+      // レス順位を基準にし、未実測の高さが変わっても本文の再生境界と対応させる。
+      const y = clamp((replayBoundary / responseTotal) * cssHeight, 1, cssHeight - 1);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(cssWidth, y);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = markerStyles.getPropertyValue("--sys-color-accent").trim();
+      ctx.stroke();
+    }
+
     if (hoverLineYRef.current != null) {
       const hoverLineY = hoverLineYRef.current;
       ctx.beginPath();
@@ -467,7 +481,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     ctx.strokeStyle = "rgba(0, 0, 0, 0.12)";
     ctx.strokeRect(0.5, 0.5, cssWidth - 1, cssHeight - 1);
     ctx.restore();
-  }, [frame, getMetrics, getScrollContainer, layout, repIndex, viewWindow]);
+  }, [frame, getMetrics, getScrollContainer, layout, repIndex, replayBoundary, viewWindow]);
 
   const findMarkerByPoint = useCallback(
     (relativeX: number, relativeY: number): MinimapMarkerHit | null => {

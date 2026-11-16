@@ -476,6 +476,7 @@ describe("ThreadMinimap", () => {
         ])}
         repIndex={repIndex}
         responseCount={2}
+        replayBoundary={1}
         activeTopBar="none"
         onResponseClick={() => {}}
       />,
@@ -494,6 +495,7 @@ describe("ThreadMinimap", () => {
       return call![1] as number;
     };
     expect(markerY()).toBe(450);
+    expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenCalledWith(0, 300);
 
     const drawCount = CANVAS_CONTEXT_STUB.moveTo.mock.calls.length;
     // 実測により先頭レスの高さが伸び、全体の高さと人気レスまでのピクセル距離が変わる状況を再現する。
@@ -506,6 +508,7 @@ describe("ThreadMinimap", () => {
         ])}
         repIndex={repIndex}
         responseCount={2}
+        replayBoundary={2}
         activeTopBar="none"
         onResponseClick={() => {}}
       />,
@@ -516,5 +519,6 @@ describe("ThreadMinimap", () => {
     });
     // レス順位は 2件中の2番目のままなので、高さが変わってもマーカーは中央下（450px）に留まる。
     expect(markerY()).toBe(450);
+    expect(CANVAS_CONTEXT_STUB.moveTo).toHaveBeenCalledWith(0, 599);
   });
 });
