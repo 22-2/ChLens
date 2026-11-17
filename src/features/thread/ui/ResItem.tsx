@@ -73,7 +73,6 @@ function renderHighlightedText(
 export const ResItem: React.FC<ResItemProps> = React.memo(
   ({
     res,
-    autoLoadImages,
     expandedImageUrls,
     inlineImageWidths,
     onResizeImage,
@@ -369,7 +368,6 @@ export const ResItem: React.FC<ResItemProps> = React.memo(
         />
         <ResMediaGallery
           urls={resolvedMedia.urls}
-          autoLoadImages={autoLoadImages}
           expandedImageUrls={expandedImageUrls}
           inlineImageWidths={inlineImageWidths}
           onResizeImage={onResizeImage}
@@ -392,8 +390,6 @@ export interface ResItemProps {
   /** ライブチャットの入場完了を返信数などの表示へ反映する。 */
   onEntryDisplayed?: (responseNum: number) => void;
   res: IRes;
-  /** 実況表示では画像を手動取得設定にかかわらず自動表示する。 */
-  autoLoadImages?: boolean;
   expandedImageUrls?: ReadonlySet<string>;
   inlineImageWidths?: ReadonlyMap<string, number>;
   onResizeImage?: (url: string, width: number) => void;

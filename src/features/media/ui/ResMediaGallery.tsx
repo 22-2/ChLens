@@ -58,8 +58,6 @@ const logger = createLogger("media");
 interface ResMediaGalleryProps {
   urls: string[];
   onUrlClick: MediaUrlClickHandler;
-  /** この表示に限り、手動取得設定より自動取得を優先する。 */
-  autoLoadImages?: boolean;
   onMiddleClickStart?: () => void;
   openOnMiddleMouseDown?: boolean;
   isBlurred?: boolean;
@@ -76,7 +74,6 @@ interface ResMediaGalleryProps {
 export function ResMediaGallery({
   urls,
   onUrlClick,
-  autoLoadImages = false,
   onMiddleClickStart,
   openOnMiddleMouseDown = false,
   isBlurred = false,
@@ -89,11 +86,8 @@ export function ResMediaGallery({
   onOpenDetachedImage,
 }: ResMediaGalleryProps): React.ReactElement | null {
   const { value: confirmExternal } = useConfigBooleanSetting(EXTERNAL_LINK_CONFIRM_CONFIG_KEY);
-  const { value: manualImageLoadingSetting } = useConfigBooleanSetting(
-    MANUAL_IMAGE_LOADING_CONFIG_KEY,
-  );
-  // 実況表示では新着を操作なしで追えるよう、このギャラリーだけ自動取得にする。
-  const manualImageLoading = manualImageLoadingSetting && !autoLoadImages;
+  // 実況中も利用者が指定した取得方法を優先する。
+  const { value: manualImageLoading } = useConfigBooleanSetting(MANUAL_IMAGE_LOADING_CONFIG_KEY);
   const { menu, openMenu } = useExternalLinkMenu();
   const { save, saving } = useImageSave();
   const surface = useViewSurface();
@@ -400,13 +394,11 @@ export function ResMediaGallery({
               imageState?.status === "discarded" ||
               (manualImageLoading && !isImageLoadStarted(imageState?.status))
             ) {
-              const isPlaceholderBlurred = isUrlBlurred(item.rawUrl);
               return (
                 <button
                   key={`image:${item.rawUrl}`}
                   type="button"
-                  className={`res__thumb res__thumb--image res__thumb--manual${isPlaceholderBlurred ? " res__thumb--blurred" : ""}`}
-                  style={isPlaceholderBlurred ? blurStyle : undefined}
+                  className="res__thumb res__thumb--image res__thumb--manual"
                   aria-label={getImagePlaceholderLabel(imageState, "画像を読み込む")}
                   title={thumbTitle(item.rawUrl)}
                   onContextMenu={(event) => openImageContextMenu(item.rawUrl, event)}
@@ -427,8 +419,13 @@ export function ResMediaGallery({
             // 利用者がぼかしを解除した画像は、判定待ちでもぼかさない。
             const isUnblurred = unblurredKeys.has(item.rawUrl);
             const isHashPending =
-              !isUnblurred && isImageHashPending(hashingEnabled, imageHashEntries.get(item.rawUrl));
-            const isThumbBlurred = (isBlurred && !isUnblurred) || isHashPending;
+              isImageLoadStarted(imageState?.status) &&
+              !isUnblurred &&
+              isImageHashPending(hashingEnabled, imageHashEntries.get(item.rawUrl));
+            // 未取得の表示に「ぼかし中」を付けず、画像の取得開始後に伏せる。
+            const isThumbBlurred =
+              (isImageLoadStarted(imageState?.status) && isBlurred && !isUnblurred) ||
+              isHashPending;
             const requestImageHash = (event: React.SyntheticEvent<HTMLImageElement>) => {
               useImageHashStore.getState().requestHash(item.rawUrl, event.currentTarget);
             };

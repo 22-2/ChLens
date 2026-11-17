@@ -103,22 +103,27 @@ describe("ResMediaGallery", () => {
     expect(onUrlClick).toHaveBeenCalledWith(imageUrl, [imageUrl], 0, undefined, [imageUrl]);
   });
 
-  it("自動取得を指定した表示では手動設定を上書きし、解除すると手動取得に戻る", () => {
+  it("未取得の画像にはぼかし表示を付けず、取得後にぼかす", () => {
     manualImageLoadingMock.value = true;
-    const imageUrl = "https://example.com/live-image.jpg";
-    const { rerender } = render(
-      <ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} autoLoadImages />,
-    );
+    const imageUrl = "https://example.com/blurred-image.jpg";
+    render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} isBlurred />);
 
-    expect(screen.getByRole("img", { name: imageUrl })).toHaveAttribute("src", imageUrl);
-    expect(screen.queryByRole("button", { name: "画像を読み込む" })).toBeNull();
-    expect(manualImageLoadingMock.value).toBe(true);
+    const placeholder = screen.getByRole("button", { name: "画像を読み込む" });
+    expect(placeholder).not.toHaveClass("res__thumb--blurred");
+    expect(requestMediaImageDownloadMock).not.toHaveBeenCalled();
+    fireEvent.click(placeholder);
+    expect(screen.getByRole("link")).toHaveClass("res__thumb--blurred");
+  });
 
-    // 自動取得済みの画像は共有状態に残るため、未取得の画像で通常表示を確認する。
-    rerender(
-      <ResMediaGallery urls={["https://example.com/another-image.jpg"]} onUrlClick={() => {}} />,
-    );
-    expect(screen.getByRole("button", { name: "画像を読み込む" })).toBeInTheDocument();
+  it("自動取得の確認待ちはぼかしや画像NGの判定中として表示しない", () => {
+    const imageUrl = "https://example.com/checking-image.jpg";
+    requestMediaImageDownloadMock.mockResolvedValue(undefined);
+    useImageHashStore.setState({ hashingEnabled: true });
+    render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} isBlurred />);
+
+    const thumb = screen.getByRole("link");
+    expect(thumb).not.toHaveClass("res__thumb--blurred");
+    expect(thumb).not.toHaveClass("res__thumb--hash-pending");
   });
 
   it("別のギャラリーでも取得済み状態を共有する", async () => {
