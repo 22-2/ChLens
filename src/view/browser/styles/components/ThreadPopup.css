@@ -84,6 +84,15 @@
   position: relative;
 }
 
+/*
+ * 変更理由: ツリーの三点メニューはカード右上へ絶対配置するため、ヘッダー右端の
+ * 日時や返信数と重なっていた。ヘッダー側にボタン幅ぶんの余白を確保し、
+ * 幅が足りないときは折り返してボタンの下へ逃がす。
+ */
+.reply-tree-node .res__header {
+  padding-inline-end: var(--sys-space-6);
+}
+
 .reply-tree-node__menu-btn {
   position: absolute;
   top: var(--sys-space-2);

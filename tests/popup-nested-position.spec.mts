@@ -32,3 +32,41 @@ test("返信ツリー内のIDから子ポップアップを開ける", async ({ 
   expect(childBox.y).toBeLessThan(idBox.y + idBox.height + 40);
   expect(childBox.x).toBeGreaterThan(parentBox.x);
 });
+
+test("返信ツリーの三点メニューはレスヘッダーと重ならない", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  localBoard.setDat(
+    [
+      "名無し<>sage<>2026/10/25 ID:root<>起点レス<>ローカルテストスレッド",
+      "返信者<>sage<>2026/10/25 ID:repeat<>通常の返信 &gt;&gt;1<>",
+      "返信者<>sage<>2026/10/25 ID:repeat<>二度目の返信 &gt;&gt;1<>",
+    ].join("\n"),
+  );
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  const responses = page.locator(
+    '.content-area__tab-panel[data-active="true"] .thread-page__responses',
+  );
+  await expect(responses.locator('[data-res-num="3"]')).toContainText("二度目の返信");
+  await responses.locator('[data-res-num="1"] .res__rep').click();
+
+  const tree = page.locator('.res-popup[data-popup-id^="tree"]');
+  const node = tree.locator(".reply-tree-node").first();
+  await expect(node).toBeVisible();
+  await node.hover();
+  const menuButton = node.locator(".reply-tree-node__menu-btn");
+  await expect(menuButton).toBeVisible();
+  const menuBox = (await menuButton.boundingBox())!;
+  // ヘッダーの内容（日時や返信数）の右端が、ボタンの左端より左にあること。
+  const headerContentRight = await node
+    .locator(".res__header")
+    .evaluate((header) =>
+      Math.max(...Array.from(header.children).map((child) => child.getBoundingClientRect().right)),
+    );
+  expect(headerContentRight).toBeLessThanOrEqual(menuBox.x);
+});
