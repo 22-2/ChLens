@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures.mjs";
 
-test("閉じたタブの履歴を現在のタブと背景タブで開く", async ({ page, extensionId, localBoard }) => {
+test("閉じたタブの履歴を各マウスボタンで操作する", async ({ page, extensionId, localBoard }) => {
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.getByTestId("title-bar-title").click();
   await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
@@ -15,6 +15,33 @@ test("閉じたタブの履歴を現在のタブと背景タブで開く", async
     await page.getByRole("menuitem", { name: "閉じたタブを開く", exact: true }).hover();
     await expect(historyItem).toBeVisible();
   };
+  await openHistory();
+  await historyItem.click({ button: "right" });
+  await expect(page.getByRole("button", { name: "URLをコピー", exact: true })).toBeVisible();
+  await expect(historyItem).toBeVisible();
+  await page.getByRole("button", { name: "URLをコピー", exact: true }).hover();
+  await expect(historyItem).toBeVisible();
+  const childMenu = page.getByRole("button", { name: "URLをコピー", exact: true }).locator("..");
+  await expect(
+    childMenu.getByRole("button", { name: "新しいタブで開く", exact: true }),
+  ).toBeVisible();
+  await expect(childMenu.getByRole("button", { name: "バックグラウンドで開く" })).toHaveCount(0);
+  await expect(childMenu.locator(".context-menu__separator")).toHaveCount(1);
+  const childBounds = (await childMenu.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(childBounds.x).toBeGreaterThanOrEqual(0);
+  expect(childBounds.y).toBeGreaterThanOrEqual(0);
+  expect(childBounds.x + childBounds.width).toBeLessThanOrEqual(viewport.width);
+  expect(childBounds.y + childBounds.height).toBeLessThanOrEqual(viewport.height);
+  await page.keyboard.press("Escape");
+  await expect(historyItem).toBeVisible();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await historyItem.click({ button: "right" });
+  await page.getByRole("button", { name: "URLをコピー", exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(localBoard.threadUrl);
+  await page.keyboard.press("Escape");
   await openHistory();
   await historyItem.click({ button: "middle" });
   await expect(page.getByTestId("title-bar-title")).toHaveText("ホーム");
