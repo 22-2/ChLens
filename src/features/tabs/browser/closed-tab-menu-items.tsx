@@ -14,6 +14,11 @@ export function closedTabMenuItems(
     id: `closed-tab-${tab.id}`,
     label: getCurrentPage(tab).title,
     icon: <History size={14} />,
-    onSelect: () => dispatch(tabActions.reopenClosedTab(tab.id)),
+    // 履歴は残し、通常のページ遷移と同じく現在のタブで開く。
+    onSelect: () => dispatch(tabActions.navigate(getCurrentPage(tab))),
+    // 同じページが既に開いていても、明示された背景タブとして追加する。
+    onAuxSelect: (button) => {
+      if (button === 1) dispatch(tabActions.openInNewTabForce(getCurrentPage(tab)));
+    },
   }));
 }

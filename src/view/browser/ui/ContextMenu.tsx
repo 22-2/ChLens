@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { ContextMenu as RadixContextMenu } from "radix-ui";
 import type { ReactNode, RefObject } from "react";
-import React, { useLayoutEffect, useMemo, useRef } from "react";
+import React, { useId, useLayoutEffect, useMemo, useRef } from "react";
 import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-close-behavior";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
@@ -79,6 +79,7 @@ export const ContextMenu: React.FC<Props> = ({
   portalContainer,
 }) => {
   const { window: viewWindow, document: viewDocument } = useViewSurface();
+  const menuId = useId();
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerElementRef = useRef<HTMLSpanElement>(null);
   const { handleAuxClickCapture, handleMouseDownCapture, handleMouseEnter, handleMouseLeave } =
@@ -152,6 +153,7 @@ export const ContextMenu: React.FC<Props> = ({
                   className="context-menu context-menu--submenu"
                   data-popup="true"
                   data-popup-id={popupId}
+                  data-parent-context-menu={menuId}
                 >
                   {renderItems(item.submenu)}
                 </div>
@@ -173,6 +175,14 @@ export const ContextMenu: React.FC<Props> = ({
 
   const isPopupBranchTarget = (target: EventTarget | null) => {
     const targetElement = getEventTargetElement(target, viewWindow);
+    // ポータル内のサブメニューも親の操作として扱い、項目のclick前に親を閉じない。
+    if (
+      targetElement
+        ?.closest("[data-parent-context-menu]")
+        ?.getAttribute("data-parent-context-menu") === menuId
+    ) {
+      return true;
+    }
     if (!popupId || !targetElement) {
       return false;
     }

@@ -243,7 +243,6 @@ describe("tab-command-runtime", () => {
     expect(runtime.dispatch).toHaveBeenCalledWith({
       ...tabActions.reopenClosedTab(),
       paneId: "pane-2",
-      tabId: target.id,
     });
   });
 
