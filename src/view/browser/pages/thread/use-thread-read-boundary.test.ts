@@ -14,6 +14,14 @@ describe("既読と未読の区切り", () => {
     expect(getReadBoundaryIndex(responses, 5, "manual", false)).toBe(3);
   });
 
+  it("未読がすべて非表示なら自動の区切り線を表示しない", () => {
+    const visible = (response: { num: number }) => response.num !== 5;
+    expect(getReadBoundaryIndex(responses, 3, "auto", false, visible)).toBe(-1);
+    expect(getReadBoundaryIndex(responses, 1, "auto", false, visible)).toBe(1);
+    expect(getReadBoundaryIndex(responses, 3, "manual", false, visible)).toBe(2);
+    expect(getReadBoundaryIndex(responses, 3, "auto", false)).toBe(2);
+  });
+
   it("絞り込み中、既読なし、レスなしでは表示しない", () => {
     expect(getReadBoundaryIndex(responses, 3, "auto", true)).toBe(-1);
     expect(getReadBoundaryIndex(responses, null, "auto", false)).toBe(-1);

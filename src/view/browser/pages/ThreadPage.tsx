@@ -578,6 +578,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     readPositionMode === "manual" ? manualReadNum : readSnapshot.read,
     readPositionMode,
     isArchiveReplay || isFilterEnabled,
+    readSnapshot.isVisible,
   );
 
   // 描画負荷を抑えるため表示範囲のレスだけを描画し、位置計算もここへまとめる。
