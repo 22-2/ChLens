@@ -8,7 +8,7 @@ test("スレの滑らかなスクロールを有効にしてホイールで移�
 }) => {
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   await page.getByRole("button", { name: "スレ", exact: true }).click();
   await page.getByRole("switch", { name: "スレを滑らかにスクロールする" }).click();
 

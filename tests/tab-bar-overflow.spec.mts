@@ -38,7 +38,9 @@ test("2ペインの垂直タブバーは横にはみ出さず縦にスクロー�
   for (let i = 0; i < 20; i++) {
     await page.getByRole("button", { name: "新しいタブ", exact: true }).first().click();
   }
-  const size = await bar.evaluate((element) => ({
+  // 設定ボタンを固定するため、スクロール領域はバー本体ではなく内側の本文になった。
+  const body = bar.locator(".tab-bar__body");
+  const size = await body.evaluate((element) => ({
     scrollWidth: element.scrollWidth,
     clientWidth: element.clientWidth,
     overflowX: getComputedStyle(element).overflowX,
@@ -48,10 +50,10 @@ test("2ペインの垂直タブバーは横にはみ出さず縦にスクロー�
   expect(size.scrollWidth).toBeLessThanOrEqual(size.clientWidth);
   expect(size.overflowX).toBe("hidden");
   expect(size.scrollHeight).toBeGreaterThan(size.clientHeight);
-  await bar.evaluate((element) => {
+  await body.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
   });
-  expect(await bar.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect(await body.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   await bar.getByRole("button", { name: "簡易表示にする" }).click();
   const collapsed = await bar.evaluate((element) => ({
     width: element.clientWidth,

@@ -170,7 +170,7 @@ async function captureQuickAccessPage(
 
 async function captureSettings(page: Page, shooter: Shooter): Promise<void> {
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   await expect(page.locator(".settings-page__shell")).toBeVisible();
 
   const captureScrolledSections = async (name: string) => {
@@ -401,7 +401,7 @@ export async function captureNarrowScreens(
 
     await page.getByTitle("メニュー", { exact: true }).click();
     await shoot(`${prefix}-05-menu`);
-    await page.getByTitle("設定を開く", { exact: true }).click();
+    await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
     await expect(page.locator(".settings-page__shell")).toBeVisible();
     await shoot(`${prefix}-06-settings`);
     for (const [label, file] of SETTINGS.slice(0, 4)) {

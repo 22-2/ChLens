@@ -2,10 +2,7 @@ import { expect, type Page } from "@playwright/test";
 
 /** 実際の登録を使い、ページごとの表示と操作の出し分けを両版で確かめる。 */
 export async function verifyBuiltInPages(page: Page): Promise<void> {
-  await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByRole("button", { name: "コマンドパレット", exact: true }).click();
-  await page.getByPlaceholder("コマンドを検索...").fill("タブバーを垂直にする");
-  await page.getByRole("option", { name: /タブバーを垂直にする/u }).click();
+  // タブバーは垂直表示に統一され、向きを切り替えるコマンドは存在しない。
   const collapse = page.getByRole("button", { name: "簡易表示にする", exact: true });
   if (await collapse.isVisible()) await collapse.click();
 
@@ -79,6 +76,6 @@ export async function verifyBuiltInPages(page: Page): Promise<void> {
     await verifyPage(type, title, icon, ".thread-list-page", refreshable, true);
   }
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   await verifyPage("settings", "設定", "settings", ".settings-page__shell", false, false);
 }

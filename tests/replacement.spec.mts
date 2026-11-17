@@ -62,7 +62,7 @@ test("NG内の置換タブから先頭のBEアイコンを削除し、本文と�
   ).toHaveCount(1);
 
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   await panel.getByRole("button", { name: /^NG/ }).click();
   await panel.getByRole("tab", { name: "文字列置換", exact: true }).click();
   const editor = panel.getByRole("textbox", { name: "置換ルール", exact: true });

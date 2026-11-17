@@ -26,7 +26,7 @@ test("NGエディタの新構文でOR・AND・除外・適用先を保存し、�
   await expect(third).toContainText("通常の本文");
 
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   await panel.getByRole("button", { name: /^NG/ }).click();
   const editingSurface = panel.locator(".monaco-editor .view-lines");
   await expect(editingSurface).toBeVisible();
@@ -107,7 +107,7 @@ test("NG・置換エディタはEnterで現在の深さだけを維持し、段�
 }) => {
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   const panel = page.locator('.content-area__tab-panel[data-active="true"]');
   await panel.getByRole("button", { name: /^NG/ }).click();
   const editingSurface = panel.locator(".monaco-editor .view-lines");
@@ -116,14 +116,19 @@ test("NG・置換エディタはEnterで現在の深さだけを維持し、段�
   await expect(editor).toBeFocused();
   // 候補更新による文字の取りこぼしを避け、EnterとTabだけ実キーで確認する。
   await page.keyboard.insertText("hide:");
+  // 非同期の補完候補が開いてから閉じ、後続のEnterやTabで候補を確定しない。
+  await page.waitForTimeout(500);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Enter");
   // Enter後の空行には候補が開くため、Tabを字下げに使えるよう閉じる。
+  await page.waitForTimeout(500);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
   await page.keyboard.insertText("when body contains:");
+  await page.waitForTimeout(500);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Enter");
+  await page.waitForTimeout(500);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
   await page.keyboard.insertText('"入力テスト"');
@@ -135,12 +140,18 @@ test("NG・置換エディタはEnterで現在の深さだけを維持し、段�
 
   await panel.getByRole("tab", { name: "文字列置換", exact: true }).click();
   await editingSurface.click({ position: { x: 10, y: 10 } });
+  // 既定の置換ルールが入る環境でも、空の編集欄から入力を検証する。
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.press("Backspace");
   await page.keyboard.insertText("replace body:");
+  await page.waitForTimeout(500);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Enter");
+  await page.waitForTimeout(500);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Tab");
   await page.keyboard.insertText('from "前"');
+  await page.waitForTimeout(500);
   await page.keyboard.press("Escape");
   await page.keyboard.press("Enter");
   await page.keyboard.insertText('to "後"');
@@ -164,7 +175,7 @@ test("collapseでスレ一覧とレスを折りたたみ、unless単体の複数
   const panel = page.locator('.content-area__tab-panel[data-active="true"]');
   await expect(panel.getByText("ローカルテストスレッド", { exact: true })).toBeVisible();
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   await panel.getByRole("button", { name: /^NG/ }).click();
   const rule = `collapse:
   when title contains "ローカル"

@@ -130,7 +130,7 @@ export async function verifySimilarImageNgRegistration(
 
   // 設定のNGエディタで、登録したハッシュにカーソルを合わせると、登録時の縮小画像と元のURLが出る。
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   const settings = page.locator('.content-area__tab-panel[data-active="true"]');
   await settings.getByRole("button", { name: /^NG/ }).click();
   const hashToken = settings

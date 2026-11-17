@@ -39,9 +39,9 @@ test("スレ一覧の列順をドラッグで変え、再読み込み後も保�
   expect(labelsAfterReload).toEqual(labelsBeforeReload);
 
   await restoredTable.getByRole("row", { name: /ローカルテストスレッド/u }).click();
-  const threadListToggle = page.getByRole("button", { name: "スレ一覧パネルを開閉" });
-  await expect(threadListToggle).toBeVisible();
-  await threadListToggle.click();
+  // 下部パネルの操作はナビゲーションメニューに集約されている。
+  await page.getByTitle("メニュー", { exact: true }).click();
+  await page.getByRole("button", { name: "スレ一覧パネル", exact: true }).click();
   const panelTable = page.locator(".thread-list-panel .simple-data-table");
   await expect(panelTable).toBeVisible();
   const panelLabels = (await panelTable.locator("thead th").allTextContents()).map((label) =>

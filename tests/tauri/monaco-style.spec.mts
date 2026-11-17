@@ -15,7 +15,7 @@ test("TauriでMonacoのスタイルとテーマが適用される", async ({ pag
   });
 
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   await expect(page.locator(".settings-page__shell")).toBeVisible();
   await page.locator(".settings-page__section-btn").filter({ hasText: "NG" }).first().click();
   await page.getByRole("tab", { name: "文字列置換", exact: true }).click();
@@ -38,7 +38,7 @@ test("TauriでMonacoのスタイルとテーマが適用される", async ({ pag
 
 test("TauriでMonacoの編集面のレイアウト用CSSが適用される", async ({ page }) => {
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   await page.locator(".settings-page__section-btn").filter({ hasText: "NG" }).first().click();
   await page.getByRole("tab", { name: "文字列置換", exact: true }).click();
 
