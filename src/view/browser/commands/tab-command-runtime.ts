@@ -160,7 +160,8 @@ export function executeTabCommandRequest(
       }
       // 変更理由: 閉じたタブ履歴は全ペイン共有だが、復元先は操作元タブのペインに
       // 固定し、別窓を閉じた後にメインペインへ復元される競合を避ける。
-      dispatchForTab(runtime, location, tabActions.reopenClosedTab(), true);
+      // REOPEN の tabId は復元する履歴のIDなので、操作元のタブIDを混ぜない。
+      runtime.dispatch({ ...tabActions.reopenClosedTab(), paneId: location.paneId });
       return true;
     case TAB_COMMAND_IDS.OPEN_RIGHT:
       // 変更理由: 右ペインの生成・移動先選択はreducerが一括して扱うため、

@@ -12,7 +12,10 @@ import { closedTabMenuItems } from "src/features/tabs/browser/closed-tab-menu-it
 import type { TabBarItem } from "src/features/tabs/browser/tab-bar-layout";
 import { useVerticalTabBarLayout } from "src/features/tabs/browser/use-tab-bar-orientation";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
+import { runCommandRequest } from "src/view/browser/commands/command-runtime";
 import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
+import { useToast } from "src/view/browser/hooks/use-toast";
+import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { isAutoRefreshEnabledForPage } from "src/view/browser/state/tabs/auto-refresh-pages";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
@@ -95,6 +98,8 @@ export interface TabBarModel {
  */
 export function useTabBarModel(): TabBarModel {
   const { state, stateRef, dispatch, paneId } = useTabStore();
+  const toast = useToast();
+  const surface = useViewSurface();
   const selectedTabId = state.selectedTabId;
   const visibleTabs = state.tabs;
   const { canAutoScroll, isAutoScrolling, isPaused } = usePaneAutoScrollState(paneId);
@@ -186,11 +191,13 @@ export function useTabBarModel(): TabBarModel {
         id: "reopen",
         label: "閉じたタブを開く",
         disabled: state.closedTabs.length === 0,
-        submenu: closedTabMenuItems(state.closedTabs, dispatch),
+        submenu: closedTabMenuItems(state.closedTabs, dispatch, (text) => {
+          void runCommandRequest({ id: "clipboard.copy-text", args: { text } }, { surface, toast });
+        }),
         icon: <RotateCcw size={16} />,
       },
     ],
-    [dispatch, state.closedTabs],
+    [dispatch, state.closedTabs, surface, toast],
   );
 
   return {

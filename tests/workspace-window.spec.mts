@@ -1,5 +1,56 @@
 import { expect, test } from "./fixtures.mjs";
 
+test("閉じたタブの履歴を各マウスボタンで操作する", async ({ page, extensionId, localBoard }) => {
+  await page.goto(`chrome-extension://${extensionId}/view/index.html`);
+  await page.getByTestId("title-bar-title").click();
+  await page.getByPlaceholder("URLを入力").fill(localBoard.threadUrl);
+  await page.getByPlaceholder("URLを入力").press("Enter");
+  await expect(page.locator('[data-res-num="2"]')).toBeVisible();
+  await page.getByTitle("新しいタブ", { exact: true }).click();
+  await page.getByRole("tab", { name: "ローカルテストスレッド" }).click({ button: "middle" });
+
+  const historyItem = page.getByRole("button", { name: "ローカルテストスレッド", exact: true });
+  const openHistory = async () => {
+    await page.getByRole("tab").first().click({ button: "right" });
+    await page.getByRole("menuitem", { name: "閉じたタブを開く", exact: true }).hover();
+    await expect(historyItem).toBeVisible();
+  };
+  await openHistory();
+  await historyItem.click({ button: "right" });
+  await expect(page.getByRole("button", { name: "URLをコピー", exact: true })).toBeVisible();
+  await expect(historyItem).toBeVisible();
+  await page.getByRole("button", { name: "URLをコピー", exact: true }).hover();
+  await expect(historyItem).toBeVisible();
+  const childMenu = page.getByRole("button", { name: "URLをコピー", exact: true }).locator("..");
+  await expect(
+    childMenu.getByRole("button", { name: "新しいタブで開く", exact: true }),
+  ).toBeVisible();
+  await expect(childMenu.getByRole("button", { name: "バックグラウンドで開く" })).toHaveCount(0);
+  await expect(childMenu.locator(".context-menu__separator")).toHaveCount(1);
+  const childBounds = (await childMenu.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(childBounds.x).toBeGreaterThanOrEqual(0);
+  expect(childBounds.y).toBeGreaterThanOrEqual(0);
+  expect(childBounds.x + childBounds.width).toBeLessThanOrEqual(viewport.width);
+  expect(childBounds.y + childBounds.height).toBeLessThanOrEqual(viewport.height);
+  await page.keyboard.press("Escape");
+  await expect(historyItem).toBeVisible();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await historyItem.click({ button: "right" });
+  await page.getByRole("button", { name: "URLをコピー", exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(localBoard.threadUrl);
+  await page.keyboard.press("Escape");
+  await openHistory();
+  await historyItem.click({ button: "middle" });
+  await expect(page.getByTestId("title-bar-title")).toHaveText("ホーム");
+  await expect(page.getByRole("tab", { name: "ローカルテストスレッド" })).toBeVisible();
+  await openHistory();
+  await historyItem.click();
+  await expect(page.getByTestId("title-bar-title")).toHaveText("ローカルテストスレッド");
+});
+
 test("別窓に複数のタブを開き、本窓の再読み込み後に別窓を同じ構成で復元する", async ({
   page,
   extensionId,
@@ -65,8 +116,10 @@ test("OSで別窓を閉じると窓内のタブを閉じた履歴から開き直
       ),
     )
     .toBeGreaterThan(0);
-  await page.locator(".tab-bar").dispatchEvent("contextmenu", { clientX: 20, clientY: 20 });
-  await page.getByRole("button", { name: "閉じたタブを開く", exact: true }).click();
+  // コマンドパレットから閉じたタブを復元する。
+  await page.keyboard.press("Control+Shift+P");
+  await page.getByPlaceholder("コマンドを検索...").fill("閉じたタブを開く");
+  await page.getByRole("option", { name: /閉じたタブを開く/u }).click();
   await expect(page.getByTestId("title-bar-title")).toHaveText("ローカルテストスレッド");
 });
 
@@ -81,7 +134,8 @@ test("別窓の最後のタブを閉じると窓も閉じる", async ({ page, ex
     page.context().waitForEvent("page"),
     page.getByRole("button", { name: "別窓で開く", exact: true }).click(),
   ]);
-  await popup.getByTitle("タブを閉じる", { exact: true }).click();
+  // 簡易表示では閉じるボタンがないため、タブの中クリックを使う。
+  await popup.getByRole("tab").click({ button: "middle" });
   await expect.poll(() => popup.isClosed()).toBe(true);
   await expect
     .poll(() =>

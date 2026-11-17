@@ -13,7 +13,7 @@ test("起動時にホームと新しいタブの操作が表示される", async
 test("ナビゲーションから設定画面を開ける", async ({ page, extensionId }) => {
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   await expect(page.locator(".settings-page__shell")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "設定カテゴリ" })).toBeVisible();
 });
@@ -23,7 +23,7 @@ test("ナビゲーションから設定画面を開ける", async ({ page, exten
 test("ボタンのツールチップがホバー中は表示され続ける", async ({ page, extensionId }) => {
   await page.goto(`chrome-extension://${extensionId}/view/index.html`);
   await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByTitle("設定を開く", { exact: true }).click();
+  await page.locator('.nav-bar__menu-action[title="設定を開く"]').click();
   await page.getByRole("button", { name: "サイト", exact: true }).click();
   await page.getByRole("button", { name: "板一覧を再取得" }).hover();
   const tooltip = page.locator(".browser-tooltip").filter({ hasText: "強制取得" });

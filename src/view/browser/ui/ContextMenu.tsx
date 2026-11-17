@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { ContextMenu as RadixContextMenu } from "radix-ui";
 import type { ReactNode, RefObject } from "react";
-import React, { useLayoutEffect, useMemo, useRef } from "react";
+import React, { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-close-behavior";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getEventTargetElement } from "src/view/browser/utils/dom";
@@ -16,6 +16,8 @@ export interface ContextMenuItem {
   labelIcon?: ReactNode;
   /** 関連する操作をポインター・矢印キーで開くサブメニューへまとめる。 */
   submenu?: ContextMenuItem[];
+  /** 項目の右クリックで、元のメニューを残して表示する操作。 */
+  contextItems?: ContextMenuItem[];
   disabled?: boolean;
   checked?: boolean;
   danger?: boolean;
@@ -79,6 +81,14 @@ export const ContextMenu: React.FC<Props> = ({
   portalContainer,
 }) => {
   const { window: viewWindow, document: viewDocument } = useViewSurface();
+  const menuId = useId();
+  const [openSubmenus, setOpenSubmenus] = useState<string[]>([]);
+  const [childMenu, setChildMenu] = useState<{
+    x: number;
+    y: number;
+    parentId?: string;
+    items: ContextMenuItem[];
+  } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerElementRef = useRef<HTMLSpanElement>(null);
   const { handleAuxClickCapture, handleMouseDownCapture, handleMouseEnter, handleMouseLeave } =
@@ -98,7 +108,7 @@ export const ContextMenu: React.FC<Props> = ({
 
   const visibleItems = useMemo(() => items.filter((item) => item.separator || item.label), [items]);
 
-  function renderItems(menuItems: ContextMenuItem[]): ReactNode {
+  function renderItems(menuItems: ContextMenuItem[], parentId?: string): ReactNode {
     return menuItems.map((item) => {
       if (item.separator) return <div key={item.id} className="context-menu__separator" />;
 
@@ -114,14 +124,26 @@ export const ContextMenu: React.FC<Props> = ({
             : { role: "menuitemcheckbox", "aria-checked": item.checked })}
           title={item.label}
           onMouseDown={(event) => event.preventDefault()}
+          onContextMenu={(event) => {
+            if (!item.contextItems?.length || item.disabled) return;
+            event.preventDefault();
+            event.stopPropagation();
+            setChildMenu({
+              x: event.clientX,
+              y: event.clientY,
+              parentId,
+              items: item.contextItems,
+            });
+          }}
           onClick={() => {
             if (item.submenu && item.submenu.length > 0) return;
             if (!item.disabled) item.onSelect?.();
             onClose();
           }}
           onAuxClick={(event) => {
-            if (item.disabled || !item.onAuxSelect) return;
-            if (event.button === 1) event.preventDefault();
+            // 右クリックはコンテキストメニューに渡し、中クリックだけを選択として閉じる。
+            if (item.disabled || !item.onAuxSelect || event.button !== 1) return;
+            event.preventDefault();
             item.onAuxSelect(event.button);
             onClose();
           }}
@@ -142,7 +164,19 @@ export const ContextMenu: React.FC<Props> = ({
 
       if (item.submenu && item.submenu.length > 0) {
         return (
-          <RadixContextMenu.Sub key={item.id}>
+          <RadixContextMenu.Sub
+            key={item.id}
+            open={openSubmenus.includes(item.id) || childMenu?.parentId === item.id}
+            onOpenChange={(open) => {
+              // 子メニューへポインターが移っても履歴メニューを保持する。
+              if (!open && childMenu?.parentId === item.id) return;
+              setOpenSubmenus((previous) =>
+                open
+                  ? [...new Set([...previous, item.id])]
+                  : previous.filter((id) => id !== item.id),
+              );
+            }}
+          >
             <RadixContextMenu.SubTrigger asChild disabled={item.disabled}>
               {button}
             </RadixContextMenu.SubTrigger>
@@ -152,8 +186,9 @@ export const ContextMenu: React.FC<Props> = ({
                   className="context-menu context-menu--submenu"
                   data-popup="true"
                   data-popup-id={popupId}
+                  data-parent-context-menu={menuId}
                 >
-                  {renderItems(item.submenu)}
+                  {renderItems(item.submenu, item.id)}
                 </div>
               </RadixContextMenu.SubContent>
             </RadixContextMenu.Portal>
@@ -173,6 +208,14 @@ export const ContextMenu: React.FC<Props> = ({
 
   const isPopupBranchTarget = (target: EventTarget | null) => {
     const targetElement = getEventTargetElement(target, viewWindow);
+    // ポータル内のサブメニューも親の操作として扱い、項目のclick前に親を閉じない。
+    if (
+      targetElement
+        ?.closest("[data-parent-context-menu]")
+        ?.getAttribute("data-parent-context-menu") === menuId
+    ) {
+      return true;
+    }
     if (!popupId || !targetElement) {
       return false;
     }
@@ -244,90 +287,104 @@ export const ContextMenu: React.FC<Props> = ({
   }, [viewDocument, viewWindow, x, y]);
 
   return (
-    <RadixContextMenu.Root
-      modal={false}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
-      <RadixContextMenu.Trigger asChild>
-        <span
-          ref={triggerElementRef}
-          data-context-menu-trigger="true"
-          aria-hidden="true"
-          // 座標付きの仮想イベントを親コンポーネントの背景メニューへ流さない。
-          onContextMenu={(event) => event.stopPropagation()}
-          style={{
-            position: "fixed",
-            left: x,
-            top: y,
-            width: 1,
-            height: 1,
-            opacity: 0,
-            pointerEvents: "none",
-          }}
-        />
-      </RadixContextMenu.Trigger>
-      <MenuPortal enabled={portal} container={portalContainer}>
-        <RadixContextMenu.Content
-          asChild
-          // 右端・下端で開いた場合も viewport 内へ押し戻し、共通メニュー全体で同じ挙動にする。
-          avoidCollisions
-          collisionPadding={8}
-          onCloseAutoFocus={(event) => event.preventDefault()}
-          onPointerDownOutside={(event) => {
-            if (
-              closeDisabled ||
-              isPopupBranchTarget(event.target) ||
-              isTriggerTarget(event.target)
-            ) {
-              event.preventDefault();
-            }
-          }}
-          onInteractOutside={(event) => {
-            if (
-              closeDisabled ||
-              isPopupBranchTarget(event.target) ||
-              isTriggerTarget(event.target)
-            ) {
-              event.preventDefault();
-            }
-          }}
-        >
-          <div
-            ref={menuRef}
-            data-popup="true"
-            data-popup-id={popupId}
-            className="context-menu"
-            // Content の配置は Radix が contextmenu の clientX/clientY を基準に行う。
-            // ここで left/top を再設定するとクリック座標が二重に加算されるため、z-index だけ補正する。
-            style={zIndex != null ? { zIndex } : undefined}
-            onKeyDownCapture={(event) => {
-              if (event.altKey || event.ctrlKey || event.metaKey || event.key.length !== 1) return;
-              const item = visibleItems.find(
-                (candidate) =>
-                  !candidate.disabled &&
-                  candidate.accessKey?.toLowerCase() === event.key.toLowerCase(),
-              );
-              if (!item) return;
-              // Radix の文字検索より先にアクセスキーを処理し、クリックと同じ操作を実行する。
-              event.preventDefault();
-              event.stopPropagation();
-              item.onSelect?.();
-              onClose();
+    <>
+      <RadixContextMenu.Root
+        modal={false}
+        onOpenChange={(open) => {
+          if (!open && !childMenu) {
+            onClose();
+          }
+        }}
+      >
+        <RadixContextMenu.Trigger asChild>
+          <span
+            ref={triggerElementRef}
+            data-context-menu-trigger="true"
+            aria-hidden="true"
+            // 座標付きの仮想イベントを親コンポーネントの背景メニューへ流さない。
+            onContextMenu={(event) => event.stopPropagation()}
+            style={{
+              position: "fixed",
+              left: x,
+              top: y,
+              width: 1,
+              height: 1,
+              opacity: 0,
+              pointerEvents: "none",
             }}
-            onMouseDownCapture={handleMouseDownCapture}
-            onAuxClickCapture={handleAuxClickCapture}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
+          />
+        </RadixContextMenu.Trigger>
+        <MenuPortal enabled={portal} container={portalContainer}>
+          <RadixContextMenu.Content
+            asChild
+            // 右端・下端で開いた場合も viewport 内へ押し戻し、共通メニュー全体で同じ挙動にする。
+            avoidCollisions
+            collisionPadding={8}
+            onCloseAutoFocus={(event) => event.preventDefault()}
+            onPointerDownOutside={(event) => {
+              if (
+                closeDisabled ||
+                childMenu != null ||
+                isPopupBranchTarget(event.target) ||
+                isTriggerTarget(event.target)
+              ) {
+                event.preventDefault();
+              }
+            }}
+            onInteractOutside={(event) => {
+              if (
+                closeDisabled ||
+                childMenu != null ||
+                isPopupBranchTarget(event.target) ||
+                isTriggerTarget(event.target)
+              ) {
+                event.preventDefault();
+              }
+            }}
           >
-            {header ? <div className="context-menu__header">{header}</div> : null}
-            {renderItems(visibleItems)}
-          </div>
-        </RadixContextMenu.Content>
-      </MenuPortal>
-    </RadixContextMenu.Root>
+            <div
+              ref={menuRef}
+              data-popup="true"
+              data-popup-id={popupId}
+              className="context-menu"
+              // Content の配置は Radix が contextmenu の clientX/clientY を基準に行う。
+              // ここで left/top を再設定するとクリック座標が二重に加算されるため、z-index だけ補正する。
+              style={zIndex != null ? { zIndex } : undefined}
+              onKeyDownCapture={(event) => {
+                if (event.altKey || event.ctrlKey || event.metaKey || event.key.length !== 1)
+                  return;
+                const item = visibleItems.find(
+                  (candidate) =>
+                    !candidate.disabled &&
+                    candidate.accessKey?.toLowerCase() === event.key.toLowerCase(),
+                );
+                if (!item) return;
+                // Radix の文字検索より先にアクセスキーを処理し、クリックと同じ操作を実行する。
+                event.preventDefault();
+                event.stopPropagation();
+                item.onSelect?.();
+                onClose();
+              }}
+              onMouseDownCapture={handleMouseDownCapture}
+              onAuxClickCapture={handleAuxClickCapture}
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              {header ? <div className="context-menu__header">{header}</div> : null}
+              {renderItems(visibleItems)}
+            </div>
+          </RadixContextMenu.Content>
+        </MenuPortal>
+      </RadixContextMenu.Root>
+      {childMenu && (
+        <ContextMenu
+          x={childMenu.x}
+          y={childMenu.y}
+          items={childMenu.items}
+          onClose={() => setChildMenu(null)}
+          portal
+        />
+      )}
+    </>
   );
 };

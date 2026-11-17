@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { TabContextMenu } from "src/features/tabs/ui/TabContextMenu";
 import { container } from "src/service-container";
-import type { Tab } from "src/view/browser/types";
+import { getCurrentPage, type Tab } from "src/view/browser/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const { copyTextMock, dispatchMock, threadTab, secondTab, closedTabs, extraPanes } = vi.hoisted(
@@ -100,7 +100,7 @@ describe("TabContextMenu", () => {
     extraPanes.length = 0;
   });
 
-  it("閉じたタブをサブメニューへまとめ、選択したタブを復元する", async () => {
+  it("閉じたタブをサブメニューへまとめ、選択したページへ遷移する", async () => {
     closedTabs.push(secondTab, threadTab);
     render(<TabContextMenu tab={threadTab} position={{ x: 10, y: 10 }} onClose={vi.fn()} />);
     // サブメニューの親はRadixがmenuitemとして公開し、ポインター種別を見て開く。
@@ -110,7 +110,10 @@ describe("TabContextMenu", () => {
     expect(await screen.findByRole("button", { name: "Other Tab" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Current Thread" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Current Thread" }));
-    expect(dispatchMock).toHaveBeenCalledWith({ type: "REOPEN_CLOSED_TAB", tabId: threadTab.id });
+    expect(dispatchMock).toHaveBeenCalledWith({
+      type: "NAVIGATE",
+      page: getCurrentPage(threadTab),
+    });
   });
 
   it("分割中のタブからペインの統合を指示できる", () => {

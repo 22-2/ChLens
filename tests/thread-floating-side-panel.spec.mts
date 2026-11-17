@@ -123,7 +123,7 @@ test("フローティングボタンはサイドパネルの開閉とリサイ�
   await expect.poll(async () => (await down.boundingBox())?.x).toBeCloseTo(before.x, 0);
 });
 
-test("狭いペインではステータスバーの操作をアイコンにして横スクロールを防ぐ", async ({
+test("狭いペインでもメニューからスレ一覧パネルを開ける", async ({
   page,
   extensionId,
   localBoard,
@@ -134,15 +134,14 @@ test("狭いペインではステータスバーの操作をアイコンにし�
   await waitForThreadLoaded(page, thread.threadUrl, 200);
   await page.getByRole("button", { name: "サイドパネルを開く" }).click();
   const bar = page.locator(".pane-column .status-bar");
-  const listButton = bar.getByRole("button", { name: "スレ一覧パネルを開閉" });
-  await expect(listButton).toBeVisible();
-  await expect(listButton.locator("span")).toBeHidden();
   const dimensions = await bar.evaluate((element) => ({
     width: element.clientWidth,
     scrollWidth: element.scrollWidth,
   }));
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.width);
-  await listButton.click();
+  // スレ一覧パネルの操作はステータスバーからメニューへ移動した。
+  await page.getByTitle("メニュー", { exact: true }).click();
+  await page.getByRole("button", { name: "スレ一覧パネル", exact: true }).click();
   await expect(page.locator(".bottom-panel")).toBeVisible();
 });
 
