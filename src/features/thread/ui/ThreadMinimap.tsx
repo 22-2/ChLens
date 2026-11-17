@@ -231,6 +231,17 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     return isHTMLElementInWindow(topBar, viewWindow) ? topBar : null;
   }, [rootRef, viewWindow]);
 
+  const getStatusBarRoot = useCallback((): HTMLElement | null => {
+    const host = rootRef.current;
+    if (!host) {
+      return null;
+    }
+    const statusBar = host
+      .closest(".pane-column")
+      ?.querySelector<HTMLElement>(":scope > .status-bar");
+    return isHTMLElementInWindow(statusBar, viewWindow) ? statusBar : null;
+  }, [rootRef, viewWindow]);
+
   const setHostMinimapWidth = useCallback(
     (widthPx: number) => {
       const host = rootRef.current;
@@ -246,6 +257,7 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
   const updateFrame = useCallback(() => {
     const scrollContainer = getScrollContainer();
     const topBar = getTopBarRoot();
+    const statusBar = getStatusBarRoot();
     if (!scrollContainer || responseCount === 0) {
       setFrame((prev) => (prev === null ? prev : null));
       setHostMinimapWidth(0);
@@ -256,7 +268,15 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     const topBarRect = topBar?.getBoundingClientRect() ?? null;
     // 上部バーの種類に関係なく bottom をミニマップ上端に揃え、重なりを避ける。
     const top = clamp(topBarRect?.bottom ?? rect.top, rect.top, rect.bottom);
-    const availableHeight = rect.bottom - top;
+    /*
+     * 変更理由: ステータスバーは本文の下端に重なって浮くため、ミニマップをそのまま
+     * 下端まで伸ばすと右下の項目と重なる。バーと重なる高さを取り除き、
+     * ミニマップをその上端で終える。位置は高さの割合で求めるため、
+     * 短くなってもレスとの対応は保たれる。
+     */
+    const statusBarTop = statusBar?.getBoundingClientRect().top ?? rect.bottom;
+    const statusBarOverlap = clamp(rect.bottom - statusBarTop, 0, rect.height);
+    const availableHeight = rect.bottom - top - statusBarOverlap;
     if (availableHeight < MINIMAP_MIN_DRAWABLE_HEIGHT || rect.width < 280) {
       setFrame((prev) => (prev === null ? prev : null));
       setHostMinimapWidth(0);
@@ -290,7 +310,14 @@ export const ThreadMinimap: React.FC<ThreadMinimapProps> = ({
     });
     // 本文をミニマップの下に潜り込ませないため、同じ幅を右余白として予約する。
     setHostMinimapWidth(width + MINIMAP_CONTENT_GAP);
-  }, [getScrollContainer, getTopBarRoot, responseCount, setHostMinimapWidth, viewWindow]);
+  }, [
+    getScrollContainer,
+    getStatusBarRoot,
+    getTopBarRoot,
+    responseCount,
+    setHostMinimapWidth,
+    viewWindow,
+  ]);
 
   const getMetrics = useCallback(
     (entries: readonly MinimapResponseEntry[]): MinimapMetrics | null => {

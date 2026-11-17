@@ -128,3 +128,22 @@ test.describe("ミニマップのクリック", () => {
     expect(Math.abs(centerOrdinal - clickRatio * state.responseTotal)).toBeLessThanOrEqual(1.5);
   });
 });
+
+test("ミニマップは下端に浮くステータスバーと重ならない", async ({
+  page,
+  extensionId,
+  localBoard,
+}) => {
+  const thread = localBoard.addLargeThread(RESPONSE_COUNT);
+  await openThreadFromBoard(page, extensionId, localBoard.boardUrl, thread.title);
+  await waitForThreadLoaded(page, thread.threadUrl, RESPONSE_COUNT);
+
+  const canvas = page.locator(ACTIVE_PANEL).locator(".thread-page__minimap-canvas");
+  await expect(canvas).toBeVisible();
+  const canvasBox = (await canvas.boundingBox())!;
+  const statusBar = page.locator('.pane-column[data-active="true"] > .status-bar');
+  const statusBarBox = (await statusBar.boundingBox())!;
+
+  // ステータスバーは本文の下端に浮くため、ミニマップはその上端で終える。
+  expect(canvasBox.y + canvasBox.height).toBeLessThanOrEqual(statusBarBox.y + 1);
+});
