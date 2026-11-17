@@ -85,7 +85,7 @@ describe("MediaViewer", () => {
     expect(onCopy).toHaveBeenCalledOnce();
   });
 
-  it("右クリックメニューは、画像URLを開く項目を先頭にし、破棄を末尾に並べる", () => {
+  it("右クリックメニューは、画像URLを開く項目を画像操作とまとめ、破棄を末尾に並べる", () => {
     useMediaImageStore.setState({
       images: new Map([
         ["https://example.com/image.jpg", { status: "loaded", version: 1, fallbackSrc: null }],
@@ -96,11 +96,11 @@ describe("MediaViewer", () => {
     fireEvent.contextMenu(container.querySelector(".media-viewer")!);
 
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
-      "画像URLを開く",
       "新しいタブで開く (I)",
       "新しいウィンドウで開く (W)",
       "URLをコピー (E)",
       "追跡情報を除いてURLをコピー",
+      "画像URLを開く",
       "画像をコピー (C)",
       "画像を破棄",
     ]);

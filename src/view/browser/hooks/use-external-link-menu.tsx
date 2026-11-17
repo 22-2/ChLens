@@ -18,6 +18,8 @@ export interface ExternalLinkMenuOptions {
    * 変更理由: 「開く」だけだと、画像メニューの中で何を開くのか分かりにくかったため。
    */
   openLabel?: string;
+  /** 画像URLを開く操作を、画像固有の操作と同じグループに置く。 */
+  openInAdditionalGroup?: boolean;
 }
 
 interface ExternalLinkMenuState {
@@ -27,6 +29,7 @@ interface ExternalLinkMenuState {
   trigger: HTMLElement;
   additionalItems: ContextMenuItem[];
   openLabel: string;
+  openInAdditionalGroup: boolean;
 }
 
 const DEFAULT_OPEN_LABEL = "開く";
@@ -55,6 +58,7 @@ export function useExternalLinkMenu() {
         trigger,
         additionalItems,
         openLabel: options.openLabel ?? DEFAULT_OPEN_LABEL,
+        openInAdditionalGroup: options.openInAdditionalGroup ?? false,
       });
     },
     [surface.window],
@@ -75,13 +79,14 @@ export function useExternalLinkMenu() {
         returnFocus: state.trigger,
       });
     const cleanedUrl = analyzeExternalLink(state.url).cleanedUrl;
+    const openItem: ContextMenuItem = {
+      id: "open",
+      label: state.openLabel,
+      icon: <ExternalLink size={14} />,
+      onSelect: () => open(true),
+    };
     const items: ContextMenuItem[] = [
-      {
-        id: "open",
-        label: state.openLabel,
-        icon: <ExternalLink size={14} />,
-        onSelect: () => open(true),
-      },
+      ...(!state.openInAdditionalGroup ? [openItem] : []),
       {
         id: "open-background",
         label: "新しいタブで開く",
@@ -113,8 +118,12 @@ export function useExternalLinkMenu() {
           if (cleanedUrl) copy(cleanedUrl);
         },
       },
-      ...(state.additionalItems.length > 0
-        ? [{ id: "additional-separator", separator: true }, ...state.additionalItems]
+      ...(state.additionalItems.length > 0 || state.openInAdditionalGroup
+        ? [
+            { id: "additional-separator", separator: true },
+            ...(state.openInAdditionalGroup ? [openItem] : []),
+            ...state.additionalItems,
+          ]
         : []),
     ];
     // 仮想レスのtransformによる座標系・重なり順から切り離し、別窓でも操作元へ表示する。

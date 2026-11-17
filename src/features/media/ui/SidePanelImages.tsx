@@ -110,7 +110,10 @@ function ThreadImageGrid({
               className={`side-panel__image${isBlurred ? " side-panel__image--blurred" : ""}`}
               title={`>>${item.resNum} ${item.text}`}
               onContextMenu={(event) =>
-                openMenu(item.rawUrl, event, contextMenuItems, { openLabel: "画像URLを開く" })
+                openMenu(item.rawUrl, event, contextMenuItems, {
+                  openLabel: "画像URLを開く",
+                  openInAdditionalGroup: true,
+                })
               }
             >
               {isLoadStarted ? (

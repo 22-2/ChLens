@@ -89,7 +89,7 @@ export function MediaViewer({
             viewer.label,
             event,
             joinImageMenuGroups([[...copyItems, ...ngItems], discardItems]),
-            { openLabel: "画像URLを開く" },
+            { openLabel: "画像URLを開く", openInAdditionalGroup: true },
           );
         }}
       >

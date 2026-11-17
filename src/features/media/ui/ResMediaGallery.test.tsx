@@ -193,7 +193,7 @@ describe("ResMediaGallery", () => {
     }
   });
 
-  it("読み込み済み画像の右クリックメニューは、画像URLを開く・ビューア・コピー・保存・破棄の順に並べる", async () => {
+  it("読み込み済み画像の右クリックメニューは、画像操作をまとめて破棄を末尾に並べる", async () => {
     const imageUrl = "https://images.example.com/ordered-photo.jpg";
     render(<ResMediaGallery urls={[imageUrl]} onUrlClick={() => {}} onToggleImage={() => {}} />);
     fireEvent.load(screen.getByRole("img", { name: imageUrl }));
@@ -201,11 +201,11 @@ describe("ResMediaGallery", () => {
     fireEvent.contextMenu(screen.getByRole("link", { name: imageUrl }));
 
     expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
-      "画像URLを開く",
       "新しいタブで開く (I)",
       "新しいウィンドウで開く (W)",
       "URLをコピー (E)",
       "追跡情報を除いてURLをコピー",
+      "画像URLを開く",
       "ビューアで開く",
       "画像をコピー (C)",
       "画像を保存 (V)",

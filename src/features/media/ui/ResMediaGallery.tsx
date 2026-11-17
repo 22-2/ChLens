@@ -221,7 +221,7 @@ export function ResMediaGallery({
       event,
       joinImageMenuGroups([viewerItems, unblurItems, [...copySaveItems, ...ngItems], discardItems]),
       // 画像のメニューでは対象が画像のURLなので、リンクの「開く」を「画像URLを開く」と表示する。
-      { openLabel: "画像URLを開く" },
+      { openLabel: "画像URLを開く", openInAdditionalGroup: true },
     );
   };
   // 複数画像のレスはインライン展開だと縦に長くなり比較しづらいため、クリックでビューアを開く。
