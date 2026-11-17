@@ -23,6 +23,10 @@ const WAITING_RECONNECT_INTERVAL_MS = 60_000;
 const KEEPALIVE_INTERVAL_MS = 20_000;
 const WS_CONNECT_TIMEOUT_MS = 10_000;
 const CONNECTION_LOG_INTERVAL_MS = 30_000;
+const RETRY_AT_KEY = "chlensMcpRetryAt";
+const THREAD_RETRY_USED_KEY = "chlensMcpThreadRetryUsed";
+
+class RelayUnavailableError extends Error {}
 
 interface RegisterResponse {
   clientId: string;
@@ -39,18 +43,17 @@ interface WorkerStateMessage {
 }
 
 let started = false;
-let currentClientId: string | null = null;
 let webSocket: WebSocket | null = null;
 let keepaliveTimer: ReturnType<typeof setInterval> | undefined;
 let httpPollInFlight = false;
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
-let connectInFlight: Promise<void> | null = null;
+let connectInFlight: Promise<string | null> | null = null;
 let lastConnectionErrorAt = 0;
 let reconnectDelayMs = INITIAL_RECONNECT_DELAY_MS;
 let consecutiveConnectionFailures = 0;
-// 中継が見つからない間は、この時刻より前には接続も取得も試みない。
+// 0なら通常接続中。待機中はアラームから次に接続を試みる時刻を保持する。
 let nextAttemptAt = 0;
-let waitingForServer = false;
+let threadRetryUsed = false;
 
 function logConnectionError(message: string, error: unknown): void {
   const now = Date.now();
@@ -60,9 +63,24 @@ function logConnectionError(message: string, error: unknown): void {
   console.error(`[ChLens MCP] ${message}:`, error);
 }
 
-/** MCPサーバーが起動していない間の失敗は想定どおりなので、エラーではなく詳細ログとして残す。 */
-function logConnectionAttemptFailure(message: string, error: unknown): void {
-  console.debug(`[ChLens MCP] ${message}:`, error);
+async function restoreRetryState(): Promise<void> {
+  // Chromeのサービスワーカーが休止しても、同じブラウザーセッションでは待機を引き継ぐ。
+  try {
+    const state = await browser.storage.session?.get([RETRY_AT_KEY, THREAD_RETRY_USED_KEY]);
+    const retryAt = state?.[RETRY_AT_KEY];
+    if (typeof retryAt === "number") nextAttemptAt = retryAt;
+    threadRetryUsed = state?.[THREAD_RETRY_USED_KEY] === true;
+  } catch (error: unknown) {
+    logConnectionError("MCP中継の再試行状態の復元に失敗しました", error);
+  }
+}
+
+function saveRetryState(): void {
+  void browser.storage.session
+    ?.set({ [RETRY_AT_KEY]: nextAttemptAt, [THREAD_RETRY_USED_KEY]: threadRetryUsed })
+    .catch((error: unknown) => {
+      logConnectionError("MCP中継の再試行状態の保存に失敗しました", error);
+    });
 }
 
 function isWorkerStateMessage(value: unknown): value is WorkerStateMessage {
@@ -97,30 +115,33 @@ function resetReconnectDelay(): void {
  */
 function recordConnectionFailure(): void {
   consecutiveConnectionFailures += 1;
-  if (consecutiveConnectionFailures < QUICK_CONNECTION_ATTEMPTS) {
+  const alreadyWaiting = nextAttemptAt !== 0;
+  if (!alreadyWaiting && consecutiveConnectionFailures < QUICK_CONNECTION_ATTEMPTS) {
     scheduleReconnect();
     return;
   }
   // 数秒おきのタイマーは、休止したサービスワーカーでは止まる。一分ごとの確認は、
   // 起床の合図になるアラームに任せる。
   nextAttemptAt = Date.now() + WAITING_RECONNECT_INTERVAL_MS;
+  saveRetryState();
   if (reconnectTimer !== undefined) {
     clearTimeout(reconnectTimer);
     reconnectTimer = undefined;
   }
-  if (!waitingForServer) {
-    waitingForServer = true;
-    console.info(
-      "[ChLens MCP] MCPサーバーが見つからないため、1分ごとに接続を確認します。MCPを使うスレッドを開くと、すぐに確認します。",
-    );
+  if (!alreadyWaiting) {
+    console.info("[ChLens MCP] MCP中継に接続できないため、1分ごとに接続を確認します。");
   }
 }
 
 /** 接続できたら、失敗の数と再接続の間隔を初めからにする。 */
 function resetConnectionFailures(): void {
   consecutiveConnectionFailures = 0;
-  nextAttemptAt = 0;
   resetReconnectDelay();
+  if (nextAttemptAt !== 0) {
+    nextAttemptAt = 0;
+    threadRetryUsed = false;
+    saveRetryState();
+  }
 }
 
 /** 失敗の数を初めからにして、すぐに接続を試みる。拡張機能の起動・インストール時に使う。 */
@@ -129,10 +150,13 @@ function resumeConnection(): void {
   void connectWebSocket();
 }
 
-/** 見つからない間に利用者の操作（MCPを使うスレッドを開くなど）があったら、待たずに確認する。 */
+/** 一度の待機につき一回だけ、スレッド表示をきっかけに接続を前倒しする。 */
 function resumeConnectionIfWaiting(): void {
-  if (!waitingForServer) return;
-  resumeConnection();
+  if (nextAttemptAt === 0 || threadRetryUsed || connectInFlight) return;
+  // スレッド切り替えによる状態同期の連続で、短い間隔の再試行に戻るのを防ぐ。
+  threadRetryUsed = true;
+  saveRetryState();
+  void connectWebSocket();
 }
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
@@ -144,6 +168,12 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
       signal: controller.signal,
+    }).catch((error: unknown) => {
+      // 中継の停止による通信失敗と、HTTP応答やJSONの異常を区別する。
+      if (error instanceof TypeError) {
+        throw new RelayUnavailableError("MCP中継に到達できません", { cause: error });
+      }
+      throw error;
     });
     if (!response.ok) throw new Error(`中継HTTPエラー (${response.status})`);
     return (await response.json()) as T;
@@ -155,7 +185,6 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 async function registerClient(): Promise<string> {
   const result = await postJson<RegisterResponse>("/v1/register", {});
   if (!result.clientId) throw new Error("MCP中継のクライアントIDがありません");
-  currentClientId = result.clientId;
   return result.clientId;
 }
 
@@ -203,41 +232,43 @@ function startKeepalive(socket: WebSocket): void {
   }, KEEPALIVE_INTERVAL_MS);
 }
 
-async function connectWebSocket(): Promise<void> {
+async function connectWebSocket(): Promise<string | null> {
   if (connectInFlight) return connectInFlight;
   const connection = connectWebSocketOnce();
   connectInFlight = connection;
   try {
-    await connection;
+    return await connection;
   } finally {
     connectInFlight = null;
   }
 }
 
-async function connectWebSocketOnce(): Promise<void> {
-  if (typeof WebSocket === "undefined") return;
+async function connectWebSocketOnce(): Promise<string | null> {
   if (
     webSocket &&
     (webSocket.readyState === WebSocket.OPEN || webSocket.readyState === WebSocket.CONNECTING)
   ) {
-    return;
+    return null;
   }
 
   let clientId: string;
   try {
     clientId = await registerClient();
   } catch (error: unknown) {
-    logConnectionAttemptFailure("MCP中継のクライアント登録に失敗しました", error);
+    if (!(error instanceof RelayUnavailableError)) {
+      logConnectionError("MCP中継のクライアント登録に失敗しました", error);
+    }
     recordConnectionFailure();
-    return;
+    return null;
   }
 
+  if (typeof WebSocket === "undefined") return clientId;
   await new Promise<void>((resolve) => {
     let socket: WebSocket;
     try {
       socket = new WebSocket(`${MCP_BRIDGE_WS_URL}?clientId=${encodeURIComponent(clientId)}`);
     } catch (error: unknown) {
-      logConnectionAttemptFailure("WebSocket接続の開始に失敗しました", error);
+      logConnectionError("WebSocket接続の開始に失敗しました", error);
       recordConnectionFailure();
       resolve();
       return;
@@ -269,8 +300,7 @@ async function connectWebSocketOnce(): Promise<void> {
     }, WS_CONNECT_TIMEOUT_MS);
     socket.onopen = () => {
       opened = true;
-      if (waitingForServer) {
-        waitingForServer = false;
+      if (nextAttemptAt !== 0) {
         console.info("[ChLens MCP] MCPサーバーに接続しました。");
       }
       resetConnectionFailures();
@@ -295,13 +325,13 @@ async function connectWebSocketOnce(): Promise<void> {
       settle();
     };
   });
+  return clientId;
 }
 
-async function pollHttpOnce(): Promise<void> {
+async function pollHttpOnce(clientId: string): Promise<void> {
   if (httpPollInFlight || webSocket) return;
   httpPollInFlight = true;
   try {
-    const clientId = currentClientId ?? (await registerClient());
     const result = await postJson<PollResponse>("/v1/poll", { clientId });
     if (!result.request) return;
     const response = await executeWorkerRequest(result.request);
@@ -311,9 +341,9 @@ async function pollHttpOnce(): Promise<void> {
       response,
     });
   } catch (error: unknown) {
-    logConnectionAttemptFailure("MCP中継へのHTTP接続に失敗しました", error);
-    recordConnectionFailure();
-    // アラームで再試行する。サーバー未起動時も処理を止めず、次の確認で復旧を試みる。
+    if (!(error instanceof RelayUnavailableError)) {
+      logConnectionError("MCP中継へのHTTP接続に失敗しました", error);
+    }
   } finally {
     httpPollInFlight = false;
   }
@@ -334,30 +364,31 @@ async function onAlarm(alarm: browser.Alarms.Alarm): Promise<void> {
   if (alarm.name !== MCP_BRIDGE_ALARM_NAME) return;
   // 見つからない間は、決めた間隔が過ぎるまで起床しても接続も取得も試みない。
   if (Date.now() < nextAttemptAt) return;
-  await connectWebSocket();
-  if (Date.now() >= nextAttemptAt) await pollHttpOnce();
+  const clientId = await connectWebSocket();
+  // 登録先はどちらの通信方式でも同じなので、登録に失敗した時にHTTP側で重ねて試さない。
+  if (clientId) await pollHttpOnce(clientId);
 }
 
 export function startMcpWorker(): void {
   if (started || !browser.alarms) return;
   started = true;
+  const retryStateReady = restoreRetryState();
   browser.alarms.onAlarm.addListener((alarm) => {
-    void onAlarm(alarm).catch((error: unknown) => {
-      logConnectionError("MCP中継アラームの処理に失敗しました", error);
-    });
+    void retryStateReady
+      .then(() => onAlarm(alarm))
+      .catch((error: unknown) => {
+        logConnectionError("MCP中継アラームの処理に失敗しました", error);
+      });
   });
   browser.runtime.onStartup.addListener(() => {
-    void ensureAlarm();
-    resumeConnection();
+    void retryStateReady.then(resumeConnection);
   });
   browser.runtime.onInstalled.addListener(() => {
-    void ensureAlarm();
-    resumeConnection();
+    void retryStateReady.then(resumeConnection);
   });
   browser.runtime.onMessage.addListener((message: unknown) => {
     if (!isWorkerStateMessage(message)) return;
-    // 利用者がMCPを使うスレッドを開いたときは、見つからない間でも待たずに確認する。
-    resumeConnectionIfWaiting();
+    if (message.activeThreadUrl) void retryStateReady.then(resumeConnectionIfWaiting);
     void persistWorkerState(message.activeThreadUrl ?? null, message.format2chnet ?? null).catch(
       (error: unknown) => {
         console.error("[ChLens MCP] 現在スレッド情報の保存に失敗しました:", error);
@@ -367,5 +398,7 @@ export function startMcpWorker(): void {
   void ensureAlarm().catch((error: unknown) => {
     console.error("[ChLens MCP] MCP用アラームの登録に失敗しました:", error);
   });
-  void connectWebSocket();
+  void retryStateReady.then(() => {
+    if (nextAttemptAt === 0) void connectWebSocket();
+  });
 }

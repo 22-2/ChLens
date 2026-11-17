@@ -9,6 +9,7 @@ const browserMock = vi.hoisted(() => {
   const alarmListeners: ((alarm: { name: string }) => void)[] = [];
   const messageListeners: ((message: unknown) => void)[] = [];
   const startupListeners: (() => void)[] = [];
+  const sessionData: Record<string, unknown> = {};
   const api = {
     alarms: {
       get: vi.fn(async () => undefined),
@@ -16,6 +17,14 @@ const browserMock = vi.hoisted(() => {
       onAlarm: {
         addListener: (listener: (alarm: { name: string }) => void) => {
           alarmListeners.push(listener);
+        },
+      },
+    },
+    storage: {
+      session: {
+        get: async () => ({ ...sessionData }),
+        set: async (items: Record<string, unknown>) => {
+          Object.assign(sessionData, items);
         },
       },
     },
@@ -33,7 +42,7 @@ const browserMock = vi.hoisted(() => {
       },
     },
   };
-  return { api, alarmListeners, messageListeners, startupListeners };
+  return { api, alarmListeners, messageListeners, startupListeners, sessionData };
 });
 
 vi.mock("webextension-polyfill", () => ({ default: browserMock.api }));
@@ -118,10 +127,21 @@ async function passAlarmTicks(count: number): Promise<void> {
   }
 }
 
-function sendWorkerState(): void {
+function sendWorkerState(activeThreadUrl: string | null = THREAD_URL): void {
   for (const listener of browserMock.messageListeners) {
-    listener({ type: "mcp-state", activeThreadUrl: THREAD_URL, format2chnet: null });
+    listener({ type: "mcp-state", activeThreadUrl, format2chnet: null });
   }
+}
+
+async function loadWorker(): Promise<Bridge> {
+  const now = Date.now();
+  vi.clearAllTimers();
+  vi.setSystemTime(now);
+  vi.resetModules();
+  browserMock.alarmListeners.length = 0;
+  browserMock.messageListeners.length = 0;
+  browserMock.startupListeners.length = 0;
+  return import("./worker-bridge");
 }
 
 describe("MCP中継への接続", () => {
@@ -129,20 +149,16 @@ describe("MCP中継への接続", () => {
 
   beforeEach(async () => {
     vi.useFakeTimers();
-    vi.resetModules();
     vi.clearAllMocks();
     relay.online = false;
-    fetchMock.mockClear();
     FakeWebSocket.instances = [];
-    browserMock.alarmListeners.length = 0;
-    browserMock.messageListeners.length = 0;
-    browserMock.startupListeners.length = 0;
+    for (const key of Object.keys(browserMock.sessionData)) delete browserMock.sessionData[key];
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("WebSocket", FakeWebSocket);
     vi.spyOn(console, "error").mockImplementation(() => {});
     vi.spyOn(console, "info").mockImplementation(() => {});
     vi.spyOn(console, "debug").mockImplementation(() => {});
-    bridge = await import("./worker-bridge");
+    bridge = await loadWorker();
   });
 
   afterEach(() => {
@@ -184,17 +200,82 @@ describe("MCP中継への接続", () => {
 
     expect(registerCalls()).toBe(13);
     expect(console.error).not.toHaveBeenCalled();
+    expect(console.debug).not.toHaveBeenCalled();
+    expect(console.info).toHaveBeenCalledTimes(1);
   });
 
-  it("利用者がスレッドを開くと、1分を待たずにすぐ確認する", async () => {
+  it("サービスワーカーが休止しても次の確認時刻を引き継ぎ、中継が起動すると接続する", async () => {
     bridge.startMcpWorker();
     await vi.advanceTimersByTimeAsync(6_000);
+    await vi.advanceTimersByTimeAsync(ALARM_PERIOD_MS);
+
+    const restarted = await loadWorker();
+    restarted.startMcpWorker();
+    fireAlarm();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(registerCalls()).toBe(3);
+    relay.online = true;
+    await passAlarmTicks(1);
+
+    expect(registerCalls()).toBe(4);
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    FakeWebSocket.instances[0]!.open();
+    expect(console.info).toHaveBeenCalledTimes(2);
+    expect(console.info).toHaveBeenLastCalledWith(expect.stringContaining("接続しました"));
+  });
+
+  it("スレッドを開いた時は一度だけ確認を前倒しし、その後の状態同期では待機を続ける", async () => {
+    bridge.startMcpWorker();
+    await vi.advanceTimersByTimeAsync(6_000);
+
+    sendWorkerState(null);
+    await vi.advanceTimersByTimeAsync(0);
     expect(registerCalls()).toBe(3);
 
     sendWorkerState();
     await vi.advanceTimersByTimeAsync(0);
-
     expect(registerCalls()).toBe(4);
+
+    const restarted = await loadWorker();
+    restarted.startMcpWorker();
+    sendWorkerState();
+    sendWorkerState();
+    await vi.advanceTimersByTimeAsync(6_000);
+    expect(registerCalls()).toBe(4);
+  });
+
+  it("アラームからの登録が失敗しても、HTTPポーリングで登録を重ねない", async () => {
+    bridge.startMcpWorker();
+    fireAlarm();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(registerCalls()).toBe(1);
+    expect(pollCalls()).toBe(0);
+  });
+
+  it("登録に成功してWebSocket接続に失敗した時は、同じ登録でHTTPポーリングする", async () => {
+    relay.online = true;
+    bridge.startMcpWorker();
+    fireAlarm();
+    await vi.advanceTimersByTimeAsync(0);
+
+    FakeWebSocket.instances[0]!.drop();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(registerCalls()).toBe(1);
+    expect(pollCalls()).toBe(1);
+  });
+
+  it("中継がHTTPエラーを返した時は、ステータスを含む詳細を記録する", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 500 }));
+    bridge.startMcpWorker();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(console.error).toHaveBeenCalledWith(
+      expect.stringContaining("登録に失敗"),
+      new Error("中継HTTPエラー (500)"),
+    );
   });
 
   it("拡張機能の起動時は、待機中でも最初からやり直す", async () => {
