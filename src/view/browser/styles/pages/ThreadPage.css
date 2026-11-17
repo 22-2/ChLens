@@ -102,6 +102,8 @@
   width: 100%;
   height: 100%;
   cursor: pointer;
+  /* タッチのドラッグをスクロールに奪われず、ポインタ操作として受け取る。 */
+  touch-action: none;
   opacity: 0.82;
   pointer-events: auto;
   transition: opacity var(--sys-duration-slow);
