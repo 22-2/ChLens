@@ -294,6 +294,17 @@
   color: var(--sys-color-text);
 }
 
+.thread-page__toolbar-close {
+  display: grid;
+  flex: none;
+  width: var(--sys-space-10);
+  height: var(--sys-space-10);
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--sys-color-text-muted);
+}
+
 .thread-page__toolbar-search-input::placeholder {
   color: var(--sys-color-placeholder);
 }

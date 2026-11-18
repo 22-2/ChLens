@@ -19,6 +19,8 @@ interface SearchOptionsMenuProps {
   leadingItems?: ContextMenuItem[];
   /** 先頭項目をカテゴリ用のボタンへ分け、検索オプションは3点ボタンに残す。 */
   separateLeadingItems?: boolean;
+  /** 種類のメニューの末尾にも検索オプションを置く。 */
+  includeOptionsInLeading?: boolean;
   /** カテゴリボタンだけを表示する。 */
   leadingItemsOnly?: boolean;
   /** 文字つきのボタンの表示。省略すると「⋯」だけのボタンにする。 */
@@ -58,6 +60,7 @@ export function SearchOptionsMenu({
   onChange,
   leadingItems,
   separateLeadingItems = false,
+  includeOptionsInLeading = false,
   leadingItemsOnly = false,
   label,
   active = false,
@@ -85,15 +88,17 @@ export function SearchOptionsMenu({
       checked: options[key],
       icon: checkIcon(options[key]),
       labelIcon: icon,
+      keepOpen: includeOptionsInLeading,
       onSelect: () => onChange({ ...options, [key]: !options[key] }),
     }));
-    if (!leadingItems?.length || separateLeadingItems) return optionItems;
+    if (!leadingItems?.length || (separateLeadingItems && !includeOptionsInLeading))
+      return optionItems;
     // 先頭の項目にも空のアイコン枠を足し、検索の条件の項目とラベルの位置をそろえる。
     const alignedLeadingItems = leadingItems.map((item) =>
       item.separator ? item : { ...item, labelIcon: item.labelIcon ?? <span /> },
     );
     return [...alignedLeadingItems, { id: "options-separator", separator: true }, ...optionItems];
-  }, [leadingItems, onChange, options, separateLeadingItems]);
+  }, [includeOptionsInLeading, leadingItems, onChange, options, separateLeadingItems]);
 
   const highlighted = (!separateLeadingItems && active) || hasNonDefaultOption(options);
   const accessibleName = separateLeadingItems ? "検索の条件" : (label ?? "検索の条件");
@@ -137,7 +142,7 @@ export function SearchOptionsMenu({
             <ContextMenu
               x={leadingPosition.x}
               y={leadingPosition.y}
-              items={leadingItems}
+              items={includeOptionsInLeading ? items : leadingItems}
               onClose={() => setLeadingPosition(null)}
               triggerRef={leadingButtonRef}
               enableKeyboardNavigation

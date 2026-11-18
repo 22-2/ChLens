@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { checkIcon, SearchOptionsMenu } from "src/view/browser/components/SearchOptionsMenu";
 import type { TopBarMode } from "src/view/browser/pages/thread/use-thread-top-bar";
@@ -113,6 +114,7 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
           onChange={onSearchOptionsChange}
           leadingItems={filterItems}
           separateLeadingItems
+          includeOptionsInLeading
           leadingItemsOnly
           label={selected.label}
           active={filter !== "all"}
@@ -141,11 +143,15 @@ export const ThreadPageTopBar: React.FC<ThreadPageTopBarProps> = ({
             onClose();
           }}
         />
-        <SearchOptionsMenu
-          options={searchOptions}
-          onChange={onSearchOptionsChange}
-          separateLeadingItems
-        />
+        <button
+          type="button"
+          className="thread-page__toolbar-close icon-button"
+          aria-label="フィルターを閉じる"
+          title="フィルターを閉じる"
+          onClick={onClose}
+        >
+          <X size={16} aria-hidden="true" />
+        </button>
       </div>
     </div>
   );

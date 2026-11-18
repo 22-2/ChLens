@@ -87,6 +87,9 @@ describe("ThreadPageTopBar", () => {
       "外部リンク (9)",
       "内部リンク (1)",
       "自分のレス (4)",
+      "大文字と小文字を区別",
+      "ひらがなとカタカナを区別",
+      "正規表現",
     ]);
     expect(screen.getByRole("menuitemcheckbox", { name: "人気 (2)" })).toHaveAttribute(
       "aria-checked",
@@ -140,8 +143,9 @@ describe("ThreadPageTopBar", () => {
   it("検索の条件の切り替えを親へ通知する", () => {
     const props = renderBar();
 
-    fireEvent.click(screen.getByRole("button", { name: "検索の条件" }));
+    fireEvent.click(screen.getByRole("button", { name: "フィルタの種類" }));
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "正規表現" }));
+    expect(screen.getByRole("menuitemcheckbox", { name: "正規表現" })).toBeInTheDocument();
 
     expect(props.onSearchOptionsChange).toHaveBeenCalledWith({
       ...DEFAULT_SEARCH_OPTIONS,
@@ -164,6 +168,12 @@ describe("ThreadPageTopBar", () => {
 
     expect(props.onSearchQueryChange).toHaveBeenLastCalledWith("");
     expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it("閉じるボタンでフィルタバーを閉じる", () => {
+    const props = renderBar();
+    fireEvent.click(screen.getByRole("button", { name: "フィルターを閉じる" }));
+    expect(props.onClose).toHaveBeenCalledOnce();
   });
 
   it("入力欄が空のままEscapeを押すとバーを閉じる", () => {

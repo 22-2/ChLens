@@ -21,6 +21,8 @@ export interface ContextMenuItem {
   disabled?: boolean;
   checked?: boolean;
   danger?: boolean;
+  /** 設定を続けて変更できるよう、選択後もメニューを開いたままにする。 */
+  keepOpen?: boolean;
   separator?: boolean;
   onSelect?: () => void;
   onAuxSelect?: (button: number) => void;
@@ -138,7 +140,7 @@ export const ContextMenu: React.FC<Props> = ({
           onClick={() => {
             if (item.submenu && item.submenu.length > 0) return;
             if (!item.disabled) item.onSelect?.();
-            onClose();
+            if (!item.keepOpen) onClose();
           }}
           onAuxClick={(event) => {
             // 右クリックはコンテキストメニューに渡し、中クリックだけを選択として閉じる。
@@ -197,7 +199,14 @@ export const ContextMenu: React.FC<Props> = ({
       }
 
       return enableKeyboardNavigation ? (
-        <RadixContextMenu.Item key={item.id} asChild disabled={item.disabled}>
+        <RadixContextMenu.Item
+          key={item.id}
+          asChild
+          disabled={item.disabled}
+          onSelect={(event) => {
+            if (item.keepOpen) event.preventDefault();
+          }}
+        >
           {button}
         </RadixContextMenu.Item>
       ) : (
