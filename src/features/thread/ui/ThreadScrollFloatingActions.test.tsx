@@ -5,6 +5,7 @@ import React from "react";
 import { useManualPauseStore } from "src/features/auto-refresh/browser/manual-pause-store";
 import { ThreadScrollFloatingActions } from "src/features/thread/ui/ThreadScrollFloatingActions";
 import { container } from "src/service-container/index";
+import { registerFilterToggle } from "src/view/browser/extension/page-actions";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 function createRect(): DOMRect {
@@ -117,6 +118,21 @@ describe("ThreadScrollFloatingActions", () => {
 
     return { onEnableAutoRefresh, panel, result, scrollTo };
   }
+
+  it("ハンドルの直下からフィルタを切り替える", () => {
+    const toggle = vi.fn();
+    const dispose = registerFilterToggle(window, "test-tab", toggle);
+    renderActions();
+    const toolbar = screen.getByRole("toolbar", { name: "スレッド操作" });
+    const filter = screen.getByRole("button", { name: "フィルターを開閉" });
+    expect(toolbar.firstElementChild).toBe(
+      screen.getByRole("button", { name: "ツールバーを移動" }),
+    );
+    expect(toolbar.children[1]).toBe(filter);
+    fireEvent.click(filter);
+    expect(toggle).toHaveBeenCalledOnce();
+    dispose();
+  });
 
   it("上下移動と自動更新を同じ場所に表示する", () => {
     const { onEnableAutoRefresh } = renderActions();

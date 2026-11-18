@@ -735,7 +735,7 @@ describe("NavigationBar", () => {
       button.getAttribute("title"),
     );
 
-    expect(buttons).toEqual(["フィルターを開閉", "メニュー"]);
+    expect(buttons).toEqual(["メニュー"]);
     expect(screen.queryByTitle("2ペインで表示")).not.toBeInTheDocument();
   });
 
@@ -869,6 +869,10 @@ describe("NavigationBar", () => {
   });
 
   it("URLバーの開閉ボタンの左にあるフィルタボタンで対象タブのフィルターを切り替える", () => {
+    viewTab.history = [
+      { type: "threadList", title: "板", boardUrl: "https://example.com/board/", boardTitle: "板" },
+    ];
+    viewTab.currentIndex = 0;
     const toggle = vi.fn();
     const dispose = registerFilterToggle(window, viewTab.id, toggle);
     render(<NavigationBar />);
@@ -880,6 +884,10 @@ describe("NavigationBar", () => {
   });
 
   it("フィルタバーが開いている間はフィルタボタンを押下状態にして色を変える", () => {
+    viewTab.history = [
+      { type: "threadList", title: "板", boardUrl: "https://example.com/board/", boardTitle: "板" },
+    ];
+    viewTab.currentIndex = 0;
     render(<NavigationBar />);
     const filterButton = screen.getByRole("button", { name: "フィルターを開閉" });
 
@@ -895,6 +903,10 @@ describe("NavigationBar", () => {
   });
 
   it("フィルタバーが常時表示のスレではフィルタボタンを出さない", () => {
+    viewTab.history = [
+      { type: "threadList", title: "板", boardUrl: "https://example.com/board/", boardTitle: "板" },
+    ];
+    viewTab.currentIndex = 0;
     render(<NavigationBar />);
     expect(screen.getByRole("button", { name: "フィルターを開閉" })).toBeInTheDocument();
 

@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, Grip, Pause, Play } from "lucide-react";
+import { ArrowDown, ArrowUp, Filter, Grip, Pause, Play } from "lucide-react";
 import React, {
   type RefObject,
   useCallback,
@@ -13,8 +13,13 @@ import {
 } from "src/features/auto-refresh/browser/manual-pause-store";
 import { useThreadToolbarPosition } from "src/features/thread/browser/use-thread-toolbar-position";
 import { MINIMAP_CONTENT_GAP } from "src/features/thread/ui/thread-minimap-layout";
+import { toggleFilter } from "src/view/browser/extension/page-actions";
 import { useViewSurface } from "src/view/browser/hooks/use-view-surface";
 import { getResizeObserverForWindow, isHTMLElementInWindow } from "src/view/browser/utils/dom";
+import {
+  useFilterToolbarOpen,
+  useFilterToolbarPinned,
+} from "src/view/browser/utils/filter-toolbar-open-state";
 
 interface ThreadScrollFloatingActionsProps {
   rootRef: RefObject<HTMLDivElement | null>;
@@ -108,6 +113,8 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
   isNextThreadWaiting,
 }) => {
   const { window: viewWindow } = useViewSurface();
+  const isFilterOpen = useFilterToolbarOpen(tabId);
+  const isFilterPinned = useFilterToolbarPinned(tabId);
   const [layout, setLayout] = useState<ScrollFloatingLayout | null>(null);
   const { position, move, commit } = useThreadToolbarPosition();
   const [toolbarHeight, setToolbarHeight] = useState(140);
@@ -122,7 +129,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
     if (!element) return;
     const height = element.getBoundingClientRect().height;
     if (height > 0) setToolbarHeight(height);
-  }, [layout, canAutoRefresh]);
+  }, [layout, canAutoRefresh, isFilterPinned]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -342,6 +349,18 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
       >
         <Grip size={12} aria-hidden="true" />
       </button>
+      {/* フィルタを縦ツールバーにまとめ、本文から操作しやすくする。 */}
+      {!isFilterPinned && (
+        <button
+          type="button"
+          aria-label="フィルターを開閉"
+          title="フィルターを開閉"
+          aria-pressed={isFilterOpen}
+          onClick={() => toggleFilter(viewWindow, tabId)}
+        >
+          <Filter size={16} aria-hidden="true" />
+        </button>
+      )}
       <button type="button" aria-label="上へジャンプ" title="上へジャンプ" onClick={scrollToTop}>
         <ArrowUp size={14} aria-hidden="true" />
       </button>

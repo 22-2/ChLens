@@ -676,7 +676,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
   );
   const chrome = (
     <div className={`nav-bar${useTitleBarSlot ? " nav-bar--titlebar" : ""}`}>
-      {canToggleFilter ? (
+      {canToggleFilter && viewPage.type !== "thread" ? (
         // 変更理由: フィルタの開閉をメニューの奥ではなく常に見える位置から行えるよう、
         // URLバーの開閉ボタンの左へ置き、メニュー項目と同じ切り替え処理を使う。
         <button
