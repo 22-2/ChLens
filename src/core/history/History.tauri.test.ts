@@ -4,6 +4,8 @@ const state = vi.hoisted(() => ({
   tauriHistoryRepository: {
     add: vi.fn(),
     remove: vi.fn(),
+    listUrlIdentities: vi.fn(),
+    removeByIds: vi.fn(),
     get: vi.fn(),
     getUnique: vi.fn(),
     getAll: vi.fn(),
@@ -87,6 +89,19 @@ describe("History Tauri branch", () => {
       "https://example.com/thread",
     );
     expect(rows[0]?.isHttps).toBe(true);
+  });
+
+  it("removeThread deletes matching rows through the repository", async () => {
+    state.tauriHistoryRepository.listUrlIdentities.mockResolvedValueOnce([
+      { id: 1, url: "https://example.com/test/read.cgi/board/1/" },
+      { id: 2, url: "http://example.com/test/read.cgi/board/1/?g=10#res5" },
+      { id: 3, url: "https://example.com/test/read.cgi/board/2/" },
+    ]);
+
+    const History = await import("src/core/history/History");
+    await History.removeThread("https://example.com/test/read.cgi/board/1/");
+
+    expect(state.tauriHistoryRepository.removeByIds).toHaveBeenCalledWith([1, 2]);
   });
 
   it("clearRange passes unix threshold", async () => {

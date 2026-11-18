@@ -18,6 +18,7 @@ export const deleteLogMock = vi.fn();
 export const removeReadStateMock = vi.fn();
 export const clearBookmarkReadStateMock = vi.fn();
 export const removeHistoryMock = vi.fn();
+export const removeThreadHistoryMock = vi.fn();
 export const toastErrorMock = vi.fn();
 export const toastInfoMock = vi.fn();
 export const toastSuccessMock = vi.fn();

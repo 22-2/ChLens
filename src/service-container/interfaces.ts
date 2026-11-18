@@ -66,7 +66,7 @@ export interface INotificationService {
  */
 export type IHistoryService = Pick<
   typeof HistoryModule,
-  "add" | "remove" | "get" | "getByUrl" | "getAll" | "clear"
+  "add" | "remove" | "removeThread" | "get" | "getByUrl" | "getAll" | "clear"
 >;
 
 /** 書き込み履歴（Phase E、計画書 §3.6）。関数の形は core/history/WriteHistory から取る。 */

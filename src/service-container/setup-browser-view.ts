@@ -18,6 +18,7 @@ export function setupBrowserViewServices(): void {
   container.history = {
     add: History.add,
     remove: History.remove,
+    removeThread: History.removeThread,
     get: History.get,
     getByUrl: History.getByUrl,
     getAll: History.getAll,

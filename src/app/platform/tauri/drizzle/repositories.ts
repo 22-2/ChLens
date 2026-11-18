@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { ChURL, normalizeReadStateUrl } from "packages/chlib/src/index";
 import { getTauriDrizzleContext } from "src/app/platform/tauri/drizzle/db";
 import {
@@ -319,6 +319,22 @@ export const tauriHistoryRepository = {
     }
 
     await db.delete(historyTable).where(eq(historyTable.url, url));
+  },
+
+  /**
+   * スレ単位の履歴削除で照合に使う ID と URL だけを返す。
+   * 変更理由: 全履歴の列を読み込むと件数に比例して遅くなるため、照合に必要な列に絞る。
+   */
+  async listUrlIdentities(): Promise<Array<{ id: number; url: string }>> {
+    const { db } = await getTauriDrizzleContext();
+    return db.select({ id: historyTable.id, url: historyTable.url }).from(historyTable);
+  },
+
+  /** スレ単位の履歴削除で、一致した行をまとめて消す。 */
+  async removeByIds(ids: readonly number[]): Promise<void> {
+    if (ids.length === 0) return;
+    const { db } = await getTauriDrizzleContext();
+    await db.delete(historyTable).where(inArray(historyTable.id, [...ids]));
   },
 
   async get(offset: number, limit: number): Promise<HistoryRecord[]> {

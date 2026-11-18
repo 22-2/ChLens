@@ -35,6 +35,23 @@ describe("スレ一覧キャッシュ", () => {
     ]);
   });
 
+  it("URL表記が違っても同じスレの既読状態を外す", async () => {
+    const targetUrl = "https://example.com/test/read.cgi/board/1/";
+    const cachedUrl = "http://example.com/test/read.cgi/board/1/?g=10#res5";
+    const otherUrl = "https://example.com/test/read.cgi/board/2/";
+    cacheMocks.get.mockResolvedValue([
+      { url: cachedUrl, readState: { read: 2, received: 3 } },
+      { url: otherUrl, readState: { read: 1, received: 1 } },
+    ]);
+
+    await clearCachedThreadReadState(targetUrl);
+
+    expect(cacheMocks.set).toHaveBeenCalledWith("https://example.com/board/", [
+      { url: cachedUrl, readState: undefined },
+      { url: otherUrl, readState: { read: 1, received: 1 } },
+    ]);
+  });
+
   it("対象の一覧キャッシュがなければ何も書き込まない", async () => {
     cacheMocks.get.mockResolvedValue(null);
 

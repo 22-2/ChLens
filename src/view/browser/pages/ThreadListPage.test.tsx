@@ -16,8 +16,8 @@ import {
   focusedPaneIdRef,
   loggerMock,
   panesRef,
-  removeHistoryMock,
   removeReadStateMock,
+  removeThreadHistoryMock,
   selectedTabIdRef,
   toastSuccessMock,
 } from "src/test-support/thread-list-page-mocks";
@@ -190,9 +190,8 @@ describe("ThreadListPage", () => {
       ]),
     );
     await waitFor(() =>
-      expect(removeHistoryMock).toHaveBeenCalledWith(
+      expect(removeThreadHistoryMock).toHaveBeenCalledWith(
         "https://egg.5ch.net/test/read.cgi/software/1/",
-        null,
       ),
     );
     await waitFor(() => {

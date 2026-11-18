@@ -1,4 +1,5 @@
 import { type DBSchema, type IDBPDatabase, openDB } from "idb";
+import { getThreadRecordKey, getThreadUrlAliases } from "packages/chlib/src/index";
 import { assertArg, log } from "src/app/Log";
 import message from "src/app/Message";
 import { isHttps } from "src/core/network/url-protocol";
@@ -436,6 +437,72 @@ export const remove = async function (
     notifyHistoryUpdated({ type: "removed", url, date });
   } catch (e) {
     reportError("History.remove: トランザクション中断", e);
+  }
+};
+
+/**
+ * 指定スレの閲覧履歴を、URL表記の違いを吸収してまとめて削除する。
+ *
+ * 変更理由: スレログ削除と同時に履歴を消すとき、http/https・ホスト別名・
+ * hash付きなど同じスレの別表記が残らないようにする。
+ */
+export const removeThread = async function (url: string): Promise<void> {
+  if (assertArg("History.removeThread", [[url, "string"]])) {
+    throw new Error("履歴から削除しようとしたデータが不正です");
+  }
+
+  const aliases = new Set(getThreadUrlAliases(url));
+  const targetRecordKey = getThreadRecordKey(url);
+
+  try {
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    if (isTauriRuntime()) {
+      const tauriHistoryRepository = await safeGetTauriHistoryRepository();
+      const identities = await tauriHistoryRepository.listUrlIdentities();
+      const ids = identities
+        .filter(
+          (identity) =>
+            aliases.has(identity.url) ||
+            (targetRecordKey != null && getThreadRecordKey(identity.url) === targetRecordKey),
+        )
+        .map((identity) => identity.id);
+      await tauriHistoryRepository.removeByIds(ids);
+      if (ids.length > 0) {
+        notifyHistoryUpdated({ type: "removed", url });
+      }
+      return;
+    }
+
+    const db = await getDB();
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const urlIndex = tx.store.index("url");
+    const keys = new Set<number>();
+    for (const alias of aliases) {
+      const matched = await urlIndex.getAllKeys(alias);
+      for (const key of matched) keys.add(key);
+    }
+
+    // 変更理由: 索引の完全一致では、保存時に付いたquery/hashや5chのサーバー移転前の
+    // ホスト別名を拾えない。索引で見つかった場合も取りこぼさないよう、スレIDで全件を照合する。
+    if (targetRecordKey != null) {
+      let cursor = await tx.store.openCursor();
+      while (cursor) {
+        if (getThreadRecordKey(cursor.value.url) === targetRecordKey) {
+          keys.add(ensurePersistedRecord(cursor.value).id);
+        }
+        cursor = await cursor.continue();
+      }
+    }
+
+    for (const key of keys) {
+      await tx.store.delete(key);
+    }
+    await tx.done;
+    if (keys.size > 0) {
+      notifyHistoryUpdated({ type: "removed", url });
+    }
+  } catch (e) {
+    reportError("History.removeThread: トランザクション中断", e);
   }
 };
 

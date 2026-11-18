@@ -233,6 +233,22 @@ describe("Tauri SQLite の閲覧履歴リポジトリ", () => {
     expect(await tauriHistoryRepository.getByUrl(THREAD_URL)).toEqual([]);
   });
 
+  it("IDを指定して削除すると、一致した閲覧だけを消す", async () => {
+    const { tauriHistoryRepository } = repositories;
+    await tauriHistoryRepository.add(THREAD_URL, "スレ", 100, "板A");
+    await tauriHistoryRepository.add(OTHER_THREAD_URL, "別スレ", 200, "板A");
+    const identities = await tauriHistoryRepository.listUrlIdentities();
+    const targetIds = identities
+      .filter((identity) => identity.url === THREAD_URL)
+      .map((identity) => identity.id);
+
+    await tauriHistoryRepository.removeByIds(targetIds);
+
+    expect((await tauriHistoryRepository.getAll()).map((row) => row.url)).toEqual([
+      OTHER_THREAD_URL,
+    ]);
+  });
+
   it("指定した日時より前の閲覧だけを期間で消す", async () => {
     const { tauriHistoryRepository } = repositories;
     await tauriHistoryRepository.add(THREAD_URL, "古い", 100, "板A");

@@ -11,19 +11,37 @@ interface DeleteThreadLogAndCloseTabOptions {
   toast: IToastService;
 }
 
+/**
+ * 保存側と表記がずれた同じスレの履歴も残さないよう、スレ単位でまとめて削除する。
+ * 変更理由: 履歴はURLの完全一致で消すため、http/https・hash・ホスト別名の違いだけで
+ * 削除されずに残ることがあった。
+ */
+async function deleteThreadHistory(threadUrl: string): Promise<void> {
+  await container.history.removeThread(threadUrl);
+}
+
+/** 保存済みログを削除し、削除したことをログ一覧へ通知する。 */
+async function deleteThreadLog(threadUrl: string): Promise<number> {
+  const deletedCount = await container.threadLog.deleteLog(threadUrl);
+  if (deletedCount > 0) {
+    // 変更理由: ログ一覧は log_updated でしか再読込しないため、通知しないと
+    // 削除後も古い行が残り「削除されていない」ように見える。
+    container.message.send("log_updated", { url: threadUrl });
+  }
+  return deletedCount;
+}
+
 /** ログ削除後も残る既読状態を、既読DBとブックマークの両方から消す。 */
-async function deleteThreadLogAndClearReadState(
+async function clearThreadReadState(
   threadUrl: string,
   clearCachedReadState: (threadUrl: string) => Promise<void>,
-): Promise<number> {
-  const deletedCount = await container.threadLog.deleteLog(threadUrl);
+): Promise<void> {
   await container.readState.remove(threadUrl);
   const clearedBookmarkReadState = await container.bookmark.clearReadState(threadUrl);
   if (!clearedBookmarkReadState) {
     throw new Error("ブックマークに保存された既読状態を解除できませんでした");
   }
   await clearCachedReadState(threadUrl);
-  return deletedCount;
 }
 
 /** スレログ、閲覧履歴、ログ削除後に残る既読状態をまとめて削除する。 */
@@ -32,11 +50,10 @@ export async function deleteThreadLogAndHistory(
   clearCachedReadState: (threadUrl: string) => Promise<void>,
 ): Promise<number> {
   // 変更理由: ログと閲覧履歴を別々の操作で残さないよう、全てのログ削除入口で一緒に整理する。
-  const deletedCount = await deleteThreadLogAndClearReadState(threadUrl, clearCachedReadState);
-  const historyResult = await container.history.remove(threadUrl, null);
-  if (historyResult instanceof Error) {
-    throw historyResult;
-  }
+  // 履歴は既読状態の後片付けより先に消し、後片付けの失敗で履歴が残らないようにする。
+  const deletedCount = await deleteThreadLog(threadUrl);
+  await deleteThreadHistory(threadUrl);
+  await clearThreadReadState(threadUrl, clearCachedReadState);
   return deletedCount;
 }
 

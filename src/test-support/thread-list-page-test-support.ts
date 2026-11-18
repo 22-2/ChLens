@@ -25,6 +25,7 @@ import {
   panesRef,
   removeHistoryMock,
   removeReadStateMock,
+  removeThreadHistoryMock,
   selectedTabIdRef,
   toastErrorMock,
   toastInfoMock,
@@ -179,11 +180,14 @@ export function setupThreadListPageTest(): ThreadListPageTestState {
     } as unknown as typeof serviceContainer.readState;
     removeHistoryMock.mockReset();
     removeHistoryMock.mockResolvedValue(undefined);
+    removeThreadHistoryMock.mockReset();
+    removeThreadHistoryMock.mockResolvedValue(undefined);
     serviceContainer.threadLog = {
       deleteLog: deleteLogMock,
     } as unknown as IThreadLogService;
     serviceContainer.history = {
       remove: removeHistoryMock,
+      removeThread: removeThreadHistoryMock,
     } as unknown as IHistoryService;
     toastErrorMock.mockReset();
     toastInfoMock.mockReset();

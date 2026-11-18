@@ -122,6 +122,24 @@ describe("History browser branch", () => {
     expect(rows[0]?.url).toBe("https://example.com/other");
   });
 
+  it("removeThread removes every notation of the same thread", async () => {
+    const History = await import("src/core/history/History");
+
+    await History.add("https://example.com/test/read.cgi/board/1/", "v1", 100, "board");
+    await History.add("http://example.com/test/read.cgi/board/1/", "v2", 200, "board");
+    await History.add("https://example.com/test/read.cgi/board/1/?g=10#res5", "v3", 300, "board");
+    await History.add("https://example.com/test/read.cgi/board/2/", "other", 400, "board");
+
+    await History.removeThread("https://example.com/test/read.cgi/board/1/");
+
+    const rows = await History.getAll();
+    expect(rows.map((row) => row.url)).toEqual(["https://example.com/test/read.cgi/board/2/"]);
+    expect(messageSend).toHaveBeenCalledWith("history_updated", {
+      type: "removed",
+      url: "https://example.com/test/read.cgi/board/1/",
+    });
+  });
+
   it("clear(offset) keeps first offset rows in insertion order", async () => {
     const History = await import("src/core/history/History");
 

@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => {
     history: {
       add: vi.fn(async () => undefined),
       remove: vi.fn(async () => undefined),
+      removeThread: vi.fn(async () => undefined),
       get: vi.fn(async () => []),
       getByUrl: vi.fn(async () => []),
       getAll: vi.fn(async () => []),
