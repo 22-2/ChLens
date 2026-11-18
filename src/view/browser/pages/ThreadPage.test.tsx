@@ -29,6 +29,7 @@ const h = vi.hoisted(() => ({
   },
   nextThreadSetting: { enabled: false },
   floatingActions: { props: null as Record<string, unknown> | null },
+  activeTopBar: "none" as "none" | "filter",
   dispatch: vi.fn(),
   toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() },
   runTabCommand: vi.fn(() => true),
@@ -266,9 +267,14 @@ vi.mock("src/view/browser/hooks/use-mouse-gesture", () => ({
   useMouseGesture: () => undefined,
 }));
 
-vi.mock("src/view/browser/pages/thread/ThreadPageTopBar", () => ({
-  ThreadPageTopBar: () => null,
-}));
+// 実物と同じく、バーを出すかどうかは activeTopBar だけで決め、出すときは目印を描画する。
+vi.mock("src/view/browser/pages/thread/ThreadPageTopBar", async () => {
+  const { createElement } = await import("react");
+  return {
+    ThreadPageTopBar: ({ activeTopBar }: { activeTopBar: "none" | "filter" }) =>
+      activeTopBar === "filter" ? createElement("div", { "data-testid": "thread-top-bar" }) : null,
+  };
+});
 
 vi.mock("src/view/browser/pages/thread/use-comment-overlay-handoff", () => ({
   useCommentOverlayHandoff: () => undefined,
@@ -348,7 +354,7 @@ vi.mock("src/view/browser/pages/thread/use-thread-status-sync", () => ({
 
 vi.mock("src/view/browser/pages/thread/use-thread-top-bar", () => ({
   useThreadTopBar: () => ({
-    activeTopBar: "none",
+    activeTopBar: h.activeTopBar,
     closeTopBar: vi.fn(),
     closeTopBarPreservingFilter: vi.fn(),
     openFilterToolbar: vi.fn(),
@@ -441,7 +447,9 @@ function renderThreadPage(overrides: Partial<Props> = {}) {
     startAutoRefreshAtBottom: false,
     ...overrides,
   };
-  return render(<ThreadPage {...props} />);
+  const utils = render(<ThreadPage {...props} />);
+  // 同じタブ・同じ props のまま、差し替えた画面の状態で描画し直す。
+  return { ...utils, rerenderPage: () => utils.rerender(<ThreadPage {...props} />) };
 }
 
 describe("ThreadPage の組み立て", () => {
@@ -450,6 +458,7 @@ describe("ThreadPage の組み立て", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     h.threadData = createThreadData();
+    h.activeTopBar = "none";
     h.autoRefresh.props = null;
     h.autoRefresh.canAutoScroll = false;
     h.nextThread.pendingMove = null;
@@ -480,6 +489,47 @@ describe("ThreadPage の組み立て", () => {
       expect(screen.getByText("通信に失敗しました")).toBeInTheDocument();
       fireEvent.click(screen.getByRole("button", { name: "再試行" }));
       expect(fetchThread).toHaveBeenCalledWith(true);
+    });
+
+    it("フィルタバーを出す状態のときは、初回読み込み中でも、本文がなく取得に失敗したときでも、バーを出し続ける", () => {
+      h.activeTopBar = "filter";
+      h.threadData = createThreadData({ isInitialLoading: true, loading: true });
+      const { rerenderPage } = renderThreadPage();
+
+      expect(screen.getByRole("status", { name: "スレッドを読み込み中" })).toBeInTheDocument();
+      expect(screen.getByTestId("thread-top-bar")).toBeInTheDocument();
+
+      h.threadData = createThreadData({ error: "通信に失敗しました" });
+      rerenderPage();
+
+      expect(screen.getByRole("button", { name: "再試行" })).toBeInTheDocument();
+      expect(screen.getByTestId("thread-top-bar")).toBeInTheDocument();
+    });
+
+    it("フィルタバーを出さない状態のときは、読み込み中も、本文を表示したときも、バーを出さない", () => {
+      h.threadData = createThreadData({ isInitialLoading: true, loading: true });
+      const { rerenderPage } = renderThreadPage();
+
+      expect(screen.queryByTestId("thread-top-bar")).toBeNull();
+
+      h.threadData = createThreadData({ responses: [RES_1], filteredResponses: [RES_1] });
+      rerenderPage();
+
+      expect(screen.queryByTestId("thread-top-bar")).toBeNull();
+    });
+
+    it("読み込みが終わって本文を表示したあとも、フィルタバーを出し続ける", () => {
+      h.activeTopBar = "filter";
+      h.threadData = createThreadData({ isInitialLoading: true, loading: true });
+      const { rerenderPage } = renderThreadPage();
+      const barWhileLoading = screen.getByTestId("thread-top-bar");
+
+      h.threadData = createThreadData({ responses: [RES_1], filteredResponses: [RES_1] });
+      rerenderPage();
+
+      // 読み込みの前後で同じ要素のままなら、入力欄のフォーカスも作り直しで失われない。
+      expect(screen.getByTestId("thread-top-bar")).toBe(barWhileLoading);
+      expect(screen.getByTestId("res-item")).toHaveTextContent("一つ目");
     });
 
     it("本文を表示したまま取得に失敗したときは、本文を残してエラーを通知として出し、再試行は出さない", () => {

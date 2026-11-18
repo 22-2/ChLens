@@ -845,6 +845,9 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     );
   };
 
+  // 本文がまだ無い初回読み込み中と、本文がなく取得に失敗したときは、本文の代わりに状態を示す。
+  const showLoadStatus = isInitialLoading || (isCacheResolved && !!error && responses.length === 0);
+
   // ジェスチャーuseEffectでrootRefが確実にマウント済みになるよう、loading中の早期returnを廃止し常にrootRef付きdivを描画する
   return (
     <div ref={setThreadRoot} className="thread-page" onDoubleClick={handleDoubleClick}>
@@ -860,7 +863,41 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         threshold={WHEEL_THRESHOLD}
         portalContainerRef={effectiveScrollContainerRef}
       />
-      {isInitialLoading || (isCacheResolved && error && responses.length === 0) ? (
+      {/* 変更理由: 読み込み中や取得失敗の表示でも、フィルタバーの表示は activeTopBar に従う。
+          描画を省くと、保存済みのフィルタを復元したタブや常時表示の設定でも、フィルタが有効なのに
+          バーが無く、解除する手段も見えなくなる。分岐の外に置くので、読み込み後も作り直されない。 */}
+      <div className="thread-page__sticky-header" data-toast-avoid="">
+        {!showLoadStatus && find.isOpen ? <ThreadFindBar find={find} /> : null}
+        <ThreadPageTopBar
+          activeTopBar={activeTopBar}
+          filter={filter}
+          filterCounts={filterCounts}
+          onClose={closeTopBar}
+          onFilterChange={setFilter}
+          onSearchQueryChange={setSearchQuery}
+          searchFocusKey={searchFocusKey}
+          suppressInitialFocus={suppressInitialFocus}
+          searchQuery={searchQuery}
+          searchOptions={searchOptions}
+          onSearchOptionsChange={setSearchOptions}
+          searchError={searchError}
+        />
+
+        {/* 取得失敗は読み込み表示がエラーと再試行を示すため、通知欄での二重表示を避ける。 */}
+        {!showLoadStatus ? (
+          <ThreadPageNotices
+            expired={!isArchiveReplay && expired}
+            missingFromSubject={!isArchiveReplay && missingFromSubject}
+            error={error}
+            isNextThreadWaiting={isNextThreadWaiting}
+            onCancelNextThreadWaiting={() =>
+              handleAutoRefreshStop("次スレ待機をキャンセルしました")
+            }
+            onSearchRelatedThreads={onSearchRelatedThreads}
+          />
+        ) : null}
+      </div>
+      {showLoadStatus ? (
         <ThreadLoadStatus
           loading={isInitialLoading}
           error={error}
@@ -868,35 +905,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
         />
       ) : (
         <>
-          <div className="thread-page__sticky-header" data-toast-avoid="">
-            {find.isOpen ? <ThreadFindBar find={find} /> : null}
-            <ThreadPageTopBar
-              activeTopBar={activeTopBar}
-              filter={filter}
-              filterCounts={filterCounts}
-              onClose={closeTopBar}
-              onFilterChange={setFilter}
-              onSearchQueryChange={setSearchQuery}
-              searchFocusKey={searchFocusKey}
-              suppressInitialFocus={suppressInitialFocus}
-              searchQuery={searchQuery}
-              searchOptions={searchOptions}
-              onSearchOptionsChange={setSearchOptions}
-              searchError={searchError}
-            />
-
-            <ThreadPageNotices
-              expired={!isArchiveReplay && expired}
-              missingFromSubject={!isArchiveReplay && missingFromSubject}
-              error={error}
-              isNextThreadWaiting={isNextThreadWaiting}
-              onCancelNextThreadWaiting={() =>
-                handleAutoRefreshStop("次スレ待機をキャンセルしました")
-              }
-              onSearchRelatedThreads={onSearchRelatedThreads}
-            />
-          </div>
-
           <div className="thread-page__responses">
             {/* 変更理由: 非表示のタブでもレスのDOMを持ち続けるとタブ数に比例してメモリが増えるため、
                 表示中だけ一覧を描画する。見ていた位置と実測値は useThreadVirtualList の仮想izerが保持する。 */}
