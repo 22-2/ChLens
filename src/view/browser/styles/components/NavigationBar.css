@@ -186,17 +186,27 @@
   right: 0;
   left: 0;
   z-index: var(--sys-z-omnibar);
-  max-height: min(320px, calc(100vh - 96px));
-  overflow-y: auto;
-  padding: var(--sys-space-3);
+  display: flex;
+  flex-direction: column;
+  max-height: min(
+    calc(var(--sys-space-16) * 10),
+    calc(var(--omnibar-available-height, 100dvh) - var(--sys-space-2))
+  );
+  overflow: hidden;
   border: 1px solid var(--sys-color-border);
   border-radius: var(--sys-radius-xl);
   background: var(--sys-color-surface);
   box-shadow: var(--sys-shadow-floating);
 }
+/* 件数は候補の外に固定し、スクロール中も重ならないようにする。 */
+.nav-bar__omnibar-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--sys-space-2) var(--sys-space-3);
+}
 .nav-bar__omnibar-count {
-  position: sticky;
-  bottom: 0;
+  flex: none;
   padding: var(--sys-space-2) var(--sys-space-3);
   background: var(--sys-color-surface);
   color: var(--sys-color-text-muted);
@@ -213,9 +223,9 @@
   align-items: baseline;
   gap: 8px;
   width: 100%;
-  padding: 6px 10px;
+  padding: var(--sys-space-2) var(--sys-space-5);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--sys-radius-sm);
   background: transparent;
   color: var(--sys-color-text);
   text-align: left;

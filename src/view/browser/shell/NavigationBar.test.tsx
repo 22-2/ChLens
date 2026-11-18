@@ -149,6 +149,22 @@ describe("NavigationBar", () => {
     viewTab.currentIndex = 1;
   });
 
+  it("可視領域が縮むと候補欄の高さを追従させる", () => {
+    const viewport = Object.assign(new EventTarget(), { height: 500, offsetTop: 0 });
+    vi.stubGlobal("visualViewport", viewport);
+    try {
+      render(<NavigationBar />);
+      openUrlBar();
+      const popup = screen.getByRole("listbox", { name: "候補" }).parentElement!;
+      expect(popup.style.getPropertyValue("--omnibar-available-height")).toBe("500px");
+      viewport.height = 300;
+      viewport.dispatchEvent(new Event("resize"));
+      expect(popup.style.getPropertyValue("--omnibar-available-height")).toBe("300px");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("URLバー候補は『タイトル URL』の並びで表示し、お気に入りを優先する", async () => {
     bookmarkGetAllMock.mockReturnValue([
       {
@@ -302,6 +318,10 @@ describe("NavigationBar", () => {
       await screen.findByRole("status", { name: "表示 50 件 / 一致 70 件" }),
     ).toHaveTextContent("50 / 70");
     expect(screen.getAllByRole("option")).toHaveLength(50);
+    const list = screen.getByRole("listbox", { name: "候補" });
+    const count = screen.getByRole("status", { name: "表示 50 件 / 一致 70 件" });
+    expect(list.parentElement).toBe(count.parentElement);
+    expect(list).not.toContainElement(count);
     fireEvent.change(screen.getByPlaceholderText("お気に入りを検索..."), {
       target: { value: "保存済み 0" },
     });

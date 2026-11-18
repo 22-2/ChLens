@@ -92,6 +92,30 @@ export const Omnibar: React.FC<OmnibarProps> = ({
   trailingAction,
 }) => {
   const listRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const popup = popupRef.current;
+    const view = popup?.ownerDocument.defaultView;
+    if (!isOpen || !popup || !view) return;
+    const viewport = view.visualViewport;
+    // 表示領域が変わっても候補と件数表示を画面内に収める。
+    const updateAvailableHeight = () => {
+      const bottom = viewport ? viewport.offsetTop + viewport.height : view.innerHeight;
+      popup.style.setProperty(
+        "--omnibar-available-height",
+        `${Math.max(0, bottom - popup.getBoundingClientRect().top)}px`,
+      );
+    };
+    updateAvailableHeight();
+    viewport?.addEventListener("resize", updateAvailableHeight);
+    viewport?.addEventListener("scroll", updateAvailableHeight);
+    view.addEventListener("resize", updateAvailableHeight);
+    return () => {
+      viewport?.removeEventListener("resize", updateAvailableHeight);
+      viewport?.removeEventListener("scroll", updateAvailableHeight);
+      view.removeEventListener("resize", updateAvailableHeight);
+    };
+  }, [isOpen]);
   const keyboardScrollRef = useRef(false);
   const previousModeRef = useRef(mode);
   useLayoutEffect(() => {
@@ -106,8 +130,7 @@ export const Omnibar: React.FC<OmnibarProps> = ({
     // 長い候補一覧でも矢印キーで選択した行を表示範囲に保つ。
     const selectedRect = selected.getBoundingClientRect();
     const listRect = list.getBoundingClientRect();
-    const footer = list.querySelector<HTMLElement>(".nav-bar__omnibar-count");
-    const visibleBottom = footer ? footer.getBoundingClientRect().top : listRect.bottom;
+    const visibleBottom = listRect.bottom;
     if (selectedRect.top < listRect.top) list.scrollTop -= listRect.top - selectedRect.top;
     else if (selectedRect.bottom > visibleBottom)
       list.scrollTop += selectedRect.bottom - visibleBottom;
@@ -151,128 +174,131 @@ export const Omnibar: React.FC<OmnibarProps> = ({
       {trailingAction ? <div className="nav-bar__url-action">{trailingAction}</div> : null}
 
       {isOpen ? (
-        <div
-          ref={listRef}
-          className="nav-bar__omnibar"
-          role="listbox"
-          aria-label={mode === "command" ? "コマンド候補" : "候補"}
-        >
-          {availableModes.length > 0 ? (
-            <div className="nav-bar__omnibar-section" role="presentation">
-              モード
-            </div>
-          ) : null}
-          {availableModes.map((item, index) => {
-            const Icon = item.id === "command" ? Command : SOURCE_METADATA[item.id].Icon;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className={`nav-bar__omnibar-item nav-bar__omnibar-item--command${activeSuggestionIndex === index ? " nav-bar__omnibar-item--active" : ""}`}
-                role="option"
-                aria-selected={activeSuggestionIndex === index}
-                aria-label={`${item.label} モード`}
-                onMouseDown={(event) => event.preventDefault()}
-                onMouseEnter={() => {
-                  keyboardScrollRef.current = false;
-                  onSuggestionHover(index);
-                }}
-                onClick={() => onEnterMode(item.id)}
-              >
-                <span className="nav-bar__omnibar-command-icon" aria-hidden="true">
-                  <Icon size={15} />
-                </span>
-                <span className="nav-bar__omnibar-title">{item.label}</span>
-                <span className="nav-bar__omnibar-url">{item.description}</span>
-              </button>
-            );
-          })}
-
-          {mode === "navigation" && suggestions.length > 0 ? (
-            <div className="nav-bar__omnibar-section" role="presentation">
-              候補
-            </div>
-          ) : null}
-          {mode !== "command" && suggestions.length > 0
-            ? suggestions.map((suggestion, index) => (
+        <div ref={popupRef} className="nav-bar__omnibar">
+          {/* 件数表示と候補のスクロール領域を分け、項目がフッターにはみ出さないようにする。 */}
+          <div
+            ref={listRef}
+            className="nav-bar__omnibar-list"
+            role="listbox"
+            aria-label={mode === "command" ? "コマンド候補" : "候補"}
+          >
+            {availableModes.length > 0 ? (
+              <div className="nav-bar__omnibar-section" role="presentation">
+                モード
+              </div>
+            ) : null}
+            {availableModes.map((item, index) => {
+              const Icon = item.id === "command" ? Command : SOURCE_METADATA[item.id].Icon;
+              return (
                 <button
-                  key={`${suggestion.url}::${suggestion.actionLabel ?? ""}::${
-                    suggestion.openInNewTab ? "new-tab" : "current-tab"
-                  }::${suggestion.writtenRes ?? ""}::${index}`}
+                  key={item.id}
                   type="button"
-                  className={`nav-bar__omnibar-item nav-bar__omnibar-item--navigation${
-                    index + availableModes.length === activeSuggestionIndex
-                      ? " nav-bar__omnibar-item--active"
-                      : ""
-                  }`}
+                  className={`nav-bar__omnibar-item nav-bar__omnibar-item--command${activeSuggestionIndex === index ? " nav-bar__omnibar-item--active" : ""}`}
                   role="option"
-                  aria-selected={index + availableModes.length === activeSuggestionIndex}
-                  onMouseDown={(e) => {
-                    // blur が先に発火して候補クリックが失われるのを防ぐ。
-                    if (e.button === 0) e.preventDefault();
-                  }}
+                  aria-selected={activeSuggestionIndex === index}
+                  aria-label={`${item.label} モード`}
+                  onMouseDown={(event) => event.preventDefault()}
                   onMouseEnter={() => {
                     keyboardScrollRef.current = false;
-                    onSuggestionHover(index + availableModes.length);
+                    onSuggestionHover(index);
                   }}
-                  onClick={() => onSuggestionSelect(suggestion)}
-                  onContextMenu={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onSuggestionContextMenu?.(suggestion, event.clientX, event.clientY);
-                  }}
-                  title={`${suggestion.title} ${suggestion.url}`}
+                  onClick={() => onEnterMode(item.id)}
                 >
-                  <SourceIcons sources={suggestion.sources} />
-                  <span className="nav-bar__omnibar-title">
-                    {suggestion.actionLabel ?? suggestion.title}
-                    {suggestion.writtenRes ? ` #${suggestion.writtenRes}` : ""}
+                  <span className="nav-bar__omnibar-command-icon" aria-hidden="true">
+                    <Icon size={15} />
                   </span>
-                  <span className="nav-bar__omnibar-url">
-                    {suggestion.message || suggestion.url}
-                  </span>
+                  <span className="nav-bar__omnibar-title">{item.label}</span>
+                  <span className="nav-bar__omnibar-url">{item.description}</span>
                 </button>
-              ))
-            : null}
+              );
+            })}
 
-          {mode === "command" && commandSuggestions.length > 0
-            ? commandSuggestions.map((command, index) => {
-                const Icon = command.icon;
-                return (
+            {mode === "navigation" && suggestions.length > 0 ? (
+              <div className="nav-bar__omnibar-section" role="presentation">
+                候補
+              </div>
+            ) : null}
+            {mode !== "command" && suggestions.length > 0
+              ? suggestions.map((suggestion, index) => (
                   <button
-                    key={command.id}
+                    key={`${suggestion.url}::${suggestion.actionLabel ?? ""}::${
+                      suggestion.openInNewTab ? "new-tab" : "current-tab"
+                    }::${suggestion.writtenRes ?? ""}::${index}`}
                     type="button"
-                    className={`nav-bar__omnibar-item nav-bar__omnibar-item--command${
-                      index === activeSuggestionIndex ? " nav-bar__omnibar-item--active" : ""
+                    className={`nav-bar__omnibar-item nav-bar__omnibar-item--navigation${
+                      index + availableModes.length === activeSuggestionIndex
+                        ? " nav-bar__omnibar-item--active"
+                        : ""
                     }`}
                     role="option"
-                    aria-selected={index === activeSuggestionIndex}
-                    aria-label={`${command.label} (${command.englishLabel})`}
-                    disabled={!command.enabled}
+                    aria-selected={index + availableModes.length === activeSuggestionIndex}
                     onMouseDown={(e) => {
-                      // blur が先に発火してコマンドクリックが失われるのを防ぐ。
-                      e.preventDefault();
+                      // blur が先に発火して候補クリックが失われるのを防ぐ。
+                      if (e.button === 0) e.preventDefault();
                     }}
                     onMouseEnter={() => {
                       keyboardScrollRef.current = false;
-                      onSuggestionHover(index);
+                      onSuggestionHover(index + availableModes.length);
                     }}
-                    onClick={() => onCommandSelect(command)}
-                    title={command.description ?? `${command.label} (${command.englishLabel})`}
+                    onClick={() => onSuggestionSelect(suggestion)}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onSuggestionContextMenu?.(suggestion, event.clientX, event.clientY);
+                    }}
+                    title={`${suggestion.title} ${suggestion.url}`}
                   >
-                    <span className="nav-bar__omnibar-command-icon" aria-hidden="true">
-                      <Icon size={15} />
+                    <SourceIcons sources={suggestion.sources} />
+                    <span className="nav-bar__omnibar-title">
+                      {suggestion.actionLabel ?? suggestion.title}
+                      {suggestion.writtenRes ? ` #${suggestion.writtenRes}` : ""}
                     </span>
-                    <span className="nav-bar__omnibar-title">{command.label}</span>
-                    <span className="nav-bar__omnibar-url">{command.englishLabel}</span>
+                    <span className="nav-bar__omnibar-url">
+                      {suggestion.message || suggestion.url}
+                    </span>
                   </button>
-                );
-              })
-            : null}
+                ))
+              : null}
 
-          {shouldShowNoMatch ? (
-            <div className="nav-bar__omnibar-empty">一致する候補がありません</div>
-          ) : null}
+            {mode === "command" && commandSuggestions.length > 0
+              ? commandSuggestions.map((command, index) => {
+                  const Icon = command.icon;
+                  return (
+                    <button
+                      key={command.id}
+                      type="button"
+                      className={`nav-bar__omnibar-item nav-bar__omnibar-item--command${
+                        index === activeSuggestionIndex ? " nav-bar__omnibar-item--active" : ""
+                      }`}
+                      role="option"
+                      aria-selected={index === activeSuggestionIndex}
+                      aria-label={`${command.label} (${command.englishLabel})`}
+                      disabled={!command.enabled}
+                      onMouseDown={(e) => {
+                        // blur が先に発火してコマンドクリックが失われるのを防ぐ。
+                        e.preventDefault();
+                      }}
+                      onMouseEnter={() => {
+                        keyboardScrollRef.current = false;
+                        onSuggestionHover(index);
+                      }}
+                      onClick={() => onCommandSelect(command)}
+                      title={command.description ?? `${command.label} (${command.englishLabel})`}
+                    >
+                      <span className="nav-bar__omnibar-command-icon" aria-hidden="true">
+                        <Icon size={15} />
+                      </span>
+                      <span className="nav-bar__omnibar-title">{command.label}</span>
+                      <span className="nav-bar__omnibar-url">{command.englishLabel}</span>
+                    </button>
+                  );
+                })
+              : null}
+
+            {shouldShowNoMatch ? (
+              <div className="nav-bar__omnibar-empty">一致する候補がありません</div>
+            ) : null}
+          </div>
           {!isLoading ||
           (mode === "command" ? commandSuggestions.length > 0 : suggestions.length > 0) ? (
             <div
