@@ -35,7 +35,6 @@ import { useThreadMediaViewerScope } from "src/features/media/browser/use-thread
 import { MediaViewerContainer } from "src/features/media/ui/MediaViewerContainer";
 import { useAutoNextThread } from "src/features/next-thread/browser/use-auto-next-thread";
 import { useAutoNextThreadSetting } from "src/features/next-thread/browser/use-auto-next-thread-setting";
-import { NextThreadSearchDialog } from "src/features/next-thread/ui/NextThreadSearchDialog";
 import { useThreadPopupManager } from "src/features/popup/browser/use-popup-manager";
 import { PopupRenderer } from "src/features/popup/ui/PopupRenderer";
 import { useTabCommandRunner } from "src/features/tabs/browser/use-tab-command-runner";
@@ -65,6 +64,7 @@ import { TAB_COMMAND_IDS } from "src/view/browser/commands/tab-command-runtime";
 import { useLatestRef } from "src/view/browser/hooks/use-latest-ref";
 import { useMouseGesture } from "src/view/browser/hooks/use-mouse-gesture";
 import { useUrlHandlers } from "src/view/browser/hooks/use-url-handlers";
+import { PendingNextThreadDialog } from "src/view/browser/pages/thread/PendingNextThreadDialog";
 import { ReadPositionLine } from "src/view/browser/pages/thread/ReadPositionLine";
 import { ThreadFooter } from "src/view/browser/pages/thread/ThreadFooter";
 import { ThreadLoadStatus } from "src/view/browser/pages/thread/ThreadLoadStatus";
@@ -849,16 +849,8 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   return (
     <div ref={setThreadRoot} className="thread-page" onDoubleClick={handleDoubleClick}>
       {pendingAutoNextThreadMove ? (
-        <NextThreadSearchDialog
-          state={{
-            status: "ready",
-            searchType: "next",
-            sourceThread: pendingAutoNextThreadMove.sourceThread,
-            candidates: pendingAutoNextThreadMove.candidates,
-            boardMessage: null,
-            error: null,
-          }}
-          autoMoveCountdown={pendingAutoNextThreadMove.remainingSeconds}
+        <PendingNextThreadDialog
+          move={pendingAutoNextThreadMove}
           onClose={cancelPendingMove}
           onSelect={selectPendingCandidate}
         />
