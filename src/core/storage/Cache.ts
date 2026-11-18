@@ -1,3 +1,4 @@
+import { getThreadRecordKey, getThreadUrlAliases } from "packages/chlib/src/index";
 import { createLogger } from "src/app/logger";
 import { platform } from "src/app/platform";
 import type { ObjectStore } from "src/app/platform/types";
@@ -6,6 +7,23 @@ import { getTauriRepositories, isTauriRuntime } from "src/core/storage/TauriDriz
 import { stripHtml } from "src/core/util/strip-html";
 
 const logger = createLogger("core/storage");
+
+interface ThreadLogIdentity {
+  /** キャッシュキー（dat パスなど）。削除対象のキー。 */
+  url: string;
+  /** スレを再表示するためのURL。旧データでは dat キーで代替する。 */
+  threadUrl: string | null;
+}
+
+/** 保存済みスレURLが、削除対象のスレと同じ表記・同じスレIDかを判定する。 */
+function isSameThreadLog(
+  targetAliases: ReadonlySet<string>,
+  targetRecordKey: string | null,
+  candidateUrl: string,
+): boolean {
+  if (targetAliases.has(candidateUrl)) return true;
+  return targetRecordKey != null && getThreadRecordKey(candidateUrl) === targetRecordKey;
+}
 
 /**
  * キャッシュデータを管理するクラス
@@ -386,10 +404,45 @@ export default class Cache {
 
   /** 指定スレッドの閲覧ログだけを削除し、スレッド本文以外のキャッシュは残す。 */
   static async deleteLog(threadUrl: string): Promise<number> {
-    const logs = await Cache.listLogs();
-    const targets = logs.filter((log) => log.threadUrl === threadUrl);
-    await Promise.all(targets.map((log) => new Cache(log.url).delete()));
-    return targets.length;
+    const aliases = new Set(getThreadUrlAliases(threadUrl));
+    const recordKey = getThreadRecordKey(threadUrl);
+
+    // 変更理由: Tauri版はIndexedDBではなくSQLite(Drizzle)を正とする。
+    if (isTauriRuntime()) {
+      const { tauriCacheRepository } = await getTauriRepositories();
+      // 変更理由: 本文を含む全ログを読み込むと保存件数に比例して削除が遅くなるため、
+      // 照合に必要なURLだけを取得し、一致したキーを直接消す。
+      const identities = (await tauriCacheRepository.listLogIdentities()) as ThreadLogIdentity[];
+      const targetKeys = identities
+        .filter((identity) =>
+          isSameThreadLog(aliases, recordKey, identity.threadUrl ?? identity.url),
+        )
+        .map((identity) => identity.url);
+      await Promise.all(targetKeys.map((key) => tauriCacheRepository.remove(key)));
+      return targetKeys.length;
+    }
+
+    const store = this._getStore();
+    const targetKeys = new Set<string>();
+    // 索引には本文が含まれないため、全レコードを展開せず対象のキャッシュキーだけを得られる。
+    for (const alias of aliases) {
+      const keys = await store.index("thread_url").getAllKeys(alias);
+      for (const key of keys) targetKeys.add(String(key));
+    }
+
+    if (targetKeys.size === 0 && recordKey != null) {
+      // 変更理由: thread_url索引の導入前や5chのサーバー移転前など、URL表記が
+      // 一致しない旧ログは、スレIDの同一性キーで照合して取りこぼさない。
+      const logs = await Cache.listLogs();
+      for (const log of logs) {
+        if (getThreadRecordKey(log.threadUrl) === recordKey) {
+          targetKeys.add(log.url);
+        }
+      }
+    }
+
+    await Promise.all([...targetKeys].map((key) => new Cache(key).delete()));
+    return targetKeys.size;
   }
 
   /**

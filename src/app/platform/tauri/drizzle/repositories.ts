@@ -215,6 +215,18 @@ export const tauriCacheRepository = {
     );
   },
 
+  /**
+   * スレログの削除判定に使うキーとスレURLだけを返す。
+   * 本文を含む全件取得を避け、ログ削除を保存件数に比例して遅くしない。
+   */
+  async listLogIdentities(): Promise<Array<{ url: string; threadUrl: string | null }>> {
+    const { db } = await getTauriDrizzleContext();
+    return db
+      .select({ url: cacheTable.url, threadUrl: cacheTable.threadUrl })
+      .from(cacheTable)
+      .where(eq(cacheTable.kind, "thread"));
+  },
+
   async listLogs(offset: number, limit: number): Promise<CacheLogRecord[]> {
     const { db } = await getTauriDrizzleContext();
     const query = db

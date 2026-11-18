@@ -51,6 +51,7 @@ interface ThreadInternals {
     thread: ParsedThread,
     result: { status: string; cachedInfo?: { resCount: number } },
   ) => ParsedThread;
+  _applyLogMetadata: (cache: unknown, thread: ParsedThread) => void;
 }
 
 describe("Thread", () => {
@@ -362,6 +363,25 @@ describe("Thread", () => {
         other: "あぼーん",
       },
     ]);
+  });
+
+  it("ログ用メタ情報のスレURLから表示位置のhashとクエリを除く", () => {
+    const thread = new Thread(
+      "https://example.com/test/read.cgi/board/1000000000/?g=10#res5",
+      deps,
+    );
+    const testableThread = thread as unknown as ThreadInternals;
+    const cache: {
+      title: string | null;
+      threadUrl: string | null;
+      boardUrl: string | null;
+      kind: string | null;
+    } = { title: null, threadUrl: null, boardUrl: null, kind: null };
+
+    testableThread._applyLogMetadata(cache, { title: "テストスレッド", res: [] });
+
+    expect(cache.threadUrl).toBe("https://example.com/test/read.cgi/board/1000000000/");
+    expect(cache.kind).toBe("thread");
   });
 
   it("2ch系ではsubjectの先行更新を「あぼーん」補填に使わない", () => {

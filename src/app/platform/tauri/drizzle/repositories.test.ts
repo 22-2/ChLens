@@ -376,6 +376,23 @@ describe("Tauri SQLite のキャッシュリポジトリ", () => {
     expect(await tauriCacheRepository.get(THREAD_URL)).toBeNull();
   });
 
+  it("ログの識別子一覧では、閲覧ログのキーとスレURLだけを返す", async () => {
+    const { tauriCacheRepository } = repositories;
+    await tauriCacheRepository.put(createCacheRecord());
+    await tauriCacheRepository.put(
+      createCacheRecord({
+        url: "https://mevius.5ch.io/livegalileo/subject.txt",
+        kind: "board",
+        threadUrl: null,
+        data: "1<>スレ (3)\n",
+      }),
+    );
+
+    expect(await tauriCacheRepository.listLogIdentities()).toEqual([
+      { url: THREAD_URL, threadUrl: THREAD_URL },
+    ]);
+  });
+
   it("全件削除で、キャッシュをすべて消す", async () => {
     const { tauriCacheRepository } = repositories;
     await tauriCacheRepository.put(createCacheRecord());

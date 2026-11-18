@@ -555,7 +555,12 @@ export default class Thread {
   private _applyLogMetadata(cache: Cache, thread: ParsedThread): void {
     cache.title = thread.title ?? cache.title ?? "";
     // url(キャッシュキー)は dat パスのため、スレ再表示用の URL を別途保存する。
-    cache.threadUrl = this.url.url.href;
+    // 変更理由: 表示位置のhashやクエリはログの識別子に不要で、付いたまま保存すると
+    // 一覧の行URLと完全一致せず削除に失敗するため、スレ本体のURLだけを保存する。
+    const threadUrl = new URL(this.url.href);
+    threadUrl.search = "";
+    threadUrl.hash = "";
+    cache.threadUrl = threadUrl.href;
     try {
       cache.boardUrl = this.url.toBoard().url.href;
     } catch {

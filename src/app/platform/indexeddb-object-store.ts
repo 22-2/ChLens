@@ -3,6 +3,14 @@ import type { ObjectStore, ObjectStoreIndex } from "src/app/platform/types";
 
 const logger = createLogger("platform");
 
+/** 既存ストアにも後から足せる索引。レコードに無いキーは索引へ入らない。 */
+const STORE_INDEXES = [
+  { name: "last_updated", keyPath: "last_updated" },
+  { name: "last_modified", keyPath: "last_modified" },
+  // 変更理由: スレログ削除で本文を読まずに対象キーだけ引くため、スレURLの索引を持つ。
+  { name: "thread_url", keyPath: "thread_url" },
+] as const;
+
 /**
  * IndexedDB をラップしたオブジェクトストア。Tauri 版とブラウザ版で同じ保存形式・検索結果を保つため、
  * 実装を一箇所にまとめている。接続は保存先の名前ごとにキャッシュする。
@@ -27,7 +35,8 @@ export class IndexedDBObjectStore implements ObjectStore {
 
     // 新しい接続を作成
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const req = indexedDB.open(this.dbName, 2);
+      // 変更理由: 既存DBにもスレURLの索引を追加するためバージョンを上げる。
+      const req = indexedDB.open(this.dbName, 3);
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve(req.result);
       req.onupgradeneeded = (event: IDBVersionChangeEvent) => {
@@ -39,17 +48,23 @@ export class IndexedDBObjectStore implements ObjectStore {
         }
 
         // オブジェクトストアが存在しない場合は作成
-        if (!db.objectStoreNames.contains(this.dbName)) {
+        const storeExists = db.objectStoreNames.contains(this.dbName);
+        const objStore = storeExists
+          ? tx.objectStore(this.dbName)
+          : db.createObjectStore(this.dbName, {
+              keyPath: "url",
+            });
+        if (!storeExists) {
           logger.debug(`Creating object store: ${this.dbName}`);
-          const objStore = db.createObjectStore(this.dbName, {
-            keyPath: "url",
-          });
-          objStore.createIndex("last_updated", "last_updated", {
-            unique: false,
-          });
-          objStore.createIndex("last_modified", "last_modified", {
-            unique: false,
-          });
+        }
+        // 変更理由: 索引の追加は既存ストアでも行い、古いDBを開いたときだけ
+        // 全レコードを走査して索引を作る。レコード側に無いキーは空の索引になる。
+        for (const index of STORE_INDEXES) {
+          if (!objStore.indexNames.contains(index.name)) {
+            objStore.createIndex(index.name, index.keyPath, {
+              unique: false,
+            });
+          }
         }
       };
     });

@@ -68,6 +68,8 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_last_updated ON cache(last_updated)");
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_last_modified ON cache(last_modified)");
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_kind ON cache(kind)");
+  // 変更理由: スレログ削除で本文を読まずにスレURLから対象を引くため。
+  await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_thread_url ON cache(thread_url)");
 
   await raw.execute(`
     CREATE TABLE IF NOT EXISTS history (

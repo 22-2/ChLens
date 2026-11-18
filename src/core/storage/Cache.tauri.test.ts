@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
     count: vi.fn(),
     clearOlderThan: vi.fn(),
     listLogs: vi.fn(),
+    listLogIdentities: vi.fn(),
     deleteLogs: vi.fn(),
     searchLogs: vi.fn(),
   },
@@ -94,5 +95,34 @@ describe("Cache Tauri log branch", () => {
     const { default: Cache } = await import("src/core/storage/Cache");
     await Cache.deleteLogs();
     expect(state.tauriCacheRepository.deleteLogs).toHaveBeenCalledTimes(1);
+  });
+
+  it("deleteLog removes only the same thread without loading log bodies", async () => {
+    state.tauriCacheRepository.listLogIdentities.mockResolvedValueOnce([
+      { url: "http://ex.com/b/dat/1.dat", threadUrl: "http://ex.com/test/read.cgi/b/1/?g=10#res5" },
+      { url: "https://ex.com/b/dat/2.dat", threadUrl: "https://ex.com/test/read.cgi/b/2/" },
+    ]);
+
+    const { default: Cache } = await import("src/core/storage/Cache");
+    const listLogsSpy = vi.spyOn(Cache, "listLogs");
+    const deleted = await Cache.deleteLog("https://ex.com/test/read.cgi/b/1/");
+
+    expect(deleted).toBe(1);
+    expect(listLogsSpy).not.toHaveBeenCalled();
+    expect(state.tauriCacheRepository.remove).toHaveBeenCalledTimes(1);
+    expect(state.tauriCacheRepository.remove).toHaveBeenCalledWith("http://ex.com/b/dat/1.dat");
+    listLogsSpy.mockRestore();
+  });
+
+  it("deleteLog falls back to the thread identity for rows without thread_url", async () => {
+    state.tauriCacheRepository.listLogIdentities.mockResolvedValueOnce([
+      { url: "https://ex.com/b/dat/1.dat", threadUrl: null },
+    ]);
+
+    const { default: Cache } = await import("src/core/storage/Cache");
+    const deleted = await Cache.deleteLog("https://ex.com/test/read.cgi/b/1/");
+
+    expect(deleted).toBe(1);
+    expect(state.tauriCacheRepository.remove).toHaveBeenCalledWith("https://ex.com/b/dat/1.dat");
   });
 });

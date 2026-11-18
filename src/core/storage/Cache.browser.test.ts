@@ -11,6 +11,7 @@ const rows = new Map<string, Row>();
 
 function matchesRange(value: unknown, query: unknown): boolean {
   if (query == null) return true;
+  if (typeof query === "string") return value === query;
   const range = query as {
     upper?: number;
     upperOpen?: boolean;
@@ -299,6 +300,64 @@ describe("Cache browser log branch", () => {
     const remainingLogs = await Cache.listLogs();
     expect(remainingLogs.map((log) => log.threadUrl)).toEqual([otherThreadUrl]);
     expect(await store.get("https://ex.com/b/subject.txt")).not.toBeNull();
+  });
+
+  it("deleteLog matches the same thread saved with a different protocol, hash, or query", async () => {
+    const { default: Cache } = await import("src/core/storage/Cache");
+    await saveThreadLog({
+      key: "http://ex.com/b/dat/1.dat",
+      threadUrl: "http://ex.com/test/read.cgi/b/1/?g=10#res5",
+      title: "target",
+      boardUrl: "http://ex.com/b/",
+      lastUpdated: 100,
+    });
+    await saveThreadLog({
+      key: "https://ex.com/b/dat/2.dat",
+      threadUrl: "https://ex.com/test/read.cgi/b/2/",
+      title: "other",
+      boardUrl: "https://ex.com/b/",
+      lastUpdated: 200,
+    });
+
+    // 一覧の行URLは正規化済みで、保存時のquery/hashを持たない。
+    await expect(Cache.deleteLog("https://ex.com/test/read.cgi/b/1/")).resolves.toBe(1);
+
+    const remainingLogs = await Cache.listLogs();
+    expect(remainingLogs.map((log) => log.threadUrl)).toEqual([
+      "https://ex.com/test/read.cgi/b/2/",
+    ]);
+  });
+
+  it("deleteLog uses the thread_url index instead of loading every log body", async () => {
+    const { default: Cache } = await import("src/core/storage/Cache");
+    await saveThreadLog({
+      key: "https://ex.com/b/dat/1.dat",
+      threadUrl: "https://ex.com/test/read.cgi/b/1/",
+      title: "target",
+      boardUrl: "https://ex.com/b/",
+      lastUpdated: 100,
+      data: "重い本文",
+    });
+    const listLogsSpy = vi.spyOn(Cache, "listLogs");
+
+    await expect(Cache.deleteLog("https://ex.com/test/read.cgi/b/1/")).resolves.toBe(1);
+
+    expect(listLogsSpy).not.toHaveBeenCalled();
+    listLogsSpy.mockRestore();
+  });
+
+  it("deleteLog falls back to the thread identity for logs without thread_url", async () => {
+    const { default: Cache } = await import("src/core/storage/Cache");
+    // thread_url 導入前のログは dat キーだけを持つ。
+    await store.put({
+      url: "https://ex.com/b/dat/1.dat",
+      kind: "thread",
+      data: "旧ログ本文",
+      last_updated: 100,
+    });
+
+    await expect(Cache.deleteLog("https://ex.com/test/read.cgi/b/1/")).resolves.toBe(1);
+    expect(await store.get("https://ex.com/b/dat/1.dat")).toBeNull();
   });
 
   it("exports and restores the full log cache including body and parsed data", async () => {
