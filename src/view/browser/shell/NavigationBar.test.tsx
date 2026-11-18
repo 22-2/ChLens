@@ -690,13 +690,9 @@ describe("NavigationBar", () => {
       });
     });
 
-    // URLバー側に複製しても、既存のメニュー操作は引き続き表示する。
+    // 操作はURLバーに集約し、メニュー上段には重複させない。
     fireEvent.click(screen.getByTitle("メニュー"));
-    expect(
-      screen.getByRole("button", {
-        name: "お気に入りから削除",
-      }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "お気に入りから削除" })).not.toBeInTheDocument();
   });
 
   it("設定ボタンをメニューのアイコン操作列に表示する", () => {
@@ -753,7 +749,7 @@ describe("NavigationBar", () => {
     expect(within(actions).getByTitle("戻る")).toBeInTheDocument();
     expect(within(actions).getByTitle("進む")).toBeInTheDocument();
     expect(within(actions).getByTitle("更新")).toBeInTheDocument();
-    expect(within(actions).getByTitle("お気に入りに追加")).toBeInTheDocument();
+    expect(within(actions).queryByTitle("お気に入りに追加")).not.toBeInTheDocument();
   });
 
   it("更新の右クリックメニューから過去の一覧と最新の一覧を切り替える", async () => {
@@ -981,12 +977,12 @@ describe("NavigationBar", () => {
     dispose();
   });
 
-  it("メニュー上部のお気に入りで現在スレッドのブックマークを切り替える", async () => {
+  it("URLバーのお気に入りで現在スレッドのブックマークを切り替える", async () => {
     render(<NavigationBar />);
 
-    fireEvent.click(screen.getByTitle("メニュー"));
+    openUrlBar();
     const starButton = screen.getByRole("button", {
-      name: "お気に入りに追加",
+      name: "このページをブックマークに追加",
     });
 
     expect(starButton).toHaveAttribute("aria-pressed", "false");
@@ -1006,16 +1002,15 @@ describe("NavigationBar", () => {
         expect.objectContaining({ targetWindow: expect.any(Object) }),
       );
     });
-    fireEvent.click(screen.getByTitle("メニュー"));
     expect(
       screen.getByRole("button", {
-        name: "お気に入りから削除",
+        name: "このページをブックマークから削除",
       }),
     ).toHaveAttribute("aria-pressed", "true");
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "お気に入りから削除",
+        name: "このページをブックマークから削除",
       }),
     );
 
@@ -1032,7 +1027,7 @@ describe("NavigationBar", () => {
     });
   });
 
-  it("板一覧ページでもメニュー上部のお気に入りから板をブックマークできる", async () => {
+  it("板一覧ページでもURLバーから板をブックマークできる", async () => {
     viewTab.history = [
       {
         type: "threadList",
@@ -1045,10 +1040,10 @@ describe("NavigationBar", () => {
 
     render(<NavigationBar />);
 
-    fireEvent.click(screen.getByTitle("メニュー"));
+    openUrlBar();
     fireEvent.click(
       screen.getByRole("button", {
-        name: "お気に入りに追加",
+        name: "このページをブックマークに追加",
       }),
     );
 
@@ -1073,10 +1068,10 @@ describe("NavigationBar", () => {
 
     render(<NavigationBar />);
 
-    fireEvent.click(screen.getByTitle("メニュー"));
+    openUrlBar();
     fireEvent.click(
       screen.getByRole("button", {
-        name: "お気に入りに追加",
+        name: "このページをブックマークに追加",
       }),
     );
 
@@ -1088,11 +1083,10 @@ describe("NavigationBar", () => {
     });
     expect(toastErrorMock).not.toHaveBeenCalledWith("ブックマーク状態の同期に失敗しました");
 
-    fireEvent.click(screen.getByTitle("メニュー"));
     await waitFor(() => {
       expect(
         screen.getByRole("button", {
-          name: "お気に入りから削除",
+          name: "このページをブックマークから削除",
         }),
       ).toHaveAttribute("aria-pressed", "true");
     });

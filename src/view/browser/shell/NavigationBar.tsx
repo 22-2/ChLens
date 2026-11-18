@@ -451,11 +451,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
     closeMenu();
   }, [closeMenu, handleRefresh]);
 
-  const handleMenuBookmark = useCallback(() => {
-    handleToggleBookmark();
-    closeMenu();
-  }, [closeMenu, handleToggleBookmark]);
-
   const handleBackContextMenu = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
@@ -604,17 +599,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({
         aria-label="更新"
       >
         <RotateCw size={17} />
-      </button>
-      <button
-        type="button"
-        className={`nav-bar__menu-action icon-button${isBookmarked ? " nav-bar__menu-action--active" : ""}`}
-        disabled={!bookmarkTarget || isBookmarkPending}
-        onClick={handleMenuBookmark}
-        title={isBookmarked ? "お気に入りから削除" : "お気に入りに追加"}
-        aria-label={isBookmarked ? "お気に入りから削除" : "お気に入りに追加"}
-        aria-pressed={isBookmarked}
-      >
-        <Star size={17} />
       </button>
       <button
         type="button"
