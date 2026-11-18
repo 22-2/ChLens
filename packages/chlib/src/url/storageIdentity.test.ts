@@ -5,6 +5,8 @@ import { HOSTNAME } from "./hosts";
 import {
   getReadStateBoardUrl,
   getReadStateThreadUrl,
+  getThreadRecordKey,
+  getThreadUrlAliases,
   normalizeReadStateUrl,
   toArchiveThreadUrl,
 } from "./storageIdentity";
@@ -60,5 +62,34 @@ describe("URLを使う保存キー", () => {
         urlWithHost(HOSTNAME.NEW_JBBS, "/bbs/read_archive.cgi/sample-dir/12/123/"),
       ),
     ).toBeNull();
+  });
+
+  it("スレ削除のURL候補にはプロトコル・query・hashの揺れを吸収した表記を含める", () => {
+    const aliases = getThreadUrlAliases(
+      urlWithHost(`server.${HOSTNAME.NEW_5CH}`, "/test/read.cgi/sample-board/123/?g=45#res45"),
+    );
+
+    expect(aliases).toContain(
+      urlWithHost(`server.${HOSTNAME.NEW_5CH}`, "/test/read.cgi/sample-board/123/"),
+    );
+    expect(aliases).toContain(
+      urlWithHost(`server.${HOSTNAME.NEW_5CH}`, "/test/read.cgi/sample-board/123/", "http:"),
+    );
+  });
+
+  it("スレ同一性キーは5chのサーバー移転とプロトコルを無視する", () => {
+    const fromServer = getThreadRecordKey(
+      urlWithHost(`server-a.${HOSTNAME.NEW_5CH}`, "/test/read.cgi/sample-board/123/?g=45#res45"),
+    );
+    const fromOtherServer = getThreadRecordKey(
+      urlWithHost(`server-b.${HOSTNAME.NEW_5CH}`, "/test/read.cgi/sample-board/123/", "http:"),
+    );
+
+    expect(fromServer).toBe(`*.${HOSTNAME.NEW_5CH}/test/read.cgi/sample-board/123/`);
+    expect(fromOtherServer).toBe(fromServer);
+    expect(getThreadRecordKey(urlWithHost(HOSTNAME.MACHI, "/bbs/read.cgi/sample-board/123/"))).toBe(
+      `${HOSTNAME.MACHI}/bbs/read.cgi/sample-board/123/`,
+    );
+    expect(getThreadRecordKey(urlWithHost(HOSTNAME.NEW_5CH, "/sample-board/"))).toBeNull();
   });
 });
