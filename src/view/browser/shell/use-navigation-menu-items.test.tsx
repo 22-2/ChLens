@@ -1,8 +1,5 @@
 import { cleanup, renderHook } from "@testing-library/react";
-import {
-  BOTTOM_PANEL_THREAD_LIST_TAB_ID,
-  BOTTOM_PANEL_WRITE_TAB_ID,
-} from "src/view/browser/hooks/use-bottom-panel";
+import { BOTTOM_PANEL_THREAD_LIST_TAB_ID } from "src/view/browser/hooks/use-bottom-panel";
 import { useNavigationMenuItems } from "src/view/browser/shell/use-navigation-menu-items";
 import type { ThreadPage as ThreadPageType } from "src/view/browser/types";
 import { createBoardPage, createQuickAccessPage } from "src/view/browser/utils/tab-pages";
@@ -73,11 +70,6 @@ function getIds(items: ReturnType<typeof useNavigationMenuItems>): string[] {
   return items.map((item) => item.id);
 }
 
-function getLabel(items: ReturnType<typeof useNavigationMenuItems>, id: string) {
-  const item = findItem(items, id);
-  return "label" in item ? item.label : undefined;
-}
-
 describe("useNavigationMenuItems", () => {
   afterEach(() => {
     cleanup();
@@ -93,8 +85,6 @@ describe("useNavigationMenuItems", () => {
     expect(getIds(result.current)).toEqual([
       "open-command-palette",
       "open-filter-toolbar",
-      "open-thread-list-panel",
-      "open-write-panel",
       "quick-access-separator",
       "open-bookmark-list",
       "open-history-list",
@@ -124,36 +114,6 @@ describe("useNavigationMenuItems", () => {
 
     expect(getIds(result.current)).not.toContain("open-thread-list-panel");
     expect(getIds(result.current)).not.toContain("open-write-panel");
-  });
-
-  it("書き込み権限がなければ、書き込みパネルを出さない", () => {
-    const { result } = renderMenu({ canWrite: false });
-
-    expect(getIds(result.current)).toContain("open-thread-list-panel");
-    expect(getIds(result.current)).not.toContain("open-write-panel");
-  });
-
-  it("スレ一覧パネルが開いていれば、閉じる表示にし、選ぶとそのパネルを切り替える", () => {
-    const { options, result } = renderMenu({
-      isPanelOpen: true,
-      activePanelTabId: BOTTOM_PANEL_THREAD_LIST_TAB_ID,
-    });
-
-    expect(getLabel(result.current, "open-thread-list-panel")).toBe("スレ一覧パネルを閉じる");
-
-    selectItem(result.current, "open-thread-list-panel");
-
-    expect(options.togglePanel).toHaveBeenCalledWith(BOTTOM_PANEL_THREAD_LIST_TAB_ID);
-  });
-
-  it("別のパネルが開いているときは、スレ一覧パネルを開く表示のままにする", () => {
-    const { result } = renderMenu({
-      isPanelOpen: true,
-      activePanelTabId: BOTTOM_PANEL_WRITE_TAB_ID,
-    });
-
-    expect(getLabel(result.current, "open-thread-list-panel")).toBe("スレ一覧パネル");
-    expect(getLabel(result.current, "open-write-panel")).toBe("書き込みパネルを閉じる");
   });
 
   it("コマンドパレットの項目を選ぶと、コマンドの入力欄を開く", () => {

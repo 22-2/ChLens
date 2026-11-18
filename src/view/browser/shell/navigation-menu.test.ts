@@ -1,7 +1,4 @@
-import {
-  BOTTOM_PANEL_THREAD_LIST_TAB_ID,
-  BOTTOM_PANEL_WRITE_TAB_ID,
-} from "src/view/browser/hooks/use-bottom-panel";
+import { BOTTOM_PANEL_THREAD_LIST_TAB_ID } from "src/view/browser/hooks/use-bottom-panel";
 import {
   buildNavigationMenuEntries,
   type NavigationMenuEntry,
@@ -44,8 +41,6 @@ describe("buildNavigationMenuEntries", () => {
     expect(getIds(buildNavigationMenuEntries(createInput()))).toEqual([
       "open-command-palette",
       "open-filter-toolbar",
-      "open-thread-list-panel",
-      "open-write-panel",
       "quick-access-separator",
       "open-bookmark-list",
       "open-history-list",
@@ -67,35 +62,6 @@ describe("buildNavigationMenuEntries", () => {
 
     expect(getIds(entries)).not.toContain("open-thread-list-panel");
     expect(getIds(entries)).not.toContain("open-write-panel");
-  });
-
-  it("書き込み権限がなければ、書き込みパネルを返さない", () => {
-    const entries = buildNavigationMenuEntries(createInput({ canWrite: false }));
-
-    expect(getIds(entries)).toContain("open-thread-list-panel");
-    expect(getIds(entries)).not.toContain("open-write-panel");
-  });
-
-  it("開いているパネルの項目は閉じる表示にし、その操作はパネルの切り替えになる", () => {
-    const entries = buildNavigationMenuEntries(
-      createInput({ isPanelOpen: true, activePanelTabId: BOTTOM_PANEL_THREAD_LIST_TAB_ID }),
-    );
-    const entry = findActionEntry(entries, "open-thread-list-panel");
-
-    expect(entry.label).toBe("スレ一覧パネルを閉じる");
-    expect(entry.action).toEqual({
-      type: "toggle-panel",
-      panelTabId: BOTTOM_PANEL_THREAD_LIST_TAB_ID,
-    });
-  });
-
-  it("別のパネルが開いているときは、この項目を開く表示のままにする", () => {
-    const entries = buildNavigationMenuEntries(
-      createInput({ isPanelOpen: true, activePanelTabId: BOTTOM_PANEL_WRITE_TAB_ID }),
-    );
-
-    expect(findActionEntry(entries, "open-thread-list-panel").label).toBe("スレ一覧パネル");
-    expect(findActionEntry(entries, "open-write-panel").label).toBe("書き込みパネルを閉じる");
   });
 
   it("コマンドパレットの項目はコマンドパレットを開く操作を返し、中クリックには対応しない", () => {

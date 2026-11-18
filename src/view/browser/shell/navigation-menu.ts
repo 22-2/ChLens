@@ -5,15 +5,10 @@ import {
   Filter,
   History,
   Info,
-  List as ListIcon,
   type LucideIcon,
   PenLine,
 } from "lucide-react";
-import {
-  BOTTOM_PANEL_THREAD_LIST_TAB_ID,
-  BOTTOM_PANEL_WRITE_TAB_ID,
-  type useBottomPanel,
-} from "src/view/browser/hooks/use-bottom-panel";
+import { type useBottomPanel } from "src/view/browser/hooks/use-bottom-panel";
 import type { useTabStore } from "src/view/browser/state/tabs/use-tab-store";
 import { createQuickAccessPage, type QuickAccessPage } from "src/view/browser/utils/tab-pages";
 
@@ -63,14 +58,8 @@ function quickAccessEntry(
 
 /** ナビゲーションバーのメニュー（コマンド・パネル・履歴などの項目）を、画面の状態から組み立てる。副作用は持たない。 */
 export function buildNavigationMenuEntries({
-  viewPage,
-  canWrite,
   canToggleFilter,
-  isPanelOpen,
-  activePanelTabId,
 }: NavigationMenuInput): NavigationMenuEntry[] {
-  const isPanelActive = (panelTabId: string) => isPanelOpen && activePanelTabId === panelTabId;
-  const isThreadPage = viewPage.type === "thread";
   const entries: NavigationMenuEntry[] = [
     {
       id: "open-command-palette",
@@ -86,26 +75,6 @@ export function buildNavigationMenuEntries({
       label: "フィルター",
       icon: Filter,
       action: { type: "toggle-filter" },
-    });
-  }
-
-  if (isThreadPage) {
-    entries.push({
-      id: "open-thread-list-panel",
-      label: isPanelActive(BOTTOM_PANEL_THREAD_LIST_TAB_ID)
-        ? "スレ一覧パネルを閉じる"
-        : "スレ一覧パネル",
-      icon: ListIcon,
-      action: { type: "toggle-panel", panelTabId: BOTTOM_PANEL_THREAD_LIST_TAB_ID },
-    });
-  }
-
-  if (isThreadPage && canWrite) {
-    entries.push({
-      id: "open-write-panel",
-      label: isPanelActive(BOTTOM_PANEL_WRITE_TAB_ID) ? "書き込みパネルを閉じる" : "書き込みパネル",
-      icon: PenLine,
-      action: { type: "toggle-panel", panelTabId: BOTTOM_PANEL_WRITE_TAB_ID },
     });
   }
 
