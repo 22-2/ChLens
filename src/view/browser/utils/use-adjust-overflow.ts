@@ -105,12 +105,13 @@ export function useAdjustOverflow(
   ref: RefObject<HTMLElement | null>,
   margin = 8,
   aboveY?: number,
+  enabled = true,
 ): void {
   // 変更理由: useEffectは描画後に遅れて走るため、はみ出した位置が一瞬見えてから補正されてガクッと動いていた。
   // useLayoutEffectで描画直後の初回補正を画面に出る前に終わらせる。
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !enabled) return;
 
     const targetDocument = el.ownerDocument;
     const targetWindow = targetDocument.defaultView ?? globalThis.window;
@@ -132,5 +133,5 @@ export function useAdjustOverflow(
       targetWindow.removeEventListener("resize", adjust);
       resizeObserver?.disconnect();
     };
-  }, [aboveY, margin, ref]);
+  }, [aboveY, enabled, margin, ref]);
 }

@@ -138,6 +138,7 @@ export const AnchorPreview: React.FC<AnchorPreviewProps> = ({
       onEnterFromDescendant={onEnterFromDescendant}
       closeDisabled={hasChildPopup || pinned}
       closeOnOutsideClick={!pinned}
+      pinned={pinned}
       onClose={onMouseLeave}
       onPopupMouseDown={onPopupMouseDown}
       onPopupMouseEnter={onMouseEnter}

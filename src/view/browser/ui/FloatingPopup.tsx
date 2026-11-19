@@ -1,4 +1,4 @@
-import type { CSSProperties, MouseEventHandler, ReactNode } from "react";
+import type { CSSProperties, MouseEventHandler, PointerEvent, ReactNode } from "react";
 import React, { useRef } from "react";
 import { useConfigBooleanSetting } from "src/view/browser/hooks/use-config-boolean-setting";
 import { usePopupCloseBehavior } from "src/view/browser/hooks/use-popup-close-behavior";
@@ -22,6 +22,7 @@ export interface FloatingPopupProps {
   closeDisabled?: boolean;
   closeOnMouseLeave?: boolean;
   closeOnOutsideClick?: boolean;
+  pinned?: boolean;
   onClose: () => void;
   onPopupMouseDown?: () => void;
   onPopupMouseEnter?: () => void;
@@ -48,6 +49,7 @@ export const FloatingPopup: React.FC<FloatingPopupProps> = ({
   closeDisabled,
   closeOnMouseLeave = true,
   closeOnOutsideClick = true,
+  pinned = false,
   onClose,
   onPopupMouseDown,
   onPopupMouseEnter,
@@ -56,6 +58,17 @@ export const FloatingPopup: React.FC<FloatingPopupProps> = ({
   children,
 }) => {
   const popupRef = useRef<HTMLDivElement>(null);
+  const gestureRef = useRef<{
+    pointerId: number;
+    kind: "move" | "resize";
+    x: number;
+    y: number;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    minHeight: number;
+  } | null>(null);
   const { value: closeOnlyOnOutsideClick } = useConfigBooleanSetting(
     POPUP_CLOSE_OUTSIDE_ONLY_CONFIG_KEY,
   );
@@ -80,7 +93,56 @@ export const FloatingPopup: React.FC<FloatingPopupProps> = ({
   });
 
   // position:absolute のpopupをviewport内へ収める補正は全popupで共通化する。
-  useAdjustOverflow(popupRef, 8, aboveY);
+  // 固定中は利用者が画面外へ動かした位置や手動で変更した寸法を補正しない。
+  useAdjustOverflow(popupRef, 8, aboveY, !pinned);
+
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!pinned || event.button !== 0) return;
+    const target = event.target as Element;
+    if (typeof target.closest !== "function") return;
+    const resize = target.closest("[data-popup-resize]");
+    const header = target.closest(".res-popup__header");
+    if (!resize && (!header || target.closest("button, a, input, select, textarea"))) return;
+    const popup = event.currentTarget;
+    const rect = popup.getBoundingClientRect();
+    gestureRef.current = {
+      pointerId: event.pointerId,
+      kind: resize ? "resize" : "move",
+      x: event.clientX,
+      y: event.clientY,
+      left: popup.offsetLeft,
+      top: popup.offsetTop,
+      width: rect.width,
+      height: rect.height,
+      minHeight: popup.querySelector<HTMLElement>(".res-popup__header")?.offsetHeight ?? 0,
+    };
+    popup.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const gesture = gestureRef.current;
+    if (!pinned || !gesture || gesture.pointerId !== event.pointerId) return;
+    const popup = event.currentTarget;
+    const dx = event.clientX - gesture.x;
+    const dy = event.clientY - gesture.y;
+    if (gesture.kind === "move") {
+      popup.style.left = `${gesture.left + dx}px`;
+      popup.style.top = `${gesture.top + dy}px`;
+      return;
+    }
+    // 寸法制限は操作開始後にだけ外し、ピン留め直後は元の見た目を維持する。
+    popup.style.maxWidth = "none";
+    popup.style.maxHeight = "none";
+    popup.style.minWidth = "0";
+    popup.dataset.userResized = "true";
+    popup.style.width = `${Math.max(gesture.minHeight, gesture.width + dx)}px`;
+    popup.style.height = `${Math.max(gesture.minHeight, gesture.height + dy)}px`;
+  };
+
+  const handlePointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    if (gestureRef.current?.pointerId === event.pointerId) gestureRef.current = null;
+  };
 
   const content =
     typeof children === "function" ? children({ armMouseLeaveCloseSuppression }) : children;
@@ -90,6 +152,7 @@ export const FloatingPopup: React.FC<FloatingPopupProps> = ({
       ref={popupRef}
       data-popup="true"
       data-popup-id={popupId}
+      data-pinned={pinned || undefined}
       className={className}
       style={{ left: x, top: y, ...(zIndex != null && { zIndex }) }}
       onMouseDownCapture={handleMouseDownCapture}
@@ -97,8 +160,14 @@ export const FloatingPopup: React.FC<FloatingPopupProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onMouseOver={onMouseOver}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      onLostPointerCapture={handlePointerEnd}
     >
       {content}
+      {pinned && <div className="floating-popup__resize" data-popup-resize="true" />}
     </div>
   );
 };

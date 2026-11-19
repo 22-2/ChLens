@@ -162,6 +162,7 @@ export const ReplyTreePopup: React.FC<{
       onEnterFromDescendant={onEnterFromDescendant}
       closeDisabled={disableOutsideClick || pinned}
       closeOnOutsideClick={!pinned}
+      pinned={pinned}
       onClose={onClose}
       onPopupMouseDown={onPopupMouseDown}
       onPopupMouseEnter={onMouseEnter}

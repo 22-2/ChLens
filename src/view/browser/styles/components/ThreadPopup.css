@@ -58,6 +58,39 @@
   padding: var(--sys-space-2) 0;
 }
 
+/* 固定中だけ操作範囲を重ね、ピン留めによって元の寸法が変わらないようにする。 */
+[data-pinned="true"] > .res-popup__header {
+  cursor: move;
+  touch-action: none;
+  user-select: none;
+}
+
+.floating-popup__resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: var(--sys-space-8);
+  height: var(--sys-space-8);
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: var(--sys-z-local-raised);
+}
+
+.floating-popup__resize::after {
+  content: "";
+  position: absolute;
+  right: var(--sys-space-1);
+  bottom: var(--sys-space-1);
+  width: var(--sys-space-4);
+  height: var(--sys-space-4);
+  border-right: var(--sys-border-width-strong) solid var(--sys-color-text-muted);
+  border-bottom: var(--sys-border-width-strong) solid var(--sys-color-text-muted);
+}
+
+[data-user-resized="true"] .anchor-preview__body {
+  max-height: none;
+}
+
 .res-popup__section + .res-popup__section {
   border-top: 1px solid var(--sys-color-table-heading-border);
 }
