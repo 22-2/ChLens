@@ -16,6 +16,7 @@ interface UseCommentOverlaySyncOptions {
   responses: readonly IRes[];
   isActive: boolean;
   isAutoRefreshEnabled: boolean;
+  isNextThreadWaiting?: boolean;
   ownResponseNumbers?: ReadonlySet<number>;
 }
 
@@ -26,24 +27,27 @@ export function useCommentOverlaySync({
   responses,
   isActive,
   isAutoRefreshEnabled,
+  isNextThreadWaiting = false,
   ownResponseNumbers,
 }: UseCommentOverlaySyncOptions): void {
-  const previousRefreshRef = useRef({ threadUrl, enabled: isAutoRefreshEnabled });
+  // 次スレ探索の待機は自動更新の一時停止であり、実況の終了ではない。
+  const isFollowingThread = isAutoRefreshEnabled || isNextThreadWaiting;
+  const previousRefreshRef = useRef({ threadUrl, enabled: isFollowingThread });
 
   useEffect(() => {
     const previous = previousRefreshRef.current;
-    previousRefreshRef.current = { threadUrl, enabled: isAutoRefreshEnabled };
-    if (previous.threadUrl !== threadUrl || !previous.enabled || isAutoRefreshEnabled) return;
+    previousRefreshRef.current = { threadUrl, enabled: isFollowingThread };
+    if (previous.threadUrl !== threadUrl || !previous.enabled || isFollowingThread) return;
 
     const { state } = controller.getSnapshot();
     if (state.status !== "running" || state.targetThreadUrl !== threadUrl) return;
 
-    // 自動更新のOFFをどのUIから操作しても実況を止める。初期OFFや別スレへの移動では
-    // 停止せず、非表示タブでも実況対象スレッドのONからOFFへの変化だけを扱う。
+    // 明示的な停止や探索終了では、非表示タブでも実況対象スレッドの実況を止める。
+    // 初期OFFや別スレへの移動では停止しない。
     void controller.stop().catch((error: unknown) => {
       logger.error("自動更新停止に伴うコメント実況の停止に失敗しました:", error);
     });
-  }, [controller, isAutoRefreshEnabled, threadUrl]);
+  }, [controller, isFollowingThread, threadUrl]);
 
   useEffect(() => {
     if (!isActive) return;

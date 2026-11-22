@@ -231,6 +231,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   const isCommentOverlayVisible =
     commentOverlaySnapshot.state.status === "running" && commentOverlaySnapshot.visible;
   const isCommentOverlayFlowing = isCommentOverlayTarget && commentOverlaySnapshot.visible;
+  const isNextThreadWaiting = tab ? isNextThreadWaitingForPage(tab, page) : false;
   useCommentOverlaySync({
     controller: commentOverlayController,
     threadUrl: page.threadUrl,
@@ -238,6 +239,7 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
     // 非表示でもOverlay対象の新着snapshotは共有し、未開始スレはフォーカス中だけ保持する。
     isActive: isOverlayTarget || isCommentOverlayTarget,
     isAutoRefreshEnabled,
+    isNextThreadWaiting,
     ownResponseNumbers: ownResNums,
   });
   useCommentOverlayHandoff({
@@ -354,7 +356,6 @@ export const ThreadPage: React.FC<ThreadPageProps> = ({
   // 非アクティブタブの強調は消すが、Overlay対象の実況と次スレ探索は続ける。
   const isActiveAutoRefreshEnabled = (isActive || isCommentOverlayFlowing) && isAutoRefreshEnabled;
   // 次スレ待機中も、追従位置の計測と次スレ探索の経路（トラッキング）は止めない。
-  const isNextThreadWaiting = tab ? isNextThreadWaitingForPage(tab, page) : false;
   const isActiveAutoRefreshTracking =
     (isActive || isCommentOverlayFlowing) && (isAutoRefreshEnabled || isNextThreadWaiting);
   const isReplayFollowing = isActive && isArchiveReplay && replayPosition?.followMode === "live";

@@ -148,6 +148,28 @@ describe("useCommentOverlaySync", () => {
     expect(controller.stop).not.toHaveBeenCalled();
   });
 
+  it("次スレ待機中は実況を続け、待機が終了したら停止する", () => {
+    const controller = createController(THREAD_URL);
+    const { rerender } = renderHook(
+      ({ enabled, waiting }) =>
+        useCommentOverlaySync({
+          controller,
+          threadUrl: THREAD_URL,
+          responses: [],
+          isActive: true,
+          isAutoRefreshEnabled: enabled,
+          isNextThreadWaiting: waiting,
+        }),
+      { initialProps: { enabled: true, waiting: false } },
+    );
+
+    rerender({ enabled: false, waiting: true });
+    expect(controller.stop).not.toHaveBeenCalled();
+
+    rerender({ enabled: false, waiting: false });
+    expect(controller.stop).toHaveBeenCalledOnce();
+  });
+
   it("別スレッドの自動更新をOFFにしても実況を停止しない", () => {
     const controller = createController("https://example.test/test/read.cgi/live/2/");
     const { rerender } = renderHook(

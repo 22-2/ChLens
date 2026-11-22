@@ -28,6 +28,7 @@ const h = vi.hoisted(() => ({
     options: null as Record<string, unknown> | null,
   },
   nextThreadSetting: { enabled: false },
+  overlaySync: { options: null as Record<string, unknown> | null },
   floatingActions: { props: null as Record<string, unknown> | null },
   activeTopBar: "none" as "none" | "filter",
   dispatch: vi.fn(),
@@ -281,7 +282,9 @@ vi.mock("src/view/browser/pages/thread/use-comment-overlay-handoff", () => ({
 }));
 
 vi.mock("src/view/browser/pages/thread/use-comment-overlay-sync", () => ({
-  useCommentOverlaySync: () => undefined,
+  useCommentOverlaySync: (options: Record<string, unknown>) => {
+    h.overlaySync.options = options;
+  },
 }));
 
 vi.mock("src/view/browser/pages/thread/use-image-blur-config", () => ({
@@ -463,6 +466,7 @@ describe("ThreadPage の組み立て", () => {
     h.autoRefresh.canAutoScroll = false;
     h.nextThread.pendingMove = null;
     h.nextThreadSetting.enabled = false;
+    h.overlaySync.options = null;
     useManualPauseStore.setState({ paused: {} });
   });
 
@@ -695,6 +699,10 @@ describe("ThreadPage の組み立て", () => {
       expect(h.nextThread.options).toMatchObject({
         autoRefreshEnabled: true,
         featureEnabled: true,
+      });
+      expect(h.overlaySync.options).toMatchObject({
+        isAutoRefreshEnabled: false,
+        isNextThreadWaiting: true,
       });
       expect(h.dispatch).not.toHaveBeenCalledWith(
         expect.objectContaining({ type: "START_NEXT_THREAD_WAIT" }),
