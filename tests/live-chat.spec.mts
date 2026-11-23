@@ -40,7 +40,8 @@ async function startLiveChat(page: Page) {
   await page.keyboard.press("Escape");
 }
 
-test("実況表示は手動取得設定でも画像を自動で読み込む", async ({
+// 実況表示でも利用者の手動取得設定を優先する（5a4905f8b で自動取得の上書きをやめた）。
+test("実況表示でも画像の手動取得設定を守り、クリックしてから読み込む", async ({
   page,
   extensionId,
   localBoard,
@@ -59,12 +60,16 @@ test("実況表示は手動取得設定でも画像を自動で読み込む", as
   await page.getByPlaceholder("URLを入力").press("Enter");
 
   const response = page.locator('[data-res-num="1"]');
+  const placeholder = response.getByRole("button", { name: "画像を読み込む" });
+  await expect(placeholder).toBeVisible();
+  expect(localBoard.requests.some((url) => url.includes("/img/1.png"))).toBe(false);
+
+  await placeholder.click();
   const image = response.locator(".res__thumb--image img");
   await expect(image).toBeVisible();
   await expect
     .poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth))
     .toBeGreaterThan(0);
-  // 表示モードだけの変更なので、利用者の手動取得設定は書き換えない。
   expect(await page.evaluate(() => localStorage.getItem("config_manual_image_loading"))).toBe("on");
 });
 

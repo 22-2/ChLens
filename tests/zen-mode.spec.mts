@@ -75,7 +75,9 @@ test("コマンド候補の件数を示し、キーボード選択に合わせ�
   await expect(options.first()).toBeVisible();
   const count = await options.count();
   expect(count).toBeGreaterThan(10);
-  await expect(list.getByRole("status")).toHaveText(`${count} / ${count}`);
+  // 件数表示はスクロールする候補の領域から外へ分けたため（b9325fa2f）、ポップアップ全体から探す。
+  const popup = page.locator(".nav-bar__omnibar");
+  await expect(popup.getByRole("status")).toHaveText(`${count} / ${count}`);
   for (let index = 0; index < 20; index += 1) await input.press("ArrowDown");
   expect(await list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   const selected = list.locator('[role="option"][aria-selected="true"]');
@@ -84,8 +86,15 @@ test("コマンド候補の件数を示し、キーボード選択に合わせ�
     const listElement = element.closest('[role="listbox"]')!;
     const item = element.getBoundingClientRect();
     const container = listElement.getBoundingClientRect();
-    const footer = listElement.querySelector(".nav-bar__omnibar-count")!.getBoundingClientRect();
-    return item.top >= container.top && item.bottom <= footer.top + 1;
+    const footer = listElement
+      .closest(".nav-bar__omnibar")!
+      .querySelector(".nav-bar__omnibar-count")!
+      .getBoundingClientRect();
+    return (
+      item.top >= container.top &&
+      item.bottom <= container.bottom + 1 &&
+      item.bottom <= footer.top + 1
+    );
   });
   expect(isVisibleInList).toBe(true);
 });

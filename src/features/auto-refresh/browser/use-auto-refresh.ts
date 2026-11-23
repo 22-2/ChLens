@@ -177,7 +177,7 @@ export function useAutoRefresh({
     canAutoScroll,
     isAutoScrolling,
     getScrollContainer,
-    moveToThreadBottom,
+    moveToThreadBottomWhenLoaded,
     syncCanAutoScroll,
     clearScrollingIndicator,
   } = useAutoFollowScroll({
@@ -258,7 +258,9 @@ export function useAutoRefresh({
     if (pauseRefresh) return;
 
     // タブ復帰では閲覧位置を維持し、明示的な自動更新開始時だけ末尾へ移動する。
-    const scrollContainer = moveToBottomOnEnable ? moveToThreadBottom() : getScrollContainer();
+    const scrollContainer = moveToBottomOnEnable
+      ? moveToThreadBottomWhenLoaded()
+      : getScrollContainer();
     viewWindow.requestAnimationFrame(() => {
       syncCanAutoScroll();
     });
@@ -279,7 +281,7 @@ export function useAutoRefresh({
     enabled,
     pauseRefresh,
     expired,
-    moveToThreadBottom,
+    moveToThreadBottomWhenLoaded,
     moveToBottomOnEnable,
     getScrollContainer,
     requestRefreshFromHook,

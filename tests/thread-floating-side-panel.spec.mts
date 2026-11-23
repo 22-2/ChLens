@@ -123,7 +123,7 @@ test("フローティングボタンはサイドパネルの開閉とリサイ�
   await expect.poll(async () => (await down.boundingBox())?.x).toBeCloseTo(before.x, 0);
 });
 
-test("狭いペインでもメニューからスレ一覧パネルを開ける", async ({
+test("狭いペインでも下部パネルのタブからスレ一覧パネルを開ける", async ({
   page,
   extensionId,
   localBoard,
@@ -139,10 +139,11 @@ test("狭いペインでもメニューからスレ一覧パネルを開ける",
     scrollWidth: element.scrollWidth,
   }));
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.width);
-  // スレ一覧パネルの操作はステータスバーからメニューへ移動した。
-  await page.getByTitle("メニュー", { exact: true }).click();
-  await page.getByRole("button", { name: "スレ一覧パネル", exact: true }).click();
-  await expect(page.locator(".bottom-panel")).toBeVisible();
+  // スレ一覧パネルの項目はメニューから外れたため（3a271bd3c）、
+  // ステータスバーの書き込みボタンで下部パネルを開き、パネル内のタブで切り替える。
+  await page.getByRole("button", { name: "書き込みパネルを開閉" }).click();
+  await page.locator(".bottom-panel").getByRole("tab", { name: "スレ一覧" }).click();
+  await expect(page.locator(".thread-list-panel")).toBeVisible();
 });
 
 test("サイドパネルの開閉で読んでいるレスを保つ", async ({ page, extensionId, localBoard }) => {
@@ -162,8 +163,9 @@ test("サイドパネルの開閉で読んでいるレスを保つ", async ({ pa
         (res) => res.getBoundingClientRect().bottom > top,
       )?.dataset.resNum;
     });
+  // 仮想スクロールはスクロール後に描画が追いつくまで項目が並ばないため、見えるレスが出るまで待つ。
+  await expect.poll(visibleRes).toBeDefined();
   const before = await visibleRes();
-  expect(before).toBeDefined();
   await page.getByRole("button", { name: "サイドパネルを開く" }).click();
   await expect.poll(visibleRes).toBe(before);
   await page.getByRole("button", { name: "サイドパネルを閉じる" }).click();
