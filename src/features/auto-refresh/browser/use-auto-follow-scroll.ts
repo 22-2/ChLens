@@ -36,6 +36,8 @@ export interface UseAutoFollowScrollResult {
   isAutoScrolling: boolean;
   getScrollContainer: () => HTMLElement | null;
   moveToThreadBottom: () => HTMLElement | null;
+  /** 読み込み中なら完了後に、そうでなければすぐに最下部へ移動する。 */
+  moveToThreadBottomWhenLoaded: () => HTMLElement | null;
   syncCanAutoScroll: () => void;
   clearScrollingIndicator: () => void;
 }
@@ -60,6 +62,9 @@ export function useAutoFollowScroll({
   const autoScrollBoundaryRef = useRef<HTMLDivElement>(null);
   const canAutoScrollRef = useRef(false);
   const startAtBottomAppliedRef = useRef(false);
+  // 読み込み中に自動更新をONにしたとき、表示が揃ってから最下部へ移すための予約。
+  const moveToBottomAfterLoadRef = useRef(false);
+  const loadingRef = useRef(loading);
   const scrollObserverFrameRef = useRef<number | null>(null);
   const contentResizeObserverFrameRef = useRef<number | null>(null);
   const lastObservedScrollHeightRef = useRef<number | null>(null);
@@ -202,6 +207,38 @@ export function useAutoFollowScroll({
     userInterruptedRef.current = false;
     canAutoScrollRef.current = true;
   }, [enabled, getScrollContainer, userInterruptedRef]);
+
+  /**
+   * 変更理由: 読み込み中の画面には末尾の境界がないため、ON直後に最下部へ寄せても
+   * 直後の判定で追従が外れ、読み込み後のスレッドは先頭のまま「待機中」になっていた。
+   * 読み込み中は移動を予約し、表示が揃ってから最下部へ移す。
+   */
+  const moveToThreadBottomWhenLoaded = useCallback((): HTMLElement | null => {
+    if (!loadingRef.current) {
+      moveToBottomAfterLoadRef.current = false;
+      return moveToThreadBottom();
+    }
+    moveToBottomAfterLoadRef.current = true;
+    return getScrollContainer();
+  }, [getScrollContainer, moveToThreadBottom]);
+
+  useLayoutEffect(() => {
+    loadingRef.current = loading;
+    if (!enabled) {
+      moveToBottomAfterLoadRef.current = false;
+      return;
+    }
+    if (loading || !moveToBottomAfterLoadRef.current) {
+      return;
+    }
+    if (!moveToThreadBottom()) {
+      return;
+    }
+    moveToBottomAfterLoadRef.current = false;
+    viewWindow.requestAnimationFrame(() => {
+      syncCanAutoScroll();
+    });
+  }, [enabled, loading, moveToThreadBottom, syncCanAutoScroll, viewWindow]);
 
   useLayoutEffect(() => {
     // ライブチャットは通信完了後にも行を追加するため、取得状態によらず描画ごとに補正する。
@@ -367,6 +404,7 @@ export function useAutoFollowScroll({
     isAutoScrolling,
     getScrollContainer,
     moveToThreadBottom,
+    moveToThreadBottomWhenLoaded,
     syncCanAutoScroll,
     clearScrollingIndicator,
   };

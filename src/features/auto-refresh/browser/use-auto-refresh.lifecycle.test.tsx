@@ -56,6 +56,64 @@ describe("useAutoRefresh", () => {
     expect(onRequestRefresh).toHaveBeenCalledOnce();
   });
 
+  it("読み込み中に有効化したときは、読み込み完了後に最下部へ移動して追従する", () => {
+    const onRequestRefresh = vi.fn();
+    const { rerender } = render(
+      <AutoRefreshHarness enabled={false} loading onRequestRefresh={onRequestRefresh} />,
+    );
+
+    const scrollContainer = screen.getByTestId("scroll-container") as HTMLDivElement;
+    const boundary = screen.getByTestId("boundary") as HTMLDivElement;
+
+    // 読み込み中は本文がなく、完了後に高さが増える。
+    let loaded = false;
+    let scrollTopValue = 0;
+    const scrollHeight = () => (loaded ? 1000 : 100);
+    Object.defineProperty(scrollContainer, "clientHeight", {
+      configurable: true,
+      get: () => 100,
+    });
+    Object.defineProperty(scrollContainer, "scrollTop", {
+      configurable: true,
+      get: () => scrollTopValue,
+      set: (value: number) => {
+        scrollTopValue = Math.max(0, Math.min(scrollHeight() - 100, value));
+      },
+    });
+    Object.defineProperty(scrollContainer, "scrollHeight", {
+      configurable: true,
+      get: scrollHeight,
+    });
+    mockScrollBy(scrollContainer, (options) => {
+      scrollTopValue += options.top ?? 0;
+    });
+    scrollContainer.getBoundingClientRect = () => createRect({ top: 0, bottom: 100 });
+    // 実際の読み込み中画面には末尾の境界がないため、表示範囲の外として扱う。
+    boundary.getBoundingClientRect = () =>
+      loaded
+        ? createRect({ top: 980 - scrollTopValue, bottom: 1000 - scrollTopValue })
+        : createRect({ top: 5000, bottom: 5020 });
+
+    act(() => {
+      rerender(<AutoRefreshHarness enabled loading onRequestRefresh={onRequestRefresh} />);
+    });
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("disabled");
+
+    loaded = true;
+    act(() => {
+      rerender(<AutoRefreshHarness enabled loading={false} onRequestRefresh={onRequestRefresh} />);
+    });
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(scrollTopValue).toBe(900);
+    expect(screen.getByTestId("can-auto-scroll")).toHaveTextContent("enabled");
+  });
+
   it("有効なまま次スレを表示したときは再取得せず最下部から追従する", () => {
     const onRequestRefresh = vi.fn();
     let scrollTopValue = 12;
