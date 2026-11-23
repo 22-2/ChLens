@@ -25,6 +25,7 @@ export const cacheTable = sqliteTable(
     index("idx_cache_last_updated").on(table.lastUpdated),
     index("idx_cache_last_modified").on(table.lastModified),
     index("idx_cache_kind").on(table.kind),
+    index("idx_cache_kind_last_updated").on(table.kind, table.lastUpdated),
     index("idx_cache_thread_url").on(table.threadUrl),
   ],
 );

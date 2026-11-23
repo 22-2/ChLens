@@ -2,14 +2,16 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createLogger } from "src/app/logger";
 import type { LogRecord, LogSearchPreview } from "src/core/storage/Cache";
 import { container } from "src/service-container/index";
+import { ListInitialLoading } from "src/view/browser/components/ListInitialLoading";
+import { ListRefreshIndicator } from "src/view/browser/components/ListRefreshIndicator";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { SearchHighlight } from "src/view/browser/components/SearchHighlight";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
+import { type PagedListFetchRequest, usePagedList } from "src/view/browser/hooks/use-paged-list";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabDispatch, useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
-import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
@@ -70,6 +72,19 @@ function toLogEntry(
     lastUpdated: record.lastUpdated,
     preview: record.preview ?? null,
     previewQuery,
+  };
+}
+
+async function fetchLogRange({ offset, targetOffset }: PagedListFetchRequest<LogEntry>) {
+  const count = targetOffset - offset;
+  // 変更理由: 保存本文を含むログ全件の一括展開を避け、画面表示に必要な分だけ読む。
+  // 1件多く読み、続きがあるかを件数の一致で推測せずに判定する。
+  const logs = await container.threadLog.listLogs(offset, count + 1);
+  const pageLogs = logs.slice(0, count);
+  return {
+    rows: pageLogs.map((log) => toLogEntry(log)),
+    nextOffset: offset + pageLogs.length,
+    hasMore: logs.length > count,
   };
 }
 
@@ -148,13 +163,6 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
     type: "logList",
     title: "ログ検索",
   });
-  const [entries, setEntries] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const nextOffsetRef = useRef(0);
-  const isLoadingPageRef = useRef(false);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(() => persistedViewState.searchQuery ?? "");
   const [sortState, setSortState] = useState<SortState>(() => {
     const column = persistedViewState.sortColumn;
@@ -198,54 +206,25 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
     setBodySearchRevision((revision) => revision + 1);
   }, []);
 
-  const pendingReloadRef = useRef(false);
-  const loadNextPage = useCallback(async function loadNextPage(reset = false) {
-    if (isLoadingPageRef.current) {
-      pendingReloadRef.current ||= reset;
-      return;
-    }
-    isLoadingPageRef.current = true;
-    if (reset) {
-      setLoading(true);
-      nextOffsetRef.current = 0;
-    } else {
-      setLoadingMore(true);
-    }
-    setError(null);
-    try {
-      // 変更理由: 保存本文を含むログ全件の一括展開を避け、画面表示に必要な分だけ読む。
-      const logs = await container.threadLog.listLogs(nextOffsetRef.current, PAGE_SIZE + 1);
-      const pageLogs = logs.slice(0, PAGE_SIZE);
-      nextOffsetRef.current += pageLogs.length;
-      setHasMore(logs.length > PAGE_SIZE);
-      setEntries((previous) =>
-        reset
-          ? pageLogs.map((log) => toLogEntry(log))
-          : [...previous, ...pageLogs.map((log) => toLogEntry(log))],
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "ログの読み込みに失敗しました");
-      if (reset) {
-        setEntries([]);
-      }
-    } finally {
-      isLoadingPageRef.current = false;
-      if (reset) {
-        setLoading(false);
-      } else {
-        setLoadingMore(false);
-      }
-      if (pendingReloadRef.current) {
-        // 初回読み込み中にログ更新が届いた場合も通知を捨てず、最新状態を一度だけ読み直す。
-        pendingReloadRef.current = false;
-        void loadNextPage(true);
-      }
-    }
-  }, []);
+  const shouldLoadCompleteDataset =
+    searchMode === "title" && (searchQuery.trim().length > 0 || sortState.column !== null);
 
-  const loadEntries = useCallback(async () => {
-    await loadNextPage(true);
-  }, [loadNextPage]);
+  const {
+    rows: entries,
+    loadingMore,
+    error,
+    reload: loadEntries,
+    loadMore: handleEndReached,
+    isInitialLoading,
+    showInitialLoading,
+    showRefreshing,
+  } = usePagedList<LogEntry>({
+    page: "logList",
+    pageSize: PAGE_SIZE,
+    errorMessage: "ログの読み込みに失敗しました",
+    fetchRange: fetchLogRange,
+    loadCompleteDataset: shouldLoadCompleteDataset,
+  });
 
   useEffect(() => {
     if (previousRefreshKeyRef.current !== refreshKey) {
@@ -396,16 +375,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
     return sorted;
   }, [entries, searchQuery, searchMode, bodyMatchedEntries, sortState]);
 
-  const shouldLoadCompleteDataset =
-    searchMode === "title" && (searchQuery.trim().length > 0 || sortState.column !== null);
   const showResponsePreview = searchMode === "body" && searchQuery.trim() !== "";
-
-  useEffect(() => {
-    if (!shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
-      return;
-    }
-    void loadNextPage();
-  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
 
   const openEntry = useCallback(
     (entry: LogEntry) => {
@@ -426,20 +396,8 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
     [dispatch],
   );
 
-  const handleEndReached = useCallback(() => {
-    if (shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
-      return;
-    }
-    void loadNextPage();
-  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
-
-  if (loading && entries.length === 0) {
-    return (
-      <div className="page-status">
-        <Spinner size="sm" aria-label="ログを読み込み中" />
-        <span>読み込み中...</span>
-      </div>
-    );
+  if (isInitialLoading) {
+    return <ListInitialLoading visible={showInitialLoading} label="ログを読み込み中" />;
   }
 
   if (error && entries.length === 0) {
@@ -498,6 +456,7 @@ export const LogListPage: React.FC<LogListPageProps> = ({ tabId, isActive, refre
           columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
         />
       </div>
+      <ListRefreshIndicator visible={showRefreshing} />
     </div>
   );
 };

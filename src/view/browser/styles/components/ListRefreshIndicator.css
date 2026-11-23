@@ -1,0 +1,21 @@
+/* 表示中の一覧を残したまま読み直していることを、一覧の下端中央に重ねて示す。
+   変更理由: 上端は検索バーや書き込み履歴のエクスポートボタンと重なるため、下端に置く。 */
+.list-refresh-indicator {
+  position: absolute;
+  bottom: var(--sys-space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--sys-z-local-raised);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sys-space-2);
+  padding: var(--sys-space-1) var(--sys-space-3);
+  border: var(--sys-border-width-thin) solid var(--sys-color-border);
+  border-radius: var(--sys-radius-pill);
+  background: var(--sys-color-surface);
+  color: var(--sys-color-text-muted);
+  box-shadow: var(--sys-shadow-tooltip);
+  font-size: var(--sys-font-size-xs);
+  /* 変更理由: 表示中の行のクリックやホバーを邪魔しない。 */
+  pointer-events: none;
+}

@@ -21,6 +21,8 @@
   position: fixed;
   z-index: var(--sys-z-table-tooltip);
   pointer-events: none;
+  /* 変更理由: 書き込み履歴ではタイトルと本文を改行で区切って見せるため、改行を残す。 */
+  white-space: pre-line;
 }
 
 /* 変更理由: 設定のコンパクトメニューはポップアップ階層なので、隣の垂直タブ名をその上に表示する。 */

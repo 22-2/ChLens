@@ -1,10 +1,13 @@
 import { Download } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { platform } from "src/app";
 import { createLogger } from "src/app/logger";
 import { container } from "src/service-container/index";
+import { ListInitialLoading } from "src/view/browser/components/ListInitialLoading";
+import { ListRefreshIndicator } from "src/view/browser/components/ListRefreshIndicator";
 import { SearchBar } from "src/view/browser/components/SearchBar";
-import { ColumnDef, SimpleDataTable } from "src/view/browser/components/SimpleDataTable";
+import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
+import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
+import { type PagedListFetchRequest, usePagedList } from "src/view/browser/hooks/use-paged-list";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import {
   type TabAction,
@@ -13,7 +16,6 @@ import {
 } from "src/view/browser/state/tabs/use-tab-store";
 import { Button } from "src/view/browser/ui/Button";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
-import { Spinner } from "src/view/browser/ui/Spinner";
 import { downloadBlob } from "src/view/browser/utils/blob-download";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
@@ -21,6 +23,11 @@ import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
 import { requestThreadResJump } from "src/view/browser/utils/thread-read-state";
 
 const logger = createLogger("view/browser");
+
+// 変更理由: 以前は5000件を一度に読んで全行をDOMに描いていたため、書き込みが多いと開くまで待たされた。
+// 先頭から少しずつ読み、表は仮想化して見えている行だけを描く。
+const PAGE_SIZE = 500;
+const LOAD_MORE_THRESHOLD = 12;
 
 type SortDirection = "asc" | "desc";
 type SortColumn = "title" | "writtenRes" | "name" | "mail" | "message" | "writtenDate";
@@ -45,32 +52,6 @@ interface WriteHistoryEntry {
   writtenDate: number;
   originalIndex: number;
 }
-
-// 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
-// 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
-const UI_CACHE_STORE = "UICache";
-const WRITE_HISTORY_CACHE_KEY = "writeHistoryList";
-
-const getWriteHistoryCache = async (): Promise<WriteHistoryEntry[] | null> => {
-  try {
-    const store = platform.storage.getStore(UI_CACHE_STORE);
-    const entry = (await store.get(WRITE_HISTORY_CACHE_KEY)) as
-      | { url: string; data: WriteHistoryEntry[] }
-      | undefined;
-    return entry?.data ?? null;
-  } catch {
-    return null;
-  }
-};
-
-const setWriteHistoryCache = async (entries: WriteHistoryEntry[]): Promise<void> => {
-  try {
-    const store = platform.storage.getStore(UI_CACHE_STORE);
-    await store.put({ url: WRITE_HISTORY_CACHE_KEY, data: entries });
-  } catch (error) {
-    logger.error("cache save failed:", error);
-  }
-};
 
 interface LegacyWriteHistoryLike {
   url?: unknown;
@@ -99,14 +80,23 @@ function normalizeNumber(value: unknown): number {
   return 0;
 }
 
-async function readWriteHistoryEntries(): Promise<WriteHistoryEntry[]> {
+interface WriteHistoryPageResult {
+  entries: WriteHistoryEntry[];
+  hasMore: boolean;
+}
+
+async function readWriteHistoryEntries(
+  offset: number,
+  count: number,
+): Promise<WriteHistoryPageResult> {
   // window.app ではなくサービスコンテナの書き込み履歴から読む（legacy-window-app-plan の Phase 1）。
-  const raw = await container.writeHistory.get(undefined, 5000);
+  // 先頭ページは閲覧履歴と同じく offset を省略し、保存先ごとの 0 の扱いの違いに左右されないようにする。
+  const raw = await container.writeHistory.get(offset > 0 ? offset : undefined, count);
   if (!Array.isArray(raw)) {
-    return [];
+    return { entries: [], hasMore: false };
   }
 
-  return raw
+  const entries = raw
     .map((value, index) => {
       const item = value as LegacyWriteHistoryLike;
       const url = normalizeString(item.url);
@@ -126,10 +116,22 @@ async function readWriteHistoryEntries(): Promise<WriteHistoryEntry[]> {
         mail: normalizeString(item.mail),
         message: normalizeString(item.message),
         writtenDate: parsedDate,
-        originalIndex: index,
+        // 同じスレの同じレス番が複数残っていても行のキーが重ならないよう、保存先の並び順を使う。
+        originalIndex: offset + index,
       } satisfies WriteHistoryEntry;
     })
     .filter((item): item is WriteHistoryEntry => item !== null);
+
+  return { entries, hasMore: raw.length === count };
+}
+
+async function fetchWriteHistoryRange({
+  offset,
+  targetOffset,
+}: PagedListFetchRequest<WriteHistoryEntry>) {
+  const count = targetOffset - offset;
+  const page = await readWriteHistoryEntries(offset, count);
+  return { rows: page.entries, nextOffset: offset + count, hasMore: page.hasMore };
 }
 
 export function navigateToWriteHistoryEntry(
@@ -208,6 +210,14 @@ const COLUMNS: ColumnDef<WriteHistoryEntry>[] = [
 ];
 
 const COLUMN_VISIBILITY_STORAGE_KEY = "chlens_browser_write_history_list_columns_visibility";
+
+/** 本文は表では1行に省略するため、ツールチップでタイトルと本文の全文を見せる。 */
+function formatWriteHistoryTooltip(row: WriteHistoryEntry): string {
+  return row.message
+    ? `${row.title}
+${row.message}`
+    : row.title;
+}
 const COLUMN_VISIBILITY_LOCKED_KEYS = ["title"] as const;
 
 interface WriteHistoryListPageProps {
@@ -228,10 +238,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     type: "writeHistoryList",
     title: "書き込み履歴",
   });
-  const [entries, setEntries] = useState<WriteHistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isExportingKakikomi, setIsExportingKakikomi] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [contextMenuState, setContextMenuState] = useState<{
     entry: WriteHistoryEntry;
     x: number;
@@ -264,36 +271,29 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     setSearchQuery,
   });
 
-  const loadEntries = useCallback(async () => {
-    // 変更理由: effectから呼び出す場合も、状態更新をeffectの同期処理から切り離す。
-    await Promise.resolve();
-    setLoading(true);
-    setError(null);
-    try {
-      const rows = await readWriteHistoryEntries();
-      setEntries(rows);
-      void setWriteHistoryCache(rows);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "書き込み履歴の読み込みに失敗しました");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const shouldLoadCompleteDataset = searchQuery.trim().length > 0 || sortState.column !== null;
 
-  // 変更理由: IDBキャッシュから前回の書き込み履歴を復元し、新しいデータの取得中は古い結果を表示し続ける。
-  useEffect(() => {
-    void (async () => {
-      const cached = await getWriteHistoryCache();
-      if (cached && cached.length > 0) {
-        setEntries(cached);
-      }
-    })();
-  }, []);
+  const {
+    rows: entries,
+    loadingMore,
+    error,
+    reload: loadEntries,
+    loadMore: handleEndReached,
+    isInitialLoading,
+    showInitialLoading,
+    showRefreshing,
+  } = usePagedList<WriteHistoryEntry>({
+    page: "writeHistoryList",
+    pageSize: PAGE_SIZE,
+    errorMessage: "書き込み履歴の読み込みに失敗しました",
+    fetchRange: fetchWriteHistoryRange,
+    loadCompleteDataset: shouldLoadCompleteDataset,
+  });
 
   useEffect(() => {
     // 変更理由: ナビバー更新ボタンの RELOAD を受けて、
     // 書き込み履歴一覧でも明示的に最新データを再取得できるようにする。
-    void Promise.resolve().then(loadEntries);
+    void loadEntries();
   }, [loadEntries, refreshKey]);
 
   useEffect(() => {
@@ -426,15 +426,8 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
     }
   }, []);
 
-  // 変更理由: 前回の結果がある場合は「読み込み中」ではなく古い結果を表示し続ける。
-  // 新しいデータの取得が完了したら自動的に新しい結果に置き換わる。
-  if (loading && entries.length === 0) {
-    return (
-      <div className="page-status">
-        <Spinner size="sm" aria-label="書き込み履歴を読み込み中" />
-        <span>読み込み中...</span>
-      </div>
-    );
+  if (isInitialLoading) {
+    return <ListInitialLoading visible={showInitialLoading} label="書き込み履歴を読み込み中" />;
   }
 
   if (error && entries.length === 0) {
@@ -449,7 +442,7 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
   }
 
   return (
-    <div className="thread-list-page write-history-list-page">
+    <div className="thread-list-page history-list-page write-history-list-page">
       {error && <div className="thread-list-page__notice">{error}</div>}
       <div className="write-history-list-page__toolbar">
         <Button
@@ -469,21 +462,28 @@ export const WriteHistoryListPage: React.FC<WriteHistoryListPageProps> = ({
           hitCount={filtered.length}
         />
       ) : null}
-      <SimpleDataTable
-        columns={COLUMNS}
-        rows={filtered}
-        highlightQuery={searchQuery}
-        getRowKey={(row) => `${row.url}:${row.originalIndex}`}
-        getRowTooltip={(row) => row.title}
-        onRowClick={openEntry}
-        onRowMiddleClick={openEntryInNewTab}
-        onRowContextMenu={(entry, x, y) => setContextMenuState({ entry, x, y })}
-        sortColumn={sortState.column ?? undefined}
-        sortDirection={sortState.direction}
-        onSort={handleSort}
-        columnVisibilityStorageKey={COLUMN_VISIBILITY_STORAGE_KEY}
-        columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
-      />
+      <div className="history-list-page__table">
+        <VirtualizedDataTable
+          columns={COLUMNS}
+          rows={filtered}
+          highlightQuery={searchQuery}
+          getRowKey={(row) => `${row.url}:${row.originalIndex}`}
+          getRowTooltip={formatWriteHistoryTooltip}
+          onRowClick={openEntry}
+          onRowMiddleClick={openEntryInNewTab}
+          onRowContextMenu={(entry, x, y) => setContextMenuState({ entry, x, y })}
+          sortColumn={sortState.column ?? undefined}
+          sortDirection={sortState.direction}
+          onSort={handleSort}
+          estimatedRowHeight={52}
+          loadingMore={loadingMore}
+          endReachedThreshold={LOAD_MORE_THRESHOLD}
+          onEndReached={handleEndReached}
+          columnVisibilityStorageKey={COLUMN_VISIBILITY_STORAGE_KEY}
+          columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
+        />
+      </div>
+      <ListRefreshIndicator visible={showRefreshing} />
       {contextMenuState && isActive ? (
         <ContextMenu
           x={contextMenuState.x}

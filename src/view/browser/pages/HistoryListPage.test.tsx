@@ -11,22 +11,6 @@ const mockUseTabStore = vi.fn();
 const virtualizedTableState = vi.hoisted(() => ({
   onEndReached: undefined as (() => void) | undefined,
 }));
-const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
-  cacheGetMock: vi.fn(),
-  cachePutMock: vi.fn(),
-}));
-
-vi.mock("src/app", () => ({
-  platform: {
-    storage: {
-      // UIキャッシュの検証はページ表示の責務と分け、拡張機能APIを読まずに単体テストできるようにする。
-      getStore: () => ({
-        get: cacheGetMock,
-        put: cachePutMock,
-      }),
-    },
-  },
-}));
 
 vi.mock("src/view/browser/state/tabs/use-tab-store", () => ({
   useTabStore: () => mockUseTabStore(),
@@ -121,9 +105,6 @@ describe("HistoryListPage", () => {
   });
 
   beforeEach(() => {
-    cacheGetMock.mockReset();
-    cacheGetMock.mockResolvedValue(undefined);
-    cachePutMock.mockReset();
     mockUseTabStore.mockReset();
     historyGet.mockReset();
     readStateGetAll.mockReset();
@@ -318,25 +299,58 @@ describe("HistoryListPage", () => {
     expect(screen.queryByText(url)).not.toBeInTheDocument();
   });
 
-  it("遅れて復元されたURLのキャッシュで取得済みタイトルを上書きしない", async () => {
-    const url = "https://example.com/test/read.cgi/sample/123/";
-    let resolveCache!: (entry: unknown) => void;
-    cacheGetMock.mockReturnValueOnce(new Promise((resolve) => (resolveCache = resolve)));
-    historyGet.mockResolvedValueOnce([
-      createHistoryItem(url, "過去ログのタイトル", "サンプル板", 100),
-    ]);
-    render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
-    await screen.findByText("過去ログのタイトル");
+  it("読み直しに失敗しても表示中の行を残す", async () => {
+    historyGet
+      .mockResolvedValueOnce([
+        createHistoryItem("https://example.com/test/read.cgi/live/1/", "スレ1", "板A", 100),
+      ])
+      .mockRejectedValueOnce(new Error("読み込みエラー"));
 
-    // 保存済みキャッシュと履歴DBは独立して読むため、キャッシュが後着する場合もある。
+    render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+    await screen.findByText("スレ1");
+
     await act(async () => {
-      resolveCache({
-        data: [{ url, title: url, boardTitle: "サンプル板", unreadCount: 0, viewedDate: 100 }],
-      });
+      emitMessage("history_updated", { type: "added" });
     });
 
-    expect(screen.getByText("過去ログのタイトル")).toBeInTheDocument();
-    expect(screen.queryByText(url)).not.toBeInTheDocument();
+    // 以前は読み直しに失敗すると一覧を空にしていたため、読んでいた行ごと消えていた。
+    expect(await screen.findByText("読み込みエラー")).toBeInTheDocument();
+    expect(screen.getByText("スレ1")).toBeInTheDocument();
+  });
+
+  it("読み直しではスクロールで読み込んだ範囲まで読む", async () => {
+    const firstPage = Array.from({ length: 500 }, (_, index) =>
+      createHistoryItem(
+        `https://example.com/test/read.cgi/live/${index}/`,
+        `スレ${index}`,
+        "板A",
+        100,
+      ),
+    );
+    const secondPage = [
+      createHistoryItem("https://example.com/test/read.cgi/live/x/", "スレ末尾", "板A", 50),
+    ];
+    historyGet
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(secondPage)
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(secondPage);
+
+    render(<HistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+    await screen.findByText("スレ0");
+    await act(async () => {
+      virtualizedTableState.onEndReached?.();
+    });
+    await screen.findByText("スレ末尾");
+
+    await act(async () => {
+      emitMessage("history_updated", { type: "added" });
+    });
+
+    // 先頭ページだけ読み直すと、2ページ目まで見ていた利用者の一覧が縮んでしまう。
+    await waitFor(() => expect(historyGet).toHaveBeenNthCalledWith(4, 500, 500));
+    expect(historyGet).toHaveBeenNthCalledWith(3, undefined, 500);
+    expect(screen.getByText("スレ末尾")).toBeInTheDocument();
   });
 
   it("非アクティブから再表示された時に一覧を再読込する", async () => {

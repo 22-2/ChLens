@@ -22,6 +22,7 @@
 @import "./components/CommandPalette.css";
 @import "./components/NextThreadSearchDialog.css";
 @import "./components/DataTable.css";
+@import "./components/ListRefreshIndicator.css";
 @import "./components/SearchBar.css";
 @import "./components/SearchOptionsMenu.css";
 @import "./components/ThreadPopup.css";

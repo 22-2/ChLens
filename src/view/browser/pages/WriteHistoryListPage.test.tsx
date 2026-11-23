@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import React from "react";
 import { toggleFilter } from "src/view/browser/extension/page-actions";
 import {
   navigateToWriteHistoryEntry,
@@ -22,22 +23,49 @@ const { messageOn, messageOff, writeHistoryGet, writeHistoryGetAll, toastSuccess
     toastSuccess: vi.fn(),
     toastError: vi.fn(),
   }));
-const { cacheGetMock, cachePutMock } = vi.hoisted(() => ({
-  cacheGetMock: vi.fn(),
-  cachePutMock: vi.fn(),
+const virtualizedTableState = vi.hoisted(() => ({
+  onEndReached: undefined as (() => void) | undefined,
 }));
 let originalCreateObjectURLDescriptor: PropertyDescriptor | undefined;
 let originalRevokeObjectURLDescriptor: PropertyDescriptor | undefined;
 
-vi.mock("src/app", () => ({
-  platform: {
-    storage: {
-      // UIキャッシュの検証はページ表示の責務と分け、拡張機能APIを読まずに単体テストできるようにする。
-      getStore: () => ({
-        get: cacheGetMock,
-        put: cachePutMock,
-      }),
-    },
+// 仮想化した表はjsdomでは描画領域の高さが0で行を描かないため、渡された行をそのまま並べる表に差し替える。
+vi.mock("src/view/browser/components/VirtualizedDataTable", () => ({
+  VirtualizedDataTable: ({
+    columns,
+    rows,
+    getRowKey,
+    onRowClick,
+    onEndReached,
+  }: {
+    columns: Array<{
+      key: string;
+      header: React.ReactNode;
+      cell: (row: unknown) => React.ReactNode;
+    }>;
+    rows: unknown[];
+    getRowKey: (row: unknown) => string;
+    onRowClick?: (row: unknown) => void;
+    onEndReached?: () => void;
+  }) => {
+    virtualizedTableState.onEndReached = onEndReached;
+
+    return (
+      <div data-testid="virtualized-table">
+        <div>
+          {columns.map((column) => (
+            <span key={column.key}>{column.header}</span>
+          ))}
+        </div>
+        {rows.map((row) => (
+          <div key={getRowKey(row)} data-testid="table-row" onClick={() => onRowClick?.(row)}>
+            {columns.map((column) => (
+              <span key={column.key}>{column.cell(row)}</span>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
   },
 }));
 
@@ -90,9 +118,7 @@ describe("WriteHistoryListPage", () => {
   beforeEach(() => {
     originalCreateObjectURLDescriptor = Object.getOwnPropertyDescriptor(URL, "createObjectURL");
     originalRevokeObjectURLDescriptor = Object.getOwnPropertyDescriptor(URL, "revokeObjectURL");
-    cacheGetMock.mockReset();
-    cacheGetMock.mockResolvedValue(undefined);
-    cachePutMock.mockReset();
+    virtualizedTableState.onEndReached = undefined;
     mockUseTabStore.mockReset();
     writeHistoryGet.mockReset();
     writeHistoryGetAll.mockReset();
@@ -271,7 +297,7 @@ describe("WriteHistoryListPage", () => {
 
     render(<WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
 
-    const row = (await screen.findByText("外部URL")).closest("tr");
+    const row = (await screen.findByText("外部URL")).closest('[data-testid="table-row"]');
     expect(row).not.toBeNull();
     fireEvent.click(row!);
 
@@ -365,5 +391,40 @@ describe("WriteHistoryListPage", () => {
     });
 
     expect(screen.getByText("42")).toBeInTheDocument();
+  });
+
+  it("先頭ページだけ読み、スクロール終端で続きを読む", async () => {
+    const firstPage = Array.from({ length: 500 }, (_, index) => ({
+      url: "https://egg.5ch.io/test/read.cgi/software/1/",
+      title: `スレ${index}`,
+      writtenRes: index + 1,
+      name: "",
+      mail: "",
+      message: `本文${index}`,
+      date: 100,
+    }));
+    writeHistoryGet.mockResolvedValueOnce(firstPage).mockResolvedValueOnce([
+      {
+        url: "https://egg.5ch.io/test/read.cgi/software/2/",
+        title: "スレ末尾",
+        writtenRes: 1,
+        name: "",
+        mail: "",
+        message: "末尾の本文",
+        date: 50,
+      },
+    ]);
+
+    render(<WriteHistoryListPage tabId="tab-1" isActive={true} refreshKey={0} />);
+    await screen.findByText("スレ0");
+    // 以前は5000件をまとめて読んでいたため、書き込みが多いと最初の表示まで待たされた。
+    expect(writeHistoryGet).toHaveBeenCalledWith(undefined, 500);
+
+    await act(async () => {
+      virtualizedTableState.onEndReached?.();
+    });
+
+    expect(await screen.findByText("スレ末尾")).toBeInTheDocument();
+    expect(writeHistoryGet).toHaveBeenNthCalledWith(2, 500, 500);
   });
 });

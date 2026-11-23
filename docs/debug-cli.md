@@ -47,6 +47,7 @@ pnpm debug:tauri eval "document.title"
 - `console.error` / `warn` / `info` / `log` の出力（`category: "console"`）
 - `recordDebugEvent` で記録した出来事（`level: "event"`）。呼び出し元のスタックトレースが付きます
   - `auto-refresh`: タブの自動更新状態の変化と原因のaction、停止記録による開始拒否、停止記録を付けた根拠
+  - `list-loading`: 閲覧履歴・書き込み履歴・ログの一覧の読み込みにかかった時間（`durationMs`）と読んだ行数
 
 Cookie・トークン・パスワードなどのキー名を持つ値は `[redacted]` に置き換えます。
 
