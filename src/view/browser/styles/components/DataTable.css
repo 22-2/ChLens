@@ -190,7 +190,10 @@
 .simple-data-table__writehistory-message {
   padding: 6px 8px;
   color: var(--sys-color-text);
-  overflow-wrap: anywhere;
+  /* 変更理由: 仮想化した表は行の高さを固定する前提なので、本文は1行で省略し全文はツールチップで見せる。 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .simple-data-table__spacer > td {

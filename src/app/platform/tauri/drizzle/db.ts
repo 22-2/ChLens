@@ -68,6 +68,11 @@ async function runMigrations(raw: SqlPluginDatabase): Promise<void> {
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_last_updated ON cache(last_updated)");
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_last_modified ON cache(last_modified)");
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_kind ON cache(kind)");
+  // 変更理由: ログ一覧は kind で絞って last_updated の降順に並べる。kind だけの索引では
+  // 本文を含む行を読んでから並べ替えるため、ログが増えるほど一覧を開くのが遅くなる。
+  await raw.execute(
+    "CREATE INDEX IF NOT EXISTS idx_cache_kind_last_updated ON cache(kind, last_updated)",
+  );
   // 変更理由: スレログ削除で本文を読まずにスレURLから対象を引くため。
   await raw.execute("CREATE INDEX IF NOT EXISTS idx_cache_thread_url ON cache(thread_url)");
 

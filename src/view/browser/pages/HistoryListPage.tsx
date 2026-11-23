@@ -1,16 +1,17 @@
 import { normalizeReadStateUrl } from "packages/chlib/src/index";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { platform } from "src/app";
 import { createLogger } from "src/app/logger";
 import { container } from "src/service-container/index";
+import { ListInitialLoading } from "src/view/browser/components/ListInitialLoading";
+import { ListRefreshIndicator } from "src/view/browser/components/ListRefreshIndicator";
 import { SearchBar } from "src/view/browser/components/SearchBar";
 import { ColumnDef } from "src/view/browser/components/SimpleDataTable";
 import { VirtualizedDataTable } from "src/view/browser/components/VirtualizedDataTable";
+import { type PagedListFetchRequest, usePagedList } from "src/view/browser/hooks/use-paged-list";
 import { useQuickAccessFilterToolbar } from "src/view/browser/hooks/use-quick-access-filter-toolbar";
 import { tabActions } from "src/view/browser/state/tabs/tab-store-actions";
 import { useTabDispatch, useTabViewState } from "src/view/browser/state/tabs/use-tab-store";
 import { ContextMenu } from "src/view/browser/ui/ContextMenu";
-import { Spinner } from "src/view/browser/ui/Spinner";
 import { formatCompactDateTime, normalizeLegacyTimestamp } from "src/view/browser/utils/date-time";
 import { parseInternalBrowserPage } from "src/view/browser/utils/link-routing";
 import { matchesSearchQuery } from "src/view/browser/utils/search-normalize";
@@ -59,32 +60,6 @@ interface HistoryPageResult {
   entries: HistoryEntry[];
   hasMore: boolean;
 }
-
-// 変更理由: タブ再マウント時やブラウザ再起動後に「読み込み中」しか表示されないのを防ぐため、
-// 前回の取得結果をIDBに永続化し、新しいデータの取得中は古い結果を表示し続ける。
-const UI_CACHE_STORE = "UICache";
-const HISTORY_CACHE_KEY = "historyList";
-
-const getHistoryCache = async (): Promise<HistoryEntry[] | null> => {
-  try {
-    const store = platform.storage.getStore(UI_CACHE_STORE);
-    const entry = (await store.get(HISTORY_CACHE_KEY)) as
-      | { url: string; data: HistoryEntry[] }
-      | undefined;
-    return entry?.data ?? null;
-  } catch {
-    return null;
-  }
-};
-
-const setHistoryCache = async (entries: HistoryEntry[]): Promise<void> => {
-  try {
-    const store = platform.storage.getStore(UI_CACHE_STORE);
-    await store.put({ url: HISTORY_CACHE_KEY, data: entries });
-  } catch (error) {
-    logger.error("cache save failed:", error);
-  }
-};
 
 function normalizeString(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
@@ -144,10 +119,10 @@ async function readHistoryUnreadCountIndex(): Promise<Map<string, number>> {
   }
 }
 
+/** 閲覧履歴の1ページを読む。未読数はあとで既読情報と突き合わせるため 0 で返す。 */
 async function readHistoryEntriesPage(
   offset: number | undefined,
   count: number,
-  unreadCountIndex: ReadonlyMap<string, number>,
 ): Promise<HistoryPageResult> {
   // window.app ではなくサービスコンテナの閲覧履歴から読む（legacy-window-app-plan の Phase 1）。
   const raw = await container.history.get(offset, count);
@@ -171,7 +146,7 @@ async function readHistoryEntriesPage(
         url,
         title: normalizeString(item.title, url),
         boardTitle: normalizeString(item.boardTitle),
-        unreadCount: unreadCountIndex.get(normalizeReadStateLookupUrl(url)) ?? 0,
+        unreadCount: 0,
         viewedDate,
       } satisfies HistoryEntry;
     })
@@ -241,11 +216,6 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     type: "historyList",
     title: "閲覧履歴",
   });
-  const [entries, setEntries] = useState<HistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [contextMenuState, setContextMenuState] = useState<{
     entry: HistoryEntry;
     x: number;
@@ -278,119 +248,79 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     setSearchQuery,
   });
 
-  const seenUrlsRef = React.useRef<Set<string>>(new Set());
-  const nextOffsetRef = React.useRef(0);
-  const hasMoreRef = React.useRef(true);
-  const isLoadingPageRef = React.useRef(false);
-  const pendingReloadRef = React.useRef(false);
-  const hasLoadedEntriesRef = React.useRef(false);
   const unreadCountIndexRef = React.useRef<Map<string, number>>(new Map());
   const wasActiveRef = React.useRef(isActive);
 
-  const loadNextPage = useCallback(async function loadPage(reset = false): Promise<void> {
-    if (isLoadingPageRef.current) {
-      // 仮タイトルの読込中に確定タイトルが保存されても、更新通知を捨てず完了後に再取得する。
-      pendingReloadRef.current ||= reset;
-      return;
-    }
-    if (!reset && !hasMoreRef.current) {
-      return;
-    }
+  const fetchHistoryRange = useCallback(
+    async ({ offset, targetOffset, loadedRows }: PagedListFetchRequest<HistoryEntry>) => {
+      const isReset = offset === 0;
+      // 変更理由: 既読情報の全件取得と閲覧履歴の取得を順に待つと、一覧が出るまでの時間が両方の合計になる。
+      // 並べて読み、読み終えてから未読数を突き合わせる。
+      const unreadCountIndexPromise = isReset
+        ? readHistoryUnreadCountIndex()
+        : Promise.resolve(unreadCountIndexRef.current);
+      const seenUrls = new Set(loadedRows.map((row) => row.url));
+      const uniqueRows: HistoryEntry[] = [];
+      let currentOffset = offset;
+      let hasMore = true;
 
-    isLoadingPageRef.current = true;
-    setError(null);
-
-    if (reset) {
-      setLoading(true);
-      seenUrlsRef.current = new Set();
-      nextOffsetRef.current = 0;
-      hasMoreRef.current = true;
-      setHasMore(true);
-      unreadCountIndexRef.current = await readHistoryUnreadCountIndex();
-    } else {
-      setLoadingMore(true);
-    }
-
-    let currentOffset = reset ? 0 : nextOffsetRef.current;
-    const uniqueRows: HistoryEntry[] = [];
-
-    try {
       // 変更理由: `History.getUnique()` の offset は raw レコード基準なので、
       // 無限読み込みでページを跨ぐと重複URLが再登場しうる。
-      // new-ui では raw 履歴を段階取得し、URL単位で前段重複除外して一覧の一意性を保つ。
-      while (true) {
+      // raw 履歴を段階取得し、URL単位で前段重複除外して一覧の一意性を保つ。
+      // 読み直しでは targetOffset まで読み、スクロールで読み込んだ範囲を縮めない。
+      while (hasMore && (currentOffset < targetOffset || uniqueRows.length === 0)) {
         // 変更理由: History.get() は offset 未指定時だけ先頭ページを安全に読める。
         // 0 を渡すと内部で IDBCursor.advance(0) になって例外化するため、
         // 先頭ページは undefined、それ以降だけ正の offset を渡す。
         const page = await readHistoryEntriesPage(
           currentOffset > 0 ? currentOffset : undefined,
           PAGE_SIZE,
-          unreadCountIndexRef.current,
         );
         currentOffset += PAGE_SIZE;
-        hasMoreRef.current = page.hasMore;
-        setHasMore(page.hasMore);
+        hasMore = page.hasMore;
 
         for (const row of page.entries) {
-          if (seenUrlsRef.current.has(row.url)) {
+          if (seenUrls.has(row.url)) {
             continue;
           }
-          seenUrlsRef.current.add(row.url);
+          seenUrls.add(row.url);
           uniqueRows.push(row);
         }
-
-        if (uniqueRows.length > 0 || !page.hasMore) {
-          break;
-        }
       }
 
-      nextOffsetRef.current = currentOffset;
-      hasLoadedEntriesRef.current = true;
-      setEntries((prev) => {
-        const next = reset ? uniqueRows : [...prev, ...uniqueRows];
-        void setHistoryCache(next);
-        return next;
-      });
-    } catch (e) {
-      logger.error("閲覧履歴の読み込みに失敗しました", e);
-      const message = e instanceof Error ? e.message : "閲覧履歴の読み込みに失敗しました";
-      setError(message);
-      if (reset) {
-        setEntries([]);
-      }
-    } finally {
-      isLoadingPageRef.current = false;
-      if (reset) {
-        setLoading(false);
-      } else {
-        setLoadingMore(false);
-      }
-    }
-    if (pendingReloadRef.current) {
-      // 削除・再保存などの連続通知を一度の再読込へまとめ、最終的なDB内容を表示する。
-      pendingReloadRef.current = false;
-      await loadPage(true);
-    }
-  }, []);
+      const unreadCountIndex = await unreadCountIndexPromise;
+      unreadCountIndexRef.current = unreadCountIndex;
+      return {
+        rows: uniqueRows.map((row) => ({
+          ...row,
+          unreadCount: unreadCountIndex.get(normalizeReadStateLookupUrl(row.url)) ?? 0,
+        })),
+        nextOffset: currentOffset,
+        hasMore,
+      };
+    },
+    [],
+  );
 
-  const loadEntries = useCallback(async () => {
-    await loadNextPage(true);
-  }, [loadNextPage]);
+  const shouldLoadCompleteDataset = searchQuery.trim().length > 0 || sortState.column !== null;
 
-  // 変更理由: IDBキャッシュから前回の閲覧履歴を復元し、新しいデータの取得中は古い結果を表示し続ける。
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const cached = await getHistoryCache();
-      // キャッシュ復元がDB取得より遅れても、確定タイトルを古いURL表示へ戻さない。
-      if (!cancelled && !hasLoadedEntriesRef.current && cached && cached.length > 0) {
-        setEntries(cached);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const {
+    rows: entries,
+    loadingMore,
+    error,
+    reload: loadEntries,
+    loadMore: handleEndReached,
+    updateRows,
+    isInitialLoading,
+    showInitialLoading,
+    showRefreshing,
+  } = usePagedList<HistoryEntry>({
+    page: "historyList",
+    pageSize: PAGE_SIZE,
+    errorMessage: "閲覧履歴の読み込みに失敗しました",
+    fetchRange: fetchHistoryRange,
+    loadCompleteDataset: shouldLoadCompleteDataset,
+  });
 
   useEffect(() => {
     // 変更理由: ナビバーの「更新」は RELOAD で reloadKey を進める実装なので、
@@ -440,7 +370,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
       );
       const lookupUrl = normalizeReadStateLookupUrl(url);
       unreadCountIndexRef.current.set(lookupUrl, unreadCount);
-      setEntries((prev) =>
+      updateRows((prev) =>
         prev.map((entry) =>
           normalizeReadStateLookupUrl(entry.url) === lookupUrl
             ? {
@@ -461,7 +391,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
       unreadCountIndexRef.current.delete(lookupUrl);
       // 変更理由: 閲覧履歴タブも hidden のまま状態保持されるため、
       // スレを読んだ後に戻った時点で未読数が追従している状態を維持する。
-      setEntries((prev) =>
+      updateRows((prev) =>
         prev.map((entry) =>
           normalizeReadStateLookupUrl(entry.url) === lookupUrl
             ? {
@@ -480,19 +410,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
       container.message.off("read_state_updated", handleReadStateUpdated);
       container.message.off("read_state_removed", handleReadStateRemoved);
     };
-  }, []);
-
-  const shouldLoadCompleteDataset = searchQuery.trim().length > 0 || sortState.column !== null;
-
-  useEffect(() => {
-    // 変更理由: 検索やソートは未読込ページが残っていると結果が欠けるため、
-    // 明示操作時だけ残りページを順次読み切ってから一覧を確定させる。
-    if (!shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
-      return;
-    }
-
-    void loadNextPage();
-  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
+  }, [updateRows]);
 
   const handleSort = useCallback((key: string) => {
     if (!COLUMNS.some((column) => column.key === key)) {
@@ -596,21 +514,8 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
     }
   }, []);
 
-  const handleEndReached = useCallback(() => {
-    if (shouldLoadCompleteDataset || loading || loadingMore || error || !hasMore) {
-      return;
-    }
-
-    void loadNextPage();
-  }, [error, hasMore, loadNextPage, loading, loadingMore, shouldLoadCompleteDataset]);
-
-  if (loading && entries.length === 0) {
-    return (
-      <div className="page-status">
-        <Spinner size="sm" aria-label="履歴を読み込み中" />
-        <span>読み込み中...</span>
-      </div>
-    );
+  if (isInitialLoading) {
+    return <ListInitialLoading visible={showInitialLoading} label="履歴を読み込み中" />;
   }
 
   if (error && entries.length === 0) {
@@ -656,6 +561,7 @@ export const HistoryListPage: React.FC<HistoryListPageProps> = ({
           columnVisibilityLockedKeys={COLUMN_VISIBILITY_LOCKED_KEYS}
         />
       </div>
+      <ListRefreshIndicator visible={showRefreshing} />
       {contextMenuState && isActive ? (
         <ContextMenu
           x={contextMenuState.x}
