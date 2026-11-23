@@ -350,9 +350,12 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
         <Grip size={12} aria-hidden="true" />
       </button>
       {/* フィルタを縦ツールバーにまとめ、本文から操作しやすくする。 */}
+      {/* 変更理由: 押下中のホバーで有効色が消えないよう、状態の色と背景は共通の
+          .icon-button に任せ、ほかのアイコンボタンと見た目を揃える。 */}
       {!isFilterPinned && (
         <button
           type="button"
+          className="icon-button"
           aria-label="フィルターを開閉"
           title="フィルターを開閉"
           aria-pressed={isFilterOpen}
@@ -361,10 +364,22 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
           <Filter size={16} aria-hidden="true" />
         </button>
       )}
-      <button type="button" aria-label="上へジャンプ" title="上へジャンプ" onClick={scrollToTop}>
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="上へジャンプ"
+        title="上へジャンプ"
+        onClick={scrollToTop}
+      >
         <ArrowUp size={14} aria-hidden="true" />
       </button>
-      <button type="button" aria-label="下へジャンプ" title="下へジャンプ" onClick={scrollToBottom}>
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="下へジャンプ"
+        title="下へジャンプ"
+        onClick={scrollToBottom}
+      >
         <ArrowDown size={14} aria-hidden="true" />
       </button>
       {canAutoRefresh && (
@@ -372,6 +387,7 @@ export const ThreadScrollFloatingActions: React.FC<ThreadScrollFloatingActionsPr
           <span className="thread-page__floating-toolbar-separator" />
           <button
             type="button"
+            className="icon-button"
             aria-label={autoLabel}
             title={autoLabel}
             disabled={

@@ -151,22 +151,15 @@
   cursor: pointer;
 }
 
-.thread-page__floating-toolbar button:hover:not(:disabled) {
+/* 移動ハンドル以外の操作ボタンは .icon-button を付け、ホバー・押下・無効の色を共通の規則に任せる。
+   ここで状態の色を重ねると、押下中のホバーで有効色が消えるなど他のボタンと食い違うため。 */
+.thread-page__floating-toolbar-handle:hover {
   background: var(--sys-color-icon-button-hover-bg);
   color: var(--sys-color-icon-button-hover-fg);
 }
 
 .thread-page__floating-toolbar button:focus-visible {
   outline: var(--sys-border-width-strong) solid var(--sys-color-focus-ring);
-}
-
-.thread-page__floating-toolbar button:disabled {
-  color: var(--sys-color-text-disabled);
-  cursor: default;
-}
-
-.thread-page__floating-toolbar button[aria-pressed="true"] {
-  color: var(--sys-color-icon-button-active-fg);
 }
 
 .thread-page__floating-toolbar .thread-page__floating-toolbar-handle {
