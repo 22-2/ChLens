@@ -163,8 +163,9 @@ test("サイドパネルの開閉で読んでいるレスを保つ", async ({ pa
         (res) => res.getBoundingClientRect().bottom > top,
       )?.dataset.resNum;
     });
+  // 仮想スクロールはスクロール後に描画が追いつくまで項目が並ばないため、見えるレスが出るまで待つ。
+  await expect.poll(visibleRes).toBeDefined();
   const before = await visibleRes();
-  expect(before).toBeDefined();
   await page.getByRole("button", { name: "サイドパネルを開く" }).click();
   await expect.poll(visibleRes).toBe(before);
   await page.getByRole("button", { name: "サイドパネルを閉じる" }).click();

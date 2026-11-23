@@ -1,4 +1,5 @@
 import { expect, test } from "./fixtures.mjs";
+import { waitForThreadLoaded } from "./thread-scroll-helpers.mjs";
 
 test("スレッドの自動更新をONにすると新着を取得して追従し、OFFにすると取得を止める", async ({
   page,
@@ -73,6 +74,9 @@ test("板の上限が3000なら1000を超えても自動更新を続ける", asy
     .getByText(thread.title, { exact: true })
     .click();
   await expect.poll(() => localBoard.requests.includes("/local/SETTING.TXT")).toBe(true);
+  // 表示前にONにすると、末尾への移動が空の画面に対して走り、読み込み後に先頭のまま
+  // 「待機中」になる。負荷が高いときだけ落ちていたため、1001件の表示を待ってからONにする。
+  await waitForThreadLoaded(page, thread.threadUrl, 1001, 15000);
   const status = page.getByRole("button", { name: /^スレッド自動更新: / });
   await status.click();
   const toggle = page
